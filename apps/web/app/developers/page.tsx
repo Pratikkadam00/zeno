@@ -1,4 +1,16 @@
+import type { Metadata } from "next";
 import { createPublicApiKeyPreview, type PublicApiKey } from "@subradar/shared";
+
+export const metadata: Metadata = {
+  title: "Public API for developers | Zeno",
+  description: "Build on Zeno's public API: scoped keys with masked previews, explicit read/write scopes, and a consistent { data, error, meta } response envelope. Financial sync stays encrypted.",
+  openGraph: {
+    title: "Public API for developers | Zeno",
+    description: "Scoped API keys, masked previews, explicit read/write scopes, and a consistent response envelope.",
+    type: "website",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno subscription manager dashboard" }]
+  }
+};
 
 const key: PublicApiKey = {
   id: "key_docs",

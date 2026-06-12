@@ -1,4 +1,16 @@
+import type { Metadata } from "next";
 import { summarizeSpendTwin } from "@subradar/shared";
+
+export const metadata: Metadata = {
+  title: "Spend Twin — What your subscriptions really cost | Zeno",
+  description: "Spend Twin turns abstract subscription totals into real-world tradeoffs you understand at a glance, computed locally from Zeno's encrypted subscription ledger.",
+  openGraph: {
+    title: "Spend Twin — What your subscriptions really cost | Zeno",
+    description: "Turns abstract subscription totals into real-world tradeoffs, computed locally from your encrypted subscription ledger.",
+    type: "website",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno subscription manager dashboard" }]
+  }
+};
 
 export default function SpendTwinFeaturePage() {
   return (

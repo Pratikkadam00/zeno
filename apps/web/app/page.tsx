@@ -213,8 +213,8 @@ function serializeJsonLd(value: unknown) {
 
 function Badge({ tone, children }: { tone: string; children: React.ReactNode }) {
   const classes = {
-    red: "bg-red-50 text-red-600",
-    amber: "bg-amber-50 text-amber-700",
+    red: "bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400",
+    amber: "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400",
     neutral: "bg-[var(--ink-7)] text-[var(--ink-3)]"
   }[tone];
 
@@ -230,9 +230,9 @@ function MiniPreview({ theme }: { theme: "pulse" | "clarity" | "command" }) {
       line: "bg-[#F43F5E]"
     },
     clarity: {
-      shell: "bg-[#F8FAFC] text-[var(--ink)]",
-      card: "bg-white border-[var(--ink-6)] rounded-[12px]",
-      accent: "bg-[var(--blue)]",
+      shell: "bg-[#F8FAFC] text-[#0A0A0B]",
+      card: "bg-[#FFFFFF] border-[#E4E4E7] rounded-[12px]",
+      accent: "bg-[#2563EB]",
       line: "bg-[#0D9488]"
     },
     command: {
@@ -286,7 +286,7 @@ export default function HomePage() {
             <a href="#download" className="hidden h-9 items-center rounded-[var(--radius-sm)] px-3 text-sm font-medium text-[var(--ink-2)] hover:bg-[var(--ink-7)] sm:inline-flex">
               Sign in
             </a>
-            <a href="#download" className="inline-flex h-9 items-center rounded-[var(--radius-sm)] bg-[var(--ink)] px-2.5 text-sm font-medium text-white sm:px-3">
+            <a href="#download" className="inline-flex h-9 items-center rounded-[var(--radius-sm)] bg-[var(--ink)] px-2.5 text-sm font-medium text-[var(--ink-8)] sm:px-3">
               Get Zeno
             </a>
           </div>
@@ -310,7 +310,7 @@ export default function HomePage() {
             <a href="#download" className="inline-flex h-11 w-full items-center justify-center rounded-[var(--radius)] bg-[var(--blue)] px-5 text-sm font-medium text-white sm:w-auto">
               Download the app
             </a>
-            <a href="#demo" className="inline-flex h-11 w-full items-center justify-center rounded-[var(--radius)] border border-[var(--ink-6)] bg-white px-5 text-sm font-medium text-[var(--ink)] sm:w-auto">
+            <a href="#demo" className="inline-flex h-11 w-full items-center justify-center rounded-[var(--radius)] border border-[var(--ink-6)] bg-card px-5 text-sm font-medium text-[var(--ink)] sm:w-auto">
               See the dashboard
             </a>
           </div>
@@ -318,7 +318,7 @@ export default function HomePage() {
             {trustSignals.map((signal) => (
               <div key={signal} className="flex items-center gap-2 text-sm text-[var(--ink-2)]">
                 <span className="flex size-5 items-center justify-center rounded-full bg-emerald-500 text-white">
-                  <Check size={13} strokeWidth={3} />
+                  <Check size={13} strokeWidth={3} aria-hidden="true" />
                 </span>
                 {signal}
               </div>
@@ -328,24 +328,24 @@ export default function HomePage() {
       </section>
 
       <section id="demo" className="mx-auto max-w-7xl px-5 pb-16 md:pb-24">
-        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--ink-6)] bg-white shadow-[0_30px_80px_rgba(10,10,11,0.10)]">
+        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--ink-6)] bg-card shadow-[0_30px_80px_rgba(10,10,11,0.10)]">
           <div className="flex h-12 items-center justify-between border-b border-[var(--ink-6)] bg-[var(--ink-7)] px-4">
             <div className="flex gap-2">
               <span className="size-3 rounded-full bg-[#FF5F57]" />
               <span className="size-3 rounded-full bg-[#FEBC2E]" />
               <span className="size-3 rounded-full bg-[#28C840]" />
             </div>
-            <div className="hidden rounded-full border border-[var(--ink-6)] bg-white px-4 py-1 text-xs text-[var(--ink-3)] md:block">
+            <div className="hidden rounded-full border border-[var(--ink-6)] bg-card px-4 py-1 text-xs text-[var(--ink-3)] md:block">
               app.zeno.money/dashboard
             </div>
             <div className="w-14" />
           </div>
           <div className="grid min-h-[620px] overflow-hidden bg-[var(--ink-8)] md:grid-cols-[220px_1fr]">
-            <aside className="hidden border-r border-[var(--ink-6)] bg-white p-5 md:block">
+            <aside className="hidden border-r border-[var(--ink-6)] bg-card p-5 md:block">
               <div className="text-lg font-semibold">zeno<span className="text-[var(--blue)]">.</span></div>
               <div className="mt-8 space-y-2 text-sm text-[var(--ink-3)]">
                 {["Radar", "Calendar", "Coach", "Cancel", "Settings"].map((item, index) => (
-                  <div key={item} className={`rounded-[var(--radius-sm)] px-3 py-2 ${index === 0 ? "bg-[var(--ink)] text-white" : ""}`}>
+                  <div key={item} className={`rounded-[var(--radius-sm)] px-3 py-2 ${index === 0 ? "bg-[var(--ink)] text-[var(--ink-8)]" : ""}`}>
                     {item}
                   </div>
                 ))}
@@ -358,7 +358,7 @@ export default function HomePage() {
                   <h2 className="mt-2 text-5xl font-semibold tracking-[-0.04em]">$107.46</h2>
                   <p className="mt-1 text-sm text-[var(--ink-3)]">across 5 subscriptions</p>
                 </div>
-                <div className="inline-flex rounded-full border border-[var(--ink-6)] bg-white p-1 text-sm font-medium text-[var(--ink-3)]">
+                <div className="inline-flex rounded-full border border-[var(--ink-6)] bg-card p-1 text-sm font-medium text-[var(--ink-3)]">
                   <span className="rounded-full bg-[var(--blue)] px-4 py-2 text-white">Clarity</span>
                   <span className="px-4 py-2">Pulse</span>
                   <span className="px-4 py-2">Command</span>
@@ -366,14 +366,14 @@ export default function HomePage() {
               </div>
               <div className="mt-8 grid gap-4 md:grid-cols-3">
                 {dashboardStats.map(({ label, value, icon: Icon }) => (
-                  <div key={label} className="rounded-[var(--radius)] border border-[var(--ink-6)] bg-white p-5">
-                    <Icon className="text-[var(--blue)]" size={19} />
+                  <div key={label} className="rounded-[var(--radius)] border border-[var(--ink-6)] bg-card p-5">
+                    <Icon className="text-[var(--blue)]" size={19} aria-hidden="true" />
                     <p className="mt-4 text-xs font-medium uppercase tracking-[0.14em] text-[var(--ink-3)]">{label}</p>
                     <p className="mt-2 text-2xl font-semibold tracking-[-0.03em]">{value}</p>
                   </div>
                 ))}
               </div>
-              <div className="mt-6 rounded-[var(--radius-lg)] border border-[var(--ink-6)] bg-white p-5">
+              <div className="mt-6 rounded-[var(--radius-lg)] border border-[var(--ink-6)] bg-card p-5">
                 <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--ink-3)]">Upcoming renewals</p>
                   <a href="#download" className="text-sm font-medium text-[var(--blue)]">Open calendar</a>
@@ -382,7 +382,7 @@ export default function HomePage() {
                   {subscriptions.map((sub, index) => (
                     <div key={sub.name} className={`flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 ${index < subscriptions.length - 1 ? "border-b border-[var(--ink-6)]" : ""}`}>
                       <div className="flex min-w-0 items-center gap-3">
-                        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--ink)] text-sm font-semibold text-white">
+                        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--ink)] text-sm font-semibold text-[var(--ink-8)]">
                           {sub.name[0]}
                         </span>
                         <div className="min-w-0">
@@ -403,7 +403,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-y border-[var(--ink-6)] bg-white">
+      <section className="border-y border-[var(--ink-6)] bg-card">
         <div className="mx-auto max-w-7xl px-5 py-8">
           <p className="text-sm font-medium text-[var(--ink-3)]">Used by people paying for</p>
           <div className="mt-5 grid grid-cols-2 gap-5 text-lg font-medium text-[var(--ink-4)] md:grid-cols-4 lg:grid-cols-8">
@@ -421,8 +421,8 @@ export default function HomePage() {
           {features.map((feature) => {
             const Icon = feature.icon;
             return (
-              <div key={feature.title} className="border-b border-r border-[var(--ink-6)] bg-white p-7">
-                <Icon size={22} className="text-[var(--blue)]" />
+              <div key={feature.title} className="border-b border-r border-[var(--ink-6)] bg-card p-7">
+                <Icon size={22} className="text-[var(--blue)]" aria-hidden="true" />
                 <h3 className="mt-6 text-lg font-semibold">{feature.title}</h3>
                 <p className="mt-3 leading-7 text-[var(--ink-3)]">{feature.description}</p>
               </div>
@@ -432,7 +432,7 @@ export default function HomePage() {
       </section>
 
       <section className="mx-auto max-w-7xl px-5 pb-20">
-        <div className="grid border border-[var(--ink-6)] bg-white md:grid-cols-3">
+        <div className="grid border border-[var(--ink-6)] bg-card md:grid-cols-3">
           {steps.map((step, index) => (
             <div key={step.step} className={`p-7 ${index < steps.length - 1 ? "border-b border-[var(--ink-6)] md:border-b-0 md:border-r" : ""}`}>
               <p className="text-sm font-medium text-[var(--ink-4)]">{step.step}</p>
@@ -457,7 +457,7 @@ export default function HomePage() {
             ["Clarity", "For a calm personal finance command center.", "clarity"],
             ["Command", "For power users who prefer dense controls.", "command"]
           ].map(([name, description, theme]) => (
-            <div key={name} className="rounded-[var(--radius-lg)] border border-[var(--ink-6)] bg-white p-5">
+            <div key={name} className="rounded-[var(--radius-lg)] border border-[var(--ink-6)] bg-card p-5">
               <h3 className="text-xl font-semibold">{name}</h3>
               <p className="mt-2 text-sm leading-6 text-[var(--ink-3)]">{description}</p>
               <MiniPreview theme={theme as "pulse" | "clarity" | "command"} />
@@ -473,14 +473,14 @@ export default function HomePage() {
         </div>
         <div className="grid gap-5 md:grid-cols-3">
           {pricing.map((plan) => (
-            <div key={plan.name} className={`rounded-[var(--radius-lg)] bg-white p-6 ${plan.featured ? "border-[1.5px] border-[var(--ink)]" : "border border-[var(--ink-6)]"}`}>
+            <div key={plan.name} className={`rounded-[var(--radius-lg)] bg-card p-6 ${plan.featured ? "border-[1.5px] border-[var(--ink)]" : "border border-[var(--ink-6)]"}`}>
               <h3 className="text-xl font-semibold">{plan.name}</h3>
               <p className="mt-2 min-h-12 leading-6 text-[var(--ink-3)]">{plan.description}</p>
               <div className="mt-6 flex items-end gap-1">
                 <span className="text-5xl font-semibold tracking-[-0.05em]">{plan.price}</span>
                 <span className="pb-2 text-[var(--ink-3)]">/mo</span>
               </div>
-              <a href="#download" className={`mt-6 inline-flex h-10 w-full items-center justify-center rounded-[var(--radius)] text-sm font-medium ${plan.featured ? "bg-[var(--ink)] text-white" : "border border-[var(--ink-6)] text-[var(--ink)]"}`}>
+              <a href="#download" className={`mt-6 inline-flex h-10 w-full items-center justify-center rounded-[var(--radius)] text-sm font-medium ${plan.featured ? "bg-[var(--ink)] text-[var(--ink-8)]" : "border border-[var(--ink-6)] text-[var(--ink)]"}`}>
                 {plan.cta}
               </a>
               <div className="mt-6 space-y-3 text-sm">
@@ -499,8 +499,8 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-5 pb-20">
         <div className="grid gap-5 md:grid-cols-3">
           {testimonials.map((item) => (
-            <div key={item.name} className="rounded-[var(--radius-lg)] border border-[var(--ink-6)] bg-white p-6">
-              <div className="flex size-10 items-center justify-center rounded-full bg-[var(--ink)] text-sm font-semibold text-white">{item.initials}</div>
+            <div key={item.name} className="rounded-[var(--radius-lg)] border border-[var(--ink-6)] bg-card p-6">
+              <div className="flex size-10 items-center justify-center rounded-full bg-[var(--ink)] text-sm font-semibold text-[var(--ink-8)]">{item.initials}</div>
               <p className="mt-6 leading-7 text-[var(--ink-2)]">“{item.quote}”</p>
               <div className="mt-6">
                 <p className="font-semibold">{item.name}</p>
@@ -527,25 +527,25 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="download" className="bg-[var(--ink)] px-5 py-20 text-white">
+      <section id="download" className="bg-[var(--ink)] px-5 py-20 text-[var(--ink-8)]">
         <div className="mx-auto max-w-7xl text-center">
           <p className="text-sm font-medium text-[var(--ink-4)]">Download</p>
           <h2 className="mx-auto mt-3 max-w-3xl text-4xl font-semibold tracking-[-0.04em] md:text-6xl">Know what renews before it renews.</h2>
           <div className="mt-9 grid gap-3 md:grid-cols-3 md:px-32">
             {["App Store", "Google Play", "Mac App"].map((store) => (
-              <a key={store} href="#" className="rounded-[var(--radius)] border border-white/15 bg-white px-5 py-4 text-left text-[var(--ink)]">
+              <a key={store} href="#" className="rounded-[var(--radius)] border border-white/15 bg-[var(--background)] px-5 py-4 text-left text-[var(--ink)] dark:border-black/15">
                 <p className="text-xs text-[var(--ink-3)]">Download on</p>
                 <p className="font-semibold">{store}</p>
               </a>
             ))}
           </div>
-          <a href="#demo" className="mt-6 inline-flex text-sm font-medium text-[var(--ink-4)] hover:text-white">
-            Continue with web preview <ChevronRight size={16} className="ml-1" />
+          <a href="#demo" className="mt-6 inline-flex text-sm font-medium text-[var(--ink-4)] hover:text-[var(--ink-8)]">
+            Continue with web preview <ChevronRight size={16} className="ml-1" aria-hidden="true" />
           </a>
         </div>
       </section>
 
-      <footer className="bg-white px-5 pt-14">
+      <footer className="bg-card px-5 pt-14">
         <div className="mx-auto grid max-w-7xl gap-8 pb-12 md:grid-cols-4">
           <div>
             <p className="text-xl font-semibold">zeno<span className="text-[var(--blue)]">.</span></p>

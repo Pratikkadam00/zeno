@@ -1,11 +1,13 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 :root {
+  color-scheme: light;
   --ink: #0A0A0B;
   --ink-2: #3F3F46;
-  --ink-3: #71717A;
+  --ink-3: #52525B;
   --ink-4: #A1A1AA;
   --ink-5: #D4D4D8;
   --ink-6: #E4E4E7;
@@ -35,6 +37,37 @@
   --ring: var(--blue);
 }
 
+.dark {
+  color-scheme: dark;
+  --ink: #FAFAFA;
+  --ink-2: #D4D4D8;
+  --ink-3: #A1A1AA;
+  --ink-4: #71717A;
+  --ink-5: #3F3F46;
+  --ink-6: #27272A;
+  --ink-7: #1B1B1F;
+  --ink-8: #111113;
+  --blue: #3B82F6;
+  --background: var(--ink-8);
+  --foreground: var(--ink);
+  --card: #18181B;
+  --card-foreground: var(--ink);
+  --popover: #18181B;
+  --popover-foreground: var(--ink);
+  --primary: var(--blue);
+  --primary-foreground: #FFFFFF;
+  --secondary: var(--ink-7);
+  --secondary-foreground: var(--ink);
+  --muted: var(--ink-7);
+  --muted-foreground: var(--ink-3);
+  --accent: var(--ink-7);
+  --accent-foreground: var(--ink);
+  --destructive: #EF4444;
+  --border: var(--ink-6);
+  --input: var(--ink-6);
+  --ring: var(--blue);
+}
+
 @theme inline {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --color-background: var(--background);
@@ -59,6 +92,100 @@
   --radius-md: var(--radius);
   --radius-lg: var(--radius-lg);
   --radius-xl: calc(var(--radius-lg) + 4px);
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(
+        --radix-accordion-content-height,
+        var(--accordion-panel-height, auto)
+      );
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(
+        --radix-accordion-content-height,
+        var(--accordion-panel-height, auto)
+      );
+    }
+    to {
+      height: 0;
+    }
+  }
+}
+
+/* Custom variants (inlined from shadcn/tailwind.css so the CLI package is not a runtime dependency) */
+@custom-variant data-open {
+  &:where([data-state="open"]),
+  &:where([data-open]:not([data-open="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-closed {
+  &:where([data-state="closed"]),
+  &:where([data-closed]:not([data-closed="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-checked {
+  &:where([data-state="checked"]),
+  &:where([data-checked]:not([data-checked="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-unchecked {
+  &:where([data-state="unchecked"]),
+  &:where([data-unchecked]:not([data-unchecked="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-selected {
+  &:where([data-selected="true"]) {
+    @slot;
+  }
+}
+
+@custom-variant data-disabled {
+  &:where([data-disabled="true"]),
+  &:where([data-disabled]:not([data-disabled="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-active {
+  &:where([data-state="active"]),
+  &:where([data-active]:not([data-active="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-horizontal {
+  &:where([data-orientation="horizontal"]) {
+    @slot;
+  }
+}
+
+@custom-variant data-vertical {
+  &:where([data-orientation="vertical"]) {
+    @slot;
+  }
+}
+
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @layer base {
@@ -99,7 +226,7 @@
 }
 
 .steps {
-  color: var(--ink-3);
+  color: var(--muted-foreground);
   font-size: 18px;
   line-height: 1.6;
 }
@@ -110,8 +237,8 @@
   align-items: center;
   justify-content: center;
   border-radius: var(--radius);
-  background: var(--blue);
-  color: #FFFFFF;
+  background: var(--primary);
+  color: var(--primary-foreground);
   font-weight: 600;
   padding: 0 16px;
 }

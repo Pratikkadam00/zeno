@@ -14,11 +14,9 @@ export function ThemeToggle() {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(storageKey);
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const next = stored ? stored === "dark" : prefersDark;
-    setIsDark(next);
-    applyTheme(next);
+    // The inline script in app/layout.tsx already resolved the stored
+    // preference (or OS preference) before paint; sync state with the result.
+    setIsDark(document.documentElement.classList.contains("dark"));
   }, []);
 
   function updateTheme(next: boolean) {
