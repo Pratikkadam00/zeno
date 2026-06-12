@@ -1,12 +1,13 @@
 import type { ExpoConfig } from "expo/config";
 
 const config: ExpoConfig = {
-  name: "SubRadar",
+  name: "Zeno",
   slug: "subradar",
   scheme: "subradar",
   version: "0.1.0",
   orientation: "portrait",
   userInterfaceStyle: "automatic",
+  icon: "./assets/icon.png",
   ios: {
     supportsTablet: true,
     bundleIdentifier: "app.subradar.mobile",
@@ -14,11 +15,15 @@ const config: ExpoConfig = {
       usesNonExemptEncryption: false
     },
     infoPlist: {
-      NSFaceIDUsageDescription: "Allow SubRadar to unlock your private subscription dashboard with Face ID."
+      NSFaceIDUsageDescription: "Allow Zeno to unlock your private subscription dashboard with Face ID."
     }
   },
   android: {
     package: "app.subradar.mobile",
+    adaptiveIcon: {
+      foregroundImage: "./assets/adaptive-icon.png",
+      backgroundColor: "#0A0F2C"
+    },
     permissions: [
       "USE_BIOMETRIC",
       "USE_FINGERPRINT",
@@ -36,7 +41,7 @@ const config: ExpoConfig = {
       "expo-secure-store",
       {
         configureAndroidBackup: true,
-        faceIDPermission: "Allow SubRadar to unlock your private subscription dashboard with Face ID."
+        faceIDPermission: "Allow Zeno to unlock your private subscription dashboard with Face ID."
       }
     ],
     [
@@ -46,7 +51,14 @@ const config: ExpoConfig = {
         useSQLCipher: true
       }
     ],
-    "expo-splash-screen"
+    [
+      "expo-splash-screen",
+      {
+        image: "./assets/splash-icon.png",
+        imageWidth: 220,
+        backgroundColor: "#0A0F2C"
+      }
+    ]
   ],
   experiments: {
     typedRoutes: true

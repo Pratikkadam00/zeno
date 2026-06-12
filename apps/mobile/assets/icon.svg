@@ -1,0 +1,38 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="85%">
+      <stop offset="0%" stop-color="#1B2A6B"/>
+      <stop offset="55%" stop-color="#101A45"/>
+      <stop offset="100%" stop-color="#0A0F2C"/>
+    </radialGradient>
+    <linearGradient id="zfill" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#C7D8FF"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+
+  <!-- radar rings -->
+  <circle cx="512" cy="512" r="436" fill="none" stroke="#2E4BB8" stroke-opacity="0.28" stroke-width="3"/>
+  <circle cx="512" cy="512" r="330" fill="none" stroke="#3B5BD6" stroke-opacity="0.34" stroke-width="3"/>
+  <!-- highlighted sweep arc -->
+  <path d="M 512 76 A 436 436 0 0 1 920 400" fill="none" stroke="url(#ring)" stroke-width="14" stroke-linecap="round" opacity="0.9"/>
+  <!-- renewal dot on the arc -->
+  <circle cx="855" cy="262" r="30" fill="#34D399"/>
+  <circle cx="855" cy="262" r="30" fill="none" stroke="#0A0F2C" stroke-opacity="0.25" stroke-width="6"/>
+
+  <!-- Z lettermark -->
+  <g>
+    <polygon
+      points="332,308 692,308 692,398 478,626 692,626 692,716 332,716 332,626 546,398 332,398"
+      fill="url(#zfill)"/>
+  </g>
+
+  <!-- subtle bottom glow -->
+  <ellipse cx="512" cy="980" rx="520" ry="150" fill="#2563EB" opacity="0.10"/>
+</svg>

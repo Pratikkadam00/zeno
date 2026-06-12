@@ -28,7 +28,7 @@ export async function canUseBiometrics(): Promise<boolean> {
 
 export async function unlockWithBiometrics(): Promise<boolean> {
   const result = await LocalAuthentication.authenticateAsync({
-    promptMessage: "Unlock SubRadar",
+    promptMessage: "Unlock Zeno",
     fallbackLabel: "Use PIN",
     disableDeviceFallback: false
   });

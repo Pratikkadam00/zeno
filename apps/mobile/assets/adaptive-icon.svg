@@ -1,0 +1,21 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="zfill" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#C7D8FF"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Foreground only: everything kept inside the central safe zone -->
+  <circle cx="512" cy="512" r="296" fill="none" stroke="#3B5BD6" stroke-opacity="0.38" stroke-width="4"/>
+  <path d="M 512 216 A 296 296 0 0 1 789 437" fill="none" stroke="url(#ring)" stroke-width="13" stroke-linecap="round" opacity="0.95"/>
+  <circle cx="746" cy="338" r="24" fill="#34D399"/>
+
+  <polygon
+    points="376,364 648,364 648,432 487,604 648,604 648,672 376,672 376,604 537,432 376,432"
+    fill="url(#zfill)"/>
+</svg>
