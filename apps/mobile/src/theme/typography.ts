@@ -1,0 +1,16 @@
+export const type = {
+  largeTitle:  { fontSize: 34, fontWeight: '700', letterSpacing: -1.5, fontFamily: undefined },
+  title1:      { fontSize: 28, fontWeight: '700', letterSpacing: -1.0, fontFamily: undefined },
+  title2:      { fontSize: 22, fontWeight: '700', letterSpacing: -0.5, fontFamily: undefined },
+  title3:      { fontSize: 20, fontWeight: '600', letterSpacing: -0.3, fontFamily: undefined },
+  headline:    { fontSize: 17, fontWeight: '600', letterSpacing: -0.2, fontFamily: undefined },
+  body:        { fontSize: 17, fontWeight: '400', letterSpacing: -0.2, fontFamily: undefined },
+  callout:     { fontSize: 16, fontWeight: '400', letterSpacing: -0.2, fontFamily: undefined },
+  subheadline: { fontSize: 15, fontWeight: '400', letterSpacing: -0.2, fontFamily: undefined },
+  footnote:    { fontSize: 13, fontWeight: '400', letterSpacing: -0.1, fontFamily: undefined },
+  caption1:    { fontSize: 12, fontWeight: '400', letterSpacing: 0 },
+  caption2:    { fontSize: 11, fontWeight: '500', letterSpacing: 0.06 },
+  sectionHeader:{ fontSize: 11, fontWeight: '600', letterSpacing: 0.08,
+                  textTransform: 'uppercase' as const, fontFamily: undefined },
+  monoNum:     { fontSize: 15, fontWeight: '500', fontVariant: ['tabular-nums'] as const, fontFamily: undefined },
+} as const;

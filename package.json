@@ -1,0 +1,28 @@
+{
+  "name": "subradar",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SubRadar subscription intelligence monorepo.",
+  "packageManager": "npm@11.12.1",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:mobile": "npm --workspace @subradar/mobile run start",
+    "dev:api": "npm --workspace @subradar/api run dev",
+    "dev:web": "npm --workspace @subradar/web run dev",
+    "build": "npm run typecheck:refs && npm --workspace @subradar/web run build",
+    "typecheck": "npm run typecheck:refs && npm --workspace @subradar/mobile run typecheck && npm --workspace @subradar/web run typecheck",
+    "typecheck:refs": "tsc -b --pretty false",
+    "lint": "npm run typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15"
+  }
+}

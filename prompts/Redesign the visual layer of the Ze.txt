@@ -1,0 +1,4344 @@
+Redesign the visual layer of the Zeno app at D:\projects\subradar.
+DO NOT change any logic, navigation, stores, APIs, or data fetching.
+ONLY change colors, typography, spacing, and visual styling.
+
+DESIGN SYSTEM — Apply these exact values everywhere:
+
+COLORS (add to a new file: apps/mobile/src/theme/colors.ts):
+export const colors = {
+  // Backgrounds — layered like Apple
+  bg: '#000000',           // true black (OLED)
+  surface: '#1C1C1E',      // grouped card bg
+  surfaceHigh: '#2C2C2E',  // elevated elements
+  surfaceHigher: '#3A3A3C',// tooltips, popovers
+
+  // Labels — Apple semantic text
+  label: '#FFFFFF',
+  label2: 'rgba(255,255,255,0.55)',
+  label3: 'rgba(255,255,255,0.35)',
+  label4: 'rgba(255,255,255,0.18)',
+
+  // Separators
+  separator: 'rgba(255,255,255,0.08)',
+  separatorOpaque: '#38383A',
+
+  // System colors — exact Apple iOS values
+  blue: '#0A84FF',
+  green: '#30D158',
+  red: '#FF453A',
+  orange: '#FF9F0A',
+  purple: '#BF5AF2',
+  teal: '#5AC8F5',
+  yellow: '#FFD60A',
+
+  // Fills
+  fillPrimary: 'rgba(255,255,255,0.12)',
+  fillSecondary: 'rgba(255,255,255,0.08)',
+  fillTertiary: 'rgba(255,255,255,0.05)',
+}
+
+TYPOGRAPHY (add to apps/mobile/src/theme/typography.ts):
+Use System font (iOS uses SF Pro automatically via fontFamily: undefined)
+export const type = {
+  largeTitle:  { fontSize: 34, fontWeight: '700', letterSpacing: -1.5 },
+  title1:      { fontSize: 28, fontWeight: '700', letterSpacing: -1.0 },
+  title2:      { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+  title3:      { fontSize: 20, fontWeight: '600', letterSpacing: -0.3 },
+  headline:    { fontSize: 17, fontWeight: '600', letterSpacing: -0.2 },
+  body:        { fontSize: 17, fontWeight: '400', letterSpacing: -0.2 },
+  callout:     { fontSize: 16, fontWeight: '400', letterSpacing: -0.2 },
+  subheadline: { fontSize: 15, fontWeight: '400', letterSpacing: -0.2 },
+  footnote:    { fontSize: 13, fontWeight: '400', letterSpacing: -0.1 },
+  caption1:    { fontSize: 12, fontWeight: '400', letterSpacing: 0    },
+  caption2:    { fontSize: 11, fontWeight: '500', letterSpacing: 0.06 },
+  sectionHeader:{ fontSize: 11, fontWeight: '600', letterSpacing: 0.08,
+                  textTransform: 'uppercase' as const },
+  monoNum:     { fontSize: 15, fontWeight: '500', fontVariant: ['tabular-nums'] },
+}
+
+SPACING (add to apps/mobile/src/theme/spacing.ts):
+export const spacing = {
+  screenH: 20,   // horizontal screen padding
+  groupRadius: 16, // grouped card border radius
+  rowH: 44,      // minimum row height (Apple HIG)
+  sectionGap: 28, // gap between sections
+  innerPad: 16,  // inner card padding
+  avatarSm: 28,
+  avatarMd: 36,
+  avatarLg: 52,
+  avatarRadius: { sm: 8, md: 10, lg: 14 },
+}
+
+GROUPED CARD PATTERN (use for ALL card groups):
+- background: colors.surface (#1C1C1E)
+- borderRadius: 16
+- NO border, NO shadow
+- Row separators: 0.5px height, color colors.separator
+  separator starts at x=66 (after avatar), goes to right edge
+  NOT full width — Apple's style
+
+AVATAR COLORS — map by category:
+  streaming:    bg rgba(255,69,58,0.15)   text #FF453A
+  ai_tools:     bg rgba(191,90,242,0.15)  text #BF5AF2
+  productivity: bg rgba(10,132,255,0.15)  text #0A84FF
+  gaming:       bg rgba(48,209,88,0.15)   text #30D158
+  health:       bg rgba(255,159,10,0.15)  text #FF9F0A
+  finance:      bg rgba(90,200,245,0.15)  text #5AC8F5
+  education:    bg rgba(255,214,10,0.15)  text #FFD60A
+  music:        bg rgba(255,55,95,0.15)   text #FF375F
+  other:        bg rgba(255,255,255,0.08) text rgba(255,255,255,0.4)
+
+URGENCY BADGE STYLE — pill shape:
+  ≤3 days: bg rgba(255,69,58,0.15)   text #FF6961  label 'X days'
+  ≤7 days: bg rgba(255,159,10,0.15)  text #FF9F0A  label 'X days'
+  >7 days: bg rgba(255,255,255,0.06) text rgba(255,255,255,0.3) label 'X days'
+  today:   bg rgba(255,69,58,0.2)    text #FF453A  label 'TODAY'
+
+PRIMARY BUTTON STYLE:
+  background: colors.blue (#0A84FF)
+  borderRadius: 14
+  padding: 17 vertical
+  fontSize: 17, fontWeight: '600'
+  color: #fff
+  width: '100%'
+
+DANGER BUTTON:
+  Same but background: colors.red (#FF453A)
+
+SECONDARY BUTTON:
+  background: colors.fillSecondary
+  same radius/padding
+  color: colors.blue
+
+TAB BAR:
+  background: #000
+  borderTop: 0.5px solid rgba(255,255,255,0.12)
+  active icon + label: colors.blue
+  inactive: rgba(255,255,255,0.3)
+  label fontSize: 10, fontWeight: '500'
+  paddingBottom: 24 (safe area)
+
+NAVIGATION BAR:
+  background: #000
+  title: fontSize 17, fontWeight '600', color #fff, letterSpacing -0.3
+  back button: chevron-left icon + 'Back' text, color colors.blue
+  right action: color colors.blue
+
+Create these 3 files:
+  apps/mobile/src/theme/colors.ts
+  apps/mobile/src/theme/typography.ts
+  apps/mobile/src/theme/spacing.ts
+
+Also update apps/mobile/src/theme/index.ts to export all three.
+
+Run typecheck. No logic changes. No navigation changes.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Redesign the dashboard screen for Zeno at D:\projects\subradar.
+File: apps/mobile/app/dashboard.tsx (or wherever the main 
+dashboard currently lives — check and use the correct path)
+
+DO NOT change any logic, data fetching, store calls, 
+navigation, or subscription data.
+ONLY change the visual styling to match Apple HIG exactly.
+
+Import from apps/mobile/src/theme:
+  import { colors } from '../src/theme/colors'
+  import { type } from '../src/theme/typography'  
+  import { spacing } from '../src/theme/spacing'
+
+SCREEN STRUCTURE — rebuild the JSX layout exactly like this:
+
+─────────────────────────────────────
+NAVIGATION BAR
+─────────────────────────────────────
+Row: space-between, paddingHorizontal 20, paddingTop 16, 
+     paddingBottom 8, background colors.bg
+
+Left:
+  Text 'zeno' 
+  fontSize 28, fontWeight '800', color colors.label
+  letterSpacing -1.5
+
+Right: 
+  Avatar circle — width 32 height 32 borderRadius 16
+  background linear gradient (use expo-linear-gradient if 
+  available, else bg colors.blue)
+  Show first letter of user email or 'Z'
+  fontSize 13, fontWeight '700', color #fff
+
+─────────────────────────────────────
+HERO SECTION
+─────────────────────────────────────
+paddingHorizontal 20, paddingTop 8, paddingBottom 28
+
+Section label:
+  Text 'MONTHLY SPEND'
+  ...type.sectionHeader, color colors.label3
+  marginBottom 8
+
+Amount row (flexDirection row, alignItems baseline, gap 2):
+  '$' — fontSize 22, fontWeight '300', 
+        color colors.label3, marginTop 8
+  Whole number part — fontSize 52, fontWeight '700',
+        color colors.label, letterSpacing -2.5
+  Decimal part '.XX' — fontSize 28, fontWeight '300',
+        color colors.label3, letterSpacing -1
+
+Subtitle:
+  Text '[N] subscriptions · [X] renewing this week'
+  ...type.footnote, color colors.label3, marginTop 6
+  Calculate 'renewing this week' = subscriptions where
+  nextRenewalDate is within 7 days from today
+
+─────────────────────────────────────
+URGENT ALERT CARD (only show if any renewal ≤ 3 days)
+─────────────────────────────────────
+marginHorizontal 16, marginBottom 12
+background colors.surface, borderRadius 16
+overflow hidden
+
+Top accent bar:
+  height 3
+  background: use a View with two child Views side by side
+  left half: colors.red (#FF453A)
+  right half: colors.orange (#FF9F0A)
+  (simulates gradient since RN gradient needs library)
+
+Body row (padding 14 16, flexDirection row, alignItems center,
+gap 12):
+  Left icon container:
+    width 36 height 36 borderRadius 10
+    background rgba(255,69,58,0.15)
+    Center: i warning triangle icon equivalent
+    Use Text '⚠' fontSize 18 color colors.red
+
+  Middle (flex 1):
+    Title: '[ServiceName] renews in [X] days'
+    ...type.headline, color colors.label
+    Subtitle: '$[amount] · [difficulty] cancellation'
+    ...type.footnote, color colors.label3, marginTop 2
+
+  Right button:
+    background colors.red, borderRadius 20
+    paddingHorizontal 14, paddingVertical 7
+    Text 'Cancel'
+    fontSize 12, fontWeight '600', color #fff
+    onPress: navigate to /subscription/cancel/[id]
+    Show for the subscription with the nearest renewal date
+
+─────────────────────────────────────
+SECTION LABEL
+─────────────────────────────────────
+Text 'UPCOMING RENEWALS'
+...type.sectionHeader, color colors.label3
+paddingHorizontal 20, paddingBottom 8
+
+─────────────────────────────────────
+GROUPED LIST CARD
+─────────────────────────────────────
+marginHorizontal 16
+background colors.surface (#1C1C1E)
+borderRadius 16
+overflow hidden
+
+Map over getUpcomingRenewals() — show max 5 items
+
+Each row (height min 52):
+  flexDirection row, alignItems center
+  paddingHorizontal 16, paddingVertical 13
+  gap 14
+
+  After each row except last:
+    Separator View — position absolute bottom 0
+    left 66 right 0 height 0.5
+    background colors.separator
+
+  LEFT: Avatar
+    width 36 height 36
+    borderRadius 10
+    background + color from AVATAR COLORS map by category
+    Text: first letter of service name
+    fontSize 14, fontWeight '700'
+
+  MIDDLE (flex 1):
+    Service name: ...type.subheadline, color colors.label
+    Date + cycle: ...type.caption1, color colors.label3
+    marginTop 1
+    Format date as 'May 27' not '5/27/2026'
+
+  RIGHT (alignItems flex-end):
+    Price: ...type.subheadline, fontWeight '500'
+    color colors.label
+    fontVariant ['tabular-nums']
+
+    Urgency badge below price:
+      borderRadius 20, paddingHorizontal 8, paddingVertical 3
+      marginTop 3
+      Colors from URGENCY BADGE STYLE spec in Prompt 1
+      Text: '3 days' / '7 days' / 'TODAY'
+
+─────────────────────────────────────
+INSIGHTS PREVIEW (show only if insights.length > 0)
+─────────────────────────────────────
+Show top 2 insights from generateInsights()
+
+Section label: 'INSIGHTS'
+...type.sectionHeader, color colors.label3
+paddingHorizontal 20, paddingBottom 8, marginTop 28
+
+Each insight card:
+  marginHorizontal 16, marginBottom 8
+  background colors.surface, borderRadius 16
+  padding 14 16
+  flexDirection row, alignItems flex-start, gap 12
+
+  Left accent bar:
+    width 3, alignSelf stretch, borderRadius 2
+    unused → colors.orange
+    duplicate → colors.blue
+    annual_saving → colors.green
+    trial_ending → colors.red
+    default → colors.purple
+
+  Content (flex 1):
+    Title: ...type.subheadline, fontWeight '600'
+    color colors.label
+    Message: ...type.footnote, color colors.label3
+    marginTop 4, lineHeight 18
+
+  Action link (if actionLabel exists):
+    Text actionLabel
+    ...type.footnote, fontWeight '600'
+    color colors.blue, marginTop 8
+
+'See all X insights →' row:
+  marginHorizontal 16, marginTop 4
+  background colors.surface, borderRadius 16
+  padding 14 16
+  flexDirection row, alignItems center
+  Text 'See all [N] insights'
+  ...type.subheadline, color colors.blue, flex 1
+  Chevron right icon color colors.label4
+
+─────────────────────────────────────
+TAB BAR
+─────────────────────────────────────
+position bottom, flexDirection row
+background colors.bg
+borderTopWidth 0.5, borderTopColor rgba(255,255,255,0.12)
+paddingBottom 24, paddingTop 8
+
+4 tabs: Home, Calendar, Insights, Settings
+Each tab: flex 1, alignItems center, gap 4
+
+Active tab (Home on this screen):
+  icon color colors.blue
+  label color colors.blue
+
+Inactive:
+  icon color rgba(255,255,255,0.3)
+  label color rgba(255,255,255,0.3)
+
+Label: fontSize 10, fontWeight '500'
+
+─────────────────────────────────────
+SCROLL BEHAVIOR
+─────────────────────────────────────
+Wrap everything in ScrollView
+showsVerticalScrollIndicator false
+contentContainerStyle paddingBottom 100
+background colors.bg
+
+─────────────────────────────────────
+SAFE AREA
+─────────────────────────────────────
+Wrap root View in SafeAreaView
+background colors.bg
+edges: ['top']
+
+Run typecheck after. Fix all errors.
+DO NOT change any store imports, data logic, or navigation.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Redesign the login screen for Zeno at D:\projects\subradar.
+File: apps/mobile/app/login.tsx
+
+DO NOT change any auth logic, store calls, or navigation.
+ONLY change the visual styling.
+
+Import from apps/mobile/src/theme:
+  import { colors } from '../src/theme/colors'
+  import { type } from '../src/theme/typography'
+  import { spacing } from '../src/theme/spacing'
+
+FULL SCREEN LAYOUT:
+  SafeAreaView — background colors.bg, flex 1
+  KeyboardAvoidingView — behavior 'padding', flex 1
+  ScrollView — contentContainerStyle:
+    flexGrow 1, justifyContent 'space-between'
+    paddingHorizontal 24, paddingBottom 40
+
+─────────────────────────────────────
+TOP SECTION (flex 1, justifyContent center, paddingTop 60)
+─────────────────────────────────────
+
+App icon block (alignItems center, marginBottom 48):
+  Icon container:
+    width 80 height 80 borderRadius 20
+    background colors.blue
+    alignItems center justifyContent center
+    marginBottom 20
+
+    Inner letter 'Z':
+      fontSize 40 fontWeight '800' color #fff
+      letterSpacing -2
+
+  App name:
+    Text 'Zeno'
+    fontSize 28 fontWeight '700' color colors.label
+    letterSpacing -1
+
+  Tagline:
+    Text 'Know what you pay.'
+    ...type.callout color colors.label3
+    marginTop 4 textAlign center
+
+─────────────────────────────────────
+MIDDLE SECTION — input + social buttons
+─────────────────────────────────────
+
+Email input block (marginBottom 12):
+  Label: Text 'Email'
+  ...type.footnote color colors.label3
+  marginBottom 6
+
+  Input container:
+    background colors.surface
+    borderRadius 12
+    paddingHorizontal 16 paddingVertical 14
+    flexDirection row alignItems center gap 10
+
+    Left icon: envelope symbol
+      Text '✉' fontSize 16 color colors.label3
+
+    TextInput:
+      flex 1
+      ...type.body color colors.label
+      placeholderTextColor colors.label4
+      placeholder 'you@example.com'
+      keyboardType 'email-address'
+      autoCapitalize 'none'
+      autoComplete 'email'
+      selectionColor colors.blue
+      — bind to existing email state
+
+  If magic link sent — show success state:
+    background rgba(48,209,88,0.08)
+    border 0.5px solid rgba(48,209,88,0.3)
+    Row: checkmark + 'Check your email for a sign-in link'
+    ...type.footnote color colors.green
+
+Magic link button:
+  Enabled only when email.length > 3 and includes '@'
+  background colors.blue (dimmed to rgba(10,132,255,0.4) 
+  when disabled)
+  borderRadius 14 paddingVertical 17
+  Text 'Send sign-in link'
+  fontSize 17 fontWeight '600' color #fff
+  width '100%' marginBottom 24
+
+Divider row:
+  flexDirection row alignItems center gap 12
+  marginBottom 24
+  Left line: flex 1 height 0.5 background colors.separator
+  Text 'or'
+    ...type.footnote color colors.label4
+  Right line: same as left
+
+Social buttons (flexDirection column gap 12):
+
+  Apple button:
+    background #fff
+    borderRadius 14 paddingVertical 15
+    flexDirection row alignItems center 
+    justifyContent center gap 10
+    width '100%'
+
+    Apple logo:
+      Text '' fontSize 20 color #000
+      (Apple logo unicode or use Text 'Apple')
+
+    Text 'Continue with Apple'
+      fontSize 17 fontWeight '600' color #000
+
+  Google button:
+    background colors.surface
+    borderRadius 14 paddingVertical 15
+    flexDirection row alignItems center
+    justifyContent center gap 10
+    width '100%'
+    border 0.5px solid colors.separatorOpaque
+
+    Google 'G' circle:
+      width 22 height 22 borderRadius 11
+      background #fff
+      alignItems center justifyContent center
+      Text 'G' fontSize 12 fontWeight '700' color #4285F4
+
+    Text 'Continue with Google'
+      fontSize 17 fontWeight '600' color colors.label
+
+  DEV ONLY button (only render if __DEV__ is true):
+    background colors.surfaceHigh
+    borderRadius 14 paddingVertical 13
+    flexDirection row alignItems center
+    justifyContent center gap 8
+    marginTop 4
+
+    Text '🔧 Dev login'
+      fontSize 15 fontWeight '500'
+      color colors.label3
+
+─────────────────────────────────────
+BOTTOM SECTION
+─────────────────────────────────────
+
+Privacy note (textAlign center marginTop 24):
+  Text 'By continuing you agree to our '
+  ...type.caption1 color colors.label4
+
+  Inline Text 'Terms' and 'Privacy Policy'
+    color colors.blue (same font size)
+    onPress open URLs
+
+Loading state:
+  When any auth action is in progress:
+  Show ActivityIndicator over a semi-transparent overlay
+  overlay: position absolute, full screen
+  background rgba(0,0,0,0.5)
+  ActivityIndicator color colors.blue size 'large'
+
+ERROR STATE:
+  If auth error exists in store:
+  Show below email input:
+    background rgba(255,69,58,0.08)
+    borderRadius 10 padding 10 14
+    border 0.5px solid rgba(255,69,58,0.2)
+    Text error message
+    ...type.footnote color colors.red
+
+Run typecheck. Fix all errors.
+DO NOT change any auth logic or navigation.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Redesign all onboarding screens for Zeno at D:\projects\subradar.
+Files: apps/mobile/app/(auth)/onboarding/ — all step files
+OR apps/mobile/app/index.tsx if onboarding is there
+Check which file has the theme picker + start tracking flow
+and redesign that file.
+
+DO NOT change any logic, navigation, or theme store calls.
+ONLY change visual styling.
+
+Import from apps/mobile/src/theme:
+  import { colors } from '../src/theme/colors'
+  import { type } from '../src/theme/typography'
+  import { spacing } from '../src/theme/spacing'
+
+════════════════════════════════════
+SCREEN 1 — WELCOME / VALUE PROP
+════════════════════════════════════
+This is the first screen user sees before login.
+If it exists as a separate file, redesign it.
+If combined with theme picker, separate the sections.
+
+Full screen layout:
+  SafeAreaView background colors.bg flex 1
+  View flex 1 paddingHorizontal 28
+  justifyContent space-between paddingBottom 40
+
+TOP BLOCK (paddingTop 72):
+
+  Wordmark:
+    Text 'zeno'
+    fontSize 42 fontWeight '800' color colors.label
+    letterSpacing -2.5 marginBottom 8
+
+  Headline (2 lines):
+    Line 1: Text 'Finally know'
+    fontSize 38 fontWeight '700' color colors.label
+    letterSpacing -1.8 lineHeight 42
+
+    Line 2: Text 'what you pay.'
+    fontSize 38 fontWeight '700'
+    color colors.label3
+    letterSpacing -1.8 lineHeight 42
+    marginBottom 20
+
+  Body text:
+    Text 'Zeno finds every subscription you pay for
+    and warns you before each renewal — without
+    ever needing your bank login.'
+    ...type.callout color colors.label3
+    lineHeight 24 marginBottom 0
+
+MIDDLE BLOCK — feature list (marginTop 40):
+  background colors.surface borderRadius 16
+  overflow hidden
+
+  3 rows using grouped card pattern:
+
+  Row 1:
+    Icon container: width 34 height 34 borderRadius 10
+    background rgba(10,132,255,0.15)
+    Text '🔍' fontSize 16 (or search symbol)
+
+    Title: 'Auto-discovers subscriptions'
+    ...type.subheadline color colors.label
+
+    Subtitle: 'Scans email receipts on-device only'
+    ...type.caption1 color colors.label3 marginTop 2
+
+  Row 2:
+    Icon container: background rgba(255,159,10,0.15)
+    Text '🔔' fontSize 16
+
+    Title: 'Warns you 7 and 3 days before'
+    Subtitle: 'One tap opens the cancel page'
+
+  Row 3:
+    Icon container: background rgba(48,209,88,0.15)
+    Text '🔒' fontSize 16
+
+    Title: 'No bank login. Ever.'
+    Subtitle: 'Your data stays encrypted on device'
+
+  Separator between rows:
+    position absolute bottom 0
+    left 62 right 0 height 0.5
+    background colors.separator
+
+BOTTOM BLOCK:
+  Primary CTA:
+    Text 'Get Started'
+    ...PRIMARY BUTTON STYLE from Prompt 1
+    marginBottom 12
+
+  Secondary link row (flexDirection row
+  justifyContent center gap 4):
+    Text 'Already have an account?'
+    ...type.footnote color colors.label3
+
+    Text 'Sign in'
+    ...type.footnote color colors.blue fontWeight '600'
+    onPress: navigate to /login
+
+════════════════════════════════════
+SCREEN 2 — THEME PICKER
+════════════════════════════════════
+File: wherever the Pulse/Clarity/Command picker lives
+
+Full screen:
+  SafeAreaView bg colors.bg flex 1
+  ScrollView contentContainerPadding 0
+
+TOP:
+  Back button row:
+    paddingHorizontal 20 paddingTop 16 paddingBottom 8
+    flexDirection row alignItems center
+
+    Chevron + 'Back' text color colors.blue
+    fontSize 17
+
+  Title block paddingHorizontal 20 paddingBottom 28:
+    Text 'Choose your style'
+    ...type.largeTitle color colors.label
+    letterSpacing -1.5 marginBottom 8
+
+    Text 'You can change this anytime in settings.'
+    ...type.subheadline color colors.label3
+
+THEME CARDS (paddingHorizontal 16 gap 12):
+
+Each card is a Pressable:
+  background colors.surface
+  borderRadius 20
+  overflow hidden
+  marginBottom 12
+
+  Selected state:
+    border 2px solid colors.blue (use borderWidth 2
+    borderColor colors.blue)
+
+  Unselected state:
+    border 0.5px solid colors.separator
+
+  CARD INNER LAYOUT:
+
+  Top section padding 20:
+    flexDirection row alignItems center
+    justifyContent space-between marginBottom 16
+
+    Left:
+      Theme name: fontSize 20 fontWeight '700'
+      color colors.label letterSpacing -0.5
+
+      Sub label: ...type.footnote color colors.label3
+      marginTop 3
+
+    Right (selection indicator):
+      width 24 height 24 borderRadius 12
+      Selected: background colors.blue
+        inner checkmark Text '✓' fontSize 12
+        fontWeight '700' color #fff
+      Unselected: border 1.5px solid colors.label4
+        background transparent
+
+  Color dots row (paddingHorizontal 20 paddingBottom 20):
+    flexDirection row gap 8
+    3 dots width 12 height 12 borderRadius 6
+
+  CARD MINI PREVIEW (height 100):
+    The mini preview row showing a fake subscription item
+    inside the theme's own colors
+
+    PULSE preview:
+      background #09090B
+      padding 12 14
+      Row: dark purple avatar circle + 'Adobe CC' text
+      in white + red urgency badge
+      Avatar bg rgba(191,90,242,0.15)
+      text color #BF5AF2
+      Name color #fff fontSize 12
+      Badge bg rgba(255,69,58,0.15) text #FF6961
+
+    CLARITY preview:
+      background #F8FAFC
+      padding 12 14
+      Same row but light colors
+      Avatar bg rgba(10,132,255,0.1) text #2563EB
+      Name color #0F172A fontSize 12
+      Badge bg rgba(254,226,226,1) text #DC2626
+
+    COMMAND preview:
+      background #0F172A
+      padding 12 14
+      Avatar bg rgba(21,128,61,0.15) text #15803D
+      Name in monospace color #94A3B8 fontSize 11
+      Badge bg rgba(239,68,68,0.12) text #FCA5A5
+
+  Card data:
+    Pulse: name 'Pulse' sub 'For Gen Z · bold & dark'
+    dots: #7C3AED #F43F5E #84CC16
+
+    Clarity: name 'Clarity' sub 'For Millennials · clean & minimal'
+    dots: #2563EB #0D9488 #F8FAFC
+
+    Command: name 'Command' sub 'For Gen X · dense & precise'
+    dots: #15803D #D97706 #0F172A
+
+BOTTOM:
+  paddingHorizontal 16 paddingBottom 40 paddingTop 20
+
+  Primary CTA:
+    Text 'Continue'
+    ...PRIMARY BUTTON STYLE
+    Disabled (dimmed) until a theme is selected
+
+  Privacy note centered:
+    ...type.caption2 color colors.label4
+    'Your preference is saved locally'
+
+════════════════════════════════════
+SCREEN 3 — EMAIL CONNECT
+════════════════════════════════════
+File: wherever the Gmail connect / scan prompt lives
+during onboarding
+
+Full screen:
+  SafeAreaView bg colors.bg flex 1
+  View flex 1 paddingHorizontal 24
+  justifyContent space-between paddingBottom 40
+
+TOP BLOCK (paddingTop 60 alignItems center):
+  Icon container (marginBottom 28):
+    width 80 height 80 borderRadius 24
+    background rgba(10,132,255,0.12)
+    border 1px solid rgba(10,132,255,0.2)
+    alignItems center justifyContent center
+    Text '✉' fontSize 36 color colors.blue
+
+  Title (textAlign center):
+    Text 'Find your subscriptions'
+    ...type.title1 color colors.label
+    letterSpacing -1 marginBottom 12
+
+  Body (textAlign center):
+    Text 'Connect Gmail read-only to automatically
+    find every subscription receipt in your inbox.
+    Nothing leaves your device.'
+    ...type.callout color colors.label3
+    lineHeight 24
+
+PRIVACY POINTS (marginTop 32):
+  background colors.surface borderRadius 16 overflow hidden
+
+  3 rows (same grouped card pattern):
+
+  Row 1:
+    Icon: Text '📱' fontSize 16
+    bg rgba(48,209,88,0.15)
+    Title: 'Scanned on your device only'
+    Sub: 'Emails never leave your phone'
+
+  Row 2:
+    Icon: Text '👁' fontSize 16
+    bg rgba(10,132,255,0.15)
+    Title: 'Read-only access'
+    Sub: 'We cannot send or delete emails'
+
+  Row 3:
+    Icon: Text '🔒' fontSize 16
+    bg rgba(255,159,10,0.15)
+    Title: 'Revoke anytime'
+    Sub: 'From your Google account settings'
+
+BOTTOM:
+  Connect button:
+    ...PRIMARY BUTTON STYLE
+    Text 'Connect Gmail'
+    marginBottom 12
+
+  Skip link (textAlign center):
+    Text 'Skip for now'
+    ...type.subheadline color colors.label3
+    paddingVertical 12
+    onPress: navigate to next step
+
+Run typecheck after all files. Fix all errors.
+DO NOT change any logic, store calls, or navigation.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Redesign the Add Subscription screen for Zeno 
+at D:\projects\subradar.
+File: apps/mobile/app/add.tsx 
+OR apps/mobile/app/subscription/add.tsx
+Check which file exists and use that path.
+
+DO NOT change any logic, store calls, service search,
+form validation, or navigation.
+ONLY change visual styling.
+
+Import from apps/mobile/src/theme:
+  import { colors } from '../src/theme/colors'
+  import { type } from '../src/theme/typography'
+  import { spacing } from '../src/theme/spacing'
+
+════════════════════════════════════
+NAVIGATION BAR
+════════════════════════════════════
+SafeAreaView bg colors.bg edges ['top']
+
+Top bar (flexDirection row alignItems center
+paddingHorizontal 20 paddingTop 16 paddingBottom 12
+borderBottomWidth 0.5 borderBottomColor colors.separator):
+
+  Left — back button:
+    Pressable flexDirection row alignItems center gap 4
+    Chevron left icon + Text 'Back'
+    fontSize 17 color colors.blue
+
+  Center:
+    Text 'Add subscription'
+    ...type.headline color colors.label
+    position absolute left 0 right 0
+    textAlign center (non-interactive)
+
+  Right — save button:
+    Text 'Save'
+    fontSize 17 fontWeight '600'
+    color: form valid → colors.blue
+           form invalid → colors.label4
+    onPress: existing save handler
+
+════════════════════════════════════
+STEP 1 — SERVICE SEARCH
+════════════════════════════════════
+Show this step when no service is selected yet.
+
+Search input (margin 16 marginBottom 8):
+  background colors.surface
+  borderRadius 12
+  paddingHorizontal 16 paddingVertical 13
+  flexDirection row alignItems center gap 10
+
+  Magnifier icon Text '🔍' fontSize 15 color colors.label4
+
+  TextInput:
+    flex 1 ...type.body color colors.label
+    placeholderTextColor colors.label4
+    placeholder 'Search 500+ services...'
+    autoFocus true
+    selectionColor colors.blue
+    — keep existing search state + handler
+
+Section label when search empty:
+  Text 'POPULAR RIGHT NOW'
+  ...type.sectionHeader color colors.label3
+  paddingHorizontal 20 paddingBottom 8 paddingTop 4
+
+Popular grid (search empty state):
+  paddingHorizontal 16
+  display as 2-column grid using FlatList
+  numColumns 2 columnWrapperStyle gap 8
+  gap between rows 8
+
+  Each popular card (Pressable):
+    flex 1 background colors.surface
+    borderRadius 14 padding 14
+    flexDirection row alignItems center gap 10
+
+    Avatar (width 36 height 36 borderRadius 10):
+      bg + text color from AVATAR COLORS by category
+      Text: first 2 letters of service name
+      fontSize 13 fontWeight '700'
+
+    Info:
+      Service name:
+        ...type.subheadline color colors.label
+        numberOfLines 1
+      Price:
+        ...type.caption1 color colors.label3
+        marginTop 2
+        Format: '$X/mo' or '$X/yr'
+
+  Popular services to show:
+    ChatGPT Plus, Midjourney, Adobe CC, Netflix,
+    Claude Pro, Spotify, GitHub Copilot, Notion
+
+Search results list (when query.length > 0):
+  background colors.surface
+  borderRadius 16 marginHorizontal 16
+  overflow hidden
+
+  Each result row (Pressable):
+    flexDirection row alignItems center gap 14
+    paddingHorizontal 16 paddingVertical 13
+    position relative
+
+    Separator: position absolute bottom 0
+    left 62 right 0 height 0.5 bg colors.separator
+    (hide on last item)
+
+    Avatar (36x36 borderRadius 10):
+      bg + text from AVATAR COLORS by category
+      First letter of name
+
+    Name: ...type.subheadline color colors.label
+    Category: ...type.caption1 color colors.label3
+    marginTop 1
+
+    Right: default price if known
+    ...type.subheadline color colors.label3
+
+  'Add custom' row at bottom of results:
+    Same row style
+    Avatar: bg colors.fillPrimary
+    Text '+' fontSize 20 color colors.blue
+    Name: 'Add custom service'
+    Sub: 'Not in our list'
+    No separator
+
+════════════════════════════════════
+STEP 2 — DETAILS FORM
+════════════════════════════════════
+Show after service selected.
+ScrollView contentContainerPadding 0
+paddingBottom 120
+
+Selected service header card
+(margin 16 marginBottom 4):
+  background colors.surface borderRadius 16
+  padding 16
+  flexDirection row alignItems center gap 14
+
+  Large avatar (44x44 borderRadius 12):
+    bg + text from AVATAR COLORS
+
+  Service name: ...type.headline color colors.label
+  Change link:
+    Text 'Change'
+    ...type.footnote color colors.blue
+    marginLeft auto
+    onPress: reset to step 1
+
+FORM SECTIONS — each is a grouped card:
+
+SECTION: Amount & Billing
+  marginHorizontal 16 marginBottom 8
+  background colors.surface borderRadius 16
+  overflow hidden
+
+  Row 1 — Amount:
+    paddingHorizontal 16 paddingVertical 14
+    flexDirection row alignItems center
+    justifyContent space-between
+
+    Label: Text 'Amount'
+    ...type.subheadline color colors.label
+
+    Right: flexDirection row alignItems center gap 4
+      Text '$' ...type.subheadline color colors.label3
+      TextInput:
+        ...type.subheadline color colors.label
+        keyboardType 'decimal-pad'
+        textAlign 'right'
+        width 80
+        selectionColor colors.blue
+        placeholderTextColor colors.label4
+        placeholder '0.00'
+      — bind to existing amount state
+
+  Separator (full width 0.5px colors.separator)
+
+  Row 2 — Billing cycle:
+    paddingHorizontal 16 paddingVertical 12
+    Label: Text 'Billing'
+    ...type.subheadline color colors.label
+
+    Segmented control (right side):
+      flexDirection row
+      background colors.surfaceHigh
+      borderRadius 8 padding 2
+      gap 2
+
+      Each segment (Pressable):
+        paddingHorizontal 12 paddingVertical 6
+        borderRadius 6
+
+        Active: background colors.bg
+        Text color colors.label fontWeight '600'
+
+        Inactive: background transparent
+        Text color colors.label3
+
+      Options: Monthly | Annual | Weekly
+
+  Separator
+
+  Row 3 — Next renewal:
+    paddingHorizontal 16 paddingVertical 14
+    flexDirection row alignItems center
+    justifyContent space-between
+
+    Label: Text 'Renews'
+    ...type.subheadline color colors.label
+
+    Date display:
+      Text: formatted date 'Jun 4, 2026'
+      ...type.subheadline color colors.blue
+      — tapping opens DateTimePicker
+
+SECTION: Category & Notes
+  marginHorizontal 16 marginBottom 8
+  background colors.surface borderRadius 16
+  overflow hidden
+
+  Row 1 — Category:
+    paddingHorizontal 16 paddingVertical 14
+    flexDirection row alignItems center
+    justifyContent space-between
+
+    Text 'Category' ...type.subheadline color colors.label
+    Right: category name + chevron right
+    ...type.subheadline color colors.label3
+
+  Separator
+
+  Row 2 — Notes:
+    paddingHorizontal 16 paddingVertical 14
+    TextInput multiline
+    ...type.subheadline color colors.label
+    placeholderTextColor colors.label4
+    placeholder 'Add a note (optional)'
+    selectionColor colors.blue
+    minHeight 44
+
+SECTION: Free Trial Toggle
+  marginHorizontal 16 marginBottom 8
+  background colors.surface borderRadius 16
+  overflow hidden
+
+  Row (paddingHorizontal 16 paddingVertical 14):
+    flexDirection row alignItems center
+    justifyContent space-between
+
+    Left:
+      Text 'Free trial' ...type.subheadline color colors.label
+      Text 'Track trial end date'
+      ...type.caption1 color colors.label3 marginTop 2
+
+    Switch component:
+      value: isTrial
+      onValueChange: existing handler
+      trackColor: false colors.surfaceHigher
+                  true colors.green
+      thumbColor: #fff
+
+  If isTrial true — show trial end date row:
+    Separator
+    Same pattern as renewal date row
+    Label: 'Trial ends'
+
+SECTION: Notifications
+  marginHorizontal 16 marginBottom 32
+  background colors.surface borderRadius 16
+  overflow hidden
+
+  Section inner header:
+    paddingHorizontal 16 paddingTop 14 paddingBottom 8
+    Text 'NOTIFICATIONS'
+    ...type.sectionHeader color colors.label3
+
+  3 toggle rows:
+
+  Row: '7-day reminder'
+    Sub: 'Reminder before renewal week'
+    Switch: notify7days state
+
+  Separator
+
+  Row: '3-day reminder'
+    Sub: 'Final warning before charge'
+    Switch: notify3days state
+
+  Separator
+
+  Row: 'Charge day alert'
+    Sub: 'Confirmation when charged'
+    Switch: notifyOnDay state
+
+  Each row:
+    paddingHorizontal 16 paddingVertical 13
+    flexDirection row alignItems center
+    gap 14
+
+    Left: Text icon (🔔 or 🔕)
+    fontSize 18
+    width 34 height 34 borderRadius 10
+    bg rgba(255,159,10,0.15) alignItems center
+    justifyContent center
+
+    Middle flex 1:
+      Label: ...type.subheadline color colors.label
+      Sub: ...type.caption1 color colors.label3 marginTop 1
+
+    Right: Switch (same style as above)
+
+BOTTOM SAVE BUTTON (fixed to bottom):
+  position absolute bottom 0 left 0 right 0
+  background colors.bg
+  paddingHorizontal 16 paddingBottom 40 paddingTop 12
+  borderTopWidth 0.5 borderTopColor colors.separator
+
+  Button:
+    ...PRIMARY BUTTON STYLE
+    Text 'Add Subscription'
+    background: form valid → colors.blue
+                invalid → rgba(10,132,255,0.4)
+
+Run typecheck. Fix all errors.
+DO NOT change any form logic, validation, or store calls.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Redesign the Subscription Detail screen for Zeno
+at D:\projects\subradar.
+File: apps/mobile/app/subscription/[id].tsx
+
+DO NOT change any logic, store calls, or navigation.
+ONLY change visual styling.
+
+Import from apps/mobile/src/theme:
+  import { colors } from '../src/theme/colors'
+  import { type } from '../src/theme/typography'
+  import { spacing } from '../src/theme/spacing'
+
+════════════════════════════════════
+ROOT LAYOUT
+════════════════════════════════════
+SafeAreaView bg colors.bg flex 1 edges ['top']
+ScrollView showsVerticalScrollIndicator false
+  contentContainerStyle paddingBottom 120
+  background colors.bg
+
+════════════════════════════════════
+NAVIGATION BAR
+════════════════════════════════════
+flexDirection row alignItems center
+paddingHorizontal 20 paddingTop 16 paddingBottom 12
+borderBottomWidth 0.5 borderBottomColor colors.separator
+
+Left — back button (Pressable):
+  flexDirection row alignItems center gap 4
+  Chevron left + Text 'Back'
+  fontSize 17 color colors.blue
+
+Center:
+  Text subscription name (truncated)
+  ...type.headline color colors.label
+  position absolute left 60 right 60
+  textAlign center numberOfLines 1
+
+Right — more options (Pressable):
+  Three dots icon
+  Text '···' fontSize 22 color colors.blue
+  letterSpacing 2
+  onPress: show ActionSheet with:
+    'Edit' → navigate to edit mode
+    'Pause subscription' → existing pause handler
+    'Delete' → show confirmation Alert
+    'Cancel' (iOS style dismiss)
+
+════════════════════════════════════
+HERO SECTION
+════════════════════════════════════
+paddingTop 28 paddingBottom 28 alignItems center
+paddingHorizontal 20
+
+Large avatar:
+  width 72 height 72 borderRadius 18
+  bg + text from AVATAR COLORS by category
+  Text: first letter of service name
+  fontSize 28 fontWeight '800'
+  marginBottom 16
+
+Service name:
+  ...type.title2 color colors.label
+  letterSpacing -0.5 textAlign center
+  marginBottom 8
+
+Category + difficulty chip row:
+  flexDirection row gap 8 justifyContent center
+  marginBottom 24
+
+  Category chip:
+    paddingHorizontal 12 paddingVertical 4
+    borderRadius 20 background colors.fillSecondary
+    Text: category label
+    ...type.caption1 fontWeight '500' color colors.label3
+
+  If cancelDifficulty === 'dark_pattern':
+    Difficulty chip:
+      paddingHorizontal 12 paddingVertical 4
+      borderRadius 20
+      background rgba(255,69,58,0.12)
+      Text '⚠ Dark pattern'
+      ...type.caption1 fontWeight '600'
+      color colors.red
+
+  If isTrial:
+    Trial chip:
+      background rgba(255,214,10,0.12)
+      Text 'Free Trial'
+      color colors.yellow fontWeight '600'
+
+Amount display:
+  flexDirection row alignItems baseline gap 2
+  justifyContent center
+
+  '$' fontSize 22 fontWeight '300'
+  color colors.label3 marginTop 8
+
+  Whole number: fontSize 44 fontWeight '700'
+  color colors.label letterSpacing -2
+
+  '.XX': fontSize 22 fontWeight '300'
+  color colors.label3
+
+  Period label below:
+    Text '/month' or '/year' or '/week'
+    ...type.footnote color colors.label3
+    marginTop 4 textAlign center
+
+════════════════════════════════════
+URGENCY BANNER
+════════════════════════════════════
+Only show if daysUntilRenewal <= 7
+
+marginHorizontal 16 marginBottom 8
+background colors.surface borderRadius 16
+overflow hidden
+
+Top bar: height 3
+  ≤3 days: background colors.red
+  ≤7 days: background colors.orange
+
+Body (padding 14 16 flexDirection row
+alignItems center gap 12):
+
+  Icon container (width 36 height 36 borderRadius 10):
+    ≤3 days: bg rgba(255,69,58,0.15) icon '⚠' color red
+    ≤7 days: bg rgba(255,159,10,0.15) icon '🔔' color orange
+
+  Text block (flex 1):
+    Title: 'Renews in [X] days'
+    ...type.subheadline color colors.label
+    Sub: '$[amount] will be charged on [date]'
+    ...type.caption1 color colors.label3 marginTop 2
+
+  Action (Pressable):
+    background colors.red borderRadius 20
+    paddingHorizontal 14 paddingVertical 7
+    Text 'Cancel' fontSize 12 fontWeight '600' color #fff
+    onPress: navigate to /subscription/cancel/[id]
+
+════════════════════════════════════
+STATS ROW
+════════════════════════════════════
+flexDirection row gap 8
+marginHorizontal 16 marginBottom 8
+
+3 stat cards (flex 1 each):
+  background colors.surface borderRadius 14
+  padding 14
+
+  Label: ...type.sectionHeader color colors.label3
+  marginBottom 6
+
+  Value: fontSize 20 fontWeight '700'
+  letterSpacing -0.5
+
+  Sub: ...type.caption1 color colors.label3 marginTop 3
+
+  Card 1 — Next charge:
+    Label: 'NEXT CHARGE'
+    Value: daysUntilRenewal <= 3 → color colors.red
+           daysUntilRenewal <= 7 → color colors.orange
+           else → color colors.label
+    Value text: '[X] days' or 'TODAY'
+    Sub: formatted renewal date 'May 27'
+
+  Card 2 — Annual cost:
+    Label: 'PER YEAR'
+    Value: '$[amount*12]' color colors.label
+    Sub: 'at current rate'
+
+  Card 3 — Save with annual:
+    Label: 'SAVE IF ANNUAL'
+    If service has defaultAnnualPrice and
+    billingCycle === 'monthly':
+      Value: '$[saving]' color colors.green
+      Sub: 'switch to annual'
+    Else:
+      Value: '—' color colors.label4
+      Sub: 'already annual'
+
+════════════════════════════════════
+SPEND HISTORY SECTION
+════════════════════════════════════
+Section label:
+  Text 'CHARGE HISTORY'
+  ...type.sectionHeader color colors.label3
+  paddingHorizontal 20 paddingBottom 8
+  marginTop 20
+
+Grouped card marginHorizontal 16:
+  background colors.surface borderRadius 16
+  overflow hidden
+
+  3 mock history rows (use real data if available,
+  else generate last 3 months):
+
+  Each row:
+    paddingHorizontal 16 paddingVertical 13
+    flexDirection row alignItems center
+    justifyContent space-between
+    separator after each except last
+
+    Left:
+      Text: month + year 'Apr 2026'
+      ...type.subheadline color colors.label
+
+    Right:
+      Text: '$[amount]'
+      ...type.subheadline fontWeight '500'
+      color colors.label
+      fontVariant ['tabular-nums']
+
+      Text 'Charged'
+      ...type.caption1 color colors.label3
+      marginTop 1 textAlign right
+
+  If no history:
+    padding 20 textAlign center
+    Text 'No charge history yet'
+    ...type.subheadline color colors.label4
+
+════════════════════════════════════
+NOTIFICATIONS SECTION
+════════════════════════════════════
+Section label: 'NOTIFICATIONS'
+...type.sectionHeader color colors.label3
+paddingHorizontal 20 paddingBottom 8 marginTop 20
+
+Grouped card marginHorizontal 16:
+  background colors.surface borderRadius 16
+  overflow hidden
+
+  3 toggle rows (same style as Add screen):
+    '7-day reminder' — notify7days toggle
+    '3-day reminder' — notify3days toggle
+    'Charge day alert' — notifyOnDay toggle
+
+  On toggle change:
+    call existing updateSubscription handler
+    call rescheduleNotifications
+
+════════════════════════════════════
+NOTES SECTION
+════════════════════════════════════
+Only show if notes exist OR show 'Add note' prompt
+
+Section label: 'NOTES'
+...type.sectionHeader color colors.label3
+paddingHorizontal 20 paddingBottom 8 marginTop 20
+
+Card marginHorizontal 16:
+  background colors.surface borderRadius 16
+  padding 16
+
+  If notes exist:
+    Text: notes content
+    ...type.subheadline color colors.label
+    lineHeight 22
+
+  If no notes:
+    Text '+ Add a note'
+    ...type.subheadline color colors.blue
+
+  onPress: open Modal for editing notes
+
+Notes modal:
+  Semi-transparent bg overlay
+  Card centered:
+    background colors.surface borderRadius 20
+    margin 24 padding 20
+    width '100%' alignSelf center
+
+    Title 'Edit note'
+    ...type.headline color colors.label marginBottom 16
+
+    TextInput multiline:
+      background colors.surfaceHigh
+      borderRadius 12 padding 14
+      ...type.subheadline color colors.label
+      minHeight 100
+      selectionColor colors.blue
+
+    Button row marginTop 16 gap 12:
+      Cancel: ...SECONDARY BUTTON smaller
+      paddingVertical 12
+      Save: ...PRIMARY BUTTON smaller
+      paddingVertical 12
+
+════════════════════════════════════
+BOTTOM FIXED BUTTON
+════════════════════════════════════
+position absolute bottom 0 left 0 right 0
+background colors.bg
+paddingHorizontal 16 paddingBottom 40 paddingTop 12
+borderTopWidth 0.5 borderTopColor colors.separator
+
+If status === 'active':
+  DANGER BUTTON:
+    background colors.red borderRadius 14
+    paddingVertical 17 width '100%'
+    Text 'Cancel Subscription'
+    fontSize 17 fontWeight '600' color #fff
+    onPress: navigate to /subscription/cancel/[id]
+
+If status === 'cancelled':
+  background colors.fillSecondary borderRadius 14
+  paddingVertical 17
+  Text 'Subscription Cancelled'
+  fontSize 17 fontWeight '500' color colors.label3
+  (non-interactive)
+
+If status === 'paused':
+  background rgba(255,159,10,0.15) borderRadius 14
+  paddingVertical 17
+  Text 'Subscription Paused'
+  fontSize 17 fontWeight '500' color colors.orange
+
+Run typecheck. Fix all errors.
+DO NOT change any logic, store calls, or navigation.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Redesign the Cancellation Co-Pilot screen for Zeno
+at D:\projects\subradar.
+File: apps/mobile/app/subscription/cancel/[id].tsx
+
+DO NOT change any logic, service catalog lookups,
+deep-link URLs, cancellation guides, or navigation.
+ONLY change visual styling.
+
+Import from apps/mobile/src/theme:
+  import { colors } from '../../src/theme/colors'
+  import { type } from '../../src/theme/typography'
+  import { spacing } from '../../src/theme/spacing'
+
+════════════════════════════════════
+ROOT LAYOUT
+════════════════════════════════════
+SafeAreaView bg colors.bg flex 1 edges ['top']
+ScrollView showsVerticalScrollIndicator false
+  contentContainerStyle paddingBottom 120
+  background colors.bg
+
+════════════════════════════════════
+NAVIGATION BAR
+════════════════════════════════════
+flexDirection row alignItems center
+paddingHorizontal 20 paddingTop 16 paddingBottom 12
+borderBottomWidth 0.5 borderBottomColor colors.separator
+
+Left back button:
+  Pressable flexDirection row alignItems center gap 4
+  Text '‹' fontSize 22 + Text 'Back'
+  fontSize 17 color colors.blue
+
+Center:
+  Text 'Cancel subscription'
+  ...type.headline color colors.label
+  position absolute left 60 right 60
+  textAlign center
+
+════════════════════════════════════
+SERVICE HERO
+════════════════════════════════════
+padding 24 20 20 alignItems center
+
+Avatar (width 72 height 72 borderRadius 18):
+  bg + text from AVATAR COLORS by category
+  First letter of service name
+  fontSize 28 fontWeight '800'
+  marginBottom 16
+
+Service name:
+  ...type.title2 color colors.label
+  letterSpacing -0.5 textAlign center
+  marginBottom 4
+
+Meta line:
+  Text '[billing cycle] · $[amount] · renews in [X] days'
+  ...type.footnote color colors.label3
+  textAlign center
+
+════════════════════════════════════
+SAVINGS CARD
+════════════════════════════════════
+marginHorizontal 16 marginBottom 12
+background rgba(48,209,88,0.07)
+border 0.5px solid rgba(48,209,88,0.2)
+borderRadius 16 padding 14 16
+flexDirection row alignItems center gap 12
+
+Left icon container:
+  width 36 height 36 borderRadius 10
+  background rgba(48,209,88,0.12)
+  Text '🐷' fontSize 18 textAlign center
+  lineHeight 36
+
+Middle (flex 1):
+  Text 'Cancelling saves you'
+  fontSize 13 color rgba(48,209,88,0.7) fontWeight 400
+
+Right:
+  Text '$[annual saving]/yr'
+  fontSize 17 fontWeight 700
+  color colors.green
+  fontVariant ['tabular-nums']
+  letterSpacing -0.5
+
+Calculate annual saving:
+  if billingCycle monthly: amount * 12
+  if billingCycle annual: amount
+  Show nothing if amount is 0
+
+════════════════════════════════════
+DIFFICULTY BADGE
+════════════════════════════════════
+Only show if cancelDifficulty exists
+
+Pressable (alignSelf flex-start marginLeft 16
+marginBottom 16):
+  flexDirection row alignItems center gap 6
+  borderRadius 10 padding 8 12
+  border 0.5px
+
+  easy:
+    bg rgba(48,209,88,0.08)
+    border rgba(48,209,88,0.2)
+    Text '✓ Easy to cancel'
+    color rgba(48,209,88,0.8)
+
+  medium:
+    bg rgba(255,159,10,0.08)
+    border rgba(255,159,10,0.2)
+    Text '⚠ Moderate steps'
+    color rgba(255,159,10,0.8)
+
+  hard:
+    bg rgba(255,69,58,0.08)
+    border rgba(255,69,58,0.2)
+    Text '✕ Hard to cancel'
+    color rgba(255,69,58,0.8)
+
+  dark_pattern:
+    bg rgba(255,69,58,0.1)
+    border rgba(255,69,58,0.25)
+    Text '⚠ Dark pattern — they will try to stop you'
+    color rgba(255,100,100,0.9)
+    fontWeight 600
+
+  fontSize 12 fontWeight 500 letterSpacing -0.1
+
+════════════════════════════════════
+STEPS SECTION
+════════════════════════════════════
+Section label:
+  Text 'HOW TO CANCEL'
+  ...type.sectionHeader color colors.label3
+  paddingHorizontal 20 paddingBottom 12
+
+Steps list (paddingHorizontal 20):
+  Map over cancelGuide array from service catalog
+
+  Each step (flexDirection row gap 14
+  marginBottom 16 alignItems flex-start):
+
+    Step number circle (width 26 height 26
+    borderRadius 13 flexShrink 0 marginTop 2):
+
+      Completed (index < currentStep):
+        background colors.green
+        border none
+        Text '✓' fontSize 11 fontWeight 700 color #fff
+        textAlign center lineHeight 26
+
+      Current (index === currentStep):
+        background transparent
+        border 1.5px solid rgba(255,255,255,0.4)
+        Text '[n+1]' fontSize 11 fontWeight 500
+        color rgba(255,255,255,0.8)
+        textAlign center lineHeight 22
+
+      Upcoming (index > currentStep):
+        background transparent
+        border 1.5px solid colors.separator
+        Text '[n+1]' fontSize 11 fontWeight 500
+        color colors.label4
+        textAlign center lineHeight 22
+
+    Step text (flex 1 paddingTop 4):
+      Completed: fontSize 13 color colors.label3
+      Current: fontSize 13 color colors.label lineHeight 20
+      Upcoming: fontSize 13 color colors.label3 lineHeight 20
+
+  currentStep state: starts at 1
+  (first step always shown as done — user opened the screen)
+
+════════════════════════════════════
+PRIMARY CTA BUTTON
+════════════════════════════════════
+margin 20 16 8
+
+background #fff borderRadius 16
+paddingVertical 16
+flexDirection row alignItems center
+justifyContent center gap 8
+
+Left icon: Text '↗' fontSize 16 color colors.bg
+Text: 'Open [service name] cancellation page'
+  fontSize 16 fontWeight 600 color colors.bg
+  letterSpacing -0.2
+
+onPress:
+  Linking.openURL(service.cancelUrl)
+  setCurrentStep(2) — advance to next step
+  setShowConfirm(true)
+
+════════════════════════════════════
+DID YOU CANCEL — CONFIRM SECTION
+════════════════════════════════════
+Only show when showConfirm === true
+(after user taps the CTA button)
+
+Animated slide down (use Animated.View with
+spring from opacity 0 translateY -10 to
+opacity 1 translateY 0)
+
+Card (margin 0 16 marginBottom 12
+background colors.surface borderRadius 16
+padding 16):
+
+  Title: Text 'Did you cancel it?'
+  fontSize 16 fontWeight 600 color colors.label
+  marginBottom 16
+
+  Button row (flexDirection row gap 12):
+
+    YES button (flex 1):
+      background colors.green borderRadius 12
+      paddingVertical 13
+      Text 'Yes, cancelled ✓'
+      fontSize 15 fontWeight 600 color #fff
+      textAlign center
+      onPress:
+        call existing updateSubscription status cancelled
+        call cancelNotificationsForSubscription
+        show success state
+
+    NOT YET button (flex 1):
+      background colors.surfaceHigh borderRadius 12
+      paddingVertical 13
+      Text 'Not yet'
+      fontSize 15 fontWeight 500
+      color colors.label3 textAlign center
+      onPress: setShowConfirm(false)
+
+════════════════════════════════════
+SUCCESS STATE
+════════════════════════════════════
+Replace confirm section with success card
+when user taps YES
+
+background rgba(48,209,88,0.08)
+border 0.5px solid rgba(48,209,88,0.2)
+borderRadius 16 padding 20 16
+margin 0 16 marginBottom 12
+alignItems center
+
+Text '✓' fontSize 32 color colors.green
+marginBottom 8
+
+Text 'Subscription cancelled'
+fontSize 17 fontWeight 600 color colors.label
+marginBottom 4
+
+Text 'You'll save $[annual]/year from now on.'
+fontSize 14 color colors.label3 textAlign center
+
+After 2 seconds auto navigate back to dashboard
+
+════════════════════════════════════
+SUPPORT SECTION (collapsible)
+════════════════════════════════════
+Pressable row (margin 0 16 marginTop 4):
+  background colors.surface borderRadius 16
+  padding 14 16
+  flexDirection row alignItems center
+  justifyContent space-between
+
+  Text 'Having trouble?'
+  fontSize 15 color colors.label3
+
+  Text isExpanded ? '∧' : '∨'
+  fontSize 14 color colors.label4
+
+When expanded — show below the row
+(same card continuing):
+  Separator 0.5px colors.separator
+
+  If service.supportEmail exists:
+    Row: Text '✉ Email support'
+    fontSize 14 color colors.blue
+    onPress: Linking.openURL mailto
+
+  Separator if phone also exists
+
+  If service.supportPhone exists:
+    Row: Text '📞 Call support'
+    fontSize 14 color colors.blue
+
+  Always show:
+    Row: Text '🔍 Search how to cancel [name]'
+    fontSize 14 color colors.blue
+    onPress: Linking.openURL Google search URL
+
+════════════════════════════════════
+IF NO CANCEL GUIDE EXISTS
+════════════════════════════════════
+Show generic 5 steps:
+  1. Open the [service] website or app
+  2. Go to Account Settings or Profile
+  3. Find Subscription or Billing section
+  4. Look for Cancel or Manage subscription
+  5. Follow prompts to confirm cancellation
+
+Same step visual style as above.
+
+Run typecheck. Fix all errors.
+DO NOT change any logic, service lookups, or navigation.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Redesign the Analytics / Insights screen for Zeno
+at D:\projects\subradar.
+File: apps/mobile/app/(tabs)/analytics.tsx
+OR apps/mobile/app/analytics.tsx
+Check which exists and use that path.
+
+DO NOT change any logic, generateInsights() calls,
+chart data calculations, or store calls.
+ONLY change visual styling.
+
+Import from apps/mobile/src/theme:
+  import { colors } from '../../src/theme/colors'
+  import { type } from '../../src/theme/typography'
+  import { spacing } from '../../src/theme/spacing'
+
+════════════════════════════════════
+ROOT LAYOUT
+════════════════════════════════════
+SafeAreaView bg colors.bg flex 1 edges ['top']
+ScrollView showsVerticalScrollIndicator false
+  contentContainerStyle paddingBottom 100
+  background colors.bg
+
+════════════════════════════════════
+PAGE HEADER
+════════════════════════════════════
+paddingHorizontal 20 paddingTop 16 paddingBottom 4
+
+Row flexDirection row alignItems center
+justifyContent space-between:
+
+  Left:
+    Text 'Insights'
+    fontSize 28 fontWeight 800
+    color colors.label letterSpacing -1.5
+
+  Right (only show if totalSavings > 0):
+    Savings pill:
+      background rgba(48,209,88,0.1)
+      border 0.5px solid rgba(48,209,88,0.2)
+      borderRadius 20 padding 5 12
+      flexDirection row alignItems center gap 6
+
+      Text '↑' fontSize 12 color colors.green
+      Text 'Save up to $[getTotalSavingOpportunity()]'
+      fontSize 12 fontWeight 600 color colors.green
+
+════════════════════════════════════
+MONTHLY SPEND CHART
+════════════════════════════════════
+Section label:
+  Text 'MONTHLY SPEND'
+  ...type.sectionHeader color colors.label3
+  paddingHorizontal 20 paddingBottom 8
+  paddingTop 20
+
+Chart card:
+  marginHorizontal 16
+  background colors.surface
+  borderRadius 16 padding 20
+  marginBottom 8
+
+  Total display (marginBottom 20):
+    Text '$[currentMonthTotal]'
+    fontSize 34 fontWeight 700
+    color colors.label letterSpacing -1.5
+    fontVariant ['tabular-nums']
+
+    Text 'this month'
+    fontSize 13 color colors.label3
+    marginTop 2
+
+  Bar chart (height 80 flexDirection row
+  alignItems flex-end gap 6):
+
+    For each of last 6 months:
+      flexDirection column alignItems center gap 6
+      flex 1
+
+      Bar (View):
+        width '100%' borderRadius 4 4 0 0
+        Calculate height proportionally:
+          maxHeight 80
+          height = (monthAmount / maxMonthAmount) * 80
+          minimum height 4px
+
+        Current month: background colors.blue
+        Others: background colors.surfaceHigher
+
+      Month label:
+        Text: 'Jan' 'Feb' etc
+        fontSize 10 fontWeight 500
+        Current month: color colors.blue
+        Others: color colors.label4
+
+  Value labels above bars:
+    Show only current month value
+    Text '$[amount]'
+    fontSize 10 fontWeight 600 color colors.blue
+    marginBottom 4
+
+════════════════════════════════════
+INSIGHTS FEED
+════════════════════════════════════
+Section label:
+  Text 'INSIGHTS'
+  ...type.sectionHeader color colors.label3
+  paddingHorizontal 20 paddingBottom 8
+  paddingTop 20
+
+Map over generateInsights(subscriptions):
+Show each as a card — NOT inside a grouped card.
+Each insight is its own card with marginHorizontal 16
+marginBottom 8.
+
+INSIGHT CARD STYLE:
+  background colors.surface borderRadius 16
+  overflow hidden
+
+  Left accent bar (position absolute left 0
+  top 0 bottom 0 width 3 borderRadius 0):
+    unused → colors.orange
+    duplicate → colors.blue
+    annual_saving → colors.green
+    trial_ending → colors.red
+    high_spend → colors.purple
+    spend_summary → colors.surfaceHigher
+    cancellation_reminder → colors.label4
+
+  Content (paddingVertical 14 paddingLeft 19
+  paddingRight 16):
+
+    Top row (flexDirection row alignItems
+    flex-start justifyContent space-between):
+
+      Icon + title block (flex 1 flexDirection row
+      alignItems flex-start gap 12):
+
+        Icon container (width 34 height 34
+        borderRadius 10 flex-shrink 0):
+          unused: bg rgba(255,159,10,0.15) icon '🕐'
+          duplicate: bg rgba(10,132,255,0.15) icon '🔄'
+          annual_saving: bg rgba(48,209,88,0.15) icon '💰'
+          trial_ending: bg rgba(255,69,58,0.15) icon '⏰'
+          high_spend: bg rgba(191,90,242,0.15) icon '📊'
+          spend_summary: bg rgba(255,255,255,0.06) icon '📋'
+          cancellation_reminder: bg rgba(255,255,255,0.06) icon '✅'
+          fontSize 16 textAlign center lineHeight 34
+
+        Text block (flex 1):
+          Title: fontSize 15 fontWeight 600
+          color colors.label letterSpacing -0.2
+          marginBottom 4
+
+          Message: fontSize 13 color colors.label3
+          lineHeight 18 letterSpacing -0.1
+
+      Dismiss button (padding 4):
+        Text '×' fontSize 20 color colors.label4
+        onPress: add id to dismissedInsights state
+        do not re-render dismissed insights
+
+    If savingAmount exists and savingAmount > 0:
+      Saving pill (marginTop 10 alignSelf flex-start):
+        background rgba(48,209,88,0.1)
+        borderRadius 20 padding 4 10
+        Text 'Save $[savingAmount]/mo'
+        fontSize 11 fontWeight 600 color colors.green
+
+    If actionLabel exists:
+      Action row (marginTop 10):
+        Pressable: Text actionLabel
+        fontSize 13 fontWeight 600
+        color colors.blue letterSpacing -0.1
+        onPress: router.push(insight.actionRoute)
+
+EMPTY STATE (all dismissed):
+  padding 40 20 alignItems center
+  Text '✓' fontSize 40 marginBottom 16
+  Text 'All caught up'
+  fontSize 20 fontWeight 600 color colors.label
+  letterSpacing -0.5 marginBottom 8
+  Text 'No insights right now. Check back later.'
+  fontSize 15 color colors.label3 textAlign center
+
+════════════════════════════════════
+CATEGORY BREAKDOWN
+════════════════════════════════════
+Section label:
+  Text 'SPEND BREAKDOWN'
+  ...type.sectionHeader color colors.label3
+  paddingHorizontal 20 paddingBottom 8
+  paddingTop 20
+
+Grouped card marginHorizontal 16:
+  background colors.surface borderRadius 16
+  overflow hidden
+
+  Map over categories that have spend > 0:
+  Sort by amount descending
+
+  Each row:
+    paddingHorizontal 16 paddingVertical 13
+    flexDirection row alignItems center gap 14
+    separator after each except last
+
+    Left avatar (36x36 borderRadius 10):
+      Use AVATAR COLORS by category
+      First letter of category name capitalized
+      fontSize 13 fontWeight 700
+
+    Middle (flex 1):
+      Category name capitalized:
+        ...type.subheadline color colors.label
+
+      Progress bar (marginTop 6):
+        Track: width '100%' height 3
+        background colors.surfaceHigher borderRadius 2
+
+        Fill: width '[pct]%' height 3
+        background: streaming colors.red
+                    ai_tools colors.purple
+                    productivity colors.blue
+                    gaming colors.green
+                    health colors.orange
+                    music rgba(255,55,95,1)
+                    other colors.label4
+        borderRadius 2
+
+    Right:
+      Amount: ...type.subheadline fontWeight 500
+      color colors.label fontVariant ['tabular-nums']
+
+      Percentage: ...type.caption1 color colors.label3
+      marginTop 1 textAlign right
+
+  Total row at bottom:
+    paddingHorizontal 16 paddingVertical 13
+    borderTop 0.5px solid colors.separator
+    flexDirection row justifyContent space-between
+
+    Text 'Total monthly'
+    fontSize 14 fontWeight 600 color colors.label
+
+    Text '$[total]'
+    fontSize 14 fontWeight 700 color colors.label
+    fontVariant ['tabular-nums']
+
+════════════════════════════════════
+ALL SUBSCRIPTIONS TABLE
+════════════════════════════════════
+Section label:
+  Text 'ALL SUBSCRIPTIONS'
+  ...type.sectionHeader color colors.label3
+  paddingHorizontal 20 paddingBottom 8
+  paddingTop 20
+
+Grouped card marginHorizontal 16:
+  background colors.surface borderRadius 16
+  overflow hidden
+
+  Map ALL active subscriptions
+  Sort by nextRenewalDate ascending
+
+  Each row (Pressable):
+    paddingHorizontal 16 paddingVertical 13
+    flexDirection row alignItems center gap 14
+    separator after each except last
+    onPress: router.push /subscription/[id]
+
+    Avatar 36x36 borderRadius 10:
+      AVATAR COLORS by category
+      First letter
+
+    Middle flex 1:
+      Name: ...type.subheadline color colors.label
+      Date + cycle: ...type.caption1 color colors.label3
+      marginTop 1
+
+    Right:
+      Price: ...type.subheadline fontWeight 500
+      color colors.label fontVariant ['tabular-nums']
+
+      Badge: same URGENCY BADGE STYLE
+      marginTop 3
+
+════════════════════════════════════
+TAB BAR
+════════════════════════════════════
+Same tab bar as dashboard.
+Active tab: Analytics (chart-bar icon)
+Use same 4-tab layout.
+
+Run typecheck. Fix all errors.
+DO NOT change any insight logic,
+chart calculations, or store calls.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Redesign the Calendar screen for Zeno
+at D:\projects\subradar.
+File: apps/mobile/app/(tabs)/calendar.tsx
+OR apps/mobile/app/calendar.tsx
+Check which exists and use that path.
+
+DO NOT change any calendar logic, date calculations,
+subscription data, or navigation.
+ONLY change visual styling.
+
+Import from apps/mobile/src/theme:
+  import { colors } from '../../src/theme/colors'
+  import { type } from '../../src/theme/typography'
+  import { spacing } from '../../src/theme/spacing'
+
+════════════════════════════════════
+ROOT LAYOUT
+════════════════════════════════════
+SafeAreaView bg colors.bg flex 1 edges ['top']
+ScrollView showsVerticalScrollIndicator false
+  contentContainerStyle paddingBottom 100
+  background colors.bg
+
+════════════════════════════════════
+PAGE HEADER
+════════════════════════════════════
+paddingHorizontal 20 paddingTop 16 paddingBottom 4
+
+Text 'Calendar'
+fontSize 28 fontWeight 800
+color colors.label letterSpacing -1.5
+
+════════════════════════════════════
+STATS ROW
+════════════════════════════════════
+flexDirection row gap 8
+marginHorizontal 16 marginTop 12 marginBottom 8
+
+3 stat cards:
+
+  Card 1 — This month:
+    background colors.surface borderRadius 14
+    padding 14 flex 1
+    Label: 'THIS MONTH'
+    ...type.sectionHeader color colors.label3
+    marginBottom 6
+    Value: '$[getMonthlyTotal(year,month)]'
+    fontSize 20 fontWeight 700 color colors.label
+    letterSpacing -0.5
+    Sub: '[N] renewals'
+    ...type.caption1 color colors.label3 marginTop 3
+
+  Card 2 — Next 7 days:
+    Same structure
+    Label: 'NEXT 7 DAYS'
+    Value: color colors.red if any renewal ≤3 days
+           color colors.orange if any ≤7 days
+           else color colors.label
+    Sub: '[N] due soon'
+
+  Card 3 — This year:
+    Label: 'THIS YEAR'
+    Value: '$[getProjectedAnnual()]'
+    Sub: 'projected'
+
+════════════════════════════════════
+CALENDAR COMPONENT
+════════════════════════════════════
+marginHorizontal 16 marginBottom 8
+background colors.surface borderRadius 16
+padding 16 overflow hidden
+
+MONTH NAVIGATION ROW:
+  flexDirection row alignItems center
+  justifyContent space-between
+  marginBottom 16
+
+  Left arrow button (Pressable):
+    width 32 height 32 borderRadius 16
+    background colors.surfaceHigh
+    alignItems center justifyContent center
+    Text '‹' fontSize 20 color colors.blue
+
+  Month + year title:
+    Text '[Month] [Year]' e.g. 'May 2026'
+    fontSize 20 fontWeight 700
+    color colors.label letterSpacing -0.5
+
+  Right arrow button:
+    Same as left, Text '›'
+
+DAY OF WEEK HEADERS:
+  flexDirection row marginBottom 4
+  7 items flex 1 each
+
+  Text: 'S' 'M' 'T' 'W' 'T' 'F' 'S'
+  fontSize 11 fontWeight 500
+  color colors.label4
+  textAlign center
+  paddingVertical 8
+  letterSpacing 0.04em
+
+CALENDAR GRID:
+  Use react-native-calendars OR custom grid
+  If using react-native-calendars:
+    Pass theme prop:
+      backgroundColor: colors.bg
+      calendarBackground: colors.surface
+      textSectionTitleColor: colors.label4
+      selectedDayBackgroundColor: colors.blue
+      selectedDayTextColor: '#ffffff'
+      todayTextColor: colors.blue
+      dayTextColor: colors.label
+      textDisabledColor: colors.label4
+      arrowColor: colors.blue
+      monthTextColor: colors.label
+      indicatorColor: colors.blue
+      textDayFontWeight: '400'
+      textMonthFontWeight: '700'
+      textDayHeaderFontWeight: '500'
+      textDayFontSize: 14
+      textMonthFontSize: 20
+      textDayHeaderFontSize: 11
+
+  If building custom grid:
+    6 rows × 7 cols
+    Each day cell (height 42 flex 1
+    alignItems center justifyContent center
+    borderRadius 10 position relative):
+
+      TODAY:
+        Inner circle (width 32 height 32
+        borderRadius 16 alignItems center
+        justifyContent center):
+          No background
+          Day number: fontSize 14 fontWeight 700
+          color colors.blue
+
+      SELECTED:
+        Inner circle background colors.blue
+        Day number color #fff fontWeight 700
+
+      SELECTED + TODAY:
+        Same as selected
+
+      NORMAL:
+        Day number fontSize 14 fontWeight 400
+        color colors.label
+
+      DIM (prev/next month):
+        Day number color colors.label4
+
+      RENEWAL DOTS (position absolute bottom 4):
+        flexDirection row gap 2 justifyContent center
+        For each subscription renewing that day:
+          Dot: width 5 height 5 borderRadius 3
+          Color from category:
+            streaming: colors.red
+            ai_tools: colors.purple
+            productivity: colors.blue
+            gaming: colors.green
+            health: colors.orange
+            music: rgba(255,55,95,1)
+            other: colors.label4
+        Max 3 dots — if more, show 3 dots + nothing extra
+        If selected: dot color #fff
+
+════════════════════════════════════
+SELECTED DAY PANEL
+════════════════════════════════════
+Only show when a date is tapped AND
+that date has subscriptions renewing
+
+Animated slide down from above:
+  Use Animated.Value starting at -20
+  opacity 0 → 1, translateY -20 → 0
+  duration 250ms easing ease-out
+
+marginHorizontal 16 marginBottom 8
+background colors.surface borderRadius 16
+overflow hidden
+
+Header row (padding 14 16
+flexDirection row alignItems center
+justifyContent space-between):
+
+  Text: formatted selected date
+  e.g. 'Tuesday, May 27'
+  fontSize 15 fontWeight 600
+  color colors.label letterSpacing -0.2
+
+  Dismiss Pressable:
+    Text '×' fontSize 20 color colors.label4
+    onPress: setSelectedDate(null)
+
+Separator 0.5px colors.separator
+
+Subscriptions list for selected date:
+  Map getSubscriptionsForDate(subscriptions, selectedDate)
+
+  Each row (Pressable):
+    paddingHorizontal 16 paddingVertical 13
+    flexDirection row alignItems center gap 14
+    separator after each except last
+    onPress: router.push /subscription/[id]
+
+    Avatar 36x36 borderRadius 10:
+      AVATAR COLORS by category
+
+    Middle flex 1:
+      Name: ...type.subheadline color colors.label
+      Billing cycle: ...type.caption1 color colors.label3
+      marginTop 1
+
+    Right:
+      Price: ...type.subheadline fontWeight 500
+      color colors.label
+
+      Cancel link (Pressable marginTop 3):
+        Text 'Cancel →'
+        fontSize 12 fontWeight 600 color colors.red
+        onPress: router.push /subscription/cancel/[id]
+
+Footer row (padding 10 16
+borderTop 0.5px colors.separator):
+  flexDirection row justifyContent space-between
+
+  Text 'Total for this day'
+  fontSize 13 color colors.label3
+
+  Text '$[sum of amounts]'
+  fontSize 13 fontWeight 600
+  color colors.label
+  fontVariant ['tabular-nums']
+
+════════════════════════════════════
+UPCOMING RENEWALS LIST
+════════════════════════════════════
+Section label:
+  Text 'UPCOMING'
+  ...type.sectionHeader color colors.label3
+  paddingHorizontal 20 paddingBottom 8
+  paddingTop 20
+
+Use getWeeklyGroups(subscriptions):
+
+For each non-empty group
+(thisWeek, nextWeek, laterThisMonth):
+
+  Group header row:
+    paddingHorizontal 20 paddingBottom 6
+    flexDirection row alignItems center
+    justifyContent space-between
+
+    Text: 'This week' / 'Next week' / 'Later this month'
+    fontSize 13 fontWeight 600
+    color colors.label2 letterSpacing -0.1
+
+    Text: '$[sum of group amounts]'
+    fontSize 13 color colors.label3
+    fontVariant ['tabular-nums']
+
+  Grouped card marginHorizontal 16
+  marginBottom 12:
+    background colors.surface borderRadius 16
+    overflow hidden
+
+    Each subscription in group:
+      Row (Pressable):
+        paddingHorizontal 16 paddingVertical 13
+        flexDirection row alignItems center gap 14
+        separator after each except last
+        onPress: router.push /subscription/[id]
+
+        Avatar 36x36 borderRadius 10:
+          AVATAR COLORS by category
+
+        Middle flex 1:
+          Name: ...type.subheadline color colors.label
+          Date formatted 'May 27':
+            ...type.caption1 color colors.label3
+            marginTop 1
+
+        Right:
+          Price: ...type.subheadline fontWeight 500
+          color colors.label
+
+          Urgency badge:
+            Same URGENCY BADGE STYLE from Prompt 1
+            marginTop 3
+
+EMPTY STATE (no upcoming renewals):
+  padding 40 20 alignItems center
+  Text '✓' fontSize 40 color colors.green marginBottom 16
+  Text 'No upcoming renewals'
+  fontSize 20 fontWeight 600 color colors.label
+  letterSpacing -0.5 marginBottom 8
+  Text 'Add subscriptions to track renewals here.'
+  fontSize 15 color colors.label3 textAlign center
+
+  Pressable button (marginTop 20):
+    background colors.blue borderRadius 14
+    paddingHorizontal 24 paddingVertical 13
+    Text 'Add subscription'
+    fontSize 15 fontWeight 600 color #fff
+    onPress: router.push /subscription/add
+
+════════════════════════════════════
+TAB BAR
+════════════════════════════════════
+Same 4-tab layout as dashboard.
+Active tab: Calendar icon.
+Colors: active colors.blue inactive rgba(255,255,255,0.3)
+
+Run typecheck. Fix all errors.
+DO NOT change any calendar logic,
+date utilities, or store calls.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Redesign the Discover / Auto-Discovery screen for Zeno
+at D:\projects\subradar.
+File: apps/mobile/app/(tabs)/discover.tsx
+OR apps/mobile/app/discovery.tsx
+Check which exists and use that path.
+
+DO NOT change any Gmail OAuth logic, CSV parsing,
+scan progress handlers, or store calls.
+ONLY change visual styling.
+
+Import from apps/mobile/src/theme:
+  import { colors } from '../../src/theme/colors'
+  import { type } from '../../src/theme/typography'
+  import { spacing } from '../../src/theme/spacing'
+
+════════════════════════════════════
+ROOT LAYOUT
+════════════════════════════════════
+SafeAreaView bg colors.bg flex 1 edges ['top']
+ScrollView showsVerticalScrollIndicator false
+  contentContainerStyle paddingBottom 100
+  background colors.bg
+
+════════════════════════════════════
+PAGE HEADER
+════════════════════════════════════
+paddingHorizontal 20 paddingTop 16 paddingBottom 4
+
+Text 'Discover'
+fontSize 28 fontWeight 800
+color colors.label letterSpacing -1.5
+
+Sub text (marginTop 4 marginBottom 4):
+  Text 'Find every subscription you pay for.'
+  fontSize 15 color colors.label3
+  letterSpacing -0.2
+
+════════════════════════════════════
+GMAIL SCAN CARD
+════════════════════════════════════
+marginHorizontal 16 marginTop 16 marginBottom 8
+background colors.surface borderRadius 20
+overflow hidden
+
+TOP SECTION (padding 20):
+
+  Icon + title row (flexDirection row
+  alignItems center gap 14 marginBottom 16):
+
+    Icon container (width 48 height 48
+    borderRadius 14 background rgba(10,132,255,0.12)
+    border 0.5px solid rgba(10,132,255,0.2)
+    alignItems center justifyContent center):
+      Text '✉' fontSize 24 color colors.blue
+
+    Title block:
+      Text 'Scan Gmail receipts'
+      fontSize 17 fontWeight 600
+      color colors.label letterSpacing -0.3
+
+      Text 'Finds subscriptions from billing emails'
+      fontSize 13 color colors.label3
+      marginTop 3
+
+  IF NOT CONNECTED (default state):
+
+    Privacy points (marginBottom 16):
+      3 rows NO grouped card — just plain rows
+
+      Each row (flexDirection row alignItems
+      flex-start gap 10 marginBottom 10):
+
+        Dot: width 5 height 5 borderRadius 3
+        background colors.blue marginTop 5
+        flexShrink 0
+
+        Text: fontSize 13 color colors.label3
+        lineHeight 18 letterSpacing -0.1
+
+      Points:
+        'Read-only access — we cannot send or delete emails'
+        'Scanned on your device — nothing leaves your phone'
+        'Revoke anytime from your Google account settings'
+
+    Connect button:
+      background colors.blue borderRadius 14
+      paddingVertical 15 width '100%'
+      flexDirection row alignItems center
+      justifyContent center gap 8
+
+      Left: Google G circle (width 20 height 20
+      borderRadius 10 background #fff
+      alignItems center justifyContent center
+      Text 'G' fontSize 11 fontWeight 700 color #4285F4)
+
+      Text 'Connect Gmail'
+      fontSize 16 fontWeight 600 color #fff
+
+  IF CONNECTED (gmailConnected === true):
+
+    Connected status row (marginBottom 16):
+      flexDirection row alignItems center gap 10
+
+      Green dot: width 8 height 8 borderRadius 4
+      background colors.green
+
+      Text 'Connected · [gmail address]'
+      fontSize 14 color colors.label3
+      flex 1
+
+      Disconnect link:
+        Text 'Disconnect'
+        fontSize 13 color colors.red
+        onPress: existing disconnectGmail handler
+
+    Scan button:
+      background colors.blue borderRadius 14
+      paddingVertical 15 width '100%'
+      Text 'Scan Now'
+      fontSize 16 fontWeight 600 color #fff textAlign center
+
+  IF SCANNING (isScanning === true):
+
+    Replace button with progress section:
+
+      Progress bar track:
+        width '100%' height 4
+        background colors.surfaceHigher borderRadius 2
+        marginBottom 10
+
+        Fill (Animated.View):
+          height 4 background colors.blue borderRadius 2
+          width: animated from 0 to progress%
+
+      Status text:
+        Text 'Scanning [current] of [total] emails...'
+        fontSize 13 color colors.label3
+        textAlign center marginBottom 12
+
+      Cancel button:
+        background transparent border none
+        Text 'Cancel scan'
+        fontSize 14 color colors.red
+        textAlign center paddingVertical 8
+
+BOTTOM ACCENT BAR:
+  height 3
+  background linear gradient:
+    Use two adjacent Views:
+    left half: colors.blue
+    right half: rgba(10,132,255,0.3)
+  (simulates gradient on RN)
+
+════════════════════════════════════
+CSV IMPORT CARD
+════════════════════════════════════
+marginHorizontal 16 marginBottom 8
+background colors.surface borderRadius 20
+overflow hidden
+
+TOP SECTION (padding 20):
+
+  Icon + title row (same pattern as Gmail):
+    Icon: bg rgba(48,209,88,0.12)
+    border rgba(48,209,88,0.2)
+    Text '🏦' fontSize 24
+    Title: 'Import bank statement'
+    Sub: 'Find recurring charges in your transactions'
+
+  How to export guide (collapsible):
+    Pressable row (marginBottom 16):
+      flexDirection row alignItems center
+      justifyContent space-between
+
+      Text 'How to export from your bank'
+      fontSize 14 color colors.blue
+
+      Text isGuideOpen ? '∧' : '∨'
+      fontSize 13 color colors.label4
+
+    When open — show below:
+      background colors.surfaceHigh
+      borderRadius 12 padding 14 marginBottom 12
+
+      4 bank rows (flexDirection row alignItems
+      flex-start gap 10 marginBottom 10):
+        Each: bank name bold + instruction
+        Chase: 'Settings → Download Activity → CSV'
+        Bank of America: 'Accounts → Download → CSV'
+        Wells Fargo: 'Accounts → Download Activity'
+        Other: 'Look for Download or Export in statements'
+
+        fontSize 12 color colors.label3 lineHeight 18
+
+  Import button:
+    background colors.surfaceHigh borderRadius 14
+    paddingVertical 15 width '100%'
+    border 0.5px solid colors.separatorOpaque
+    flexDirection row alignItems center
+    justifyContent center gap 8
+
+    Text '📎' fontSize 16
+    Text 'Import CSV File'
+    fontSize 16 fontWeight 600 color colors.label
+
+  IF PARSING (isParsing === true):
+    Replace button with:
+      Text 'Analysing transactions...'
+      fontSize 14 color colors.label3
+      textAlign center marginVertical 16
+
+      ActivityIndicator color colors.blue
+
+BOTTOM ACCENT BAR: same pattern
+  left half: colors.green
+  right half: rgba(48,209,88,0.3)
+
+════════════════════════════════════
+SCAN RESULTS SCREEN
+════════════════════════════════════
+Show when results exist (results.length > 0)
+Replace the two cards above with results UI
+
+Results header:
+  paddingHorizontal 20 paddingTop 8 paddingBottom 4
+
+  Text 'Found [N] subscriptions'
+  fontSize 22 fontWeight 700
+  color colors.label letterSpacing -0.8
+
+  Text 'Review and add the ones you want to track'
+  fontSize 14 color colors.label3 marginTop 4
+
+Results list:
+  marginHorizontal 16 marginBottom 8
+  background colors.surface borderRadius 16
+  overflow hidden
+
+  Each result row (Pressable to edit):
+    paddingHorizontal 16 paddingVertical 14
+    flexDirection row alignItems center gap 14
+    separator after each except last
+
+    Left — checkbox:
+      width 22 height 22 borderRadius 6
+      Checked: background colors.blue
+        border none
+        Text '✓' fontSize 12 fontWeight 700 color #fff
+        textAlign center lineHeight 22
+
+      Unchecked: background transparent
+        border 1.5px solid colors.surfaceHigher
+
+      onPress: toggle checked state
+
+    Service avatar 34x34 borderRadius 10:
+      AVATAR COLORS by category
+      First letter or 2 letters
+
+    Middle (flex 1):
+      Name: ...type.subheadline color colors.label
+
+      Source badge + cycle (flexDirection row
+      gap 6 marginTop 3):
+
+        Source pill (padding 2 8 borderRadius 20):
+          Gmail: bg rgba(10,132,255,0.1) color colors.blue
+          Bank: bg rgba(48,209,88,0.1) color colors.green
+          fontSize 10 fontWeight 600
+
+        Cycle text: fontSize 12 color colors.label3
+
+    Right:
+      Price: ...type.subheadline fontWeight 500
+      color colors.label fontVariant ['tabular-nums']
+
+      Confidence dot (flexDirection row
+      alignItems center gap 4 marginTop 3
+      justifyContent flex-end):
+        Dot width 6 height 6 borderRadius 3:
+          high → colors.green
+          medium → colors.orange
+          low → colors.label4
+        Text: 'high' / 'medium' / 'low'
+        fontSize 10 color colors.label4
+
+Select all / deselect row:
+  paddingHorizontal 20 marginBottom 8
+  flexDirection row justifyContent space-between
+
+  Text '[N] selected'
+  fontSize 13 color colors.label3
+
+  Pressable Text 'Select all' / 'Deselect all'
+  fontSize 13 color colors.blue fontWeight 600
+
+Add button (fixed bottom):
+  position absolute bottom 0 left 0 right 0
+  background colors.bg
+  paddingHorizontal 16 paddingBottom 40 paddingTop 12
+  borderTopWidth 0.5 borderTopColor colors.separator
+
+  Button:
+    background colors.blue borderRadius 14
+    paddingVertical 17
+    Text 'Add [N] subscriptions'
+    fontSize 17 fontWeight 600 color #fff
+    textAlign center
+
+    Disabled (0 selected):
+      background rgba(10,132,255,0.3)
+      Text 'Select subscriptions to add'
+
+════════════════════════════════════
+EMPTY STATE
+════════════════════════════════════
+Only show when no results and no active
+scan/import
+
+paddingTop 60 alignItems center
+paddingHorizontal 32
+
+Icon container:
+  width 80 height 80 borderRadius 24
+  background colors.surface
+  alignItems center justifyContent center
+  marginBottom 24
+  Text '🔍' fontSize 36
+
+Text 'Find your subscriptions'
+fontSize 20 fontWeight 600
+color colors.label letterSpacing -0.5
+marginBottom 8 textAlign center
+
+Text 'Connect Gmail or import a bank statement
+to automatically discover what you pay for.'
+fontSize 15 color colors.label3
+textAlign center lineHeight 22
+
+Run typecheck. Fix all errors.
+DO NOT change any OAuth logic, CSV parsing,
+scan state management, or store calls.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Redesign the Paywall screen for Zeno
+at D:\projects\subradar.
+File: apps/mobile/app/paywall.tsx
+
+DO NOT change any RevenueCat logic, purchase
+handlers, restore purchases, or navigation.
+ONLY change visual styling.
+
+Import from apps/mobile/src/theme:
+  import { colors } from '../src/theme/colors'
+  import { type } from '../src/theme/typography'
+  import { spacing } from '../src/theme/spacing'
+
+════════════════════════════════════
+ROOT LAYOUT
+════════════════════════════════════
+SafeAreaView bg colors.bg flex 1 edges ['top','bottom']
+ScrollView showsVerticalScrollIndicator false
+  contentContainerStyle paddingBottom 40
+  background colors.bg
+
+════════════════════════════════════
+CLOSE BUTTON
+════════════════════════════════════
+position absolute top 52 right 20 zIndex 10
+
+Pressable:
+  width 30 height 30 borderRadius 15
+  background colors.surfaceHigh
+  alignItems center justifyContent center
+
+  Text '✕'
+  fontSize 14 fontWeight 500
+  color colors.label3
+
+  onPress: existing dismiss / navigation back handler
+
+════════════════════════════════════
+HERO SECTION
+════════════════════════════════════
+paddingHorizontal 24 paddingTop 60 paddingBottom 28
+alignItems center
+
+Pro badge pill (marginBottom 24):
+  background rgba(10,132,255,0.1)
+  border 0.5px solid rgba(10,132,255,0.25)
+  borderRadius 20 padding 6 16
+  flexDirection row alignItems center gap 6
+
+  Text '✦' fontSize 12 color colors.blue
+  Text 'Zeno Pro'
+  fontSize 13 fontWeight 600 color colors.blue
+  letterSpacing 0.02em
+
+Headline (textAlign center marginBottom 12):
+  Text 'Unlock everything.'
+  fontSize 30 fontWeight 800
+  color colors.label letterSpacing -1.2
+  lineHeight 34
+
+  Text 'Save more.'
+  fontSize 30 fontWeight 800
+  color colors.label3 letterSpacing -1.2
+  lineHeight 34
+
+Body (textAlign center):
+  Text 'Auto-discovery, 3-day alerts, cancel guides
+  for 400+ services, and all 3 themes.'
+  fontSize 16 color colors.label3
+  lineHeight 24 letterSpacing -0.2
+
+════════════════════════════════════
+PRICING TOGGLE
+════════════════════════════════════
+marginHorizontal 16 marginBottom 8
+background colors.surface borderRadius 14
+padding 3 flexDirection row gap 3
+
+Two options side by side:
+
+  MONTHLY option (Pressable flex 1):
+    When active:
+      background colors.surfaceHigh borderRadius 11
+      paddingVertical 10
+    When inactive:
+      background transparent paddingVertical 10
+
+    Text 'Monthly'
+    fontSize 14 fontWeight 600
+    active: color colors.label
+    inactive: color colors.label3
+    textAlign center
+
+    Text '$4.99/mo'
+    fontSize 12
+    active: color colors.label3
+    inactive: color colors.label4
+    textAlign center marginTop 2
+
+  ANNUAL option (Pressable flex 1):
+    When active:
+      background colors.surfaceHigh borderRadius 11
+      paddingVertical 10
+    When inactive:
+      background transparent paddingVertical 10
+
+    Row (flexDirection row alignItems center
+    justifyContent center gap 6):
+      Text 'Annual'
+      fontSize 14 fontWeight 600
+      active: color colors.label
+      inactive: color colors.label3
+
+      Save badge (only show when active OR always):
+        background rgba(48,209,88,0.12)
+        borderRadius 20 padding 2 8
+        Text 'Save 30%'
+        fontSize 10 fontWeight 700 color colors.green
+
+    Text '$41.99/yr'
+    fontSize 12
+    active: color colors.label3
+    inactive: color colors.label4
+    textAlign center marginTop 2
+
+Default selected: Annual
+
+════════════════════════════════════
+PRICE DISPLAY
+════════════════════════════════════
+alignItems center paddingVertical 24
+paddingHorizontal 20
+
+Price row (flexDirection row
+alignItems baseline gap 4):
+  '$' fontSize 24 fontWeight 300
+  color colors.label3 marginBottom 8
+
+  Amount: fontSize 56 fontWeight 700
+  color colors.label letterSpacing -3
+  fontVariant ['tabular-nums']
+
+  Cents + period (flexDirection column
+  alignItems flex-start marginBottom 8 gap 2):
+    '.99' or '.50':
+      fontSize 24 fontWeight 300 color colors.label3
+    '/mo':
+      fontSize 14 color colors.label4 marginTop 2
+
+Annual selected: show '$3.50/mo'
+Monthly selected: show '$4.99/mo'
+
+Period description (marginTop 8):
+  Annual: Text 'billed as $41.99/year'
+  Monthly: Text 'billed monthly · cancel anytime'
+  fontSize 14 color colors.label4 textAlign center
+
+════════════════════════════════════
+VALUE PROPS LIST
+════════════════════════════════════
+marginHorizontal 16 marginBottom 8
+background colors.surface borderRadius 16
+overflow hidden
+
+5 rows — same grouped card row pattern:
+
+Row 1 — Auto-discovery:
+  Icon container (36x36 borderRadius 10):
+    background rgba(10,132,255,0.15)
+    Text '🔍' fontSize 16 textAlign center
+    lineHeight 36
+  Title: 'Email auto-discovery'
+  Sub: 'Finds every subscription automatically'
+
+Row 2 — Renewal alerts:
+  Icon bg rgba(255,69,58,0.15)
+  Text '⚡' fontSize 16
+  Title: '7 and 3-day renewal alerts'
+  Sub: 'Never get surprised by a charge again'
+
+Row 3 — Cancel guides:
+  Icon bg rgba(48,209,88,0.15)
+  Text '🔗' fontSize 16
+  Title: 'Direct cancel deep-links'
+  Sub: '400+ services with step-by-step guides'
+
+Row 4 — AI insights:
+  Icon bg rgba(191,90,242,0.15)
+  Text '💡' fontSize 16
+  Title: 'Spend insights engine'
+  Sub: 'Finds savings and unused subscriptions'
+
+Row 5 — Themes:
+  Icon bg rgba(255,214,10,0.15)
+  Text '🎨' fontSize 16
+  Title: 'All 3 generational themes'
+  Sub: 'Pulse, Clarity, and Command'
+
+Each row:
+  flexDirection row alignItems center gap 14
+  paddingHorizontal 16 paddingVertical 13
+  separator after each except last (0.5px
+  position absolute bottom 0 left 66 right 0)
+
+  Title: ...type.subheadline color colors.label
+  Sub: ...type.caption1 color colors.label3 marginTop 2
+
+  Right side: checkmark
+    Text '✓' fontSize 14 fontWeight 600
+    color colors.green
+
+════════════════════════════════════
+SOCIAL PROOF ROW
+════════════════════════════════════
+paddingHorizontal 20 paddingVertical 16
+flexDirection row alignItems center
+justifyContent center gap 8
+
+Avatars stack (flexDirection row):
+  3 avatar circles overlapping
+  Each: width 28 height 28 borderRadius 14
+  border 2px solid colors.bg
+  marginLeft -8 (first has marginLeft 0)
+  Colors: colors.blue, colors.purple, colors.green
+  Letters: 'M' 'S' 'D'
+
+Text '14,000+ people saving money with Zeno'
+fontSize 13 color colors.label3
+marginLeft 4
+
+════════════════════════════════════
+PRIMARY CTA BUTTON
+════════════════════════════════════
+marginHorizontal 16 marginBottom 12
+
+background colors.blue borderRadius 16
+paddingVertical 18
+flexDirection row alignItems center
+justifyContent center gap 8
+
+Text 'Start 7-day free trial'
+fontSize 17 fontWeight 700
+color #fff letterSpacing -0.3
+
+Subtext below button (textAlign center):
+  Text 'No charge until trial ends · Cancel anytime'
+  fontSize 12 color colors.label4 marginTop 8
+
+onPress: existing purchasePro() handler
+
+════════════════════════════════════
+FAMILY PLAN ROW
+════════════════════════════════════
+marginHorizontal 16 marginBottom 16
+background colors.surface borderRadius 14
+padding 14 16
+flexDirection row alignItems center gap 12
+
+Left:
+  Text '👨‍👩‍👧' fontSize 22
+  Title: 'Family plan'
+  ...type.subheadline color colors.label marginLeft 4
+  Sub: 'Up to 5 members · $8.99/mo'
+  ...type.caption1 color colors.label3
+
+Right:
+  Text 'View →'
+  fontSize 14 color colors.blue fontWeight 600
+
+onPress: existing purchaseFamily() handler
+
+════════════════════════════════════
+FOOTER LINKS
+════════════════════════════════════
+paddingHorizontal 20
+flexDirection row justifyContent center
+alignItems center gap 20 marginBottom 16
+
+Each link:
+  Pressable Text
+  fontSize 12 color colors.label4
+  letterSpacing -0.1
+
+  'Restore purchases' — onPress: restorePurchases()
+  'Terms of Service' — onPress: openURL terms
+  'Privacy Policy' — onPress: openURL privacy
+
+Separator between links:
+  Text '·' fontSize 12 color colors.label4
+
+════════════════════════════════════
+LOADING STATE
+════════════════════════════════════
+When isPurchasing === true:
+  Overlay position absolute inset 0
+  background rgba(0,0,0,0.6)
+  alignItems center justifyContent center
+  zIndex 100
+
+  Card background colors.surface
+  borderRadius 20 padding 28
+  alignItems center gap 16
+
+  ActivityIndicator color colors.blue size 'large'
+
+  Text 'Processing...'
+  fontSize 16 fontWeight 500
+  color colors.label marginTop 8
+
+════════════════════════════════════
+SUCCESS STATE
+════════════════════════════════════
+When purchase succeeds:
+  Replace entire screen content with:
+
+  SafeAreaView bg colors.bg flex 1
+  alignItems center justifyContent center
+  paddingHorizontal 32
+
+  Icon: Text '✦' fontSize 56 color colors.blue
+  marginBottom 24
+
+  Text 'Welcome to Pro'
+  fontSize 28 fontWeight 800
+  color colors.label letterSpacing -1.2
+  marginBottom 12 textAlign center
+
+  Text 'You now have access to everything.
+  Time to find what you can cancel.'
+  fontSize 16 color colors.label3
+  textAlign center lineHeight 24
+  marginBottom 36
+
+  Button: background colors.blue borderRadius 14
+  paddingVertical 17 paddingHorizontal 32
+  Text 'Get Started'
+  fontSize 17 fontWeight 600 color #fff
+  onPress: navigate to dashboard
+
+Run typecheck. Fix all errors.
+DO NOT change any RevenueCat purchase logic,
+offering fetch, restore, or navigation.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+tell me how good or bad this app is and be real no ai slop i want real answer and no bs ,,, if we market this app is there market for this will people buy subscription? 
+
+what are the current workflow of the app what it does ?
+
+what are the limitations ?
+
+who we are competiting against ? 
+
+what we are doing better ? or we not doing better ? 
+
+how can we stand out ?
+
+what is good and what is bad ?
+
+what u personalley think >?
+
+what are the improvements neede to suceed ?
+
+
+
+
+
+
+
+
+
+
+
+here --------------------
+
+
+
+
+
+
+
+
+
+
+
+
+Redesign the Settings screen for Zeno
+at D:\projects\subradar.
+File: apps/mobile/app/(tabs)/settings.tsx
+OR apps/mobile/app/settings.tsx
+Check which exists and use that path.
+
+DO NOT change any auth logic, theme switching,
+notification settings, data export, or navigation.
+ONLY change visual styling.
+
+Import from apps/mobile/src/theme:
+  import { colors } from '../../src/theme/colors'
+  import { type } from '../../src/theme/typography'
+  import { spacing } from '../../src/theme/spacing'
+
+════════════════════════════════════
+ROOT LAYOUT
+════════════════════════════════════
+SafeAreaView bg colors.bg flex 1 edges ['top']
+ScrollView showsVerticalScrollIndicator false
+  contentContainerStyle paddingBottom 100
+  background colors.bg
+
+════════════════════════════════════
+PAGE HEADER
+════════════════════════════════════
+paddingHorizontal 20 paddingTop 16 paddingBottom 4
+
+Text 'Settings'
+fontSize 28 fontWeight 800
+color colors.label letterSpacing -1.5
+
+════════════════════════════════════
+PROFILE BLOCK
+════════════════════════════════════
+paddingHorizontal 16 paddingTop 16 paddingBottom 4
+
+Profile card:
+  background colors.surface borderRadius 20
+  padding 20
+  flexDirection row alignItems center gap 16
+
+  Avatar (width 60 height 60 borderRadius 30):
+    background linear gradient:
+      Use two nested Views to fake gradient:
+      Outer: bg colors.blue borderRadius 30
+      Inner text on top
+      OR use expo-linear-gradient if available:
+        colors ['#0A84FF', '#BF5AF2']
+        start {x:0, y:0} end {x:1, y:1}
+      Text: first letter of user email or 'Z'
+      fontSize 24 fontWeight 700 color #fff
+      textAlign center lineHeight 60
+
+  Info block (flex 1):
+    Name or email:
+      Text: user email or display name
+      fontSize 17 fontWeight 600
+      color colors.label letterSpacing -0.3
+      numberOfLines 1
+
+    Plan badge (marginTop 6):
+      Inline row flexDirection row
+      alignItems center gap 6
+
+      Free plan:
+        background colors.surfaceHigh
+        borderRadius 20 padding 3 10
+        Text 'Free plan'
+        fontSize 12 fontWeight 500
+        color colors.label3
+
+      Pro plan:
+        background rgba(10,132,255,0.12)
+        border 0.5px solid rgba(10,132,255,0.25)
+        borderRadius 20 padding 3 10
+        flexDirection row alignItems center gap 4
+        Text '✦' fontSize 10 color colors.blue
+        Text 'Pro' fontSize 12 fontWeight 600
+        color colors.blue
+
+      Family plan:
+        background rgba(48,209,88,0.12)
+        border 0.5px solid rgba(48,209,88,0.2)
+        borderRadius 20 padding 3 10
+        Text '👨‍👩‍👧 Family' fontSize 12 fontWeight 600
+        color colors.green
+
+  Chevron right:
+    Text '›' fontSize 20 color colors.label4
+    onPress: navigate to profile edit (if exists)
+    else no action
+
+════════════════════════════════════
+UPGRADE BANNER
+════════════════════════════════════
+Only show when plan === 'free'
+
+marginHorizontal 16 marginTop 8 marginBottom 4
+background rgba(10,132,255,0.08)
+border 0.5px solid rgba(10,132,255,0.2)
+borderRadius 16 padding 16
+
+flexDirection row alignItems center gap 14
+
+Left icon container (width 40 height 40
+borderRadius 12 background rgba(10,132,255,0.12)
+alignItems center justifyContent center):
+  Text '✦' fontSize 20 color colors.blue
+
+Middle (flex 1):
+  Text 'Upgrade to Pro'
+  fontSize 15 fontWeight 600
+  color colors.label letterSpacing -0.2
+
+  Text 'Unlock email scan, 3-day alerts, and
+  cancel guides for 400+ services.'
+  fontSize 13 color colors.label3
+  marginTop 3 lineHeight 18
+
+Right (Pressable):
+  background colors.blue borderRadius 20
+  paddingHorizontal 14 paddingVertical 7
+  Text 'Upgrade'
+  fontSize 13 fontWeight 600 color #fff
+  onPress: router.push /paywall
+
+════════════════════════════════════
+SETTINGS SECTIONS
+════════════════════════════════════
+Each section follows this pattern:
+
+Section label:
+  Text '[SECTION NAME]'
+  ...type.sectionHeader color colors.label3
+  paddingHorizontal 20 paddingBottom 8
+  paddingTop 20 (first section paddingTop 16)
+
+Grouped card:
+  marginHorizontal 16
+  background colors.surface borderRadius 16
+  overflow hidden
+
+Each row inside card:
+  Pressable (unless non-interactive)
+  flexDirection row alignItems center
+  paddingHorizontal 16 paddingVertical 14
+  minHeight 44 gap 14
+  separator 0.5px colors.separator after
+  each row except last
+
+  Left icon container (width 30 height 30
+  borderRadius 8 alignItems center
+  justifyContent center flexShrink 0):
+    Text emoji fontSize 15
+
+  Middle (flex 1):
+    Label: fontSize 16 color colors.label
+    letterSpacing -0.2
+    Sub (if exists): fontSize 13 color colors.label3
+    marginTop 2
+
+  Right:
+    Value text: fontSize 15 color colors.label3
+    OR Switch component
+    OR Chevron '›' fontSize 18 color colors.label4
+
+════════════════════════════════════
+SECTION 1: ACCOUNT
+════════════════════════════════════
+Label: 'ACCOUNT'
+
+Row 1 — Profile:
+  Icon bg rgba(10,132,255,0.12) Text '👤'
+  Label 'Profile'
+  Right: user email truncated + '›'
+  onPress: navigate to profile edit
+
+Row 2 — Subscription plan:
+  Icon bg rgba(255,214,10,0.12) Text '⭐'
+  Label 'Subscription plan'
+  Right:
+    Free: Text 'Free ›' color colors.label3
+    Pro: Text '✦ Pro ›' color colors.blue
+    Family: Text 'Family ›' color colors.green
+  onPress: router.push /paywall
+
+Row 3 — Security:
+  Icon bg rgba(48,209,88,0.12) Text '🔒'
+  Label 'Security'
+  Sub 'Face ID · PIN fallback'
+  Right: '›' color colors.label4
+  onPress: navigate to security settings (if exists)
+
+════════════════════════════════════
+SECTION 2: APPEARANCE
+════════════════════════════════════
+Label: 'APPEARANCE'
+
+Row 1 — Theme:
+  Icon bg rgba(191,90,242,0.12) Text '🎨'
+  Label 'Theme'
+  Sub 'Pulse · Clarity · Command'
+  Right: current theme name + '›'
+  color colors.label3
+  onPress: navigate to theme picker
+
+Row 2 — App icon: (optional, show if implemented)
+  Icon bg rgba(255,255,255,0.06) Text '📱'
+  Label 'App icon'
+  Right: 'Default ›' color colors.label3
+
+════════════════════════════════════
+SECTION 3: NOTIFICATIONS
+════════════════════════════════════
+Label: 'NOTIFICATIONS'
+
+Row 1 — Push notifications master:
+  Icon bg rgba(255,159,10,0.12) Text '🔔'
+  Label 'Push notifications'
+  Right: Switch component
+    trackColor false colors.surfaceHigher
+                true colors.green
+    thumbColor #fff
+    value: notificationsEnabled
+    onValueChange: existing handler
+
+Row 2 — Quiet hours:
+  Icon bg rgba(255,255,255,0.06) Text '🌙'
+  Label 'Quiet hours'
+  Sub: show current quiet hours range
+  e.g. '10:00 PM – 8:00 AM'
+  Right: '›' color colors.label4
+  onPress: navigate to quiet hours picker
+
+Row 3 — Notification style:
+  Icon bg rgba(255,255,255,0.06) Text '💬'
+  Label 'Alert style'
+  Right: 'Banners ›' color colors.label3
+
+════════════════════════════════════
+SECTION 4: DATA & PRIVACY
+════════════════════════════════════
+Label: 'DATA & PRIVACY'
+
+Row 1 — Connected accounts:
+  Icon bg rgba(10,132,255,0.12) Text '🔗'
+  Label 'Connected accounts'
+  Sub: 'Gmail' if connected else 'None connected'
+  Right: '›' color colors.label4
+  onPress: navigate to discover screen
+
+Row 2 — Export data:
+  Icon bg rgba(48,209,88,0.12) Text '📤'
+  Label 'Export my data'
+  Sub 'Download all your subscription data'
+  Right: '›' color colors.label4
+  onPress: existing data export handler
+
+Row 3 — Delete data:
+  Icon bg rgba(255,69,58,0.08) Text '🗑'
+  Label 'Delete all data'
+  color colors.red
+  Sub 'Permanently removes all subscriptions'
+  color rgba(255,69,58,0.5) fontSize 12
+  Right: '›' color rgba(255,69,58,0.3)
+  onPress: show confirmation Alert then
+  existing delete handler
+
+════════════════════════════════════
+SECTION 5: MORE
+════════════════════════════════════
+Label: 'MORE'
+
+Row 1 — Rate Zeno:
+  Icon bg rgba(255,214,10,0.12) Text '⭐'
+  Label 'Rate Zeno'
+  Sub 'Share your experience on the App Store'
+  Right: '›' color colors.label4
+  onPress: Linking.openURL App Store review URL
+
+Row 2 — Share with friends:
+  Icon bg rgba(10,132,255,0.12) Text '🔗'
+  Label 'Share with friends'
+  Sub 'Tell others about Zeno'
+  Right: '›' color colors.label4
+  onPress: Share.share with app store link
+
+Row 3 — Send feedback:
+  Icon bg rgba(255,255,255,0.06) Text '💬'
+  Label 'Send feedback'
+  Sub 'Help us improve Zeno'
+  Right: '›' color colors.label4
+  onPress: Linking.openURL mailto feedback
+
+Row 4 — Privacy Policy:
+  Icon bg rgba(255,255,255,0.06) Text '📄'
+  Label 'Privacy Policy'
+  Right: '›' color colors.label4
+  onPress: Linking.openURL privacy URL
+
+Row 5 — Terms of Service:
+  Icon bg rgba(255,255,255,0.06) Text '📋'
+  Label 'Terms of Service'
+  Right: '›' color colors.label4
+  onPress: Linking.openURL terms URL
+
+════════════════════════════════════
+SIGN OUT ROW
+════════════════════════════════════
+marginHorizontal 16 marginTop 8
+background colors.surface borderRadius 16
+overflow hidden
+
+Single row:
+  paddingHorizontal 16 paddingVertical 16
+  flexDirection row alignItems center gap 14
+
+  Icon container (30x30 borderRadius 8
+  background rgba(255,69,58,0.08)):
+    Text '🚪' fontSize 15 textAlign center
+
+  Text 'Sign out'
+  fontSize 16 color colors.red
+  fontWeight 400 letterSpacing -0.2
+
+  No chevron — full row is Pressable
+  onPress: show Alert confirmation then
+  existing logout() handler
+
+════════════════════════════════════
+VERSION INFO
+════════════════════════════════════
+paddingVertical 24 alignItems center
+
+Text 'Zeno · Version 1.0.0'
+fontSize 12 color colors.label4
+letterSpacing 0.02em
+
+Text 'Made with care for people who hate
+surprise charges.'
+fontSize 12 color colors.label4
+textAlign center marginTop 4 lineHeight 18
+
+════════════════════════════════════
+TAB BAR
+════════════════════════════════════
+Same 4-tab layout as all other screens.
+Active tab: Settings (gear icon)
+active: colors.blue
+inactive: rgba(255,255,255,0.3)
+
+════════════════════════════════════
+FINAL STEP — AFTER ALL 12 PROMPTS
+════════════════════════════════════
+After this prompt passes typecheck run:
+
+1. Full repository typecheck:
+   npm run typecheck
+
+2. Full test suite:
+   npm test
+
+3. Full build check:
+   npm run build
+
+4. Rebuild Android:
+   npm run --workspace @subradar/mobile android
+
+Fix any errors that come up before launching
+the emulator to verify all screens visually.
+
+Run typecheck. Fix all errors.
+DO NOT change any auth, logout, data export,
+notification, or navigation logic.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+npm run typecheck
+npm test
+npm run --workspace @subradar/mobile android
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Wire the 3-theme system across the entire Zeno app
+at D:\projects\subradar.
+
+The themeStore already exists at
+apps/mobile/src/stores/themeStore.ts
+and has currentTheme: 'genz' | 'millennial' | 'genx'
+
+STEP 1 — Extend theme tokens
+
+Update apps/mobile/src/theme/colors.ts to export
+3 complete theme objects instead of one flat object:
+
+export const themeTokens = {
+  genz: {
+    bg: '#09090B',
+    surface: 'rgba(255,255,255,0.05)',
+    surface2: 'rgba(255,255,255,0.08)',
+    surface3: 'rgba(255,255,255,0.12)',
+    label: '#FFFFFF',
+    label2: 'rgba(255,255,255,0.6)',
+    label3: 'rgba(255,255,255,0.35)',
+    label4: 'rgba(255,255,255,0.15)',
+    separator: 'rgba(255,255,255,0.07)',
+    separatorOpaque: '#27272A',
+    primary: '#7C3AED',
+    secondary: '#F43F5E',
+    accent: '#84CC16',
+    blue: '#7C3AED',
+    green: '#84CC16',
+    red: '#F43F5E',
+    orange: '#F97316',
+    cardRadius: 20,
+    rowRadius: 16,
+    fontScale: 1.05,
+    layout: 'bento' as const,
+  },
+  millennial: {
+    bg: '#F8FAFC',
+    surface: '#FFFFFF',
+    surface2: '#F1F5F9',
+    surface3: '#E2E8F0',
+    label: '#0F172A',
+    label2: '#334155',
+    label3: '#64748B',
+    label4: '#94A3B8',
+    separator: '#E2E8F0',
+    separatorOpaque: '#E2E8F0',
+    primary: '#2563EB',
+    secondary: '#0D9488',
+    accent: '#7C3AED',
+    blue: '#2563EB',
+    green: '#16A34A',
+    red: '#DC2626',
+    orange: '#D97706',
+    cardRadius: 12,
+    rowRadius: 10,
+    fontScale: 1.0,
+    layout: 'cards' as const,
+  },
+  genx: {
+    bg: '#0F172A',
+    surface: '#1E293B',
+    surface2: '#334155',
+    surface3: '#475569',
+    label: '#F1F5F9',
+    label2: '#CBD5E1',
+    label3: '#64748B',
+    label4: '#334155',
+    separator: 'rgba(255,255,255,0.06)',
+    separatorOpaque: '#1E293B',
+    primary: '#15803D',
+    secondary: '#D97706',
+    accent: '#0EA5E9',
+    blue: '#0EA5E9',
+    green: '#15803D',
+    red: '#DC2626',
+    orange: '#D97706',
+    cardRadius: 4,
+    rowRadius: 4,
+    fontScale: 0.95,
+    layout: 'table' as const,
+  }
+}
+
+STEP 2 — Create useTheme hook
+
+Create apps/mobile/src/hooks/useTheme.ts:
+
+import { useThemeStore } from '../stores/themeStore'
+import { themeTokens } from '../theme/colors'
+
+export function useTheme() {
+  const currentTheme = useThemeStore(s => s.currentTheme)
+  const tokens = themeTokens[currentTheme]
+  return { tokens, theme: currentTheme }
+}
+
+STEP 3 — Update every redesigned screen
+
+In each of these files replace any hardcoded
+color references with useTheme():
+
+apps/mobile/app/dashboard.tsx
+apps/mobile/app/login.tsx
+apps/mobile/app/(tabs)/analytics.tsx
+apps/mobile/app/(tabs)/calendar.tsx
+apps/mobile/app/(tabs)/discover.tsx
+apps/mobile/app/paywall.tsx
+apps/mobile/app/settings.tsx (or (tabs)/settings.tsx)
+apps/mobile/app/subscription/[id].tsx
+apps/mobile/app/subscription/add.tsx
+apps/mobile/app/subscription/cancel/[id].tsx
+
+In each file:
+  Remove: import { colors } from '../src/theme/colors'
+  Add: const { tokens, theme } = useTheme()
+  Replace every: colors.bg → tokens.bg
+  Replace every: colors.surface → tokens.surface
+  Replace every: colors.label → tokens.label
+  etc for all token names
+
+STEP 4 — Theme-specific layout changes
+
+In dashboard.tsx:
+
+  if theme === 'genz':
+    Subscription cards render as a 2-column grid
+    (FlatList numColumns 2)
+    Each card: glassmorphism style
+    background rgba(255,255,255,0.05)
+    border 1px solid rgba(255,255,255,0.08)
+    borderRadius tokens.cardRadius
+
+  if theme === 'millennial':
+    Keep current list layout (default)
+    Cards: white bg, subtle shadow
+    shadowColor #000 shadowOpacity 0.06
+    shadowRadius 8 shadowOffset {0,2}
+
+  if theme === 'genx':
+    Replace card list with flat table rows
+    No avatars — use text ticker symbols instead
+    Monospace font for all numbers:
+    fontFamily Platform.OS === 'ios'
+    ? 'Courier New' : 'monospace'
+    Dense rows paddingVertical 8
+    Full-width separators (not inset)
+
+STEP 5 — Theme-specific copy
+
+Create apps/mobile/src/utils/themeText.ts:
+
+export function urgencyText(
+  serviceName: string,
+  days: number,
+  amount: number,
+  theme: 'genz' | 'millennial' | 'genx'
+): { title: string; subtitle: string } {
+  if (theme === 'genz') {
+    return {
+      title: `${serviceName} drops in ${days} days 🔥`,
+      subtitle: `$${amount} incoming — cancel or keep?`
+    }
+  }
+  if (theme === 'millennial') {
+    return {
+      title: `${serviceName} renews in ${days} days`,
+      subtitle: `$${amount} will be charged`
+    }
+  }
+  return {
+    title: `RENEWAL: ${serviceName.toUpperCase()}`,
+    subtitle: `$${amount} | ${days}D | ACTION REQUIRED`
+  }
+}
+
+export function greetingText(
+  theme: 'genz' | 'millennial' | 'genx'
+): string {
+  if (theme === 'genz') return 'what\'s the damage 👀'
+  if (theme === 'millennial') return 'Good morning'
+  return 'DASHBOARD'
+}
+
+export function cancelButtonText(
+  theme: 'genz' | 'millennial' | 'genx'
+): string {
+  if (theme === 'genz') return '🔥 Kill This Sub'
+  if (theme === 'millennial') return 'Cancel Subscription'
+  return '> PROCEED TO CANCELLATION'
+}
+
+Import and use these in dashboard.tsx and
+subscription/cancel/[id].tsx
+
+STEP 6 — Theme transition animation
+
+In apps/mobile/components/themes/ThemeToggle.tsx
+(create if not exists):
+
+A 3-button toggle for the header area.
+
+import Animated, {
+  useSharedValue, useAnimatedStyle,
+  withTiming, withSequence
+} from 'react-native-reanimated'
+
+State: opacity animated value starts at 1
+
+On theme change:
+  1. Fade entire app to black (opacity → 0, 150ms)
+  2. Call themeStore.setTheme(newTheme)
+  3. Fade back in (opacity → 1, 200ms)
+
+Use Animated.View wrapping the root navigator
+in apps/mobile/app/_layout.tsx
+
+Toggle button row:
+  flexDirection row gap 4
+  background tokens.surface2
+  borderRadius 20 padding 3
+
+  3 buttons:
+    Each: paddingHorizontal 14 paddingVertical 6
+    borderRadius 16
+
+    Active: background tokens.primary
+    Text color #fff
+
+    Inactive: background transparent
+    Text color tokens.label3
+
+    Gen Z: '⚡ Pulse'
+    Millennial: '◈ Clarity'
+    Gen X: '>_ Command'
+
+    fontSize 11 fontWeight 600
+
+  Show in header of dashboard, analytics,
+  calendar, settings screens
+
+Run full typecheck after all changes.
+Fix all type errors.
+npm test must still pass.
+
+
+
+
+
+
+
+
+
+
+
