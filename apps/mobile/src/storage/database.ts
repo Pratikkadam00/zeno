@@ -11,6 +11,19 @@ export async function openSubRadarDatabase(): Promise<SubRadarDatabase> {
   return db;
 }
 
+export async function readAppMeta(db: SubRadarDatabase, key: string): Promise<string | null> {
+  const row = await db.getFirstAsync<{ value: string }>("SELECT value FROM app_meta WHERE key = ?", key);
+  return row?.value ?? null;
+}
+
+export async function writeAppMeta(db: SubRadarDatabase, key: string, value: string): Promise<void> {
+  await db.runAsync(
+    "INSERT INTO app_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+    key,
+    value
+  );
+}
+
 export async function runMigrations(db: SubRadarDatabase): Promise<void> {
   await db.execAsync(`
     PRAGMA journal_mode = WAL;
@@ -100,6 +113,11 @@ export async function runMigrations(db: SubRadarDatabase): Promise<void> {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       version INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS app_meta (
+      key TEXT PRIMARY KEY NOT NULL,
+      value TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS audit_events (

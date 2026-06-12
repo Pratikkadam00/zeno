@@ -23,7 +23,7 @@ export default function RootLayout() {
 
 function RootStack() {
   const { theme } = useSubRadarTheme();
-  const { subscriptions } = useSubscriptionStore();
+  const { subscriptions, notificationSettings } = useSubscriptionStore();
   const segments = useSegments();
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const biometricInFlight = useRef(false);
@@ -140,7 +140,7 @@ function RootStack() {
     }
 
     void registerForPushNotifications();
-    void rescheduleAllNotifications(notificationSubscriptions);
+    void rescheduleAllNotifications(notificationSubscriptions, notificationSettings);
     void requireBiometricUnlock();
 
     const subscription = AppState.addEventListener("change", (nextState) => {
@@ -149,12 +149,12 @@ function RootStack() {
 
       if (wasBackgrounded && nextState === "active" && useAuthStore.getState().isAuthenticated) {
         void requireBiometricUnlock();
-        void rescheduleAllNotifications(notificationSubscriptions);
+        void rescheduleAllNotifications(notificationSubscriptions, notificationSettings);
       }
     });
 
     return () => subscription.remove();
-  }, [isAuthenticated, notificationSubscriptions, requireBiometricUnlock]);
+  }, [isAuthenticated, notificationSubscriptions, notificationSettings, requireBiometricUnlock]);
 
   if (status === "loading") {
     return (
@@ -185,7 +185,6 @@ function RootStack() {
         <Stack.Screen name="add" options={{ title: "Add Subscription" }} />
         <Stack.Screen name="calendar" options={{ title: "Renewal Calendar" }} />
         <Stack.Screen name="coach" options={{ title: "Spend Coach" }} />
-        <Stack.Screen name="discovery" options={{ title: "Discovery Scan" }} />
         <Stack.Screen name="spend-twin" options={{ title: "Spend Twin" }} />
         <Stack.Screen name="family" options={{ title: "Family Vault" }} />
         <Stack.Screen name="analytics" options={{ title: "Analytics" }} />

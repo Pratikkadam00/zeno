@@ -38,31 +38,44 @@ describe("api app", () => {
 
   it("allows the local demo account outside production only", async () => {
     const app = await buildApp();
+    const demoPassword = "test-only-demo-password";
 
-    const login = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/demo-login",
-      payload: { email: "demo@zeno.local", password: "Zeno-Demo-2026!" }
-    });
-    expect(login.statusCode).toBe(200);
-    expect(login.json().data.tokenType).toBe("Bearer");
-
-    const previousNodeEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
+    process.env.DEMO_LOGIN_PASSWORD = demoPassword;
     try {
-      const blocked = await app.inject({
+      const login = await app.inject({
         method: "POST",
         url: "/api/v1/auth/demo-login",
-        payload: { email: "demo@zeno.local", password: "Zeno-Demo-2026!" }
+        payload: { email: "demo@zeno.local", password: demoPassword }
       });
-      expect(blocked.statusCode).toBe(404);
-    } finally {
-      if (previousNodeEnv === undefined) {
-        delete process.env.NODE_ENV;
-      } else {
-        process.env.NODE_ENV = previousNodeEnv;
+      expect(login.statusCode).toBe(200);
+      expect(login.json().data.tokenType).toBe("Bearer");
+
+      const previousNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = "production";
+      try {
+        const blocked = await app.inject({
+          method: "POST",
+          url: "/api/v1/auth/demo-login",
+          payload: { email: "demo@zeno.local", password: demoPassword }
+        });
+        expect(blocked.statusCode).toBe(404);
+      } finally {
+        if (previousNodeEnv === undefined) {
+          delete process.env.NODE_ENV;
+        } else {
+          process.env.NODE_ENV = previousNodeEnv;
+        }
       }
+    } finally {
+      delete process.env.DEMO_LOGIN_PASSWORD;
     }
+
+    const disabled = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/demo-login",
+      payload: { email: "demo@zeno.local", password: demoPassword }
+    });
+    expect(disabled.statusCode).toBe(404);
   });
 
   it("rejects unencrypted sync payloads by schema", async () => {

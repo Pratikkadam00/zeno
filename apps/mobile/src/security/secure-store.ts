@@ -7,28 +7,34 @@ const keys = {
   databaseKey: "subradar.database.key.v1",
   themePreference: "subradar.theme.preference.v1",
   pinHash: "subradar.pin.hash.v1",
+  lockState: "subradar.lock.state.v1",
   oauthTokenPrefix: "subradar.oauth."
 };
 
+// On web there is no secure storage. Secrets are kept in memory only so an
+// XSS bug can never read persisted tokens; users re-authenticate per session.
+const webMemoryStore = new Map<string, string>();
+
 export async function getOrCreateDatabaseKey(): Promise<string> {
-  const existing = await readItem(keys.databaseKey);
+  const existing = await readItem(keys.databaseKey, { sensitive: true });
   if (existing) {
     return existing;
   }
 
   const generated = `${Crypto.randomUUID()}${Crypto.randomUUID()}`;
   await writeItem(keys.databaseKey, generated, {
+    sensitive: true,
     keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY
   });
   return generated;
 }
 
 export async function saveThemePreference(theme: ThemePreference): Promise<void> {
-  await writeItem(keys.themePreference, theme);
+  await writeItem(keys.themePreference, theme, { sensitive: false });
 }
 
 export async function loadThemePreference(): Promise<ThemePreference | null> {
-  const value = await readItem(keys.themePreference);
+  const value = await readItem(keys.themePreference, { sensitive: false });
   if (value === "genz" || value === "millennial" || value === "genx") {
     return value;
   }
@@ -46,44 +52,81 @@ export async function loadThemePreference(): Promise<ThemePreference | null> {
 
 export async function savePinHash(pinHash: string): Promise<void> {
   await writeItem(keys.pinHash, pinHash, {
+    sensitive: true,
     requireAuthentication: false,
     keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY
   });
 }
 
 export async function loadPinHash(): Promise<string | null> {
-  return readItem(keys.pinHash);
+  return readItem(keys.pinHash, { sensitive: true });
 }
 
-export async function saveOAuthToken(provider: string, token: string): Promise<void> {
-  await writeItem(`${keys.oauthTokenPrefix}${provider}`, token, {
-    requireAuthentication: true,
+export async function saveLockStateValue(serialized: string): Promise<void> {
+  await writeItem(keys.lockState, serialized, {
+    sensitive: true,
     keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY
   });
 }
 
-export async function deleteOAuthToken(provider: string): Promise<void> {
-  await deleteItem(`${keys.oauthTokenPrefix}${provider}`);
+export async function loadLockStateValue(): Promise<string | null> {
+  return readItem(keys.lockState, { sensitive: true });
 }
 
-async function readItem(key: string): Promise<string | null> {
+export async function clearLockStateValue(): Promise<void> {
+  await deleteItem(keys.lockState, { sensitive: true });
+}
+
+export async function saveOAuthToken(provider: string, token: string): Promise<void> {
+  // App-level biometric lock already gates access; requiring keychain-level
+  // auth here would prompt biometrics on every background token read.
+  await writeItem(`${keys.oauthTokenPrefix}${provider}`, token, {
+    sensitive: true,
+    requireAuthentication: false,
+    keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY
+  });
+}
+
+export async function loadOAuthToken(provider: string): Promise<string | null> {
+  return readItem(`${keys.oauthTokenPrefix}${provider}`, { sensitive: true });
+}
+
+export async function deleteOAuthToken(provider: string): Promise<void> {
+  await deleteItem(`${keys.oauthTokenPrefix}${provider}`, { sensitive: true });
+}
+
+type ItemOptions = SecureStore.SecureStoreOptions & { sensitive: boolean };
+
+async function readItem(key: string, options: ItemOptions): Promise<string | null> {
   if (Platform.OS === "web") {
+    if (options.sensitive) {
+      return webMemoryStore.get(key) ?? null;
+    }
     return getWebStorage()?.getItem(key) ?? null;
   }
   return SecureStore.getItemAsync(key);
 }
 
-async function writeItem(key: string, value: string, options?: SecureStore.SecureStoreOptions): Promise<void> {
+async function writeItem(key: string, value: string, options: ItemOptions): Promise<void> {
   if (Platform.OS === "web") {
-    getWebStorage()?.setItem(key, value);
+    if (options.sensitive) {
+      webMemoryStore.set(key, value);
+    } else {
+      getWebStorage()?.setItem(key, value);
+    }
     return;
   }
-  await SecureStore.setItemAsync(key, value, options);
+  const { sensitive: _sensitive, ...secureStoreOptions } = options;
+  await SecureStore.setItemAsync(key, value, secureStoreOptions);
 }
 
-async function deleteItem(key: string): Promise<void> {
+async function deleteItem(key: string, options: ItemOptions): Promise<void> {
   if (Platform.OS === "web") {
-    getWebStorage()?.removeItem(key);
+    if (options.sensitive) {
+      webMemoryStore.delete(key);
+    } else {
+      getWebStorage()?.removeItem(key);
+    }
     return;
   }
   await SecureStore.deleteItemAsync(key);

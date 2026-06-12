@@ -119,8 +119,13 @@ const refreshSessionsByHash = new Map<string, RefreshRecord>();
 const jwksCache = new Map<string, { expiresAt: number; keys: JsonWebKey[] }>();
 const keyPair = loadSigningKeys();
 
+// Auth endpoints get much stricter limits than the global bucket: magic-link
+// codes are 6 digits, so verification attempts must be expensive to repeat.
+const requestLimit = { config: { rateLimit: { max: 5, timeWindow: "1 minute" } } };
+const verifyLimit = { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } };
+
 export const authRoutes: FastifyPluginAsync = async (app) => {
-  app.post("/auth/magic-link", async (request, reply) => {
+  app.post("/auth/magic-link", requestLimit, async (request, reply) => {
     const parsed = parseRequest(magicLinkRequestSchema, request.body, request.id);
     if (!parsed.ok) {
       reply.code(400);
@@ -130,7 +135,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     return requestMagicLink(parsed.data.email, request.id);
   });
 
-  app.get("/auth/verify", async (request, reply) => {
+  app.get("/auth/verify", verifyLimit, async (request, reply) => {
     const parsed = parseRequest(magicLinkVerifyQuerySchema, request.query, request.id);
     if (!parsed.ok) {
       reply.code(400);
@@ -149,7 +154,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     return ok(issueSession(record.accountId, record.email, "magic_link"), request.id);
   });
 
-  app.post("/auth/apple", async (request, reply) => {
+  app.post("/auth/apple", verifyLimit, async (request, reply) => {
     const parsed = parseRequest(appleOAuthSchema, request.body, request.id);
     if (!parsed.ok) {
       reply.code(400);
@@ -166,7 +171,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     return ok(issueSession(accountIdForSubject("apple", subject), email, "apple"), request.id);
   });
 
-  app.post("/auth/google", async (request, reply) => {
+  app.post("/auth/google", verifyLimit, async (request, reply) => {
     const parsed = parseRequest(googleOAuthSchema, request.body, request.id);
     if (!parsed.ok) {
       reply.code(400);
@@ -174,9 +179,9 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const subjectToken = parsed.data.idToken ?? parsed.data.accessToken ?? parsed.data.serverAuthCode ?? "";
-    if (!parsed.data.idToken && getGoogleAudiences().length > 0) {
+    if (!parsed.data.idToken && (getGoogleAudiences().length > 0 || !allowUnverifiedOAuthTokens())) {
       reply.code(401);
-      return fail("UNAUTHORIZED", "Google idToken is required when OAuth client IDs are configured.", request.id);
+      return fail("UNAUTHORIZED", "Google idToken is required.", request.id);
     }
 
     const verified = parsed.data.idToken
@@ -191,7 +196,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     return ok(issueSession(accountIdForSubject("google", subject), email, "google"), request.id);
   });
 
-  app.post("/auth/refresh", async (request, reply) => {
+  app.post("/auth/refresh", verifyLimit, async (request, reply) => {
     const parsed = parseRequest(refreshSchema, request.body, request.id);
     if (!parsed.ok) {
       reply.code(400);
@@ -208,7 +213,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     return ok(issueSession(session.accountId, session.email, session.provider), request.id);
   });
 
-  app.post("/auth/demo-login", async (request, reply) => {
+  app.post("/auth/demo-login", requestLimit, async (request, reply) => {
     const parsed = parseRequest(demoLoginSchema, request.body, request.id);
     if (!parsed.ok) {
       reply.code(400);
@@ -239,7 +244,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     return ok({ loggedOut: true }, request.id);
   });
 
-  app.post("/auth/magic-link/request", async (request, reply) => {
+  app.post("/auth/magic-link/request", requestLimit, async (request, reply) => {
     const parsed = parseRequest(magicLinkRequestSchema, request.body, request.id);
     if (!parsed.ok) {
       reply.code(400);
@@ -249,7 +254,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     return requestMagicLink(parsed.data.email, request.id);
   });
 
-  app.post("/auth/magic-link/verify", async (request, reply) => {
+  app.post("/auth/magic-link/verify", verifyLimit, async (request, reply) => {
     const parsed = parseRequest(legacyMagicLinkVerifySchema, request.body, request.id);
     if (!parsed.ok) {
       reply.code(400);
@@ -429,7 +434,9 @@ async function deliverMagicLink(email: string, link: string, code: string, reque
     if (process.env.NODE_ENV === "production") {
       throw new Error("RESEND_API_KEY is required for production magic-link delivery.");
     }
-    console.info({ requestId, email, link, code }, "Dev magic link issued.");
+    // The code/link are returned to the dev client in the response body
+    // (devCode/devLink); never write credentials or emails to logs.
+    console.info({ requestId }, "Dev magic link issued; code returned in response.");
     return;
   }
 
@@ -456,7 +463,12 @@ async function deliverMagicLink(email: string, link: string, code: string, reque
 async function verifyAppleIdentityToken(token: string, reply: { code: (statusCode: number) => unknown }, requestId: string): Promise<VerifiedIdentity | null> {
   const audiences = getAppleAudiences();
   if (audiences.length === 0) {
-    return { subject: token, email: null };
+    if (allowUnverifiedOAuthTokens()) {
+      return { subject: token, email: null };
+    }
+    console.warn({ requestId }, "Apple sign-in rejected: no APPLE_CLIENT_ID/APPLE_BUNDLE_ID configured.");
+    reply.code(401);
+    return null;
   }
 
   try {
@@ -475,7 +487,12 @@ async function verifyAppleIdentityToken(token: string, reply: { code: (statusCod
 async function verifyGoogleIdentityToken(token: string, reply: { code: (statusCode: number) => unknown }, requestId: string): Promise<VerifiedIdentity | null> {
   const audiences = getGoogleAudiences();
   if (audiences.length === 0) {
-    return { subject: token, email: null };
+    if (allowUnverifiedOAuthTokens()) {
+      return { subject: token, email: null };
+    }
+    console.warn({ requestId }, "Google sign-in rejected: no GOOGLE_*_CLIENT_ID configured.");
+    reply.code(401);
+    return null;
   }
 
   try {
@@ -590,7 +607,14 @@ function accountIdForSubject(provider: "apple" | "google", subject: string): str
 }
 
 function isDemoLoginEnabled(): boolean {
-  return process.env.NODE_ENV !== "production" && process.env.DEMO_LOGIN_ENABLED !== "false";
+  return process.env.NODE_ENV !== "production"
+    && process.env.DEMO_LOGIN_ENABLED !== "false"
+    && Boolean(process.env.DEMO_LOGIN_PASSWORD);
+}
+
+function allowUnverifiedOAuthTokens(): boolean {
+  return process.env.NODE_ENV !== "production"
+    && process.env.ALLOW_UNVERIFIED_OAUTH_TOKENS === "true";
 }
 
 function isDevMailAdapter(): boolean {
@@ -602,7 +626,11 @@ function getDemoEmail(): string {
 }
 
 function getDemoPassword(): string {
-  return process.env.DEMO_LOGIN_PASSWORD ?? "Zeno-Demo-2026!";
+  const password = process.env.DEMO_LOGIN_PASSWORD;
+  if (!password) {
+    throw new Error("DEMO_LOGIN_PASSWORD must be set to enable demo login.");
+  }
+  return password;
 }
 
 function constantTimeEqual(actual: string, expected: string): boolean {

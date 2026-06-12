@@ -1,7 +1,10 @@
 import { searchServices } from "@subradar/service-catalog";
 import { createAnalyticsSnapshot, createBusinessSummary, createFamilyVaultSummary, createRenewalReminderPlan, createSpendSummary, createSpendTwin, createWidgetSnapshot, demoBusinessWorkspace, demoFamilyMembers, monthlyAmount, partnerIntegrationManifests, type AnalyticsSnapshot, type BillingCycle, type BusinessSubscriptionSummary, type FamilyVaultSummary, type PartnerIntegrationManifest, type RenewalReminderPlan, type SpendSummary, type SpendTwinComparison, type Subscription, type SubscriptionCategory, type SubscriptionStatus, type WidgetSnapshot } from "@subradar/shared";
 import * as Crypto from "expo-crypto";
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Platform } from "react-native";
+import { openSubRadarDatabase, readAppMeta, writeAppMeta, type SubRadarDatabase } from "../storage/database";
+import { listSubscriptions, softDeleteSubscription, upsertSubscription } from "../storage/subscription-repository";
 import { seedSubscriptions } from "./seed-subscriptions";
 
 type CreateSubscriptionInput = {
@@ -33,6 +36,7 @@ export type SubscriptionNotificationSettings = {
 
 type SubscriptionStore = {
   subscriptions: Subscription[];
+  hydrated: boolean;
   notificationSettings: Record<string, SubscriptionNotificationSettings>;
   totalMonthlyMinor: number;
   spendSummary: SpendSummary;
@@ -59,39 +63,123 @@ const defaultNotificationSettings: SubscriptionNotificationSettings = {
   dayOf: true
 };
 
+const seededMetaKey = "subscriptions.seeded.v1";
+const notificationSettingsMetaKey = "notification.settings.v1";
+
+// expo-sqlite is not configured for web; web sessions stay in-memory.
+const persistenceEnabled = Platform.OS !== "web";
+
 const StoreContext = createContext<SubscriptionStore | null>(null);
 
 export function SubscriptionStoreProvider({ children }: { children: ReactNode }) {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>(seedSubscriptions);
+  const [hydrated, setHydrated] = useState(!persistenceEnabled);
   const [notificationSettings, setNotificationSettings] = useState<Record<string, SubscriptionNotificationSettings>>(() => Object.fromEntries(
     seedSubscriptions.map((subscription) => [subscription.id, defaultNotificationSettings])
   ));
+  const dbRef = useRef<SubRadarDatabase | null>(null);
 
-  const value = useMemo<SubscriptionStore>(() => ({
-    subscriptions,
-    notificationSettings,
-    totalMonthlyMinor: subscriptions.reduce((sum, subscription) => sum + monthlyAmount(subscription), 0),
-    spendSummary: createSpendSummary(subscriptions),
-    spendTwin: createSpendTwin(subscriptions.reduce((sum, subscription) => sum + monthlyAmount(subscription), 0)),
-    familyVault: createFamilyVaultSummary(demoFamilyMembers, subscriptions),
-    analytics: createAnalyticsSnapshot(subscriptions),
-    widgetSnapshot: createWidgetSnapshot(subscriptions),
-    businessSummary: createBusinessSummary(demoBusinessWorkspace, subscriptions),
-    partnerIntegrations: partnerIntegrationManifests,
-    reminderPlan: createRenewalReminderPlan(subscriptions),
-    upcoming: [...subscriptions]
-      .filter((subscription) => subscription.status === "active" && subscription.nextRenewalDate)
-      .sort((a, b) => Date.parse(a.nextRenewalDate ?? "") - Date.parse(b.nextRenewalDate ?? ""))
-      .slice(0, 5),
-    addSubscription(input) {
-      const now = new Date().toISOString();
-      const id = `sub_${Crypto.randomUUID()}`;
-      setNotificationSettings((current) => ({
-        ...current,
-        [id]: defaultNotificationSettings
+  useEffect(() => {
+    if (!persistenceEnabled) {
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const db = await openSubRadarDatabase();
+        if (cancelled) {
+          return;
+        }
+        dbRef.current = db;
+
+        const alreadySeeded = await readAppMeta(db, seededMetaKey);
+        if (!alreadySeeded) {
+          for (const subscription of seedSubscriptions) {
+            await upsertSubscription(db, subscription);
+          }
+          await writeAppMeta(db, seededMetaKey, new Date().toISOString());
+        }
+
+        const persisted = await listSubscriptions(db);
+        const storedSettings = await readAppMeta(db, notificationSettingsMetaKey);
+        if (cancelled) {
+          return;
+        }
+
+        setSubscriptions(persisted);
+        if (storedSettings) {
+          try {
+            setNotificationSettings(JSON.parse(storedSettings) as Record<string, SubscriptionNotificationSettings>);
+          } catch {
+            // Corrupt settings blob: fall back to defaults rather than crash.
+          }
+        }
+        setHydrated(true);
+      } catch (error) {
+        console.warn("Subscription database unavailable; using in-memory data.", error);
+        if (!cancelled) {
+          setHydrated(true);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const persistSubscription = (subscription: Subscription) => {
+    const db = dbRef.current;
+    if (db) {
+      void upsertSubscription(db, subscription).catch((error) => {
+        console.warn("Failed to persist subscription.", error);
+      });
+    }
+  };
+
+  const persistNotificationSettings = (settings: Record<string, SubscriptionNotificationSettings>) => {
+    const db = dbRef.current;
+    if (db) {
+      void writeAppMeta(db, notificationSettingsMetaKey, JSON.stringify(settings)).catch((error) => {
+        console.warn("Failed to persist notification settings.", error);
+      });
+    }
+  };
+
+  const value = useMemo<SubscriptionStore>(() => {
+    const applyChange = (id: string, mutate: (subscription: Subscription) => Subscription) => {
+      setSubscriptions((current) => current.map((subscription) => {
+        if (subscription.id !== id) {
+          return subscription;
+        }
+        const next = mutate(subscription);
+        persistSubscription(next);
+        return next;
       }));
-      setSubscriptions((current) => [
-        {
+    };
+
+    return {
+      subscriptions,
+      hydrated,
+      notificationSettings,
+      totalMonthlyMinor: subscriptions.reduce((sum, subscription) => sum + monthlyAmount(subscription), 0),
+      spendSummary: createSpendSummary(subscriptions),
+      spendTwin: createSpendTwin(subscriptions.reduce((sum, subscription) => sum + monthlyAmount(subscription), 0)),
+      familyVault: createFamilyVaultSummary(demoFamilyMembers, subscriptions),
+      analytics: createAnalyticsSnapshot(subscriptions),
+      widgetSnapshot: createWidgetSnapshot(subscriptions),
+      businessSummary: createBusinessSummary(demoBusinessWorkspace, subscriptions),
+      partnerIntegrations: partnerIntegrationManifests,
+      reminderPlan: createRenewalReminderPlan(subscriptions),
+      upcoming: [...subscriptions]
+        .filter((subscription) => subscription.status === "active" && subscription.nextRenewalDate)
+        .sort((a, b) => Date.parse(a.nextRenewalDate ?? "") - Date.parse(b.nextRenewalDate ?? ""))
+        .slice(0, 5),
+      addSubscription(input) {
+        const now = new Date().toISOString();
+        const id = `sub_${Crypto.randomUUID()}`;
+        const subscription: Subscription = {
           id,
           createdAt: now,
           updatedAt: now,
@@ -105,18 +193,18 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
           status: "active",
           ownerProfileId: "profile_local",
           source: input.source ?? "manual"
-        },
-        ...current
-      ]);
-      return id;
-    },
-    updateSubscription(id, changes) {
-      setSubscriptions((current) => current.map((subscription) => {
-        if (subscription.id !== id) {
-          return subscription;
-        }
-
-        return {
+        };
+        setNotificationSettings((current) => {
+          const next = { ...current, [id]: defaultNotificationSettings };
+          persistNotificationSettings(next);
+          return next;
+        });
+        setSubscriptions((current) => [subscription, ...current]);
+        persistSubscription(subscription);
+        return id;
+      },
+      updateSubscription(id, changes) {
+        applyChange(id, (subscription) => ({
           ...subscription,
           name: changes.name ?? subscription.name,
           serviceSlug: changes.serviceSlug ?? subscription.serviceSlug,
@@ -130,40 +218,57 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
           notes: changes.notes ?? subscription.notes,
           updatedAt: new Date().toISOString(),
           version: subscription.version + 1
-        };
-      }));
-    },
-    deleteSubscription(id) {
-      setSubscriptions((current) => current.filter((subscription) => subscription.id !== id));
-      setNotificationSettings((current) => {
-        const next = { ...current };
-        delete next[id];
-        return next;
-      });
-    },
-    pauseSubscription(id) {
-      setSubscriptions((current) => current.map((subscription) => subscription.id === id
-        ? { ...subscription, status: "paused", updatedAt: new Date().toISOString(), version: subscription.version + 1 }
-        : subscription));
-    },
-    markCancelled(id) {
-      setSubscriptions((current) => current.map((subscription) => subscription.id === id
-        ? { ...subscription, status: "cancelled", updatedAt: new Date().toISOString(), version: subscription.version + 1 }
-        : subscription));
-    },
-    updateNotificationSettings(id, changes) {
-      setNotificationSettings((current) => ({
-        ...current,
-        [id]: {
-          ...(current[id] ?? defaultNotificationSettings),
-          ...changes
+        }));
+      },
+      deleteSubscription(id) {
+        setSubscriptions((current) => current.filter((subscription) => subscription.id !== id));
+        setNotificationSettings((current) => {
+          const next = { ...current };
+          delete next[id];
+          persistNotificationSettings(next);
+          return next;
+        });
+        const db = dbRef.current;
+        if (db) {
+          void softDeleteSubscription(db, id).catch((error) => {
+            console.warn("Failed to delete subscription.", error);
+          });
         }
-      }));
-    },
-    suggestions(query) {
-      return searchServices(query, 8);
-    }
-  }), [notificationSettings, subscriptions]);
+      },
+      pauseSubscription(id) {
+        applyChange(id, (subscription) => ({
+          ...subscription,
+          status: "paused",
+          updatedAt: new Date().toISOString(),
+          version: subscription.version + 1
+        }));
+      },
+      markCancelled(id) {
+        applyChange(id, (subscription) => ({
+          ...subscription,
+          status: "cancelled",
+          updatedAt: new Date().toISOString(),
+          version: subscription.version + 1
+        }));
+      },
+      updateNotificationSettings(id, changes) {
+        setNotificationSettings((current) => {
+          const next = {
+            ...current,
+            [id]: {
+              ...(current[id] ?? defaultNotificationSettings),
+              ...changes
+            }
+          };
+          persistNotificationSettings(next);
+          return next;
+        });
+      },
+      suggestions(query) {
+        return searchServices(query, 8);
+      }
+    };
+  }, [hydrated, notificationSettings, subscriptions]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

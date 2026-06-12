@@ -4,6 +4,7 @@ import * as AuthSession from "expo-auth-session";
 import { ResponseType } from "expo-auth-session";
 import { discovery as googleDiscovery } from "expo-auth-session/providers/google";
 import Constants from "expo-constants";
+import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
 import { Platform } from "react-native";
@@ -209,7 +210,7 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
         responseType: ResponseType.IdToken,
         redirectUri,
         scopes: ["openid", "profile", "email"],
-        extraParams: { nonce: String(Date.now()) }
+        extraParams: { nonce: createNonce() }
       }, googleDiscovery);
       const result = await request.promptAsync(googleDiscovery);
 
@@ -414,6 +415,10 @@ function selectGoogleClientId(config: GoogleConfig): string | null {
     return config.androidClientId ?? config.expoClientId ?? config.webClientId ?? null;
   }
   return config.webClientId ?? config.expoClientId ?? null;
+}
+
+function createNonce(): string {
+  return Array.from(Crypto.getRandomBytes(16), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function getErrorMessage(error: unknown): string {

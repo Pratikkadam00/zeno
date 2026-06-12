@@ -16,7 +16,17 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     logger: options.logger ?? false,
     genReqId: () => randomUUID()
   });
-  await app.register(cors, { origin: true });
+  const allowedOrigins = readAllowedOrigins();
+  await app.register(cors, {
+    origin: (origin, callback) => {
+      // Requests without an Origin header (mobile app, server-to-server) are not CORS requests.
+      if (!origin || allowedOrigins.includes(origin) || isDevLocalhostOrigin(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error("Origin not allowed."), false);
+    }
+  });
   await app.register(rateLimit, {
     max: 100,
     timeWindow: "1 minute"
@@ -34,9 +44,9 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   }, request.id));
 
   app.get("/api/v1/services", async (request) => {
-    const query = typeof request.query === "object" && request.query && "q" in request.query
+    const query = (typeof request.query === "object" && request.query && "q" in request.query
       ? String((request.query as { q?: unknown }).q ?? "")
-      : "";
+      : "").slice(0, 100);
     return ok({ services: query ? searchServices(query, 25) : services }, request.id);
   });
 
@@ -185,6 +195,18 @@ function parseBody<T extends z.ZodType>(schema: T, body: unknown, requestId: str
     }
     return { ok: false, error: fail("BAD_REQUEST", "Request validation failed.", requestId) };
   }
+}
+
+function readAllowedOrigins(): string[] {
+  return (process.env.CORS_ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function isDevLocalhostOrigin(origin: string): boolean {
+  return process.env.NODE_ENV !== "production"
+    && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
 }
 
 function readProviderParam(params: unknown): OpenBankingProvider | null {

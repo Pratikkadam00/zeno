@@ -134,7 +134,10 @@ export async function cancelNotificationsForSubscription(subscriptionId: string)
   );
 }
 
-export async function rescheduleAllNotifications(subscriptions: RenewalNotificationSubscription[]): Promise<void> {
+export async function rescheduleAllNotifications(
+  subscriptions: RenewalNotificationSubscription[],
+  preferencesById: Record<string, RenewalNotificationPreferences> = {}
+): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
 
   const now = Date.now();
@@ -144,7 +147,10 @@ export async function rescheduleAllNotifications(subscriptions: RenewalNotificat
       continue;
     }
 
-    await scheduleRenewalNotifications(subscription);
+    await scheduleRenewalNotificationsWithPreferences(
+      subscription,
+      preferencesById[subscription.id] ?? { sevenDay: true, threeDay: true, dayOf: true }
+    );
   }
 }
 
