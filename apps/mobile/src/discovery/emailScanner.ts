@@ -1,7 +1,8 @@
 import { getServiceBySlug, searchServices, services, type Service } from "@subradar/service-catalog";
 import { exchangeCodeAsync, type AuthRequest, type AuthSessionResult } from "expo-auth-session";
 import { discovery as googleDiscovery } from "expo-auth-session/providers/google";
-import * as SecureStore from "expo-secure-store";
+import { deleteOAuthToken, loadOAuthToken, saveOAuthToken } from "../security/secure-store";
+import { calculateNextRenewal, confidenceRank, isWithin, slugify, titleCase } from "./discovery-helpers";
 
 export type ParsedSubscription = {
   name: string;
@@ -152,9 +153,7 @@ export async function connectGmail(request: AuthRequest, result: AuthSessionResu
   }
 
   const accessToken = result.authentication?.accessToken ?? await exchangeAuthorizationCode(request, result);
-  await SecureStore.setItemAsync(gmailTokenKey, accessToken, {
-    keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY
-  });
+  await saveOAuthToken(gmailTokenKey, accessToken);
   return accessToken;
 }
 
@@ -255,18 +254,18 @@ export async function scanGmailSubscriptions(
 }
 
 export async function disconnectGmail(): Promise<void> {
-  const token = await SecureStore.getItemAsync(gmailTokenKey);
+  const token = await loadOAuthToken(gmailTokenKey);
   try {
     if (token) {
       await fetch(`https://accounts.google.com/o/oauth2/revoke?token=${encodeURIComponent(token)}`);
     }
   } finally {
-    await SecureStore.deleteItemAsync(gmailTokenKey);
+    await deleteOAuthToken(gmailTokenKey);
   }
 }
 
 export async function getStoredGmailToken(): Promise<string | null> {
-  return SecureStore.getItemAsync(gmailTokenKey);
+  return loadOAuthToken(gmailTokenKey);
 }
 
 export async function fetchGmailAddress(accessToken: string): Promise<string | null> {
@@ -497,18 +496,6 @@ function extractDate(body: string): Date | null {
   return null;
 }
 
-function calculateNextRenewal(lastCharged: Date, cycle: ParsedSubscription["billingCycle"]): Date {
-  const next = new Date(lastCharged);
-  if (cycle === "weekly") {
-    next.setDate(next.getDate() + 7);
-  } else if (cycle === "annual") {
-    next.setFullYear(next.getFullYear() + 1);
-  } else {
-    next.setMonth(next.getMonth() + 1);
-  }
-  return next;
-}
-
 function matchService(senderDomain: string, body: string): Service | undefined {
   const domainMatch = services.find((service) => {
     const websiteDomain = extractSenderDomain(service.website);
@@ -560,26 +547,4 @@ function enrichWithCatalogMatch(subscription: ParsedSubscription): ParsedSubscri
 function compareParsed(a: ParsedSubscription, b: ParsedSubscription): number {
   const confidenceDelta = confidenceRank(b.confidence) - confidenceRank(a.confidence);
   return confidenceDelta || b.amount - a.amount;
-}
-
-function confidenceRank(confidence: ParsedSubscription["confidence"]): number {
-  if (confidence === "high") {
-    return 3;
-  }
-  if (confidence === "medium") {
-    return 2;
-  }
-  return 1;
-}
-
-function isWithin(amount: number, expected: number, tolerance: number): boolean {
-  return Math.abs(amount - expected) <= expected * tolerance;
-}
-
-function slugify(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}
-
-function titleCase(value: string): string {
-  return value.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
 }

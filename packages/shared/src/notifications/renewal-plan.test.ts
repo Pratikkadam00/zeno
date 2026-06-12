@@ -30,4 +30,34 @@ describe("renewal reminder plan", () => {
     });
     expect(plans.map((plan) => plan.kind)).toEqual(["seven_day", "day_of"]);
   });
+
+  describe("quiet hours that wrap midnight", () => {
+    const quietPreference = { enabled: true, quietHoursStart: "22:00", quietHoursEnd: "06:00" };
+    const now = new Date(2026, 5, 1, 8, 0, 0);
+
+    function planDayOfTrigger(renewal: Date): string | undefined {
+      const plans = createRenewalReminderPlan(
+        [{ ...subscription, nextRenewalDate: renewal.toISOString() }],
+        now,
+        { day_of: quietPreference }
+      );
+      return plans.find((plan) => plan.kind === "day_of")?.triggerAt;
+    }
+
+    it("pushes a 23:00 trigger to 06:00 the next day", () => {
+      const triggerAt = planDayOfTrigger(new Date(2026, 5, 20, 23, 0, 0));
+      expect(triggerAt).toBe(new Date(2026, 5, 21, 6, 0, 0, 0).toISOString());
+    });
+
+    it("pushes a 05:00 trigger to 06:00 the same day", () => {
+      const triggerAt = planDayOfTrigger(new Date(2026, 5, 20, 5, 0, 0));
+      expect(triggerAt).toBe(new Date(2026, 5, 20, 6, 0, 0, 0).toISOString());
+    });
+
+    it("leaves a midday trigger unchanged", () => {
+      const renewal = new Date(2026, 5, 20, 12, 0, 0);
+      const triggerAt = planDayOfTrigger(renewal);
+      expect(triggerAt).toBe(renewal.toISOString());
+    });
+  });
 });

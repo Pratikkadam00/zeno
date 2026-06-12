@@ -763,8 +763,19 @@ export function toSubscriptionCategory(category: ServiceCategory): SubscriptionC
   return categoryMap[category];
 }
 
+export function parsePriceToMinorUnits(value: number | string): number {
+  const text = String(value).trim();
+  const negative = text.startsWith("-");
+  const unsigned = negative ? text.slice(1) : text;
+  const [wholeText = "", fractionText = ""] = unsigned.split(".");
+  const whole = Number.parseInt(wholeText === "" ? "0" : wholeText, 10);
+  const cents = Number.parseInt(`${fractionText}00`.slice(0, 2), 10);
+  const amountMinor = whole * 100 + cents;
+  return negative ? -amountMinor : amountMinor;
+}
+
 function toMoney(value: number | null): Money | undefined {
-  return value === null ? undefined : { amountMinor: Math.round(value * 100), currency: "USD" };
+  return value === null ? undefined : { amountMinor: parsePriceToMinorUnits(value), currency: "USD" };
 }
 
 export function toServiceRecord(service: Service): ServiceRecord {

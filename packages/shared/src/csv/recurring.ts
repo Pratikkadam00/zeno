@@ -1,4 +1,5 @@
 import type { BillingCycle, Money, SubscriptionCategory } from "../domain";
+import { normalizeMerchant, parseAmountMinor, parseCsvRows } from "./parse-utils";
 
 export type CsvTransaction = {
   postedAt: string;
@@ -22,51 +23,8 @@ export type RecurringChargeCandidate = {
 const MONTH_MS = 1000 * 60 * 60 * 24 * 30;
 const YEAR_MS = 1000 * 60 * 60 * 24 * 365;
 
-export function normalizeMerchant(input: string): string {
-  return input
-    .toLowerCase()
-    .replace(/\b(inc|llc|ltd|co|com|payment|purchase|recurring|subscription)\b/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .replace(/\s+/g, " ");
-}
-
 export function parseCsv(text: string): Array<Record<string, string>> {
-  const rows: string[][] = [];
-  let current = "";
-  let row: string[] = [];
-  let quoted = false;
-
-  for (let i = 0; i < text.length; i += 1) {
-    const char = text[i];
-    const next = text[i + 1];
-
-    if (char === "\"" && quoted && next === "\"") {
-      current += "\"";
-      i += 1;
-    } else if (char === "\"") {
-      quoted = !quoted;
-    } else if (char === "," && !quoted) {
-      row.push(current);
-      current = "";
-    } else if ((char === "\n" || char === "\r") && !quoted) {
-      if (char === "\r" && next === "\n") {
-        i += 1;
-      }
-      row.push(current);
-      rows.push(row);
-      row = [];
-      current = "";
-    } else {
-      current += char ?? "";
-    }
-  }
-
-  if (current.length > 0 || row.length > 0) {
-    row.push(current);
-    rows.push(row);
-  }
-
+  const rows = parseCsvRows(text);
   const [header, ...body] = rows.filter((candidate) => candidate.some((cell) => cell.trim().length > 0));
   if (!header) {
     return [];
@@ -156,18 +114,6 @@ function firstValue(row: Record<string, string>, keys: string[]): string | undef
   return keys.map((key) => normalized.get(key)).find((value): value is string => Boolean(value && value.trim().length > 0));
 }
 
-function parseAmountMinor(input: string | undefined): number | null {
-  if (!input) {
-    return null;
-  }
-  const cleaned = input.replace(/[$,\s]/g, "").replace(/[()]/g, "-");
-  const value = Number.parseFloat(cleaned);
-  if (Number.isNaN(value)) {
-    return null;
-  }
-  return Math.round(value * 100);
-}
-
 function findDominantAmountCluster(transactions: CsvTransaction[]): CsvTransaction[] {
   let best: CsvTransaction[] = [];
 
@@ -210,15 +156,20 @@ function scoreCandidate(transactions: CsvTransaction[], cadence: BillingCycle): 
 }
 
 function projectNextDate(date: string, cadence: BillingCycle): string | undefined {
-  const next = new Date(date);
-  if (cadence === "monthly") {
-    next.setMonth(next.getMonth() + 1);
-  } else if (cadence === "annual") {
-    next.setFullYear(next.getFullYear() + 1);
-  } else {
+  if (cadence !== "monthly" && cadence !== "annual") {
     return undefined;
   }
-  return next.toISOString();
+  return addMonthsClamped(new Date(date), cadence === "monthly" ? 1 : 12).toISOString();
+}
+
+function addMonthsClamped(date: Date, months: number): Date {
+  const next = new Date(date);
+  const day = next.getUTCDate();
+  next.setUTCDate(1);
+  next.setUTCMonth(next.getUTCMonth() + months);
+  const daysInTargetMonth = new Date(Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + 1, 0)).getUTCDate();
+  next.setUTCDate(Math.min(day, daysInTargetMonth));
+  return next;
 }
 
 function bestMerchantName(transactions: CsvTransaction[]): string {

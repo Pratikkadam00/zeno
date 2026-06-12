@@ -1,4 +1,5 @@
 export * from "./api";
+export * from "./csv/parse-utils";
 export * from "./csv/recurring";
 export * from "./discovery/email-receipts";
 export * from "./domain";

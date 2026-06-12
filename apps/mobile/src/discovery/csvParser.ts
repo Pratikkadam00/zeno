@@ -1,4 +1,6 @@
 import { searchServices } from "@subradar/service-catalog";
+import { parseAmountMinor, parseCsvRows } from "@subradar/shared";
+import { calculateNextRenewal, confidenceRank, isWithin, slugify, titleCase } from "./discovery-helpers";
 import type { ParsedSubscription } from "./emailScanner";
 
 export interface CSVParseResult {
@@ -24,7 +26,7 @@ type ColumnMap = {
 };
 
 export function parseCSV(csvContent: string): CSVParseResult {
-  const rows = parseRows(csvContent).filter((row) => row.some((cell) => cell.trim().length > 0));
+  const rows = parseCsvRows(csvContent).filter((row) => row.some((cell) => cell.trim().length > 0));
   if (rows.length === 0) {
     return { subscriptions: [], totalRows: 0, detectedFormat: "Unknown" };
   }
@@ -144,7 +146,7 @@ function detectRecurringSubscriptions(transactions: Transaction[]): ParsedSubscr
 
     const sorted = [...merchantTransactions].sort((a, b) => a.date.getTime() - b.date.getTime());
     const averageAmount = sorted.reduce((sum, transaction) => sum + transaction.amount, 0) / sorted.length;
-    const similarAmounts = sorted.filter((transaction) => isWithin(transaction.amount, averageAmount, 0.1));
+    const similarAmounts = sorted.filter((transaction) => isWithin(transaction.amount, averageAmount, 0.1, 1));
     if (similarAmounts.length < 2) {
       continue;
     }
@@ -200,52 +202,6 @@ function dedupe(subscriptions: ParsedSubscription[]): ParsedSubscription[] {
   return [...grouped.values()].sort((a, b) => confidenceRank(b.confidence) - confidenceRank(a.confidence) || b.amount - a.amount);
 }
 
-function parseRows(csvContent: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cell = "";
-  let inQuotes = false;
-
-  for (let index = 0; index < csvContent.length; index += 1) {
-    const char = csvContent[index];
-    const nextChar = csvContent[index + 1];
-
-    if (char === '"' && inQuotes && nextChar === '"') {
-      cell += '"';
-      index += 1;
-      continue;
-    }
-
-    if (char === '"') {
-      inQuotes = !inQuotes;
-      continue;
-    }
-
-    if (char === "," && !inQuotes) {
-      row.push(cell);
-      cell = "";
-      continue;
-    }
-
-    if ((char === "\n" || char === "\r") && !inQuotes) {
-      if (char === "\r" && nextChar === "\n") {
-        index += 1;
-      }
-      row.push(cell);
-      rows.push(row);
-      row = [];
-      cell = "";
-      continue;
-    }
-
-    cell += char;
-  }
-
-  row.push(cell);
-  rows.push(row);
-  return rows;
-}
-
 function cleanDescription(description: string): string {
   const cleaned = description
     .replace(/^(SQ \*|TST\*|PAYPAL \*|SP |APL\*)/i, "")
@@ -269,32 +225,8 @@ function parseDate(value: string | undefined): Date | null {
 }
 
 function parseMoney(value: string | undefined): number | null {
-  if (!value) {
-    return null;
-  }
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  const negative = trimmed.startsWith("-") || /^\(.+\)$/.test(trimmed);
-  const numeric = Number.parseFloat(trimmed.replace(/[$,\s()]/g, "").replace(/^-/, ""));
-  if (!Number.isFinite(numeric)) {
-    return null;
-  }
-  return negative ? -numeric : numeric;
-}
-
-function calculateNextRenewal(lastCharged: Date, cycle: ParsedSubscription["billingCycle"]): Date {
-  const next = new Date(lastCharged);
-  if (cycle === "annual") {
-    next.setFullYear(next.getFullYear() + 1);
-  } else if (cycle === "weekly") {
-    next.setDate(next.getDate() + 7);
-  } else {
-    next.setMonth(next.getMonth() + 1);
-  }
-  return next;
+  const amountMinor = parseAmountMinor(value);
+  return amountMinor === null ? null : amountMinor / 100;
 }
 
 function hasColumn(header: string[], name: string): boolean {
@@ -305,28 +237,6 @@ function firstColumn(header: string[], names: string[]): number {
   return header.findIndex((cell) => names.some((name) => cell.includes(name)));
 }
 
-function isWithin(amount: number, expected: number, tolerance: number): boolean {
-  return Math.abs(amount - expected) <= Math.max(1, expected * tolerance);
-}
-
 function daysBetween(start: Date, end: Date): number {
   return Math.round((end.getTime() - start.getTime()) / 86_400_000);
-}
-
-function confidenceRank(confidence: ParsedSubscription["confidence"]): number {
-  if (confidence === "high") {
-    return 3;
-  }
-  if (confidence === "medium") {
-    return 2;
-  }
-  return 1;
-}
-
-function slugify(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}
-
-function titleCase(value: string): string {
-  return value.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
 }
