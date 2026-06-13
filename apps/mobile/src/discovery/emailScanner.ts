@@ -196,28 +196,34 @@ export async function fetchBillingEmails(accessToken: string): Promise<GmailMess
   const messages: GmailMessage[] = [];
 
   for (const messageRef of messageRefs) {
-    const metadata = await fetchMessageMetadata(accessToken, messageRef.id);
-    const sender = getHeader(metadata.payload, "from");
-    const subject = getHeader(metadata.payload, "subject");
-    const rawDomain = extractSenderDomain(sender);
-    const knownDomain = getKnownBillingDomain(rawDomain);
-    // Known billing senders are always parsed; unknown senders only when the
-    // subject clearly signals a subscription (keeps one-off receipts out).
-    const senderDomain = knownDomain ?? (subscriptionSubjectSignal.test(subject) ? rawDomain : null);
-    if (!senderDomain) {
-      continue;
-    }
+    // One failing message (rate limit, deleted mid-scan) must not abort the
+    // whole scan — skip it and keep going.
+    try {
+      const metadata = await fetchMessageMetadata(accessToken, messageRef.id);
+      const sender = getHeader(metadata.payload, "from");
+      const subject = getHeader(metadata.payload, "subject");
+      const rawDomain = extractSenderDomain(sender);
+      const knownDomain = getKnownBillingDomain(rawDomain);
+      // Known billing senders are always parsed; unknown senders only when the
+      // subject clearly signals a subscription (keeps one-off receipts out).
+      const senderDomain = knownDomain ?? (subscriptionSubjectSignal.test(subject) ? rawDomain : null);
+      if (!senderDomain) {
+        continue;
+      }
 
-    const full = await fetchMessageFull(accessToken, messageRef.id);
-    messages.push({
-      id: full.id,
-      threadId: full.threadId,
-      sender,
-      senderDomain,
-      subject: getHeader(full.payload, "subject"),
-      receivedAt: getMessageDate(full),
-      body: extractBody(full.payload)
-    });
+      const full = await fetchMessageFull(accessToken, messageRef.id);
+      messages.push({
+        id: full.id,
+        threadId: full.threadId,
+        sender,
+        senderDomain,
+        subject: getHeader(full.payload, "subject"),
+        receivedAt: getMessageDate(full),
+        body: extractBody(full.payload)
+      });
+    } catch {
+      // Skip this message and continue scanning the rest.
+    }
   }
 
   return messages;
@@ -305,17 +311,17 @@ export async function scanAllGmailAccounts(
   }
 
   const all: ParsedSubscription[] = [];
-  let scannedBefore = 0;
-  let runningTotal = 0;
+  let messagesScannedBefore = 0;
 
   for (const account of accounts) {
+    let accountMessageTotal = 0;
     const candidates = await collectCandidates(account.token, (current, total) => {
-      // Report aggregate progress across all inboxes.
-      runningTotal = Math.max(runningTotal, scannedBefore + total);
-      onProgress(scannedBefore + current, runningTotal);
+      // Aggregate progress across inboxes, measured in MESSAGES (not detected subs).
+      accountMessageTotal = total;
+      onProgress(messagesScannedBefore + current, messagesScannedBefore + total);
     });
     all.push(...candidates);
-    scannedBefore += candidates.length || 0;
+    messagesScannedBefore += accountMessageTotal;
   }
 
   return processResults(all);

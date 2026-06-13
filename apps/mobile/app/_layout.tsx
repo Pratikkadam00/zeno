@@ -23,7 +23,7 @@ export default function RootLayout() {
 
 function RootStack() {
   const { theme } = useSubRadarTheme();
-  const { subscriptions, notificationSettings } = useSubscriptionStore();
+  const { subscriptions, notificationSettings, hydrated } = useSubscriptionStore();
   const segments = useSegments();
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const biometricInFlight = useRef(false);
@@ -140,8 +140,14 @@ function RootStack() {
     }
 
     void registerForPushNotifications();
-    void rescheduleAllNotifications(notificationSubscriptions, notificationSettings);
     void requireBiometricUnlock();
+
+    // Wait for the store to hydrate from SQLite before (re)scheduling, otherwise
+    // we'd cancel all reminders and reschedule from seed data with the wrong
+    // per-subscription settings during the launch window.
+    if (hydrated) {
+      void rescheduleAllNotifications(notificationSubscriptions, notificationSettings);
+    }
 
     const subscription = AppState.addEventListener("change", (nextState) => {
       const wasBackgrounded = appState.current === "background" || appState.current === "inactive";
@@ -154,7 +160,7 @@ function RootStack() {
     });
 
     return () => subscription.remove();
-  }, [isAuthenticated, notificationSubscriptions, notificationSettings, requireBiometricUnlock]);
+  }, [isAuthenticated, hydrated, notificationSubscriptions, notificationSettings, requireBiometricUnlock]);
 
   if (status === "loading") {
     return (

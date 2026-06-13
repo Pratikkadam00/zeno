@@ -3,6 +3,8 @@ import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Svg, { G, Path, Rect, Text as SvgText } from "react-native-svg";
 import { useSubRadarTheme } from "../../src/theme/theme-provider";
+import type { ThemeTokens } from "../../src/theme/tokens";
+import { getCategoryColor } from "../../src/utils/subscription-ui";
 
 type SpendChartProps = {
   subscriptions: Subscription[];
@@ -12,19 +14,18 @@ type CategorySpend = {
   category: string;
   label: string;
   amount: number;
-  color: string;
 };
 
-const categoryColors: Record<string, string> = {
-  streaming: "#EF4444",
-  ai_tools: "#8B5CF6",
-  productivity: "#3B82F6",
-  gaming: "#10B981",
-  health: "#F59E0B",
-  education: "#06B6D4",
-  music: "#EC4899",
-  other: "#6B7280"
-};
+const chartCategories = new Set([
+  "streaming",
+  "ai_tools",
+  "productivity",
+  "gaming",
+  "health",
+  "education",
+  "music",
+  "other"
+]);
 
 export function SpendChart({ subscriptions }: SpendChartProps) {
   const { theme } = useSubRadarTheme();
@@ -40,7 +41,7 @@ export function SpendChart({ subscriptions }: SpendChartProps) {
           <G x={95} y={95}>
             {categorySpend.length === 0 ? (
               <Path d={describeArc(0, 0, 80, 0, 359.99)} stroke={theme.border} strokeWidth={30} fill="none" />
-            ) : renderSlices(categorySpend, total)}
+            ) : renderSlices(categorySpend, total, theme)}
             <SvgText x={0} y={-4} textAnchor="middle" fill={theme.text} fontSize="18" fontWeight="800">
               {formatMoney(total)}
             </SvgText>
@@ -56,7 +57,7 @@ export function SpendChart({ subscriptions }: SpendChartProps) {
           const percent = total > 0 ? Math.round((item.amount / total) * 100) : 0;
           return (
             <View key={item.category} style={styles.legendRow}>
-              <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+              <View style={[styles.legendDot, { backgroundColor: getCategoryColor(item.category, theme) }]} />
               <Text style={[styles.legendName, { color: theme.text }]}>{item.label}</Text>
               <Text style={[styles.legendValue, { color: theme.mutedText }]}>{formatMoney(item.amount)} · {percent}%</Text>
             </View>
@@ -103,8 +104,7 @@ function calculateCategorySpend(subscriptions: Subscription[]): CategorySpend[] 
     .map(([category, amount]) => ({
       category,
       label: labelCategory(category),
-      amount: Math.round(amount * 100) / 100,
-      color: categoryColors[category] ?? categoryColors.other
+      amount: Math.round(amount * 100) / 100
     }))
     .sort((a, b) => b.amount - a.amount);
 }
@@ -126,7 +126,7 @@ function calculateMonthlyTrend(subscriptions: Subscription[]): Array<{ label: st
   });
 }
 
-function renderSlices(categorySpend: CategorySpend[], total: number) {
+function renderSlices(categorySpend: CategorySpend[], total: number, theme: ThemeTokens) {
   let cursor = 0;
   return categorySpend.map((item) => {
     const degrees = total > 0 ? (item.amount / total) * 360 : 0;
@@ -137,7 +137,7 @@ function renderSlices(categorySpend: CategorySpend[], total: number) {
       <Path
         key={item.category}
         d={describeArc(0, 0, 65, start, end)}
-        stroke={item.color}
+        stroke={getCategoryColor(item.category, theme)}
         strokeWidth={30}
         strokeLinecap="butt"
         fill="none"
@@ -168,7 +168,7 @@ function normalizeCategory(category: string): string {
   if (category === "developer_tools") {
     return "productivity";
   }
-  if (category in categoryColors) {
+  if (chartCategories.has(category)) {
     return category;
   }
   return "other";

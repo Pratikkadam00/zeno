@@ -329,7 +329,14 @@ async function apiPost<T = unknown>(path: string, body: Record<string, unknown>)
 }
 
 async function readEnvelope<T>(response: Response): Promise<T> {
-  const envelope = await response.json() as ApiEnvelope<T>;
+  // A non-JSON error page (502/503 from a proxy) would make response.json()
+  // throw a confusing parse error; surface the HTTP status instead.
+  let envelope: ApiEnvelope<T> | null = null;
+  try {
+    envelope = await response.json() as ApiEnvelope<T>;
+  } catch {
+    throw new Error(`Auth request failed with HTTP ${response.status}.`);
+  }
   if (!response.ok || envelope.error) {
     throw new Error(envelope.error?.message ?? `Auth request failed with HTTP ${response.status}`);
   }

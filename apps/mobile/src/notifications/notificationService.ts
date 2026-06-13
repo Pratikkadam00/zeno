@@ -155,9 +155,16 @@ export async function rescheduleAllNotifications(
 }
 
 function getNineAmTriggerDate(renewalDate: Date, daysBefore: number): Date {
-  const triggerDate = new Date(renewalDate);
-  triggerDate.setDate(triggerDate.getDate() - daysBefore);
-  triggerDate.setHours(9, 0, 0, 0);
+  // Renewal dates are stored as ISO (often date-only, i.e. UTC midnight). Read
+  // the calendar day in UTC, then build 9 AM in the device's LOCAL timezone on
+  // (renewal day − daysBefore) so the reminder fires at 9 AM the user's time on
+  // the right date — not shifted a day by the UTC→local offset.
+  const triggerDate = new Date(
+    renewalDate.getUTCFullYear(),
+    renewalDate.getUTCMonth(),
+    renewalDate.getUTCDate() - daysBefore,
+    9, 0, 0, 0
+  );
   return triggerDate;
 }
 

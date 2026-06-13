@@ -11,16 +11,39 @@ type InsightCardProps = {
   onDismiss: () => void;
 };
 
-const typeMeta: Record<Insight["type"], { icon: string; border: string }> = {
-  unused: { icon: "🕐", border: "#F59E0B" },
-  duplicate: { icon: "🔄", border: "#2563EB" },
-  annual_saving: { icon: "💰", border: "#15803D" },
-  trial_ending: { icon: "⏰", border: "#EF4444" },
-  price_spike: { icon: "📈", border: "#EF4444" },
-  spend_summary: { icon: "📋", border: "transparent" },
-  high_spend: { icon: "📊", border: "#7C3AED" },
-  cancellation_reminder: { icon: "✅", border: "#64748B" }
+const typeMeta: Record<Insight["type"], { icon: string }> = {
+  unused: { icon: "🕐" },
+  duplicate: { icon: "🔄" },
+  annual_saving: { icon: "💰" },
+  trial_ending: { icon: "⏰" },
+  price_spike: { icon: "📈" },
+  spend_summary: { icon: "📋" },
+  high_spend: { icon: "📊" },
+  cancellation_reminder: { icon: "✅" }
 };
+
+/** Theme-aware accent color for an insight's left border. */
+function insightAccent(type: Insight["type"], theme: ThemeTokens): string {
+  switch (type) {
+    case "unused":
+      return theme.warning;
+    case "duplicate":
+      return theme.primary;
+    case "annual_saving":
+      return theme.success;
+    case "trial_ending":
+    case "price_spike":
+      return theme.danger;
+    case "high_spend":
+      return theme.secondary;
+    case "cancellation_reminder":
+      return theme.mutedText;
+    case "spend_summary":
+      return "transparent";
+    default:
+      return theme.border;
+  }
+}
 
 export function InsightCard({ insight, onAction, onDismiss }: InsightCardProps) {
   const { theme } = useSubRadarTheme();
@@ -61,7 +84,7 @@ export function InsightCard({ insight, onAction, onDismiss }: InsightCardProps) 
   return (
     <Animated.View style={{ transform: [{ translateX }] }} {...panResponder.panHandlers}>
       <View style={styles.card}>
-        {insight.type !== "spend_summary" ? <View style={[styles.leftBorder, { backgroundColor: meta.border }]} /> : null}
+        {insight.type !== "spend_summary" ? <View style={[styles.leftBorder, { backgroundColor: insightAccent(insight.type, theme) }]} /> : null}
         <View style={styles.headerRow}>
           <View style={styles.titleRow}>
             <Text style={styles.icon}>{meta.icon}</Text>
@@ -189,7 +212,7 @@ function withOpacity(hex: string, alpha: number): string {
 
 function createStyles(theme: ThemeTokens, insight: Insight) {
   const compact = theme.id === "genx";
-  const borderColor = typeMeta[insight.type].border;
+  const borderColor = insightAccent(insight.type, theme);
   return StyleSheet.create({
     card: {
       borderRadius: insight.type === "spend_summary" ? theme.cardRadius : Math.max(theme.cardRadius, compact ? 4 : 12),

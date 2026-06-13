@@ -7,8 +7,7 @@ const keys = {
   databaseKey: "subradar.database.key.v1",
   themePreference: "subradar.theme.preference.v1",
   pinHash: "subradar.pin.hash.v1",
-  lockState: "subradar.lock.state.v1",
-  oauthTokenPrefix: "subradar.oauth."
+  lockState: "subradar.lock.state.v1"
 };
 
 // On web there is no secure storage. Secrets are kept in memory only so an
@@ -125,24 +124,6 @@ export async function removeGmailAccount(address: string): Promise<void> {
     sensitive: true,
     keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY
   });
-}
-
-export async function saveOAuthToken(provider: string, token: string): Promise<void> {
-  // App-level biometric lock already gates access; requiring keychain-level
-  // auth here would prompt biometrics on every background token read.
-  await writeItem(`${keys.oauthTokenPrefix}${provider}`, token, {
-    sensitive: true,
-    requireAuthentication: false,
-    keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY
-  });
-}
-
-export async function loadOAuthToken(provider: string): Promise<string | null> {
-  return readItem(`${keys.oauthTokenPrefix}${provider}`, { sensitive: true });
-}
-
-export async function deleteOAuthToken(provider: string): Promise<void> {
-  await deleteItem(`${keys.oauthTokenPrefix}${provider}`, { sensitive: true });
 }
 
 type ItemOptions = SecureStore.SecureStoreOptions & { sensitive: boolean };

@@ -108,13 +108,20 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         }
 
         setSubscriptions(persisted);
+        // Restore saved per-subscription settings, then ensure every persisted
+        // subscription has an entry (defaults for any added before this blob was
+        // written), so toggles never read undefined.
+        let restored: Record<string, SubscriptionNotificationSettings> = {};
         if (storedSettings) {
           try {
-            setNotificationSettings(JSON.parse(storedSettings) as Record<string, SubscriptionNotificationSettings>);
-          } catch {
-            // Corrupt settings blob: fall back to defaults rather than crash.
+            restored = JSON.parse(storedSettings) as Record<string, SubscriptionNotificationSettings>;
+          } catch (error) {
+            console.warn("Corrupt notification settings in database; using defaults.", error);
           }
         }
+        setNotificationSettings(Object.fromEntries(
+          persisted.map((subscription) => [subscription.id, restored[subscription.id] ?? defaultNotificationSettings])
+        ));
         setHydrated(true);
       } catch (error) {
         console.warn("Subscription database unavailable; using in-memory data.", error);
@@ -149,14 +156,19 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
 
   const value = useMemo<SubscriptionStore>(() => {
     const applyChange = (id: string, mutate: (subscription: Subscription) => Subscription) => {
+      // Persist outside the updater: React may invoke updaters more than once,
+      // so the DB write must not be a side effect of the reducer.
+      let updated: Subscription | null = null;
       setSubscriptions((current) => current.map((subscription) => {
         if (subscription.id !== id) {
           return subscription;
         }
-        const next = mutate(subscription);
-        persistSubscription(next);
-        return next;
+        updated = mutate(subscription);
+        return updated;
       }));
+      if (updated) {
+        persistSubscription(updated);
+      }
     };
 
     return {
@@ -194,11 +206,12 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
           ownerProfileId: "profile_local",
           source: input.source ?? "manual"
         };
+        let nextSettings: Record<string, SubscriptionNotificationSettings> = {};
         setNotificationSettings((current) => {
-          const next = { ...current, [id]: defaultNotificationSettings };
-          persistNotificationSettings(next);
-          return next;
+          nextSettings = { ...current, [id]: defaultNotificationSettings };
+          return nextSettings;
         });
+        persistNotificationSettings(nextSettings);
         setSubscriptions((current) => [subscription, ...current]);
         persistSubscription(subscription);
         return id;
@@ -222,12 +235,13 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
       },
       deleteSubscription(id) {
         setSubscriptions((current) => current.filter((subscription) => subscription.id !== id));
+        let nextSettings: Record<string, SubscriptionNotificationSettings> = {};
         setNotificationSettings((current) => {
-          const next = { ...current };
-          delete next[id];
-          persistNotificationSettings(next);
-          return next;
+          nextSettings = { ...current };
+          delete nextSettings[id];
+          return nextSettings;
         });
+        persistNotificationSettings(nextSettings);
         const db = dbRef.current;
         if (db) {
           void softDeleteSubscription(db, id).catch((error) => {
@@ -252,17 +266,18 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         }));
       },
       updateNotificationSettings(id, changes) {
+        let nextSettings: Record<string, SubscriptionNotificationSettings> = {};
         setNotificationSettings((current) => {
-          const next = {
+          nextSettings = {
             ...current,
             [id]: {
               ...(current[id] ?? defaultNotificationSettings),
               ...changes
             }
           };
-          persistNotificationSettings(next);
-          return next;
+          return nextSettings;
         });
+        persistNotificationSettings(nextSettings);
       },
       suggestions(query) {
         return searchServices(query, 8);

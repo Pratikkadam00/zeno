@@ -18,13 +18,19 @@ export default function SpendTwinScreen() {
           </Text>
         </View>
 
-        {spendTwin.map((comparison) => (
-          <Surface key={comparison.label}>
-            <Text style={{ color: theme.text, fontSize: 28, fontWeight: "900" }}>{comparison.quantity}</Text>
-            <Text style={{ color: theme.text, marginTop: 4, fontSize: 18, fontWeight: "800" }}>{comparison.label}</Text>
-            <Text style={{ color: theme.mutedText, marginTop: 8, lineHeight: 21 }}>{comparison.description}</Text>
+        {spendTwin.length > 0 ? (
+          spendTwin.map((comparison) => (
+            <Surface key={comparison.label}>
+              <Text style={{ color: theme.text, fontSize: 28, fontWeight: "900" }}>{comparison.quantity}</Text>
+              <Text style={{ color: theme.text, marginTop: 4, fontSize: 18, fontWeight: "800" }}>{comparison.label}</Text>
+              <Text style={{ color: theme.mutedText, marginTop: 8, lineHeight: 21 }}>{comparison.description}</Text>
+            </Surface>
+          ))
+        ) : (
+          <Surface>
+            <Text style={{ color: theme.mutedText, fontSize: 16 }}>No comparison data yet</Text>
           </Surface>
-        ))}
+        )}
       </ScrollView>
     </Screen>
   );

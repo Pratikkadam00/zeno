@@ -18,17 +18,23 @@ export default function FamilyVaultScreen() {
           </Text>
         </View>
 
-        {familyVault.members.map((member) => (
-          <Surface key={member.id}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-              <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: member.color }} />
-              <Text style={{ color: theme.text, fontSize: 18, fontWeight: "900" }}>{member.name}</Text>
-            </View>
-            <Text style={{ color: theme.mutedText, marginTop: 8 }}>
-              {member.subscriptionCount} active · {formatMoney(member.monthlySpend.amountMinor, member.monthlySpend.currency)}/mo
-            </Text>
+        {familyVault.members.length > 0 ? (
+          familyVault.members.map((member) => (
+            <Surface key={member.id}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: member.color }} />
+                <Text style={{ color: theme.text, fontSize: 18, fontWeight: "900" }}>{member.name}</Text>
+              </View>
+              <Text style={{ color: theme.mutedText, marginTop: 8 }}>
+                {member.subscriptionCount} active · {formatMoney(member.monthlySpend.amountMinor, member.monthlySpend.currency)}/mo
+              </Text>
+            </Surface>
+          ))
+        ) : (
+          <Surface>
+            <Text style={{ color: theme.mutedText, fontSize: 16 }}>No family members yet</Text>
           </Surface>
-        ))}
+        )}
 
         <Surface>
           <Text style={{ color: theme.text, fontSize: 18, fontWeight: "800" }}>Shared subscriptions</Text>

@@ -72,7 +72,7 @@ export function DayPanel({ date, subscriptions, onClose, onNavigateToDetail, onN
                 </TouchableOpacity>
               </Pressable>
             ))}
-            <View style={styles.footer}>
+            <View style={[styles.footer, { borderTopColor: theme.border }]}>
               <Text style={[styles.footerLabel, { color: theme.mutedText }]}>Total</Text>
               <Text style={[styles.footerValue, { color: theme.text }]}>{formatMoney(Math.round(dayTotal * 100), "USD")}</Text>
             </View>
@@ -146,7 +146,6 @@ const styles = StyleSheet.create({
   },
   footer: {
     borderTopWidth: 1,
-    borderTopColor: "rgba(148,163,184,0.35)",
     paddingTop: 8,
     flexDirection: "row",
     justifyContent: "space-between"

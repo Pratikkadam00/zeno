@@ -180,7 +180,7 @@ export default function DiscoverScreen() {
         name: result.name,
         serviceSlug: service?.slug ?? result.serviceId,
         category: mapServiceCategory(service?.category),
-        amountMinor: Math.round(result.amount * 100),
+        amountMinor: Math.round(Number(result.amount.toFixed(2)) * 100),
         billingCycle: mapBillingCycle(result.billingCycle),
         nextRenewalDate: result.nextRenewal,
         source: result.source === "Gmail" ? "email" : "csv"
@@ -473,7 +473,7 @@ export default function DiscoverScreen() {
                   <Text style={styles.progressText}>
                     Scanning {scanProgress.current} of {scanProgress.total} emails...
                   </Text>
-                  <Pressable accessibilityRole="button" onPress={cancelScan} style={styles.cancelScanBtn}>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Cancel scan" hitSlop={8} onPress={cancelScan} style={styles.cancelScanBtn}>
                     <Text style={styles.cancelScanText}>Cancel scan</Text>
                   </Pressable>
                 </View>
