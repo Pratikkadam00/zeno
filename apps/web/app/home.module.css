@@ -258,3 +258,67 @@
 @keyframes float3 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(3vw, -3vw) scale(1.1); } }
 
 @media (prefers-reduced-motion: reduce) { .mesh, .heroSheen { animation: none !important; } }
+
+/* ── Scroll progress bar ─────────────────────────────────────────────────── */
+.scrollProgress {
+  position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 100;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, var(--z-blue), var(--z-cyan), var(--z-emerald));
+  box-shadow: 0 0 12px rgba(91, 140, 255, 0.6);
+}
+
+/* ── Hero two-column layout ──────────────────────────────────────────────── */
+.heroGrid { display: grid; grid-template-columns: 1fr; gap: 48px; align-items: center; width: 100%; }
+@media (min-width: 1000px) { .heroGrid { grid-template-columns: 1.05fr 0.95fr; gap: 40px; } }
+.heroCopy { max-width: 620px; }
+.heroTitle { font-size: clamp(40px, 5.6vw, 66px); }
+
+/* trust stats strip */
+.heroStats { display: flex; align-items: center; gap: 22px; margin-top: 32px; flex-wrap: wrap; }
+.heroStat { display: flex; flex-direction: column; gap: 2px; }
+.heroStatVal { font-family: var(--font-mono); font-weight: 700; font-size: 24px; letter-spacing: -0.02em; background: linear-gradient(180deg, #fff, #b8c2d6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.heroStatLabel { font-size: 12.5px; color: var(--z-quiet); }
+.heroStatDiv { width: 1px; height: 30px; background: var(--z-line-hi); }
+
+/* ── App / phone mockup ──────────────────────────────────────────────────── */
+.heroMockWrap { position: relative; display: flex; justify-content: center; perspective: 1400px; }
+@media (max-width: 999px) { .heroMockWrap { transform: scale(0.9); margin-top: 8px; } }
+.phoneGlow { position: absolute; width: 360px; height: 360px; border-radius: 50%; background: radial-gradient(circle, rgba(91, 140, 255, 0.5), transparent 65%); filter: blur(80px); z-index: 0; }
+.phone {
+  position: relative; z-index: 1; width: 312px; height: 638px; border-radius: 46px;
+  background: linear-gradient(160deg, #1a1f2b, #0c0e15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 12px;
+  box-shadow: 0 50px 120px -30px rgba(0, 0, 0, 0.9), 0 0 0 6px rgba(255, 255, 255, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transform: rotateY(-14deg) rotateX(5deg) rotateZ(1deg);
+  animation: phoneFloat 7s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+.phoneNotch { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 116px; height: 26px; background: #0c0e15; border-radius: 0 0 16px 16px; z-index: 3; }
+.phoneScreen { width: 100%; height: 100%; border-radius: 36px; background: linear-gradient(180deg, #0b0d13, #0a0c11); padding: 30px 18px 18px; overflow: hidden; }
+.appTop { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+.appBrand { font-family: var(--font-display); font-weight: 800; font-size: 22px; letter-spacing: -0.04em; color: #fff; }
+.appAvatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(150deg, #6b97ff, var(--z-blue-deep)); display: grid; place-items: center; font-size: 13px; font-weight: 700; color: #fff; }
+.appLabel { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--z-quiet); }
+.appSpend { font-family: var(--font-mono); font-weight: 700; font-size: 40px; letter-spacing: -0.03em; color: #fff; line-height: 1; margin-top: 4px; }
+.appSpend span { color: var(--z-muted); font-size: 24px; }
+.appMeta { font-size: 12px; color: var(--z-muted); margin-top: 7px; }
+.appAlert { display: flex; align-items: center; gap: 10px; margin: 18px 0 16px; padding: 12px; border-radius: 14px; border: 1px solid rgba(251, 113, 133, 0.28); background: rgba(251, 113, 133, 0.09); }
+.appAlertIcon { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: rgba(251, 113, 133, 0.16); font-size: 14px; flex-shrink: 0; }
+.appAlertText { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.appAlertText strong { font-size: 12.5px; color: #fff; font-weight: 600; }
+.appAlertText span { font-size: 11px; color: var(--z-muted); }
+.appCancel { background: var(--z-rose); color: #1a0307; font-size: 11px; font-weight: 700; padding: 6px 11px; border-radius: 9px; flex-shrink: 0; }
+.appListLabel { font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--z-quiet); margin-bottom: 9px; }
+.appRow { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--z-line); }
+.appIcon { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+.appName { font-size: 13px; color: #fff; font-weight: 500; flex: 1; }
+.appAmt { font-family: var(--font-mono); font-size: 12.5px; color: var(--z-muted); }
+.appDays { font-family: var(--font-mono); font-size: 10px; font-weight: 700; padding: 3px 7px; border-radius: 999px; color: var(--z-muted); background: var(--z-panel-hi); }
+.appDays[data-danger="true"] { color: var(--z-rose); background: rgba(251, 113, 133, 0.14); }
+
+@keyframes phoneFloat {
+  0%, 100% { transform: rotateY(-14deg) rotateX(5deg) rotateZ(1deg) translateY(0); }
+  50% { transform: rotateY(-11deg) rotateX(4deg) rotateZ(0deg) translateY(-12px); }
+}
+@media (prefers-reduced-motion: reduce) { .phone { animation: none !important; } }
