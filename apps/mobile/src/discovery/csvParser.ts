@@ -181,7 +181,15 @@ function detectRecurringSubscriptions(transactions: Transaction[]): ParsedSubscr
 function detectCycle(transactions: Transaction[]): ParsedSubscription["billingCycle"] {
   const sorted = [...transactions].sort((a, b) => a.date.getTime() - b.date.getTime());
   const gaps = sorted.slice(1).map((transaction, index) => daysBetween(sorted[index].date, transaction.date));
+  if (gaps.some((gap) => gap >= 5 && gap <= 9)) {
+    return "weekly";
+  }
   if (gaps.some((gap) => gap >= 25 && gap <= 35)) {
+    return "monthly";
+  }
+  // Treat quarterly (~90-day) cadence as monthly for tracking, since the
+  // ParsedSubscription contract only models weekly/monthly/annual.
+  if (gaps.some((gap) => gap >= 85 && gap <= 95)) {
     return "monthly";
   }
   if (gaps.some((gap) => gap >= 360 && gap <= 375)) {

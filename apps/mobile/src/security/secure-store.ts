@@ -77,6 +77,56 @@ export async function clearLockStateValue(): Promise<void> {
   await deleteItem(keys.lockState, { sensitive: true });
 }
 
+// ── Multi-account Gmail registry ───────────────────────────────────────────
+// Each connected inbox stores its token under a per-address key, with an index
+// of addresses so the user can connect several inboxes (personal + work).
+
+const gmailIndexKey = "subradar.oauth.gmail.index.v1";
+const gmailAccountPrefix = "subradar.oauth.gmail.acct.";
+
+export async function saveGmailAccount(address: string, token: string): Promise<void> {
+  const normalized = address.trim().toLowerCase();
+  await writeItem(`${gmailAccountPrefix}${normalized}`, token, {
+    sensitive: true,
+    requireAuthentication: false,
+    keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY
+  });
+  const addresses = await listGmailAddresses();
+  if (!addresses.includes(normalized)) {
+    await writeItem(gmailIndexKey, JSON.stringify([...addresses, normalized]), {
+      sensitive: true,
+      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY
+    });
+  }
+}
+
+export async function listGmailAddresses(): Promise<string[]> {
+  const raw = await readItem(gmailIndexKey, { sensitive: true });
+  if (!raw) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function getGmailAccountToken(address: string): Promise<string | null> {
+  return readItem(`${gmailAccountPrefix}${address.trim().toLowerCase()}`, { sensitive: true });
+}
+
+export async function removeGmailAccount(address: string): Promise<void> {
+  const normalized = address.trim().toLowerCase();
+  await deleteItem(`${gmailAccountPrefix}${normalized}`, { sensitive: true });
+  const addresses = (await listGmailAddresses()).filter((value) => value !== normalized);
+  await writeItem(gmailIndexKey, JSON.stringify(addresses), {
+    sensitive: true,
+    keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY
+  });
+}
+
 export async function saveOAuthToken(provider: string, token: string): Promise<void> {
   // App-level biometric lock already gates access; requiring keychain-level
   // auth here would prompt biometrics on every background token read.

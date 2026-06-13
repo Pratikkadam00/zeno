@@ -24,6 +24,20 @@ describe("parseCSV", () => {
     });
   });
 
+  it("detects weekly recurring charges", () => {
+    const csv = [
+      "Date,Description,Amount",
+      "2026-01-02,BLUE APRON,-11.99",
+      "2026-01-09,BLUE APRON,-11.99",
+      "2026-01-16,BLUE APRON,-11.99"
+    ].join("\n");
+
+    const result = parseCSV(csv);
+
+    expect(result.subscriptions).toHaveLength(1);
+    expect(result.subscriptions[0]?.billingCycle).toBe("weekly");
+  });
+
   it("uses debit columns as charges for Capital One style exports", () => {
     const csv = [
       "Transaction Date,Posted Date,Card No.,Description,Category,Debit,Credit",

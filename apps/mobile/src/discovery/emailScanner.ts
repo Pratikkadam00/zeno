@@ -1,7 +1,7 @@
 import { getServiceBySlug, searchServices, services, type Service } from "@subradar/service-catalog";
 import { exchangeCodeAsync, type AuthRequest, type AuthSessionResult } from "expo-auth-session";
 import { discovery as googleDiscovery } from "expo-auth-session/providers/google";
-import { deleteOAuthToken, loadOAuthToken, saveOAuthToken } from "../security/secure-store";
+import { getGmailAccountToken, listGmailAddresses, removeGmailAccount, saveGmailAccount } from "../security/secure-store";
 import { calculateNextRenewal, confidenceRank, isWithin, slugify, titleCase } from "./discovery-helpers";
 
 export type ParsedSubscription = {
@@ -48,7 +48,6 @@ type GmailPayload = {
   parts?: GmailPayload[];
 };
 
-const gmailTokenKey = "zeno_gmail_token";
 const gmailScopes = ["https://www.googleapis.com/auth/gmail.readonly"];
 
 const knownBillingDomains = [
@@ -145,31 +144,66 @@ const knownBillingDomains = [
   "substack.com"
 ];
 
-const billingSearchQuery = 'subject:(receipt OR invoice OR subscription OR "payment confirmation" OR "charge" OR "billing" OR "thank you for your purchase" OR "renewal") newer_than:180d';
+// 365 days so annually-billed subscriptions are caught (a 6-month window missed them).
+const billingSearchQuery = 'subject:(receipt OR invoice OR subscription OR "payment confirmation" OR "charge" OR "billing" OR "thank you for your purchase" OR "renewal" OR membership OR "your plan" OR "auto-renew") newer_than:365d';
+// Subject signals that make an UNKNOWN sender worth parsing (known senders are always parsed).
+const subscriptionSubjectSignal = /subscription|renew|membership|recurring|your plan|auto-?renew|monthly|annual/i;
+const maxMessagesPerAccount = 400;
 
-export async function connectGmail(request: AuthRequest, result: AuthSessionResult): Promise<string> {
+export type GmailAccount = { address: string; token: string };
+
+export async function connectGmail(request: AuthRequest, result: AuthSessionResult): Promise<GmailAccount> {
   if (result.type !== "success") {
     throw new Error("Gmail authorization was cancelled.");
   }
 
   const accessToken = result.authentication?.accessToken ?? await exchangeAuthorizationCode(request, result);
-  await saveOAuthToken(gmailTokenKey, accessToken);
-  return accessToken;
+  const address = (await fetchGmailAddress(accessToken).catch(() => null)) ?? `inbox-${slugify(accessToken.slice(0, 8))}`;
+  await saveGmailAccount(address, accessToken);
+  return { address, token: accessToken };
+}
+
+export async function listConnectedGmailAccounts(): Promise<GmailAccount[]> {
+  const addresses = await listGmailAddresses();
+  const accounts = await Promise.all(addresses.map(async (address) => {
+    const token = await getGmailAccountToken(address);
+    return token ? { address, token } : null;
+  }));
+  return accounts.filter((account): account is GmailAccount => account !== null);
+}
+
+async function listBillingMessageRefs(accessToken: string): Promise<Array<{ id: string; threadId?: string }>> {
+  const refs: Array<{ id: string; threadId?: string }> = [];
+  let pageToken: string | undefined;
+
+  do {
+    const url = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages");
+    url.searchParams.set("q", billingSearchQuery);
+    url.searchParams.set("maxResults", "100");
+    if (pageToken) {
+      url.searchParams.set("pageToken", pageToken);
+    }
+    const list = await gmailFetch<GmailListResponse>(url.toString(), accessToken);
+    refs.push(...(list.messages ?? []));
+    pageToken = list.nextPageToken;
+  } while (pageToken && refs.length < maxMessagesPerAccount);
+
+  return refs.slice(0, maxMessagesPerAccount);
 }
 
 export async function fetchBillingEmails(accessToken: string): Promise<GmailMessage[]> {
-  const url = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages");
-  url.searchParams.set("q", billingSearchQuery);
-  url.searchParams.set("maxResults", "200");
-
-  const list = await gmailFetch<GmailListResponse>(url.toString(), accessToken);
-  const messageRefs = list.messages ?? [];
+  const messageRefs = await listBillingMessageRefs(accessToken);
   const messages: GmailMessage[] = [];
 
   for (const messageRef of messageRefs) {
     const metadata = await fetchMessageMetadata(accessToken, messageRef.id);
     const sender = getHeader(metadata.payload, "from");
-    const senderDomain = getKnownBillingDomain(extractSenderDomain(sender));
+    const subject = getHeader(metadata.payload, "subject");
+    const rawDomain = extractSenderDomain(sender);
+    const knownDomain = getKnownBillingDomain(rawDomain);
+    // Known billing senders are always parsed; unknown senders only when the
+    // subject clearly signals a subscription (keeps one-off receipts out).
+    const senderDomain = knownDomain ?? (subscriptionSubjectSignal.test(subject) ? rawDomain : null);
     if (!senderDomain) {
       continue;
     }
@@ -233,7 +267,7 @@ export function processResults(parsed: ParsedSubscription[]): ParsedSubscription
   return [...grouped.values()].sort((a, b) => compareParsed(a, b));
 }
 
-export async function scanGmailSubscriptions(
+async function collectCandidates(
   accessToken: string,
   onProgress: (current: number, total: number) => void
 ): Promise<ParsedSubscription[]> {
@@ -250,22 +284,52 @@ export async function scanGmailSubscriptions(
     onProgress(index + 1, messages.length);
   }
 
-  return processResults(parsed);
+  return parsed;
 }
 
-export async function disconnectGmail(): Promise<void> {
-  const token = await loadOAuthToken(gmailTokenKey);
+export async function scanGmailSubscriptions(
+  accessToken: string,
+  onProgress: (current: number, total: number) => void
+): Promise<ParsedSubscription[]> {
+  return processResults(await collectCandidates(accessToken, onProgress));
+}
+
+// Scans every connected inbox and merges + dedupes across all of them, so a
+// user with personal + work Gmail accounts gets a single combined result set.
+export async function scanAllGmailAccounts(
+  onProgress: (current: number, total: number) => void
+): Promise<ParsedSubscription[]> {
+  const accounts = await listConnectedGmailAccounts();
+  if (accounts.length === 0) {
+    return [];
+  }
+
+  const all: ParsedSubscription[] = [];
+  let scannedBefore = 0;
+  let runningTotal = 0;
+
+  for (const account of accounts) {
+    const candidates = await collectCandidates(account.token, (current, total) => {
+      // Report aggregate progress across all inboxes.
+      runningTotal = Math.max(runningTotal, scannedBefore + total);
+      onProgress(scannedBefore + current, runningTotal);
+    });
+    all.push(...candidates);
+    scannedBefore += candidates.length || 0;
+  }
+
+  return processResults(all);
+}
+
+export async function disconnectGmailAccount(address: string): Promise<void> {
+  const token = await getGmailAccountToken(address);
   try {
     if (token) {
       await fetch(`https://accounts.google.com/o/oauth2/revoke?token=${encodeURIComponent(token)}`);
     }
   } finally {
-    await deleteOAuthToken(gmailTokenKey);
+    await removeGmailAccount(address);
   }
-}
-
-export async function getStoredGmailToken(): Promise<string | null> {
-  return loadOAuthToken(gmailTokenKey);
 }
 
 export async function fetchGmailAddress(accessToken: string): Promise<string | null> {

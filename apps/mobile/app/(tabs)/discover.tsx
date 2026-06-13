@@ -11,10 +11,10 @@ import { useSubscriptionStore } from "../../src/data/subscription-store";
 import { parseCSV } from "../../src/discovery/csvParser";
 import {
   connectGmail,
-  disconnectGmail,
-  fetchGmailAddress,
-  getStoredGmailToken,
-  scanGmailSubscriptions,
+  disconnectGmailAccount,
+  listConnectedGmailAccounts,
+  scanAllGmailAccounts,
+  type GmailAccount,
   type ParsedSubscription
 } from "../../src/discovery/emailScanner";
 import { scheduleRenewalNotifications } from "../../src/notifications/notificationService";
@@ -59,8 +59,7 @@ export default function DiscoverScreen() {
   const { theme } = useSubRadarTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { addSubscription } = useSubscriptionStore();
-  const [gmailToken, setGmailToken]       = useState<string | null>(null);
-  const [gmailAddress, setGmailAddress]   = useState<string | null>(null);
+  const [accounts, setAccounts]           = useState<GmailAccount[]>([]);
   const [scanStatus, setScanStatus]       = useState<ScanStatus>("idle");
   const [scanProgress, setScanProgress]   = useState({ current: 0, total: 0 });
   const [results, setResults]             = useState<DetectedSubscription[]>([]);
@@ -86,13 +85,8 @@ export default function DiscoverScreen() {
 
   useEffect(() => {
     let mounted = true;
-    void getStoredGmailToken()
-      .then(async (storedToken) => {
-        if (!mounted || !storedToken) return;
-        setGmailToken(storedToken);
-        const address = await fetchGmailAddress(storedToken).catch(() => null);
-        if (mounted) setGmailAddress(address);
-      })
+    void listConnectedGmailAccounts()
+      .then((connected) => { if (mounted) setAccounts(connected); })
       .catch(() => undefined);
     return () => { mounted = false; };
   }, []);
@@ -108,10 +102,9 @@ export default function DiscoverScreen() {
     setError(null);
     setScanStatus("connecting");
     try {
-      const token = await connectGmail(request, response);
-      setGmailToken(token);
-      setGmailAddress(await fetchGmailAddress(token).catch(() => "Connected Gmail"));
-      await runGmailScan(token);
+      const account = await connectGmail(request, response);
+      setAccounts((prev) => prev.some((a) => a.address === account.address) ? prev : [...prev, account]);
+      await runGmailScan();
     } catch (connectError) {
       setError(getErrorMessage(connectError));
       setScanStatus("idle");
@@ -124,14 +117,13 @@ export default function DiscoverScreen() {
     await promptAsync();
   }
 
-  async function runGmailScan(token = gmailToken) {
-    if (!token) { setError("Connect Gmail before scanning."); return; }
+  async function runGmailScan() {
     scanCancelled.current = false;
     setScanStatus("scanning");
     setScanProgress({ current: 0, total: 0 });
     setError(null);
     try {
-      const found = await scanGmailSubscriptions(token, (current, total) => {
+      const found = await scanAllGmailAccounts((current, total) => {
         if (!scanCancelled.current) setScanProgress({ current, total });
       });
       if (!scanCancelled.current) setResults(toDetected(found, "Gmail"));
@@ -143,11 +135,10 @@ export default function DiscoverScreen() {
     }
   }
 
-  async function handleDisconnect() {
+  async function handleDisconnect(address: string) {
     setError(null);
-    await disconnectGmail().catch(() => undefined);
-    setGmailToken(null);
-    setGmailAddress(null);
+    await disconnectGmailAccount(address).catch(() => undefined);
+    setAccounts((prev) => prev.filter((a) => a.address !== address));
   }
 
   async function handleImportCSV() {
@@ -331,123 +322,21 @@ export default function DiscoverScreen() {
           </View>
         ) : null}
 
-        {/* ── Gmail scan card ── */}
+        {/* ── Bank import card (primary: catches everything that hits the card) ── */}
         <View style={styles.discoverCard}>
-          {/* Icon + title */}
-          <View style={styles.cardTop}>
-            <View style={[styles.cardIconWrap, styles.cardIconWrapMail]} accessible={false} importantForAccessibility="no-hide-descendants">
-              <Text style={[styles.cardIconText, { color: theme.primary }]}>✉</Text>
-            </View>
-            <View style={styles.cardTitleWrap}>
-              <Text style={styles.cardTitle}>Scan Gmail receipts</Text>
-              <Text style={styles.cardSub}>Finds subscriptions from billing emails</Text>
-            </View>
-          </View>
-
-          {/* Not connected */}
-          {!gmailToken ? (
-            <>
-              <View style={styles.privacyPoints}>
-                {[
-                  "Read-only access — we cannot send or delete emails",
-                  "Scanned on your device — nothing leaves your phone",
-                  "Revoke anytime from your Google account settings"
-                ].map((point) => (
-                  <View key={point} style={styles.privacyPoint}>
-                    <View style={styles.privacyDot} />
-                    <Text style={styles.privacyPointText}>{point}</Text>
-                  </View>
-                ))}
-              </View>
-
-              {isScanning ? (
-                <View style={styles.progressWrap}>
-                  <View style={styles.progressTrack}>
-                    <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-                  </View>
-                  <Text style={styles.progressText}>
-                    Scanning {scanProgress.current} of {scanProgress.total} emails...
-                  </Text>
-                  <Pressable accessibilityRole="button" onPress={cancelScan} style={styles.cancelScanBtn}>
-                    <Text style={styles.cancelScanText}>Cancel scan</Text>
-                  </Pressable>
-                </View>
-              ) : (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Connect Gmail"
-                  accessibilityState={{ disabled: !request || isBusy }}
-                  disabled={!request || isBusy}
-                  onPress={() => void handleConnectGmail()}
-                  style={[styles.connectGmailBtn, (!request || isBusy) && styles.dimmed]}
-                >
-                  {scanStatus === "connecting" ? <ActivityIndicator color={theme.onPrimary} size="small" /> : (
-                    <>
-                      <View style={styles.googleG} accessible={false} importantForAccessibility="no-hide-descendants">
-                        <Text style={styles.googleGText}>G</Text>
-                      </View>
-                      <Text style={styles.connectBtnText}>Connect Gmail</Text>
-                    </>
-                  )}
-                </Pressable>
-              )}
-            </>
-          ) : (
-            /* Connected */
-            <>
-              <View style={styles.connectedRow}>
-                <View style={styles.connectedDot} />
-                <Text style={styles.connectedAddr} numberOfLines={1}>
-                  Connected · {gmailAddress ?? "Gmail account"}
-                </Text>
-                <Pressable accessibilityRole="button" accessibilityLabel="Disconnect Gmail" hitSlop={8} onPress={() => void handleDisconnect()}>
-                  <Text style={styles.disconnectLink}>Disconnect</Text>
-                </Pressable>
-              </View>
-
-              {isScanning ? (
-                <View style={styles.progressWrap}>
-                  <View style={styles.progressTrack}>
-                    <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-                  </View>
-                  <Text style={styles.progressText}>
-                    Scanning {scanProgress.current} of {scanProgress.total} emails...
-                  </Text>
-                  <Pressable accessibilityRole="button" onPress={cancelScan} style={styles.cancelScanBtn}>
-                    <Text style={styles.cancelScanText}>Cancel scan</Text>
-                  </Pressable>
-                </View>
-              ) : (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: isBusy }}
-                  disabled={isBusy}
-                  onPress={() => void runGmailScan()}
-                  style={[styles.scanNowBtn, isBusy && styles.dimmed]}
-                >
-                  <Text style={styles.scanNowText}>Scan Now</Text>
-                </Pressable>
-              )}
-            </>
-          )}
-
-          {/* Bottom accent bar */}
-          <View style={styles.accentBar}>
-            <View style={[styles.accentHalf, { backgroundColor: theme.primary }]} />
-            <View style={[styles.accentHalf, { backgroundColor: withAlpha(theme.primary, 0.3) }]} />
-          </View>
-        </View>
-
-        {/* ── CSV import card ── */}
-        <View style={[styles.discoverCard, { marginTop: 8 }]}>
           {/* Icon + title */}
           <View style={styles.cardTop}>
             <View style={[styles.cardIconWrap, styles.cardIconWrapBank]} accessible={false} importantForAccessibility="no-hide-descendants">
               <Text style={[styles.cardIconText, { color: theme.success }]}>🏦</Text>
             </View>
             <View style={styles.cardTitleWrap}>
-              <Text style={styles.cardTitle}>Import bank statement</Text>
-              <Text style={styles.cardSub}>Find recurring charges in your transactions</Text>
+              <View style={styles.titleWithBadge}>
+                <Text style={styles.cardTitle}>Import bank statement</Text>
+                <View style={styles.recommendedBadge}>
+                  <Text style={styles.recommendedBadgeText}>MOST COMPLETE</Text>
+                </View>
+              </View>
+              <Text style={styles.cardSub}>Catches every recurring charge — even App Store & annual plans</Text>
             </View>
           </View>
 
@@ -500,13 +389,123 @@ export default function DiscoverScreen() {
           </View>
         </View>
 
+        {/* ── Gmail scan card (secondary: good for mainstream subs) ── */}
+        <View style={[styles.discoverCard, { marginTop: 8 }]}>
+          {/* Icon + title */}
+          <View style={styles.cardTop}>
+            <View style={[styles.cardIconWrap, styles.cardIconWrapMail]} accessible={false} importantForAccessibility="no-hide-descendants">
+              <Text style={[styles.cardIconText, { color: theme.primary }]}>✉</Text>
+            </View>
+            <View style={styles.cardTitleWrap}>
+              <Text style={styles.cardTitle}>Scan Gmail receipts</Text>
+              <Text style={styles.cardSub}>Add one or more inboxes — we scan the last 12 months</Text>
+            </View>
+          </View>
+
+          {accounts.length === 0 ? (
+            <>
+              <View style={styles.privacyPoints}>
+                {[
+                  "Read-only access — we cannot send or delete emails",
+                  "Scanned on your device — nothing leaves your phone",
+                  "Revoke anytime from your Google account settings"
+                ].map((point) => (
+                  <View key={point} style={styles.privacyPoint}>
+                    <View style={styles.privacyDot} />
+                    <Text style={styles.privacyPointText}>{point}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Connect Gmail"
+                accessibilityState={{ disabled: !request || isBusy }}
+                disabled={!request || isBusy}
+                onPress={() => void handleConnectGmail()}
+                style={[styles.connectGmailBtn, (!request || isBusy) && styles.dimmed]}
+              >
+                {scanStatus === "connecting" ? <ActivityIndicator color={theme.onPrimary} size="small" /> : (
+                  <>
+                    <View style={styles.googleG} accessible={false} importantForAccessibility="no-hide-descendants">
+                      <Text style={styles.googleGText}>G</Text>
+                    </View>
+                    <Text style={styles.connectBtnText}>Connect Gmail</Text>
+                  </>
+                )}
+              </Pressable>
+            </>
+          ) : (
+            <>
+              {/* Connected inboxes */}
+              {accounts.map((account) => (
+                <View key={account.address} style={styles.connectedRow}>
+                  <View style={styles.connectedDot} />
+                  <Text style={styles.connectedAddr} numberOfLines={1}>{account.address}</Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Disconnect ${account.address}`}
+                    hitSlop={8}
+                    onPress={() => void handleDisconnect(account.address)}
+                  >
+                    <Text style={styles.disconnectLink}>Disconnect</Text>
+                  </Pressable>
+                </View>
+              ))}
+
+              {/* Add another inbox */}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Add another Gmail inbox"
+                accessibilityState={{ disabled: !request || isBusy }}
+                disabled={!request || isBusy}
+                onPress={() => void handleConnectGmail()}
+                style={styles.addInboxBtn}
+              >
+                <Text style={[styles.addInboxText, (!request || isBusy) && styles.dimmed]}>＋ Add another inbox</Text>
+              </Pressable>
+
+              {isScanning ? (
+                <View style={styles.progressWrap}>
+                  <View style={styles.progressTrack}>
+                    <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+                  </View>
+                  <Text style={styles.progressText}>
+                    Scanning {scanProgress.current} of {scanProgress.total} emails...
+                  </Text>
+                  <Pressable accessibilityRole="button" onPress={cancelScan} style={styles.cancelScanBtn}>
+                    <Text style={styles.cancelScanText}>Cancel scan</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={accounts.length > 1 ? "Scan all inboxes" : "Scan inbox"}
+                  accessibilityState={{ disabled: isBusy }}
+                  disabled={isBusy}
+                  onPress={() => void runGmailScan()}
+                  style={[styles.scanNowBtn, isBusy && styles.dimmed]}
+                >
+                  <Text style={styles.scanNowText}>{accounts.length > 1 ? "Scan all inboxes" : "Scan Now"}</Text>
+                </Pressable>
+              )}
+            </>
+          )}
+
+          {/* Bottom accent bar */}
+          <View style={styles.accentBar}>
+            <View style={[styles.accentHalf, { backgroundColor: theme.primary }]} />
+            <View style={[styles.accentHalf, { backgroundColor: withAlpha(theme.primary, 0.3) }]} />
+          </View>
+        </View>
+
         {/* Skip link */}
         <Pressable accessibilityRole="button" onPress={() => router.replace("/dashboard")} style={styles.textLink}>
           <Text style={styles.textLinkLabel}>Skip for now</Text>
         </Pressable>
 
         {/* Empty state (below cards when nothing scanned) */}
-        {!isBusy && !gmailToken ? (
+        {!isBusy && accounts.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyIconWrap} accessible={false} importantForAccessibility="no-hide-descendants">
               <Text style={styles.emptyIconText}>🔍</Text>
@@ -628,6 +627,11 @@ function createStyles(theme: ThemeTokens) {
     cardTitleWrap:{ flex: 1 },
     cardTitle:    { fontSize: 17, fontWeight: "600", color: theme.text, letterSpacing: -0.3 },
     cardSub:      { fontSize: 13, color: theme.mutedText, marginTop: 3 },
+    titleWithBadge: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
+    recommendedBadge: { backgroundColor: theme.successSurface, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+    recommendedBadgeText: { fontSize: 9, fontWeight: "700", letterSpacing: 0.4, color: theme.success },
+    addInboxBtn:  { paddingHorizontal: 20, paddingVertical: 10 },
+    addInboxText: { fontSize: 14, fontWeight: "600", color: theme.primary },
 
     // Privacy points
     privacyPoints:   { paddingHorizontal: 20, paddingBottom: 16, gap: 10 },
