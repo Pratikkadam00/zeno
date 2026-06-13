@@ -346,3 +346,6 @@
 .appUndo:hover { background: rgba(255, 255, 255, 0.06); }
 
 .appDays[data-off="true"] { color: var(--z-emerald) !important; background: rgba(52, 211, 153, 0.14) !important; }
+
+/* cursor-tilt wrapper around the phone (3D parallax on hover) */
+.phoneTilt { transform-style: preserve-3d; will-change: transform; }

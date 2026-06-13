@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { useRef, useState } from "react";
+import { AnimatePresence, motion, useMotionValue, useSpring } from "motion/react";
 import { WaitlistForm } from "./WaitlistForm";
 import styles from "../../app/home.module.css";
 
@@ -25,6 +25,24 @@ export function Hero() {
   const spend = Math.max(0, BASE_SPEND - saved);
   const netflixCancelled = cancelled.includes("Netflix");
   const [whole, cents] = spend.toFixed(2).split(".");
+
+  // Cursor-driven 3D tilt + lift on the floating phone.
+  const tiltRef = useRef<HTMLDivElement>(null);
+  const rx = useMotionValue(0);
+  const ry = useMotionValue(0);
+  const sc = useMotionValue(1);
+  const srx = useSpring(rx, { stiffness: 140, damping: 14, mass: 0.4 });
+  const sry = useSpring(ry, { stiffness: 140, damping: 14, mass: 0.4 });
+  const ssc = useSpring(sc, { stiffness: 200, damping: 18 });
+  function onTilt(e: React.MouseEvent) {
+    const el = tiltRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    ry.set(((e.clientX - r.left) / r.width - 0.5) * 20);
+    rx.set(-((e.clientY - r.top) / r.height - 0.5) * 20);
+  }
+  function onEnter() { sc.set(1.04); }
+  function onLeave() { rx.set(0); ry.set(0); sc.set(1); }
 
   return (
     <header className={styles.hero}>
@@ -81,6 +99,14 @@ export function Hero() {
             animate={{ opacity: 1, y: 0, rotateY: 0 }}
             transition={{ duration: 1, delay: 0.3, ease }}
           >
+            <motion.div
+              ref={tiltRef}
+              className={styles.phoneTilt}
+              style={{ rotateX: srx, rotateY: sry, scale: ssc }}
+              onMouseMove={onTilt}
+              onMouseEnter={onEnter}
+              onMouseLeave={onLeave}
+            >
             <div className={styles.phone}>
               <div className={styles.phoneNotch} />
               <div className={styles.phoneScreen}>
@@ -129,6 +155,7 @@ export function Hero() {
                 })}
               </div>
             </div>
+            </motion.div>
             <span className={styles.phoneGlow} />
           </motion.div>
         </div>
