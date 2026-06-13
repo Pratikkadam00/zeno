@@ -1,21 +1,46 @@
 import { Tabs } from "expo-router";
-import { CalendarDays, House, LineChart } from "lucide-react-native";
-import { colors } from "../../src/theme/colors";
+import { CalendarDays, Compass, House, LineChart } from "lucide-react-native";
+import type { ComponentType } from "react";
+import { View } from "react-native";
+import { useSubRadarTheme } from "../../src/theme/theme-provider";
+import { withAlpha } from "../../src/utils/subscription-ui";
+
+type IconProps = { color: string; size: number; strokeWidth: number };
+
+function TabIcon({ Icon, color, focused, tint }: { Icon: ComponentType<IconProps>; color: string; focused: boolean; tint: string }) {
+  return (
+    <View
+      style={{
+        width: 48,
+        height: 32,
+        borderRadius: 16,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: focused ? withAlpha(tint, 0.14) : "transparent"
+      }}
+    >
+      <Icon color={color} size={focused ? 21 : 19} strokeWidth={focused ? 2.6 : 2.2} />
+    </View>
+  );
+}
 
 export default function TabsLayout() {
+  const { theme } = useSubRadarTheme();
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.blue,
-        tabBarInactiveTintColor: "rgba(255,255,255,0.3)",
-        tabBarLabelStyle: { fontSize: 10, fontWeight: "500" },
+        animation: "fade",
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.quietText,
+        tabBarLabelStyle: { fontSize: 10, fontWeight: "600", marginTop: 2 },
         tabBarStyle: {
-          borderTopColor: colors.separator,
-          backgroundColor: colors.bg,
+          borderTopColor: theme.border,
+          backgroundColor: theme.card,
           borderTopWidth: 0.5,
           height: 86,
           paddingBottom: 24,
-          paddingTop: 8
+          paddingTop: 10
         },
         headerShown: false
       }}
@@ -24,21 +49,28 @@ export default function TabsLayout() {
         name="dashboard"
         options={{
           title: "Home",
-          tabBarIcon: ({ color }) => <House color={color} size={19} strokeWidth={2.4} />
+          tabBarIcon: ({ color, focused }) => <TabIcon Icon={House} color={String(color)} focused={focused} tint={theme.primary} />
         }}
       />
       <Tabs.Screen
         name="calendar"
         options={{
           title: "Calendar",
-          tabBarIcon: ({ color }) => <CalendarDays color={color} size={19} strokeWidth={2.4} />
+          tabBarIcon: ({ color, focused }) => <TabIcon Icon={CalendarDays} color={String(color)} focused={focused} tint={theme.primary} />
+        }}
+      />
+      <Tabs.Screen
+        name="discover"
+        options={{
+          title: "Discover",
+          tabBarIcon: ({ color, focused }) => <TabIcon Icon={Compass} color={String(color)} focused={focused} tint={theme.primary} />
         }}
       />
       <Tabs.Screen
         name="analytics"
         options={{
           title: "Analytics",
-          tabBarIcon: ({ color }) => <LineChart color={color} size={19} strokeWidth={2.4} />
+          tabBarIcon: ({ color, focused }) => <TabIcon Icon={LineChart} color={String(color)} focused={focused} tint={theme.primary} />
         }}
       />
     </Tabs>
