@@ -86,7 +86,6 @@ export default function HeroCanvas() {
       gl={{ antialias: true, alpha: true }}
       style={{ position: "absolute", inset: 0 }}
     >
-      <color attach="fog" args={["#07080c"]} />
       <fog attach="fog" args={["#07080c", 6, 13]} />
       <ambientLight intensity={0.4} />
       <pointLight position={[4, 3, 4]} intensity={120} color="#5b8cff" />

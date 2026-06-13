@@ -13,10 +13,10 @@ export function Reveal({
 }: { children: ReactNode; delay?: number; y?: number; className?: string | undefined; as?: "div" | "span" | "li" }) {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-12% 0px" });
-  const MotionTag = motion[as] as typeof motion.div;
+  const MotionTag = as === "span" ? motion.span : as === "li" ? motion.li : motion.div;
   return (
     <MotionTag
-      ref={ref}
+      ref={ref as never}
       className={className}
       initial={{ opacity: 0, y }}
       animate={inView ? { opacity: 1, y: 0 } : {}}

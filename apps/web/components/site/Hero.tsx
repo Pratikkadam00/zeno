@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { motion } from "motion/react";
 import { WaitlistForm } from "./WaitlistForm";
 import { SplitWords } from "./primitives";
+import { SafeMount } from "./SafeMount";
 import styles from "../../app/home.module.css";
 
 // WebGL scene is client-only; render a CSS gradient until it mounts.
@@ -15,7 +16,11 @@ const HeroCanvas = dynamic(() => import("./HeroCanvas"), {
 export function Hero() {
   return (
     <header className={styles.hero}>
-      <div className={styles.heroCanvas}><HeroCanvas /></div>
+      <div className={styles.heroCanvas}>
+        <SafeMount fallback={<div className={styles.heroCanvasFallback} />}>
+          <HeroCanvas />
+        </SafeMount>
+      </div>
       <div className={styles.heroGlow} />
       <div className={styles.heroInner}>
         <div className={styles.heroContent}>
