@@ -39,7 +39,7 @@ export function Surface({ children, style }: ViewProps) {
 export function PrimaryButton({ children, style, ...props }: Omit<PressableProps, "children" | "style"> & { children: string; style?: StyleProp<ViewStyle> }) {
   const { theme } = useSubRadarTheme();
   return (
-    <Pressable {...props} style={({ pressed }) => [styles.button, { backgroundColor: theme.primary, borderRadius: theme.radius, opacity: pressed ? 0.86 : 1 }, style]}>
+    <Pressable accessibilityRole="button" {...props} style={({ pressed }) => [styles.button, { backgroundColor: theme.primary, borderRadius: theme.radius, opacity: pressed ? 0.86 : 1 }, style]}>
       <Text style={[styles.buttonText, { color: theme.onPrimary, fontWeight: theme.heavyText ? "900" : "800" }]}>{children}</Text>
     </Pressable>
   );
@@ -49,7 +49,7 @@ export function TextLink({ href, children }: { href: string; children: string })
   const { theme } = useSubRadarTheme();
   return (
     <Link href={href as never} asChild>
-      <Pressable>
+      <Pressable accessibilityRole="link">
         <Text style={[styles.link, { color: theme.primary }]}>{children}</Text>
       </Pressable>
     </Link>
@@ -67,7 +67,7 @@ export function ThemeToggle() {
       duration: 300,
       useNativeDriver: true
     }).start();
-  }, [fade, themeId]);
+  }, [themeId]);
 
   return (
     <Animated.View

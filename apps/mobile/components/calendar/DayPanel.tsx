@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Animated, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { formatMoney } from "../../src/notifications/renewal-reminders";
+import { formatMoney } from "../../src/utils/format";
 import { useZenoTheme } from "../../src/theme/theme-provider";
 import type { Subscription } from "@subradar/shared";
 

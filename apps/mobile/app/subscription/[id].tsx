@@ -1,62 +1,22 @@
 import { findServiceBySlug, getServiceBySlug, toSubscriptionCategory, type ServiceCategory } from "@subradar/service-catalog";
-import type { BillingCycle, SubscriptionCategory, SubscriptionStatus } from "@subradar/shared";
+import type { BillingCycle } from "@subradar/shared";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { ActionSheetIOS, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useMemo, useState } from "react";
 import { useSubscriptionStore, type SubscriptionNotificationSettings } from "../../src/data/subscription-store";
 import { cancelNotificationsForSubscription, scheduleRenewalNotificationsWithPreferences } from "../../src/notifications/notificationService";
-import { formatMoney } from "../../src/notifications/renewal-reminders";
-import { colors } from "../../src/theme/colors";
+import { formatMoney } from "../../src/utils/format";
+import { formatMonthYear, formatShortDate, getAvatarStyle, getDaysRemaining } from "../../src/utils/subscription-ui";
+import { useSubRadarTheme } from "../../src/theme/theme-provider";
+import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
 import { spacing } from "../../src/theme/spacing";
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-// ─── Avatar colors by category ───────────────────────────────────────────────
-
-function getAvatarStyle(category: SubscriptionCategory): { bg: string; text: string } {
-  switch (category) {
-    case "entertainment": return { bg: "rgba(255,69,58,0.15)",   text: "#FF453A" };
-    case "ai_tools":      return { bg: "rgba(191,90,242,0.15)",  text: "#BF5AF2" };
-    case "productivity":  return { bg: "rgba(10,132,255,0.15)",  text: "#0A84FF" };
-    case "health":        return { bg: "rgba(255,159,10,0.15)",  text: "#FF9F0A" };
-    case "finance":       return { bg: "rgba(90,200,245,0.15)",  text: "#5AC8F5" };
-    case "education":     return { bg: "rgba(255,214,10,0.15)",  text: "#FFD60A" };
-    case "developer_tools": return { bg: "rgba(191,90,242,0.15)", text: "#BF5AF2" };
-    case "family":        return { bg: "rgba(48,209,88,0.15)",   text: "#30D158" };
-    default:              return { bg: "rgba(255,255,255,0.08)", text: "rgba(255,255,255,0.4)" };
-  }
-}
 
 // ─── Pure helpers (logic unchanged) ──────────────────────────────────────────
 
 function getInitial(name: string) {
   return name.trim().charAt(0).toUpperCase() || "?";
-}
-
-function getDaysRemaining(dateValue?: string | null): number | null {
-  if (!dateValue) return null;
-  const target = new Date(dateValue);
-  if (Number.isNaN(target.getTime())) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  target.setHours(0, 0, 0, 0);
-  return Math.max(0, Math.ceil((target.getTime() - today.getTime()) / DAY_MS));
-}
-
-function formatShortDate(dateValue?: string | null): string {
-  if (!dateValue) return "No date";
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return "No date";
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
-function formatMonthYear(dateValue?: string | null): string {
-  if (!dateValue) return "—";
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString(undefined, { month: "short", year: "numeric" });
 }
 
 function getBillingLabel(cycle: BillingCycle): string {
@@ -99,6 +59,8 @@ const billingCycleOptions: BillingCycle[] = ["weekly", "monthly", "quarterly", "
 
 export default function SubscriptionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { theme } = useSubRadarTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const {
     subscriptions,
     notificationSettings,
@@ -130,14 +92,14 @@ export default function SubscriptionDetailScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <SafeAreaView style={styles.safeArea} edges={["top"]}>
           <View style={styles.navBar}>
-            <Pressable style={styles.backBtn} onPress={() => router.back()}>
-              <Text style={styles.backChevron}>‹</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.backBtn} onPress={() => router.back()}>
+              <Text style={styles.backChevron} accessible={false}>‹</Text>
               <Text style={styles.backText}>Back</Text>
             </Pressable>
           </View>
           <View style={styles.notFoundWrap}>
             <Text style={styles.notFoundText}>Subscription not found</Text>
-            <Pressable style={styles.secondaryBtn} onPress={() => router.back()}>
+            <Pressable accessibilityRole="button" style={styles.secondaryBtn} onPress={() => router.back()}>
               <Text style={styles.secondaryBtnText}>Go back</Text>
             </Pressable>
           </View>
@@ -148,7 +110,7 @@ export default function SubscriptionDetailScreen() {
 
   const sub = subscription;
   const service = sub.serviceSlug ? findServiceBySlug(sub.serviceSlug) : undefined;
-  const avatar = getAvatarStyle(sub.category);
+  const avatar = getAvatarStyle(sub.category, theme);
   const daysRemaining = getDaysRemaining(sub.nextRenewalDate);
   const settings = notificationSettings[sub.id] ?? { sevenDay: true, threeDay: true, dayOf: true };
   const chargeHistory = createMockChargeHistory(sub.price.amountMinor, sub.nextRenewalDate);
@@ -157,7 +119,7 @@ export default function SubscriptionDetailScreen() {
     ? annualMinor - service.defaultAnnualPrice.amountMinor
     : null;
 
-  const urgencyColor = daysRemaining !== null && daysRemaining <= 3 ? colors.red : colors.orange;
+  const urgencyColor = daysRemaining !== null && daysRemaining <= 3 ? theme.danger : theme.warning;
   const [amountWhole, amountDecimal] = (sub.price.amountMinor / 100).toFixed(2).split(".");
 
   // ── Handlers (logic unchanged) ──
@@ -229,21 +191,26 @@ export default function SubscriptionDetailScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
-          style={{ backgroundColor: colors.bg }}
+          style={{ backgroundColor: theme.background }}
         >
           {/* Nav bar */}
           <View style={styles.navBar}>
-            <Pressable style={styles.backBtn} onPress={() => isEditing ? setIsEditing(false) : router.back()}>
-              <Text style={styles.backChevron}>‹</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={isEditing ? "Stop editing" : "Go back"}
+              style={styles.backBtn}
+              onPress={() => isEditing ? setIsEditing(false) : router.back()}
+            >
+              <Text style={styles.backChevron} accessible={false}>‹</Text>
               <Text style={styles.backText}>Back</Text>
             </Pressable>
             <Text style={styles.navTitle} numberOfLines={1}>{isEditing ? "Edit subscription" : sub.name}</Text>
             {isEditing ? (
-              <Pressable onPress={saveEdit}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Save changes" hitSlop={8} onPress={saveEdit}>
                 <Text style={styles.saveText}>Save</Text>
               </Pressable>
             ) : (
-              <Pressable onPress={openMenu}>
+              <Pressable accessibilityRole="button" accessibilityLabel="More options" hitSlop={8} onPress={openMenu}>
                 <Text style={styles.dotsText}>···</Text>
               </Pressable>
             )}
@@ -258,13 +225,17 @@ export default function SubscriptionDetailScreen() {
                   value={query}
                   onChangeText={setQuery}
                   placeholder="Try Midjourney, Adobe, Netflix"
-                  placeholderTextColor={colors.label4}
+                  placeholderTextColor={theme.quietText}
                   style={styles.editInput}
-                  selectionColor={colors.blue}
+                  selectionColor={theme.primary}
+                  accessibilityLabel="Search services"
                 />
                 {matches.slice(0, 4).map((opt) => (
                   <Pressable
                     key={opt.slug}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: selectedSlug === opt.slug }}
+                    accessibilityLabel={opt.name}
                     onPress={() => {
                       setSelectedSlug(opt.slug);
                       setQuery(opt.name);
@@ -285,7 +256,8 @@ export default function SubscriptionDetailScreen() {
                   onChangeText={setAmount}
                   keyboardType="decimal-pad"
                   style={styles.editInput}
-                  selectionColor={colors.blue}
+                  selectionColor={theme.primary}
+                  accessibilityLabel="Price"
                 />
               </View>
 
@@ -295,6 +267,9 @@ export default function SubscriptionDetailScreen() {
                   {billingCycleOptions.map((option) => (
                     <Pressable
                       key={option}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: billingCycle === option }}
+                      accessibilityLabel={`Billing cycle ${option}`}
                       onPress={() => setBillingCycle(option)}
                       style={[styles.cyclePill, billingCycle === option && styles.cyclePillActive]}
                     >
@@ -310,13 +285,14 @@ export default function SubscriptionDetailScreen() {
                   value={renewalDate}
                   onChangeText={setRenewalDate}
                   placeholder="YYYY-MM-DD"
-                  placeholderTextColor={colors.label4}
+                  placeholderTextColor={theme.quietText}
                   style={styles.editInput}
-                  selectionColor={colors.blue}
+                  selectionColor={theme.primary}
+                  accessibilityLabel="Next renewal date"
                 />
               </View>
 
-              <Pressable style={styles.primaryBtn} onPress={saveEdit}>
+              <Pressable accessibilityRole="button" style={styles.primaryBtn} onPress={saveEdit}>
                 <Text style={styles.primaryBtnText}>Save changes</Text>
               </Pressable>
             </View>
@@ -325,7 +301,7 @@ export default function SubscriptionDetailScreen() {
             <>
               {/* Hero */}
               <View style={styles.hero}>
-                <View style={[styles.heroAvatar, { backgroundColor: avatar.bg }]}>
+                <View style={[styles.heroAvatar, { backgroundColor: avatar.bg }]} accessible={false} importantForAccessibility="no-hide-descendants">
                   <Text style={[styles.heroAvatarText, { color: avatar.text }]}>{getInitial(sub.name)}</Text>
                 </View>
 
@@ -360,9 +336,13 @@ export default function SubscriptionDetailScreen() {
                 <View style={styles.urgencyCard}>
                   <View style={[styles.urgencyTopBar, { backgroundColor: urgencyColor }]} />
                   <View style={styles.urgencyBody}>
-                    <View style={[styles.urgencyIconWrap, {
-                      backgroundColor: daysRemaining <= 3 ? "rgba(255,69,58,0.15)" : "rgba(255,159,10,0.15)"
-                    }]}>
+                    <View
+                      style={[styles.urgencyIconWrap, {
+                        backgroundColor: daysRemaining <= 3 ? theme.dangerSurface : theme.warningSurface
+                      }]}
+                      accessible={false}
+                      importantForAccessibility="no-hide-descendants"
+                    >
                       <Text style={styles.urgencyIconText}>
                         {daysRemaining <= 3 ? "⚠" : "🔔"}
                       </Text>
@@ -376,6 +356,8 @@ export default function SubscriptionDetailScreen() {
                       </Text>
                     </View>
                     <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Cancel ${sub.name}`}
                       style={styles.urgencyCancelBtn}
                       onPress={() => router.push(`/subscription/cancel/${sub.id}` as never)}
                     >
@@ -390,10 +372,10 @@ export default function SubscriptionDetailScreen() {
                 <View style={styles.statCard}>
                   <Text style={styles.statLabel}>NEXT CHARGE</Text>
                   <Text style={[styles.statValue, {
-                    color: daysRemaining === null ? colors.label
-                      : daysRemaining <= 3 ? colors.red
-                      : daysRemaining <= 7 ? colors.orange
-                      : colors.label
+                    color: daysRemaining === null ? theme.text
+                      : daysRemaining <= 3 ? theme.danger
+                      : daysRemaining <= 7 ? theme.warning
+                      : theme.text
                   }]}>
                     {daysRemaining === null ? "—" : daysRemaining === 0 ? "TODAY" : `${daysRemaining} days`}
                   </Text>
@@ -402,7 +384,7 @@ export default function SubscriptionDetailScreen() {
 
                 <View style={styles.statCard}>
                   <Text style={styles.statLabel}>PER YEAR</Text>
-                  <Text style={[styles.statValue, { color: colors.label }]}>
+                  <Text style={[styles.statValue, { color: theme.text }]}>
                     {formatMoney(annualMinor, sub.price.currency)}
                   </Text>
                   <Text style={styles.statSub}>at current rate</Text>
@@ -412,14 +394,14 @@ export default function SubscriptionDetailScreen() {
                   <Text style={styles.statLabel}>SAVE IF ANNUAL</Text>
                   {annualSaving !== null && annualSaving > 0 ? (
                     <>
-                      <Text style={[styles.statValue, { color: colors.green }]}>
+                      <Text style={[styles.statValue, { color: theme.success }]}>
                         {formatMoney(annualSaving, sub.price.currency)}
                       </Text>
                       <Text style={styles.statSub}>switch to annual</Text>
                     </>
                   ) : (
                     <>
-                      <Text style={[styles.statValue, { color: colors.label4 }]}>—</Text>
+                      <Text style={[styles.statValue, { color: theme.quietText }]}>—</Text>
                       <Text style={styles.statSub}>already annual</Text>
                     </>
                   )}
@@ -464,7 +446,7 @@ export default function SubscriptionDetailScreen() {
                 ].map((row, i, arr) => (
                   <View key={row.key}>
                     <View style={styles.notifRow}>
-                      <View style={styles.notifIconWrap}>
+                      <View style={styles.notifIconWrap} accessible={false} importantForAccessibility="no-hide-descendants">
                         <Text style={styles.notifIcon}>{row.value ? "🔔" : "🔕"}</Text>
                       </View>
                       <View style={styles.notifTextWrap}>
@@ -472,10 +454,12 @@ export default function SubscriptionDetailScreen() {
                         <Text style={styles.notifSub}>{row.sub2}</Text>
                       </View>
                       <Switch
+                        accessibilityRole="switch"
+                        accessibilityLabel={row.label}
                         value={row.value}
                         onValueChange={(val) => void toggleNotification(row.key, val)}
-                        trackColor={{ false: colors.surfaceHigher, true: colors.green }}
-                        thumbColor="#fff"
+                        trackColor={{ false: theme.surfaceAlt, true: theme.success }}
+                        thumbColor={theme.onPrimary}
                       />
                     </View>
                     {i < arr.length - 1 ? <View style={styles.fullSep} /> : null}
@@ -486,6 +470,8 @@ export default function SubscriptionDetailScreen() {
               {/* Notes */}
               <Text style={styles.sectionLabel}>NOTES</Text>
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={sub.notes ? "Edit note" : "Add a note"}
                 style={styles.noteCard}
                 onPress={() => { setDraftNote(sub.notes ?? ""); setNotesModal(true); }}
               >
@@ -504,6 +490,7 @@ export default function SubscriptionDetailScreen() {
           <View style={styles.bottomBar}>
             {sub.status === "active" ? (
               <Pressable
+                accessibilityRole="button"
                 style={styles.dangerBtn}
                 onPress={() => router.push(`/subscription/cancel/${sub.id}` as never)}
               >
@@ -524,18 +511,18 @@ export default function SubscriptionDetailScreen() {
 
       {/* Android action menu */}
       <Modal transparent visible={menuVisible} animationType="fade" onRequestClose={() => setMenuVisible(false)}>
-        <Pressable style={styles.menuBackdrop} onPress={() => setMenuVisible(false)}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Close menu" style={styles.menuBackdrop} onPress={() => setMenuVisible(false)}>
           <View style={styles.menuCard}>
-            <Pressable style={styles.menuItem} onPress={() => { setMenuVisible(false); setIsEditing(true); }}>
+            <Pressable accessibilityRole="button" style={styles.menuItem} onPress={() => { setMenuVisible(false); setIsEditing(true); }}>
               <Text style={styles.menuItemText}>Edit</Text>
             </Pressable>
             <View style={styles.menuSep} />
-            <Pressable style={styles.menuItem} onPress={() => { pauseSubscription(sub.id); setMenuVisible(false); }}>
+            <Pressable accessibilityRole="button" style={styles.menuItem} onPress={() => { pauseSubscription(sub.id); setMenuVisible(false); }}>
               <Text style={styles.menuItemText}>Pause subscription</Text>
             </Pressable>
             <View style={styles.menuSep} />
-            <Pressable style={styles.menuItem} onPress={handleDelete}>
-              <Text style={[styles.menuItemText, { color: colors.red }]}>Delete</Text>
+            <Pressable accessibilityRole="button" style={styles.menuItem} onPress={handleDelete}>
+              <Text style={[styles.menuItemText, { color: theme.danger }]}>Delete</Text>
             </Pressable>
           </View>
         </Pressable>
@@ -551,15 +538,16 @@ export default function SubscriptionDetailScreen() {
               onChangeText={setDraftNote}
               multiline
               placeholder="Add renewal details, cancellation context, or why you keep it."
-              placeholderTextColor={colors.label4}
+              placeholderTextColor={theme.quietText}
               style={styles.notesInput}
-              selectionColor={colors.blue}
+              selectionColor={theme.primary}
+              accessibilityLabel="Note"
             />
             <View style={styles.notesActions}>
-              <Pressable style={styles.secondaryBtn} onPress={() => setNotesModal(false)}>
+              <Pressable accessibilityRole="button" style={styles.secondaryBtn} onPress={() => setNotesModal(false)}>
                 <Text style={styles.secondaryBtnText}>Cancel</Text>
               </Pressable>
-              <Pressable style={styles.primaryBtn} onPress={saveNote}>
+              <Pressable accessibilityRole="button" style={styles.primaryBtn} onPress={saveNote}>
                 <Text style={styles.primaryBtnText}>Save</Text>
               </Pressable>
             </View>
@@ -572,150 +560,152 @@ export default function SubscriptionDetailScreen() {
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.bg },
-  scrollContent: { paddingBottom: 120, backgroundColor: colors.bg },
+function createStyles(theme: ThemeTokens) {
+  return StyleSheet.create({
+    safeArea: { flex: 1, backgroundColor: theme.background },
+    scrollContent: { paddingBottom: 120, backgroundColor: theme.background },
 
-  // Nav bar
-  navBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: spacing.screenH,
-    paddingTop: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: colors.separator
-  },
-  backBtn: { flexDirection: "row", alignItems: "center", gap: 4, minWidth: 60 },
-  backChevron: { color: colors.blue, fontSize: 22, lineHeight: 22 },
-  backText: { color: colors.blue, fontSize: 17 },
-  navTitle: {
-    ...typography.headline,
-    color: colors.label,
-    position: "absolute",
-    left: 60, right: 60,
-    textAlign: "center"
-  },
-  saveText: { fontSize: 17, fontWeight: "600", color: colors.blue, textAlign: "right", minWidth: 60 },
-  dotsText: { fontSize: 22, color: colors.blue, letterSpacing: 2, textAlign: "right", minWidth: 60 },
+    // Nav bar
+    navBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: spacing.screenH,
+      paddingTop: 16,
+      paddingBottom: 12,
+      borderBottomWidth: 0.5,
+      borderBottomColor: theme.border
+    },
+    backBtn: { flexDirection: "row", alignItems: "center", gap: 4, minWidth: 60 },
+    backChevron: { color: theme.primary, fontSize: 22, lineHeight: 22 },
+    backText: { color: theme.primary, fontSize: 17 },
+    navTitle: {
+      ...typography.headline,
+      color: theme.text,
+      position: "absolute",
+      left: 60, right: 60,
+      textAlign: "center"
+    },
+    saveText: { fontSize: 17, fontWeight: "600", color: theme.primary, textAlign: "right", minWidth: 60 },
+    dotsText: { fontSize: 22, color: theme.primary, letterSpacing: 2, textAlign: "right", minWidth: 60 },
 
-  // Not found
-  notFoundWrap: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
-  notFoundText: { ...typography.title3, color: colors.label, marginBottom: 16 },
+    // Not found
+    notFoundWrap: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
+    notFoundText: { ...typography.title3, color: theme.text, marginBottom: 16 },
 
-  // Hero
-  hero: { alignItems: "center", paddingTop: 28, paddingBottom: 28, paddingHorizontal: spacing.screenH },
-  heroAvatar: { width: 72, height: 72, borderRadius: 18, alignItems: "center", justifyContent: "center", marginBottom: 16 },
-  heroAvatarText: { fontSize: 28, fontWeight: "800" },
-  heroName: { ...typography.title2, color: colors.label, letterSpacing: -0.5, textAlign: "center", marginBottom: 8 },
+    // Hero
+    hero: { alignItems: "center", paddingTop: 28, paddingBottom: 28, paddingHorizontal: spacing.screenH },
+    heroAvatar: { width: 72, height: 72, borderRadius: 18, alignItems: "center", justifyContent: "center", marginBottom: 16 },
+    heroAvatarText: { fontSize: 28, fontWeight: "800" },
+    heroName: { ...typography.title2, color: theme.text, letterSpacing: -0.5, textAlign: "center", marginBottom: 8 },
 
-  chipRow: { flexDirection: "row", gap: 8, justifyContent: "center", marginBottom: 24 },
-  categoryChip: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, backgroundColor: colors.fillSecondary },
-  categoryChipText: { ...typography.caption1, fontWeight: "500", color: colors.label3 },
-  dangerChip: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, backgroundColor: "rgba(255,69,58,0.12)" },
-  dangerChipText: { ...typography.caption1, fontWeight: "600", color: colors.red },
-  trialChip: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, backgroundColor: "rgba(255,214,10,0.12)" },
-  trialChipText: { ...typography.caption1, fontWeight: "600", color: colors.yellow },
+    chipRow: { flexDirection: "row", gap: 8, justifyContent: "center", marginBottom: 24 },
+    categoryChip: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, backgroundColor: theme.surfaceAlt },
+    categoryChipText: { ...typography.caption1, fontWeight: "500", color: theme.mutedText },
+    dangerChip: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, backgroundColor: theme.dangerSurface },
+    dangerChipText: { ...typography.caption1, fontWeight: "600", color: theme.danger },
+    trialChip: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, backgroundColor: theme.warningSurface },
+    trialChipText: { ...typography.caption1, fontWeight: "600", color: theme.warning },
 
-  amountRow: { flexDirection: "row", alignItems: "baseline", gap: 2, justifyContent: "center" },
-  amountCurrency: { fontSize: 22, fontWeight: "300", color: colors.label3, marginTop: 8 },
-  amountWhole: { fontSize: 44, fontWeight: "700", color: colors.label, letterSpacing: -2 },
-  amountDecimal: { fontSize: 22, fontWeight: "300", color: colors.label3 },
-  amountPeriod: { ...typography.footnote, color: colors.label3, marginTop: 4, textAlign: "center" },
+    amountRow: { flexDirection: "row", alignItems: "baseline", gap: 2, justifyContent: "center" },
+    amountCurrency: { fontSize: 22, fontWeight: "300", color: theme.mutedText, marginTop: 8 },
+    amountWhole: { fontSize: 44, fontWeight: "700", color: theme.text, letterSpacing: -2 },
+    amountDecimal: { fontSize: 22, fontWeight: "300", color: theme.mutedText },
+    amountPeriod: { ...typography.footnote, color: theme.mutedText, marginTop: 4, textAlign: "center" },
 
-  // Urgency banner
-  urgencyCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: colors.surface, borderRadius: 16, overflow: "hidden" },
-  urgencyTopBar: { height: 3 },
-  urgencyBody: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
-  urgencyIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  urgencyIconText: { fontSize: 18 },
-  urgencyTextWrap: { flex: 1 },
-  urgencyTitle: { ...typography.subheadline, color: colors.label },
-  urgencySub: { ...typography.caption1, color: colors.label3, marginTop: 2 },
-  urgencyCancelBtn: { backgroundColor: colors.red, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
-  urgencyCancelText: { fontSize: 12, fontWeight: "600", color: "#fff" },
+    // Urgency banner
+    urgencyCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: theme.card, borderRadius: 16, overflow: "hidden" },
+    urgencyTopBar: { height: 3 },
+    urgencyBody: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
+    urgencyIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+    urgencyIconText: { fontSize: 18 },
+    urgencyTextWrap: { flex: 1 },
+    urgencyTitle: { ...typography.subheadline, color: theme.text },
+    urgencySub: { ...typography.caption1, color: theme.mutedText, marginTop: 2 },
+    urgencyCancelBtn: { backgroundColor: theme.danger, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
+    urgencyCancelText: { fontSize: 12, fontWeight: "600", color: theme.onPrimary },
 
-  // Stats
-  statsRow: { flexDirection: "row", gap: 8, marginHorizontal: 16, marginBottom: 8 },
-  statCard: { flex: 1, backgroundColor: colors.surface, borderRadius: 14, padding: 14 },
-  statLabel: { ...typography.sectionHeader, color: colors.label3, marginBottom: 6 },
-  statValue: { fontSize: 20, fontWeight: "700", letterSpacing: -0.5 },
-  statSub: { ...typography.caption1, color: colors.label3, marginTop: 3 },
+    // Stats
+    statsRow: { flexDirection: "row", gap: 8, marginHorizontal: 16, marginBottom: 8 },
+    statCard: { flex: 1, backgroundColor: theme.card, borderRadius: 14, padding: 14 },
+    statLabel: { ...typography.sectionHeader, color: theme.mutedText, marginBottom: 6 },
+    statValue: { fontSize: 20, fontWeight: "700", letterSpacing: -0.5 },
+    statSub: { ...typography.caption1, color: theme.mutedText, marginTop: 3 },
 
-  // Section label + grouped card
-  sectionLabel: { ...typography.sectionHeader, color: colors.label3, paddingHorizontal: spacing.screenH, paddingBottom: 8, marginTop: 20 },
-  groupCard: { marginHorizontal: 16, backgroundColor: colors.surface, borderRadius: spacing.groupRadius, overflow: "hidden" },
+    // Section label + grouped card
+    sectionLabel: { ...typography.sectionHeader, color: theme.mutedText, paddingHorizontal: spacing.screenH, paddingBottom: 8, marginTop: 20 },
+    groupCard: { marginHorizontal: 16, backgroundColor: theme.card, borderRadius: spacing.groupRadius, overflow: "hidden" },
 
-  // History
-  historyRow: { paddingHorizontal: 16, paddingVertical: 13, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  historyDate: { ...typography.subheadline, color: colors.label },
-  historyRight: { alignItems: "flex-end" },
-  historyAmount: { ...typography.subheadline, fontWeight: "500", color: colors.label, fontVariant: ["tabular-nums"] },
-  historyLabel: { ...typography.caption1, color: colors.label3, marginTop: 1, textAlign: "right" },
-  fullSep: { height: 0.5, backgroundColor: colors.separator },
-  emptyRow: { padding: 20, alignItems: "center" },
-  emptyText: { ...typography.subheadline, color: colors.label4 },
+    // History
+    historyRow: { paddingHorizontal: 16, paddingVertical: 13, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    historyDate: { ...typography.subheadline, color: theme.text },
+    historyRight: { alignItems: "flex-end" },
+    historyAmount: { ...typography.subheadline, fontWeight: "500", color: theme.text, fontVariant: ["tabular-nums"] },
+    historyLabel: { ...typography.caption1, color: theme.mutedText, marginTop: 1, textAlign: "right" },
+    fullSep: { height: 0.5, backgroundColor: theme.border },
+    emptyRow: { padding: 20, alignItems: "center" },
+    emptyText: { ...typography.subheadline, color: theme.quietText },
 
-  // Notifications
-  notifRow: { paddingHorizontal: 16, paddingVertical: 13, flexDirection: "row", alignItems: "center", gap: 14 },
-  notifIconWrap: { width: 34, height: 34, borderRadius: 10, backgroundColor: "rgba(255,159,10,0.15)", alignItems: "center", justifyContent: "center" },
-  notifIcon: { fontSize: 18 },
-  notifTextWrap: { flex: 1 },
-  notifLabel: { ...typography.subheadline, color: colors.label },
-  notifSub: { ...typography.caption1, color: colors.label3, marginTop: 1 },
+    // Notifications
+    notifRow: { paddingHorizontal: 16, paddingVertical: 13, flexDirection: "row", alignItems: "center", gap: 14 },
+    notifIconWrap: { width: 34, height: 34, borderRadius: 10, backgroundColor: theme.warningSurface, alignItems: "center", justifyContent: "center" },
+    notifIcon: { fontSize: 18 },
+    notifTextWrap: { flex: 1 },
+    notifLabel: { ...typography.subheadline, color: theme.text },
+    notifSub: { ...typography.caption1, color: theme.mutedText, marginTop: 1 },
 
-  // Notes
-  noteCard: { marginHorizontal: 16, backgroundColor: colors.surface, borderRadius: 16, padding: 16 },
-  noteText: { ...typography.subheadline, color: colors.label, lineHeight: 22 },
-  noteAdd: { ...typography.subheadline, color: colors.blue },
+    // Notes
+    noteCard: { marginHorizontal: 16, backgroundColor: theme.card, borderRadius: 16, padding: 16 },
+    noteText: { ...typography.subheadline, color: theme.text, lineHeight: 22 },
+    noteAdd: { ...typography.subheadline, color: theme.primary },
 
-  // Bottom bar
-  bottomBar: {
-    position: "absolute", bottom: 0, left: 0, right: 0,
-    backgroundColor: colors.bg, paddingHorizontal: 16,
-    paddingBottom: 40, paddingTop: 12,
-    borderTopWidth: 0.5, borderTopColor: colors.separator
-  },
-  dangerBtn: { backgroundColor: colors.red, borderRadius: 14, paddingVertical: 17, alignItems: "center" },
-  dangerBtnText: { fontSize: 17, fontWeight: "600", color: "#fff" },
-  cancelledBtn: { backgroundColor: colors.fillSecondary, borderRadius: 14, paddingVertical: 17, alignItems: "center" },
-  cancelledBtnText: { fontSize: 17, fontWeight: "500", color: colors.label3 },
-  pausedBtn: { backgroundColor: "rgba(255,159,10,0.15)", borderRadius: 14, paddingVertical: 17, alignItems: "center" },
-  pausedBtnText: { fontSize: 17, fontWeight: "500", color: colors.orange },
+    // Bottom bar
+    bottomBar: {
+      position: "absolute", bottom: 0, left: 0, right: 0,
+      backgroundColor: theme.background, paddingHorizontal: 16,
+      paddingBottom: 40, paddingTop: 12,
+      borderTopWidth: 0.5, borderTopColor: theme.border
+    },
+    dangerBtn: { backgroundColor: theme.danger, borderRadius: 14, paddingVertical: 17, alignItems: "center" },
+    dangerBtnText: { fontSize: 17, fontWeight: "600", color: theme.onPrimary },
+    cancelledBtn: { backgroundColor: theme.surfaceAlt, borderRadius: 14, paddingVertical: 17, alignItems: "center" },
+    cancelledBtnText: { fontSize: 17, fontWeight: "500", color: theme.mutedText },
+    pausedBtn: { backgroundColor: theme.warningSurface, borderRadius: 14, paddingVertical: 17, alignItems: "center" },
+    pausedBtnText: { fontSize: 17, fontWeight: "500", color: theme.warning },
 
-  // Android menu
-  menuBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)", padding: 16 },
-  menuCard: { backgroundColor: colors.surface, borderRadius: 16, overflow: "hidden" },
-  menuItem: { paddingHorizontal: 20, paddingVertical: 16 },
-  menuItemText: { ...typography.body, color: colors.label },
-  menuSep: { height: 0.5, backgroundColor: colors.separator },
+    // Android menu
+    menuBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: theme.overlay, padding: 16 },
+    menuCard: { backgroundColor: theme.card, borderRadius: 16, overflow: "hidden" },
+    menuItem: { paddingHorizontal: 20, paddingVertical: 16 },
+    menuItemText: { ...typography.body, color: theme.text },
+    menuSep: { height: 0.5, backgroundColor: theme.border },
 
-  // Notes modal
-  modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: 24 },
-  notesModalCard: { width: "100%", backgroundColor: colors.surface, borderRadius: 20, padding: 20 },
-  notesModalTitle: { ...typography.headline, color: colors.label, marginBottom: 16 },
-  notesInput: { ...typography.subheadline, color: colors.label, backgroundColor: colors.surfaceHigh, borderRadius: 12, padding: 14, minHeight: 100, textAlignVertical: "top" },
-  notesActions: { flexDirection: "row", gap: 12, marginTop: 16 },
-  secondaryBtn: { flex: 1, borderRadius: 14, paddingVertical: 12, alignItems: "center", backgroundColor: colors.surfaceHigher },
-  secondaryBtnText: { ...typography.callout, fontWeight: "600", color: colors.label },
-  primaryBtn: { flex: 1, borderRadius: 14, paddingVertical: 12, alignItems: "center", backgroundColor: colors.blue },
-  primaryBtnText: { ...typography.callout, fontWeight: "600", color: "#fff" },
+    // Notes modal
+    modalBackdrop: { flex: 1, backgroundColor: theme.overlay, justifyContent: "center", alignItems: "center", padding: 24 },
+    notesModalCard: { width: "100%", backgroundColor: theme.card, borderRadius: 20, padding: 20 },
+    notesModalTitle: { ...typography.headline, color: theme.text, marginBottom: 16 },
+    notesInput: { ...typography.subheadline, color: theme.text, backgroundColor: theme.surfaceAlt, borderRadius: 12, padding: 14, minHeight: 100, textAlignVertical: "top" },
+    notesActions: { flexDirection: "row", gap: 12, marginTop: 16 },
+    secondaryBtn: { flex: 1, borderRadius: 14, paddingVertical: 12, alignItems: "center", backgroundColor: theme.surfaceAlt },
+    secondaryBtnText: { ...typography.callout, fontWeight: "600", color: theme.text },
+    primaryBtn: { flex: 1, borderRadius: 14, paddingVertical: 12, alignItems: "center", backgroundColor: theme.primary },
+    primaryBtnText: { ...typography.callout, fontWeight: "600", color: theme.onPrimary },
 
-  // Edit mode
-  formCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: colors.surface, borderRadius: 16, padding: 16 },
-  formSectionLabel: { ...typography.sectionHeader, color: colors.label3, marginBottom: 10 },
-  editInput: {
-    ...typography.subheadline, color: colors.label,
-    backgroundColor: colors.surfaceHigh, borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 12, marginBottom: 8
-  },
-  suggRow: { paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10 },
-  suggRowActive: { backgroundColor: colors.fillSecondary },
-  suggName: { ...typography.subheadline, color: colors.label },
-  suggMeta: { ...typography.caption1, color: colors.label3, marginTop: 2 },
-  cycleRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  cyclePill: { borderRadius: 20, borderWidth: 0.5, borderColor: colors.separatorOpaque, paddingHorizontal: 12, paddingVertical: 8 },
-  cyclePillActive: { borderColor: colors.blue, backgroundColor: "rgba(10,132,255,0.12)" },
-  cycleText: { ...typography.caption1, color: colors.label3, textTransform: "uppercase", fontWeight: "600" },
-  cycleTextActive: { color: colors.blue }
-});
+    // Edit mode
+    formCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: theme.card, borderRadius: 16, padding: 16 },
+    formSectionLabel: { ...typography.sectionHeader, color: theme.mutedText, marginBottom: 10 },
+    editInput: {
+      ...typography.subheadline, color: theme.text,
+      backgroundColor: theme.surfaceAlt, borderRadius: 12,
+      paddingHorizontal: 14, paddingVertical: 12, marginBottom: 8
+    },
+    suggRow: { paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10 },
+    suggRowActive: { backgroundColor: theme.surfaceAlt },
+    suggName: { ...typography.subheadline, color: theme.text },
+    suggMeta: { ...typography.caption1, color: theme.mutedText, marginTop: 2 },
+    cycleRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    cyclePill: { borderRadius: 20, borderWidth: 0.5, borderColor: theme.border, paddingHorizontal: 12, paddingVertical: 8 },
+    cyclePillActive: { borderColor: theme.primary, backgroundColor: theme.primarySurface },
+    cycleText: { ...typography.caption1, color: theme.mutedText, textTransform: "uppercase", fontWeight: "600" },
+    cycleTextActive: { color: theme.primary }
+  });
+}

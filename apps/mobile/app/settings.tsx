@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useAuthStore } from "../src/auth/authStore";
-import { colors } from "../src/theme/colors";
 import { spacing } from "../src/theme/spacing";
 import { type as typography } from "../src/theme/typography";
 import { router } from "expo-router";
@@ -17,6 +16,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSubRadarTheme } from "../src/theme/theme-provider";
+import type { ThemeTokens } from "../src/theme/tokens";
+import { withAlpha } from "../src/utils/subscription-ui";
 
 const APP_STORE_REVIEW_URL = "https://apps.apple.com/";
 const TERMS_URL = "https://example.com/terms";
@@ -41,7 +42,8 @@ type SettingsSection = {
 };
 
 export default function SettingsScreen() {
-  const { themeId } = useSubRadarTheme();
+  const { theme, themeId } = useSubRadarTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { plan, accountId, logout } = useAuthStore((state) => ({
     plan: state.plan,
     accountId: state.accountId,
@@ -71,12 +73,12 @@ export default function SettingsScreen() {
       text: styles.planBadgeFreeText
     },
     pro: {
-      label: "âœ¦ Pro",
+      label: "✦ Pro",
       style: [styles.planBadge, styles.planBadgePro],
       text: styles.planBadgeProText
     },
     family: {
-      label: "ðŸ‘¨â€ðŸ‘©â€ðŸ‘§ Family",
+      label: "👨‍👩‍👧 Family",
       style: [styles.planBadge, styles.planBadgeFamily],
       text: styles.planBadgeFamilyText
     }
@@ -90,8 +92,8 @@ export default function SettingsScreen() {
       rows: [
         {
           id: "profile",
-          icon: "ðŸ‘¤",
-          iconBg: "rgba(10,132,255,0.12)",
+          icon: "👤",
+          iconBg: theme.primarySurface,
           label: "Profile",
           value: userEmail.length > 24 ? `${userEmail.slice(0, 21)}...` : userEmail,
           right: "›",
@@ -99,18 +101,18 @@ export default function SettingsScreen() {
         },
         {
           id: "plan",
-          icon: "â­",
-          iconBg: "rgba(255,214,10,0.12)",
+          icon: "⭐",
+          iconBg: theme.warningSurface,
           label: "Subscription plan",
           value:
-            userPlan === "pro" ? "âœ¦ Pro" : userPlan === "family" ? "Family" : "Free",
+            userPlan === "pro" ? "✦ Pro" : userPlan === "family" ? "Family" : "Free",
           right: "›",
           onPress: () => router.push("/paywall")
         },
         {
           id: "security",
-          icon: "ðŸ”’",
-          iconBg: "rgba(48,209,88,0.12)",
+          icon: "🔒",
+          iconBg: theme.successSurface,
           label: "Security",
           sub: "Face ID · PIN fallback",
           right: "›",
@@ -123,8 +125,8 @@ export default function SettingsScreen() {
       rows: [
         {
           id: "theme",
-          icon: "ðŸŽ¨",
-          iconBg: "rgba(191,90,242,0.12)",
+          icon: "🎨",
+          iconBg: withAlpha(theme.secondary, 0.12),
           label: "Theme",
           sub: "Pulse · Clarity · Command",
           value: themeLabel,
@@ -133,8 +135,8 @@ export default function SettingsScreen() {
         },
         {
           id: "app-icon",
-          icon: "ðŸ“±",
-          iconBg: "rgba(255,255,255,0.06)",
+          icon: "📱",
+          iconBg: theme.surfaceAlt,
           label: "App icon",
           value: "Default",
           right: "›",
@@ -147,16 +149,16 @@ export default function SettingsScreen() {
       rows: [
         {
           id: "notifications",
-          icon: "ðŸ””",
-          iconBg: "rgba(255,159,10,0.12)",
+          icon: "🔔",
+          iconBg: theme.warningSurface,
           label: "Push notifications",
           isSwitch: true,
           switchValue: notificationsEnabled
         },
         {
           id: "quiet-hours",
-          icon: "ðŸŒ™",
-          iconBg: "rgba(255,255,255,0.06)",
+          icon: "🌙",
+          iconBg: theme.surfaceAlt,
           label: "Quiet hours",
           sub: quietHoursRange,
           right: "›",
@@ -164,8 +166,8 @@ export default function SettingsScreen() {
         },
         {
           id: "alert-style",
-          icon: "ðŸ’¬",
-          iconBg: "rgba(255,255,255,0.06)",
+          icon: "💬",
+          iconBg: theme.surfaceAlt,
           label: "Alert style",
           value: "Banners",
           right: "›",
@@ -178,17 +180,17 @@ export default function SettingsScreen() {
       rows: [
         {
           id: "connected",
-          icon: "ðŸ”—",
-          iconBg: "rgba(10,132,255,0.12)",
+          icon: "🔗",
+          iconBg: theme.primarySurface,
           label: "Connected accounts",
           value: "None connected",
           right: "›",
-          onPress: () => router.push("/discovery")
+          onPress: () => router.push("/discover")
         },
         {
           id: "export",
-          icon: "ðŸ“¤",
-          iconBg: "rgba(48,209,88,0.12)",
+          icon: "📤",
+          iconBg: theme.successSurface,
           label: "Export data",
           sub: "Download all your subscription data",
           right: "›",
@@ -196,8 +198,8 @@ export default function SettingsScreen() {
         },
         {
           id: "delete",
-          icon: "ðŸ—‘",
-          iconBg: "rgba(255,69,58,0.08)",
+          icon: "🗑",
+          iconBg: theme.dangerSurface,
           label: "Delete all data",
           sub: "Permanently removes all subscriptions",
           right: "›",
@@ -219,8 +221,8 @@ export default function SettingsScreen() {
       rows: [
         {
           id: "rate",
-          icon: "â­",
-          iconBg: "rgba(255,214,10,0.12)",
+          icon: "⭐",
+          iconBg: theme.warningSurface,
           label: "Rate Zeno",
           sub: "Share your experience on the App Store",
           right: "›",
@@ -228,8 +230,8 @@ export default function SettingsScreen() {
         },
         {
           id: "share",
-          icon: "ðŸ”—",
-          iconBg: "rgba(10,132,255,0.12)",
+          icon: "🔗",
+          iconBg: theme.primarySurface,
           label: "Share with friends",
           sub: "Tell others about Zeno",
           right: "›",
@@ -237,8 +239,8 @@ export default function SettingsScreen() {
         },
         {
           id: "feedback",
-          icon: "ðŸ’¬",
-          iconBg: "rgba(255,255,255,0.06)",
+          icon: "💬",
+          iconBg: theme.surfaceAlt,
           label: "Send feedback",
           sub: "Help us improve Zeno",
           right: "›",
@@ -246,16 +248,16 @@ export default function SettingsScreen() {
         },
         {
           id: "privacy",
-          icon: "ðŸ“„",
-          iconBg: "rgba(255,255,255,0.06)",
+          icon: "📄",
+          iconBg: theme.surfaceAlt,
           label: "Privacy Policy",
           right: "›",
           onPress: () => void Linking.openURL(PRIVACY_URL)
         },
         {
           id: "terms",
-          icon: "ðŸ“‹",
-          iconBg: "rgba(255,255,255,0.06)",
+          icon: "📋",
+          iconBg: theme.surfaceAlt,
           label: "Terms of Service",
           right: "›",
           onPress: () => void Linking.openURL(TERMS_URL)
@@ -275,7 +277,7 @@ export default function SettingsScreen() {
 
         <View style={styles.profileBlock}>
           <View style={styles.profileCard}>
-            <View style={styles.profileAvatarOuter}>
+            <View style={styles.profileAvatarOuter} accessible={false} importantForAccessibility="no-hide-descendants">
               <View style={styles.profileAvatarInner}>
                 <Text style={styles.avatarLetter}>{userEmail[0]?.toUpperCase() ?? "Z"}</Text>
               </View>
@@ -288,13 +290,13 @@ export default function SettingsScreen() {
                 <Text style={planBadge.text}>{planBadge.label}</Text>
               </View>
             </View>
-            <Text style={styles.profileChevron}>›</Text>
+            <Text style={styles.profileChevron} accessible={false}>›</Text>
           </View>
         </View>
 
         {userPlan === "free" ? (
           <View style={styles.upgradeBanner}>
-            <View style={styles.upgradeIcon}>
+            <View style={styles.upgradeIcon} accessible={false} importantForAccessibility="no-hide-descendants">
               <Text style={styles.upgradeIconText}>✦</Text>
             </View>
             <View style={styles.upgradeTexts}>
@@ -303,7 +305,12 @@ export default function SettingsScreen() {
                 Unlock email scan, 3-day alerts, and cancel guides for 400+ services.
               </Text>
             </View>
-            <Pressable style={styles.upgradeButton} onPress={() => router.push("/paywall")}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Upgrade to Pro"
+              style={styles.upgradeButton}
+              onPress={() => router.push("/paywall")}
+            >
               <Text style={styles.upgradeButtonText}>Upgrade</Text>
             </Pressable>
           </View>
@@ -317,11 +324,11 @@ export default function SettingsScreen() {
             <View style={styles.sectionCard}>
               {section.rows.map((row, index) => {
                 const isLast = index === section.rows.length - 1;
-                const valueColor = userPlan === "pro" && row.id === "plan" ? colors.blue : undefined;
+                const valueColor = userPlan === "pro" && row.id === "plan" ? theme.primary : undefined;
 
                 const inner = (
                   <View style={styles.row}>
-                    <View style={[styles.rowIcon, { backgroundColor: row.iconBg }]}>
+                    <View style={[styles.rowIcon, { backgroundColor: row.iconBg }]} accessible={false} importantForAccessibility="no-hide-descendants">
                       <Text style={styles.rowIconText}>{row.icon}</Text>
                     </View>
                     <View style={styles.rowTextWrap}>
@@ -332,12 +339,14 @@ export default function SettingsScreen() {
                     </View>
                     {row.isSwitch ? (
                       <Switch
+                        accessibilityRole="switch"
+                        accessibilityLabel={row.label}
                         value={row.switchValue ?? notificationsEnabled}
                         onValueChange={(value) => {
                           setNotificationsEnabled(value);
                         }}
-                        trackColor={{ false: colors.surfaceHigher, true: colors.green }}
-                        thumbColor="#fff"
+                        trackColor={{ false: theme.surfaceAlt, true: theme.success }}
+                        thumbColor={theme.onPrimary}
                       />
                     ) : null}
                     {!row.isSwitch && row.value ? (
@@ -352,7 +361,7 @@ export default function SettingsScreen() {
                         {row.value}
                       </Text>
                     ) : null}
-                    {row.right && !row.isSwitch ? <Text style={styles.rowChevron}>{row.right}</Text> : null}
+                    {row.right && !row.isSwitch ? <Text style={styles.rowChevron} accessible={false}>{row.right}</Text> : null}
                     {!isLast ? <View style={styles.separator} /> : null}
                   </View>
                 );
@@ -362,7 +371,7 @@ export default function SettingsScreen() {
                 }
 
                 return (
-                  <Pressable key={row.id} onPress={row.onPress}>
+                  <Pressable key={row.id} accessibilityRole="button" accessibilityLabel={row.label} onPress={row.onPress}>
                     {inner}
                   </Pressable>
                 );
@@ -372,6 +381,8 @@ export default function SettingsScreen() {
         ))}
 
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Sign out"
           style={styles.signOutCard}
           onPress={() => {
             Alert.alert("Sign out", "Are you sure you want to sign out?", [
@@ -384,7 +395,7 @@ export default function SettingsScreen() {
             ]);
           }}
         >
-          <View style={styles.signOutIconWrap}>
+          <View style={styles.signOutIconWrap} accessible={false} importantForAccessibility="no-hide-descendants">
             <Text style={styles.signOutIcon}>🚪</Text>
           </View>
           <Text style={styles.signOutText}>Sign out</Text>
@@ -399,284 +410,286 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.bg
-  },
-  content: {
-    paddingBottom: 100,
-    paddingTop: 0,
-    backgroundColor: colors.bg
-  },
-  pageHeader: {
-    paddingHorizontal: spacing.screenH,
-    paddingTop: 16,
-    paddingBottom: 4,
-    color: colors.label,
-    fontSize: 28,
-    fontWeight: "800",
-    letterSpacing: -1.5
-  },
-  profileBlock: {
-    paddingHorizontal: spacing.screenH,
-    paddingTop: 16,
-    paddingBottom: 4
-  },
-  profileCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16
-  },
-  profileAvatarOuter: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: colors.blue,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  profileAvatarInner: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "transparent"
-  },
-  avatarLetter: {
-    ...typography.title2,
-    color: "#fff",
-    fontSize: 24,
-    letterSpacing: -2,
-    lineHeight: 54,
-    textAlign: "center"
-  },
-  profileInfo: {
-    flex: 1,
-    minWidth: 0
-  },
-  profileName: {
-    ...typography.headline,
-    fontSize: 17,
-    fontWeight: "600",
-    letterSpacing: -0.3,
-    color: colors.label
-  },
-  planBadge: {
-    marginTop: 6,
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    overflow: "hidden",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    alignSelf: "flex-start"
-  },
-  planBadgeFree: {
-    backgroundColor: "transparent"
-  },
-  planBadgeFreeText: {
-    color: colors.label3,
-    ...typography.caption1,
-    fontWeight: "500"
-  },
-  planBadgePro: {
-    backgroundColor: "rgba(10,132,255,0.12)",
-    borderColor: "rgba(10,132,255,0.25)",
-    borderWidth: 0.5
-  },
-  planBadgeProText: {
-    color: colors.blue,
-    ...typography.footnote,
-    fontWeight: "600",
-    fontSize: 12
-  },
-  planBadgeFamily: {
-    backgroundColor: "rgba(48,209,88,0.12)",
-    borderColor: "rgba(48,209,88,0.2)",
-    borderWidth: 0.5
-  },
-  planBadgeFamilyText: {
-    color: colors.green,
-    ...typography.footnote,
-    fontWeight: "600",
-    fontSize: 12
-  },
-  profileChevron: {
-    fontSize: 20,
-    color: colors.label4
-  },
-  upgradeBanner: {
-    marginHorizontal: spacing.screenH,
-    marginTop: 8,
-    marginBottom: 4,
-    borderRadius: 16,
-    borderWidth: 0.5,
-    borderColor: "rgba(10,132,255,0.2)",
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    backgroundColor: "rgba(10,132,255,0.08)"
-  },
-  upgradeIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(10,132,255,0.12)"
-  },
-  upgradeIconText: {
-    color: colors.blue,
-    fontSize: 20,
-    lineHeight: 20
-  },
-  upgradeTexts: {
-    flex: 1
-  },
-  upgradeTitle: {
-    ...typography.callout,
-    color: colors.label,
-    fontSize: 15,
-    fontWeight: "600",
-    letterSpacing: -0.2
-  },
-  upgradeSub: {
-    ...typography.caption1,
-    marginTop: 3,
-    color: colors.label3,
-    lineHeight: 18
-  },
-  upgradeButton: {
-    backgroundColor: colors.blue,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 7
-  },
-  upgradeButtonText: {
-    ...typography.caption1,
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 13
-  },
-  sectionLabel: {
-    ...typography.sectionHeader,
-    color: colors.label3,
-    paddingHorizontal: spacing.screenH,
-    paddingTop: 20,
-    paddingBottom: 8
-  },
-  sectionCard: {
-    marginHorizontal: spacing.screenH,
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    overflow: "hidden"
-  },
-  row: {
-    position: "relative",
-    minHeight: 44,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 14
-  },
-  rowIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0
-  },
-  rowIconText: {
-    fontSize: 15
-  },
-  rowTextWrap: {
-    flex: 1,
-    minWidth: 0
-  },
-  rowTitle: {
-    ...typography.callout,
-    fontSize: 16,
-    color: colors.label,
-    letterSpacing: -0.2
-  },
-  rowSub: {
-    ...typography.caption1,
-    color: colors.label3,
-    marginTop: 2
-  },
-  rowValue: {
-    ...typography.subheadline,
-    color: colors.label3,
-    maxWidth: 130,
-    textAlign: "right"
-  },
-  rowChevron: {
-    color: colors.label4,
-    fontSize: 18,
-    lineHeight: 18,
-    marginLeft: 2
-  },
-  separator: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 0.5,
-    backgroundColor: colors.separator
-  },
-  signOutCard: {
-    marginHorizontal: spacing.screenH,
-    marginTop: 8,
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    overflow: "hidden",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14
-  },
-  signOutIconWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    backgroundColor: "rgba(255,69,58,0.08)",
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  signOutIcon: {
-    fontSize: 15
-  },
-  signOutText: {
-    ...typography.callout,
-    fontSize: 16,
-    color: colors.red,
-    letterSpacing: -0.2
-  },
-  versionSection: {
-    paddingTop: 24,
-    paddingBottom: 24,
-    alignItems: "center"
-  },
-  versionText: {
-    ...typography.caption2,
-    color: colors.label4,
-    letterSpacing: 0.02
-  },
-  versionSub: {
-    ...typography.caption1,
-    color: colors.label4,
-    textAlign: "center",
-    marginTop: 4,
-    lineHeight: 18
-  }
-});
+function createStyles(theme: ThemeTokens) {
+  return StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: theme.background
+    },
+    content: {
+      paddingBottom: 100,
+      paddingTop: 0,
+      backgroundColor: theme.background
+    },
+    pageHeader: {
+      paddingHorizontal: spacing.screenH,
+      paddingTop: 16,
+      paddingBottom: 4,
+      color: theme.text,
+      fontSize: 28,
+      fontWeight: "800",
+      letterSpacing: -1.5
+    },
+    profileBlock: {
+      paddingHorizontal: spacing.screenH,
+      paddingTop: 16,
+      paddingBottom: 4
+    },
+    profileCard: {
+      backgroundColor: theme.card,
+      borderRadius: 20,
+      padding: 20,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 16
+    },
+    profileAvatarOuter: {
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      backgroundColor: theme.primary,
+      alignItems: "center",
+      justifyContent: "center"
+    },
+    profileAvatarInner: {
+      width: 54,
+      height: 54,
+      borderRadius: 27,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "transparent"
+    },
+    avatarLetter: {
+      ...typography.title2,
+      color: theme.onPrimary,
+      fontSize: 24,
+      letterSpacing: -2,
+      lineHeight: 54,
+      textAlign: "center"
+    },
+    profileInfo: {
+      flex: 1,
+      minWidth: 0
+    },
+    profileName: {
+      ...typography.headline,
+      fontSize: 17,
+      fontWeight: "600",
+      letterSpacing: -0.3,
+      color: theme.text
+    },
+    planBadge: {
+      marginTop: 6,
+      borderRadius: 20,
+      paddingHorizontal: 10,
+      paddingVertical: 3,
+      overflow: "hidden",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      alignSelf: "flex-start"
+    },
+    planBadgeFree: {
+      backgroundColor: "transparent"
+    },
+    planBadgeFreeText: {
+      color: theme.mutedText,
+      ...typography.caption1,
+      fontWeight: "500"
+    },
+    planBadgePro: {
+      backgroundColor: theme.primarySurface,
+      borderColor: withAlpha(theme.primary, 0.25),
+      borderWidth: 0.5
+    },
+    planBadgeProText: {
+      color: theme.primary,
+      ...typography.footnote,
+      fontWeight: "600",
+      fontSize: 12
+    },
+    planBadgeFamily: {
+      backgroundColor: theme.successSurface,
+      borderColor: withAlpha(theme.success, 0.2),
+      borderWidth: 0.5
+    },
+    planBadgeFamilyText: {
+      color: theme.success,
+      ...typography.footnote,
+      fontWeight: "600",
+      fontSize: 12
+    },
+    profileChevron: {
+      fontSize: 20,
+      color: theme.quietText
+    },
+    upgradeBanner: {
+      marginHorizontal: spacing.screenH,
+      marginTop: 8,
+      marginBottom: 4,
+      borderRadius: 16,
+      borderWidth: 0.5,
+      borderColor: withAlpha(theme.primary, 0.2),
+      padding: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+      backgroundColor: theme.primarySurface
+    },
+    upgradeIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.primarySurface
+    },
+    upgradeIconText: {
+      color: theme.primary,
+      fontSize: 20,
+      lineHeight: 20
+    },
+    upgradeTexts: {
+      flex: 1
+    },
+    upgradeTitle: {
+      ...typography.callout,
+      color: theme.text,
+      fontSize: 15,
+      fontWeight: "600",
+      letterSpacing: -0.2
+    },
+    upgradeSub: {
+      ...typography.caption1,
+      marginTop: 3,
+      color: theme.mutedText,
+      lineHeight: 18
+    },
+    upgradeButton: {
+      backgroundColor: theme.primary,
+      borderRadius: 20,
+      paddingHorizontal: 14,
+      paddingVertical: 7
+    },
+    upgradeButtonText: {
+      ...typography.caption1,
+      color: theme.onPrimary,
+      fontWeight: "600",
+      fontSize: 13
+    },
+    sectionLabel: {
+      ...typography.sectionHeader,
+      color: theme.mutedText,
+      paddingHorizontal: spacing.screenH,
+      paddingTop: 20,
+      paddingBottom: 8
+    },
+    sectionCard: {
+      marginHorizontal: spacing.screenH,
+      backgroundColor: theme.card,
+      borderRadius: 16,
+      overflow: "hidden"
+    },
+    row: {
+      position: "relative",
+      minHeight: 44,
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      gap: 14
+    },
+    rowIcon: {
+      width: 30,
+      height: 30,
+      borderRadius: 8,
+      alignItems: "center",
+      justifyContent: "center",
+      flexShrink: 0
+    },
+    rowIconText: {
+      fontSize: 15
+    },
+    rowTextWrap: {
+      flex: 1,
+      minWidth: 0
+    },
+    rowTitle: {
+      ...typography.callout,
+      fontSize: 16,
+      color: theme.text,
+      letterSpacing: -0.2
+    },
+    rowSub: {
+      ...typography.caption1,
+      color: theme.mutedText,
+      marginTop: 2
+    },
+    rowValue: {
+      ...typography.subheadline,
+      color: theme.mutedText,
+      maxWidth: 130,
+      textAlign: "right"
+    },
+    rowChevron: {
+      color: theme.quietText,
+      fontSize: 18,
+      lineHeight: 18,
+      marginLeft: 2
+    },
+    separator: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: 0.5,
+      backgroundColor: theme.border
+    },
+    signOutCard: {
+      marginHorizontal: spacing.screenH,
+      marginTop: 8,
+      backgroundColor: theme.card,
+      borderRadius: 16,
+      overflow: "hidden",
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14
+    },
+    signOutIconWrap: {
+      width: 30,
+      height: 30,
+      borderRadius: 8,
+      backgroundColor: theme.dangerSurface,
+      alignItems: "center",
+      justifyContent: "center"
+    },
+    signOutIcon: {
+      fontSize: 15
+    },
+    signOutText: {
+      ...typography.callout,
+      fontSize: 16,
+      color: theme.danger,
+      letterSpacing: -0.2
+    },
+    versionSection: {
+      paddingTop: 24,
+      paddingBottom: 24,
+      alignItems: "center"
+    },
+    versionText: {
+      ...typography.caption2,
+      color: theme.quietText,
+      letterSpacing: 0.02
+    },
+    versionSub: {
+      ...typography.caption1,
+      color: theme.quietText,
+      textAlign: "center",
+      marginTop: 4,
+      lineHeight: 18
+    }
+  });
+}

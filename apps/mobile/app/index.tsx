@@ -1,10 +1,11 @@
 import { router } from "expo-router";
+import { useMemo } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { colors } from "../src/theme/colors";
 import { spacing } from "../src/theme/spacing";
 import { type } from "../src/theme/typography";
 import { useZenoTheme } from "../src/theme/theme-provider";
+import type { ThemeTokens } from "../src/theme/tokens";
 
 type ThemeOption = {
   id: "millennial" | "genz" | "genx";
@@ -25,6 +26,8 @@ type ThemeOption = {
   };
 };
 
+// Preview swatches intentionally hardcode each theme's palette: every card
+// shows what THAT theme looks like, regardless of the active theme.
 const themeOptions: ThemeOption[] = [
   {
     id: "genz",
@@ -81,7 +84,8 @@ const themeOptions: ThemeOption[] = [
 ];
 
 export default function OnboardingScreen() {
-  const { themeId, setThemeId } = useZenoTheme();
+  const { theme, themeId, setThemeId } = useZenoTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
     <SafeAreaView edges={["top"]} style={styles.safeArea}>
@@ -103,7 +107,7 @@ export default function OnboardingScreen() {
 
         <View style={styles.featureGroup}>
           <View style={styles.featureRow}>
-            <View style={[styles.featureIcon, styles.featureIconSearch]}>
+            <View style={[styles.featureIcon, styles.featureIconSearch]} accessible={false} importantForAccessibility="no-hide-descendants">
               <Text style={styles.featureIconText}>🔍</Text>
             </View>
             <View style={styles.featureText}>
@@ -114,7 +118,7 @@ export default function OnboardingScreen() {
           <View style={styles.divider} />
 
           <View style={styles.featureRow}>
-            <View style={[styles.featureIcon, styles.featureIconAlerts]}>
+            <View style={[styles.featureIcon, styles.featureIconAlerts]} accessible={false} importantForAccessibility="no-hide-descendants">
               <Text style={styles.featureIconText}>🔔</Text>
             </View>
             <View style={styles.featureText}>
@@ -125,7 +129,7 @@ export default function OnboardingScreen() {
           <View style={styles.divider} />
 
           <View style={styles.featureRow}>
-            <View style={[styles.featureIcon, styles.featureIconSafe]}>
+            <View style={[styles.featureIcon, styles.featureIconSafe]} accessible={false} importantForAccessibility="no-hide-descendants">
               <Text style={styles.featureIconText}>🔒</Text>
             </View>
             <View style={styles.featureText}>
@@ -144,11 +148,14 @@ export default function OnboardingScreen() {
             return (
               <Pressable
                 key={option.id}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                accessibilityLabel={`${option.name} theme, ${option.description}`}
                 onPress={() => setThemeId(option.id)}
                 style={({ pressed }) => [
                   styles.themeCard,
                   {
-                    borderColor: selected ? colors.blue : colors.separator,
+                    borderColor: selected ? theme.primary : theme.border,
                     borderWidth: selected ? 2 : 0.5,
                     opacity: pressed ? 0.95 : 1
                   }
@@ -156,22 +163,22 @@ export default function OnboardingScreen() {
               >
                 <View style={styles.themeCardHeader}>
                   <View style={styles.themeTitleWrap}>
-                    <Text style={styles.themeIcon}>{option.icon}</Text>
+                    <Text style={styles.themeIcon} accessible={false}>{option.icon}</Text>
                     <Text style={styles.themeName}>{option.name}</Text>
                     <Text style={styles.themeDescription}>{option.description}</Text>
                   </View>
-                  <View style={[styles.checkIndicator, selected && styles.checkIndicatorSelected]}>
+                  <View style={[styles.checkIndicator, selected && styles.checkIndicatorSelected]} accessible={false} importantForAccessibility="no-hide-descendants">
                     {selected ? <Text style={styles.checkmarkText}>✓</Text> : null}
                   </View>
                 </View>
 
-                <View style={styles.dotsRow}>
+                <View style={styles.dotsRow} accessible={false} importantForAccessibility="no-hide-descendants">
                   {option.dots.map((dot) => (
                     <View key={`${option.id}-${dot}`} style={[styles.themeDot, { backgroundColor: dot }]} />
                   ))}
                 </View>
 
-                <View style={[styles.preview, { backgroundColor: option.preview.background }]}>
+                <View style={[styles.preview, { backgroundColor: option.preview.background }]} accessible={false} importantForAccessibility="no-hide-descendants">
                   <View style={styles.previewItem}>
                     <View style={[styles.previewAvatar, { backgroundColor: option.preview.avatarBg }]}>
                       <Text style={[styles.previewAvatarText, { color: option.preview.avatarText }]}>A</Text>
@@ -207,6 +214,7 @@ export default function OnboardingScreen() {
         </View>
 
         <Pressable
+          accessibilityRole="button"
           onPress={() => router.replace("/dashboard")}
           style={styles.startButton}
         >
@@ -215,7 +223,7 @@ export default function OnboardingScreen() {
 
         <View style={styles.bottomRow}>
           <Text style={styles.bottomHint}>Already have an account?</Text>
-          <Pressable onPress={() => router.push("/login")}>
+          <Pressable accessibilityRole="link" accessibilityLabel="Sign in" hitSlop={8} onPress={() => router.push("/login")}>
             <Text style={styles.bottomLink}>Sign in</Text>
           </Pressable>
         </View>
@@ -224,254 +232,256 @@ export default function OnboardingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.bg
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "space-between",
-    paddingHorizontal: 28,
-    paddingTop: 72,
-    paddingBottom: 40,
-    gap: spacing.sectionGap
-  },
-  topContainer: {
-    gap: 12
-  },
-  wordmark: {
-    fontSize: 42,
-    fontWeight: "800",
-    letterSpacing: -2.5,
-    color: colors.label
-  },
-  headlineLine: {
-    fontSize: 38,
-    fontWeight: "700",
-    letterSpacing: -1.8,
-    lineHeight: 42,
-    color: colors.label
-  },
-  headlineLineSecondary: {
-    ...type.headline,
-    fontSize: 38,
-    fontWeight: "700",
-    letterSpacing: -1.8,
-    lineHeight: 42,
-    color: colors.label3,
-    marginBottom: 20
-  },
-  heroBody: {
-    ...type.callout,
-    color: colors.label3,
-    lineHeight: 24,
-    marginTop: 0
-  },
-  featureGroup: {
-    marginTop: 40,
-    borderRadius: spacing.groupRadius,
-    overflow: "hidden",
-    backgroundColor: colors.surface
-  },
-  featureRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    paddingLeft: 14,
-    paddingRight: 14,
-    paddingVertical: 14,
-    gap: 16
-  },
-  featureIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  featureIconSearch: {
-    backgroundColor: "rgba(10,132,255,0.15)"
-  },
-  featureIconAlerts: {
-    backgroundColor: "rgba(255,159,10,0.15)"
-  },
-  featureIconSafe: {
-    backgroundColor: "rgba(48,209,88,0.15)"
-  },
-  featureIconText: {
-    fontSize: 16
-  },
-  featureText: {
-    flex: 1,
-    minWidth: 0
-  },
-  featureTitle: {
-    ...type.subheadline,
-    color: colors.label
-  },
-  featureSubtitle: {
-    ...type.caption1,
-    color: colors.label3,
-    marginTop: 2
-  },
-  divider: {
-    left: 62,
-    right: 0,
-    height: 0.5,
-    backgroundColor: colors.separator
-  },
-  themeHeading: {
-    fontSize: 28,
-    fontWeight: "700",
-    letterSpacing: -1.5,
-    color: colors.label,
-    marginTop: 2
-  },
-  themeSubheading: {
-    ...type.subheadline,
-    color: colors.label3,
-    marginTop: 8,
-    marginBottom: -4
-  },
-  themeCards: {
-    gap: 12
-  },
-  themeCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    overflow: "hidden"
-  },
-  themeCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16
-  },
-  themeTitleWrap: {
-    flex: 1,
-    minWidth: 0,
-    gap: 6
-  },
-  themeIcon: {
-    fontSize: 20,
-    color: colors.label,
-    marginBottom: 2
-  },
-  themeName: {
-    fontSize: 20,
-    lineHeight: 24,
-    fontWeight: "700",
-    color: colors.label,
-    letterSpacing: -0.5
-  },
-  themeDescription: {
-    ...type.footnote,
-    color: colors.label3
-  },
-  checkIndicator: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: colors.label4,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  checkIndicatorSelected: {
-    backgroundColor: colors.blue,
-    borderColor: colors.blue
-  },
-  checkmarkText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#fff"
-  },
-  dotsRow: {
-    flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingBottom: 20
-  },
-  themeDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6
-  },
-  preview: {
-    height: 100,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    justifyContent: "center"
-  },
-  previewItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10
-  },
-  previewAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  previewAvatarText: {
-    fontSize: 14,
-    fontWeight: "700"
-  },
-  previewMain: {
-    flex: 1,
-    minWidth: 0
-  },
-  previewName: {
-    fontWeight: "600",
-    lineHeight: 16
-  },
-  previewBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10
-  },
-  previewBadgeText: {
-    fontSize: 11,
-    fontWeight: "700"
-  },
-  privacyBlock: {
-    alignItems: "center"
-  },
-  privacyText: {
-    ...type.caption2,
-    color: colors.label4,
-    textAlign: "center"
-  },
-  startButton: {
-    width: "100%",
-    backgroundColor: colors.blue,
-    borderRadius: 14,
-    paddingVertical: 17,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  startButtonText: {
-    ...type.body,
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "600"
-  },
-  bottomRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 4
-  },
-  bottomHint: {
-    ...type.footnote,
-    color: colors.label3
-  },
-  bottomLink: {
-    ...type.footnote,
-    fontWeight: "600",
-    color: colors.blue
-  }
-});
+function createStyles(theme: ThemeTokens) {
+  return StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background
+    },
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: "space-between",
+      paddingHorizontal: 28,
+      paddingTop: 72,
+      paddingBottom: 40,
+      gap: spacing.sectionGap
+    },
+    topContainer: {
+      gap: 12
+    },
+    wordmark: {
+      fontSize: 42,
+      fontWeight: "800",
+      letterSpacing: -2.5,
+      color: theme.text
+    },
+    headlineLine: {
+      fontSize: 38,
+      fontWeight: "700",
+      letterSpacing: -1.8,
+      lineHeight: 42,
+      color: theme.text
+    },
+    headlineLineSecondary: {
+      ...type.headline,
+      fontSize: 38,
+      fontWeight: "700",
+      letterSpacing: -1.8,
+      lineHeight: 42,
+      color: theme.mutedText,
+      marginBottom: 20
+    },
+    heroBody: {
+      ...type.callout,
+      color: theme.mutedText,
+      lineHeight: 24,
+      marginTop: 0
+    },
+    featureGroup: {
+      marginTop: 40,
+      borderRadius: spacing.groupRadius,
+      overflow: "hidden",
+      backgroundColor: theme.card
+    },
+    featureRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      paddingLeft: 14,
+      paddingRight: 14,
+      paddingVertical: 14,
+      gap: 16
+    },
+    featureIcon: {
+      width: 34,
+      height: 34,
+      borderRadius: 10,
+      alignItems: "center",
+      justifyContent: "center"
+    },
+    featureIconSearch: {
+      backgroundColor: theme.primarySurface
+    },
+    featureIconAlerts: {
+      backgroundColor: theme.warningSurface
+    },
+    featureIconSafe: {
+      backgroundColor: theme.successSurface
+    },
+    featureIconText: {
+      fontSize: 16
+    },
+    featureText: {
+      flex: 1,
+      minWidth: 0
+    },
+    featureTitle: {
+      ...type.subheadline,
+      color: theme.text
+    },
+    featureSubtitle: {
+      ...type.caption1,
+      color: theme.mutedText,
+      marginTop: 2
+    },
+    divider: {
+      left: 62,
+      right: 0,
+      height: 0.5,
+      backgroundColor: theme.border
+    },
+    themeHeading: {
+      fontSize: 28,
+      fontWeight: "700",
+      letterSpacing: -1.5,
+      color: theme.text,
+      marginTop: 2
+    },
+    themeSubheading: {
+      ...type.subheadline,
+      color: theme.mutedText,
+      marginTop: 8,
+      marginBottom: -4
+    },
+    themeCards: {
+      gap: 12
+    },
+    themeCard: {
+      backgroundColor: theme.card,
+      borderRadius: 20,
+      overflow: "hidden"
+    },
+    themeCardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 20,
+      paddingTop: 20,
+      paddingBottom: 16
+    },
+    themeTitleWrap: {
+      flex: 1,
+      minWidth: 0,
+      gap: 6
+    },
+    themeIcon: {
+      fontSize: 20,
+      color: theme.text,
+      marginBottom: 2
+    },
+    themeName: {
+      fontSize: 20,
+      lineHeight: 24,
+      fontWeight: "700",
+      color: theme.text,
+      letterSpacing: -0.5
+    },
+    themeDescription: {
+      ...type.footnote,
+      color: theme.mutedText
+    },
+    checkIndicator: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: theme.quietText,
+      alignItems: "center",
+      justifyContent: "center"
+    },
+    checkIndicatorSelected: {
+      backgroundColor: theme.primary,
+      borderColor: theme.primary
+    },
+    checkmarkText: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: theme.onPrimary
+    },
+    dotsRow: {
+      flexDirection: "row",
+      gap: 8,
+      paddingHorizontal: 20,
+      paddingBottom: 20
+    },
+    themeDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6
+    },
+    preview: {
+      height: 100,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      justifyContent: "center"
+    },
+    previewItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10
+    },
+    previewAvatar: {
+      width: 24,
+      height: 24,
+      borderRadius: 8,
+      alignItems: "center",
+      justifyContent: "center"
+    },
+    previewAvatarText: {
+      fontSize: 14,
+      fontWeight: "700"
+    },
+    previewMain: {
+      flex: 1,
+      minWidth: 0
+    },
+    previewName: {
+      fontWeight: "600",
+      lineHeight: 16
+    },
+    previewBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 10
+    },
+    previewBadgeText: {
+      fontSize: 11,
+      fontWeight: "700"
+    },
+    privacyBlock: {
+      alignItems: "center"
+    },
+    privacyText: {
+      ...type.caption2,
+      color: theme.quietText,
+      textAlign: "center"
+    },
+    startButton: {
+      width: "100%",
+      backgroundColor: theme.primary,
+      borderRadius: 14,
+      paddingVertical: 17,
+      alignItems: "center",
+      justifyContent: "center"
+    },
+    startButtonText: {
+      ...type.body,
+      color: theme.onPrimary,
+      fontSize: 17,
+      fontWeight: "600"
+    },
+    bottomRow: {
+      flexDirection: "row",
+      justifyContent: "center",
+      gap: 4
+    },
+    bottomHint: {
+      ...type.footnote,
+      color: theme.mutedText
+    },
+    bottomLink: {
+      ...type.footnote,
+      fontWeight: "600",
+      color: theme.primary
+    }
+  });
+}

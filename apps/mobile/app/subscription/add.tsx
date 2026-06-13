@@ -16,23 +16,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
-import { colors } from "../../src/theme/colors";
+import { useSubRadarTheme } from "../../src/theme/theme-provider";
+import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
 import { spacing } from "../../src/theme/spacing";
+import { getAvatarStyle, withAlpha } from "../../src/utils/subscription-ui";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function getAvatarStyle(category: string): { bg: string; text: string } {
-  if (category === "streaming" || category === "entertainment") return { bg: "rgba(255,69,58,0.15)", text: "#FF453A" };
-  if (category === "ai_tools") return { bg: "rgba(191,90,242,0.15)", text: "#BF5AF2" };
-  if (category === "productivity") return { bg: "rgba(10,132,255,0.15)", text: "#0A84FF" };
-  if (category === "gaming") return { bg: "rgba(48,209,88,0.15)", text: "#30D158" };
-  if (category === "health") return { bg: "rgba(255,159,10,0.15)", text: "#FF9F0A" };
-  if (category === "finance") return { bg: "rgba(90,200,245,0.15)", text: "#5AC8F5" };
-  if (category === "education") return { bg: "rgba(255,214,10,0.15)", text: "#FFD60A" };
-  if (category === "music") return { bg: "rgba(255,55,95,0.15)", text: "#FF375F" };
-  return { bg: "rgba(255,255,255,0.08)", text: "rgba(255,255,255,0.4)" };
-}
 
 function servicePriceLabel(service: Service): string {
   if (service.defaultMonthlyPrice) return `$${service.defaultMonthlyPrice.toFixed(2)}/mo`;
@@ -60,6 +50,8 @@ const BILLING_CYCLES = ["monthly", "annual", "weekly"] as const;
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function AddSubscriptionScreen() {
+  const { theme } = useSubRadarTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { addSubscription, suggestions } = useSubscriptionStore();
 
   const [query, setQuery]           = useState("");
@@ -120,17 +112,18 @@ export default function AddSubscriptionScreen() {
     >
       {/* Search input */}
       <View style={styles.searchInputWrap}>
-        <Text style={styles.searchIcon}>🔍</Text>
+        <Text style={styles.searchIcon} accessible={false}>🔍</Text>
         <TextInput
           value={query}
           onChangeText={setQuery}
           placeholder="Search 500+ services..."
-          placeholderTextColor={colors.label4}
+          placeholderTextColor={theme.quietText}
           style={styles.searchInput}
           autoFocus
-          selectionColor={colors.blue}
+          selectionColor={theme.primary}
           autoCapitalize="none"
           autoCorrect={false}
+          accessibilityLabel="Search services"
         />
       </View>
 
@@ -138,10 +131,15 @@ export default function AddSubscriptionScreen() {
         // Search results
         <View style={styles.resultsList}>
           {matches.map((service, index) => {
-            const avatar = getAvatarStyle(service.category);
+            const avatar = getAvatarStyle(service.category, theme);
             const isLast = index === matches.length - 1;
             return (
-              <Pressable key={service.id} onPress={() => handleSelectService(service)}>
+              <Pressable
+                key={service.id}
+                accessibilityRole="button"
+                accessibilityLabel={`${service.name}, ${servicePriceLabel(service)}`}
+                onPress={() => handleSelectService(service)}
+              >
                 <View style={styles.resultRow}>
                   <View style={[styles.avatar, { backgroundColor: avatar.bg }]}>
                     <Text style={[styles.avatarText, { color: avatar.text }]}>
@@ -159,10 +157,14 @@ export default function AddSubscriptionScreen() {
             );
           })}
           {/* Add custom row */}
-          <Pressable onPress={() => { Keyboard.dismiss(); setSelected(null); }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add custom service"
+            onPress={() => { Keyboard.dismiss(); setSelected(null); }}
+          >
             <View style={styles.resultRow}>
-              <View style={[styles.avatar, { backgroundColor: colors.fillPrimary }]}>
-                <Text style={{ fontSize: 20, color: colors.blue, fontWeight: "700" }}>+</Text>
+              <View style={[styles.avatar, { backgroundColor: theme.surfaceAlt }]}>
+                <Text style={styles.addCustomPlus}>+</Text>
               </View>
               <View style={styles.resultMiddle}>
                 <Text style={styles.resultName}>Add custom service</Text>
@@ -183,9 +185,14 @@ export default function AddSubscriptionScreen() {
             contentContainerStyle={styles.popularGrid}
             columnWrapperStyle={styles.popularRow}
             renderItem={({ item }) => {
-              const avatar = getAvatarStyle(item.category);
+              const avatar = getAvatarStyle(item.category, theme);
               return (
-                <Pressable style={styles.popularCard} onPress={() => handleSelectService(item)}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.name}, ${servicePriceLabel(item)}`}
+                  style={styles.popularCard}
+                  onPress={() => handleSelectService(item)}
+                >
                   <View style={[styles.avatar, { backgroundColor: avatar.bg }]}>
                     <Text style={[styles.avatarText, { color: avatar.text }]}>
                       {item.name.slice(0, 2).toUpperCase()}
@@ -214,8 +221,8 @@ export default function AddSubscriptionScreen() {
       {/* Selected service header */}
       <View style={styles.selectedHeader}>
         {selected ? (
-          <View style={[styles.avatarLg, { backgroundColor: getAvatarStyle(selected.category).bg }]}>
-            <Text style={[styles.avatarLgText, { color: getAvatarStyle(selected.category).text }]}>
+          <View style={[styles.avatarLg, { backgroundColor: getAvatarStyle(selected.category, theme).bg }]}>
+            <Text style={[styles.avatarLgText, { color: getAvatarStyle(selected.category, theme).text }]}>
               {selected.name.slice(0, 2).toUpperCase()}
             </Text>
           </View>
@@ -226,7 +233,12 @@ export default function AddSubscriptionScreen() {
             <Text style={styles.selectedCategory}>{selected.category.replace("_", " ")}</Text>
           ) : null}
         </View>
-        <Pressable onPress={() => { setSelected(null); setQuery(""); }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Change selected service"
+          hitSlop={8}
+          onPress={() => { setSelected(null); setQuery(""); }}
+        >
           <Text style={styles.changeLink}>Change</Text>
         </Pressable>
       </View>
@@ -244,9 +256,10 @@ export default function AddSubscriptionScreen() {
               keyboardType="decimal-pad"
               style={styles.amountInput}
               placeholder="0.00"
-              placeholderTextColor={colors.label4}
-              selectionColor={colors.blue}
+              placeholderTextColor={theme.quietText}
+              selectionColor={theme.primary}
               textAlign="right"
+              accessibilityLabel="Amount in dollars"
             />
           </View>
         </View>
@@ -259,6 +272,9 @@ export default function AddSubscriptionScreen() {
             {BILLING_CYCLES.map((cycle) => (
               <Pressable
                 key={cycle}
+                accessibilityRole="button"
+                accessibilityState={{ selected: billingCycle === cycle }}
+                accessibilityLabel={`Bill ${cycle}`}
                 onPress={() => setBilling(cycle)}
                 style={[styles.segment, billingCycle === cycle && styles.segmentActive]}
               >
@@ -286,7 +302,7 @@ export default function AddSubscriptionScreen() {
             <Text style={styles.formValueText}>
               {selected?.category.replace("_", " ") ?? "other"}
             </Text>
-            <Text style={styles.chevron}>›</Text>
+            <Text style={styles.chevron} accessible={false}>›</Text>
           </View>
         </View>
         <View style={styles.fullSeparator} />
@@ -295,9 +311,10 @@ export default function AddSubscriptionScreen() {
           onChangeText={setNotes}
           multiline
           placeholder="Add a note (optional)"
-          placeholderTextColor={colors.label4}
+          placeholderTextColor={theme.quietText}
           style={styles.notesInput}
-          selectionColor={colors.blue}
+          selectionColor={theme.primary}
+          accessibilityLabel="Notes"
         />
       </View>
 
@@ -309,10 +326,12 @@ export default function AddSubscriptionScreen() {
             <Text style={styles.formSub}>Track trial end date</Text>
           </View>
           <Switch
+            accessibilityRole="switch"
+            accessibilityLabel="Free trial"
             value={isTrial}
             onValueChange={setIsTrial}
-            trackColor={{ false: colors.surfaceHigher, true: colors.green }}
-            thumbColor="#fff"
+            trackColor={{ false: theme.surfaceAlt, true: theme.success }}
+            thumbColor={theme.onPrimary}
           />
         </View>
         {isTrial ? (
@@ -338,7 +357,7 @@ export default function AddSubscriptionScreen() {
         ].map((row, i, arr) => (
           <View key={row.label}>
             <View style={styles.notifRow}>
-              <View style={styles.notifIconWrap}>
+              <View style={styles.notifIconWrap} accessible={false} importantForAccessibility="no-hide-descendants">
                 <Text style={styles.notifIcon}>{row.value ? "🔔" : "🔕"}</Text>
               </View>
               <View style={styles.notifTextWrap}>
@@ -346,10 +365,12 @@ export default function AddSubscriptionScreen() {
                 <Text style={styles.formSub}>{row.sub}</Text>
               </View>
               <Switch
+                accessibilityRole="switch"
+                accessibilityLabel={row.label}
                 value={row.value}
                 onValueChange={row.setter}
-                trackColor={{ false: colors.surfaceHigher, true: colors.green }}
-                thumbColor="#fff"
+                trackColor={{ false: theme.surfaceAlt, true: theme.success }}
+                thumbColor={theme.onPrimary}
               />
             </View>
             {i < arr.length - 1 ? <View style={styles.fullSeparator} /> : null}
@@ -364,13 +385,19 @@ export default function AddSubscriptionScreen() {
     <SafeAreaView style={styles.safeArea} edges={["top"] as const}>
       {/* Nav bar */}
       <View style={styles.navBar}>
-        <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <Text style={styles.backChevron}>‹</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.backBtn} onPress={() => router.back()}>
+          <Text style={styles.backChevron} accessible={false}>‹</Text>
           <Text style={styles.backText}>Back</Text>
         </Pressable>
         <Text style={styles.navTitle}>Add subscription</Text>
-        <Pressable onPress={handleSave}>
-          <Text style={[styles.saveBtn, { color: formValid ? colors.blue : colors.label4 }]}>Save</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Save subscription"
+          accessibilityState={{ disabled: !formValid }}
+          hitSlop={8}
+          onPress={handleSave}
+        >
+          <Text style={[styles.saveBtn, { color: formValid ? theme.primary : theme.quietText }]}>Save</Text>
         </Pressable>
       </View>
 
@@ -382,8 +409,10 @@ export default function AddSubscriptionScreen() {
       {/* Fixed bottom save button */}
       <View style={styles.bottomBar}>
         <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ disabled: !formValid }}
           onPress={handleSave}
-          style={[styles.saveButton, { backgroundColor: formValid ? colors.blue : "rgba(10,132,255,0.4)" }]}
+          style={[styles.saveButton, { backgroundColor: formValid ? theme.primary : withAlpha(theme.primary, 0.4) }]}
         >
           <Text style={styles.saveButtonText}>Add Subscription</Text>
         </Pressable>
@@ -394,210 +423,213 @@ export default function AddSubscriptionScreen() {
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.bg },
+function createStyles(theme: ThemeTokens) {
+  return StyleSheet.create({
+    safeArea: { flex: 1, backgroundColor: theme.background },
 
-  // Nav bar
-  navBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: spacing.screenH,
-    paddingTop: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: colors.separator,
-    backgroundColor: colors.bg
-  },
-  backBtn: { flexDirection: "row", alignItems: "center", gap: 4, minWidth: 60 },
-  backChevron: { color: colors.blue, fontSize: 22, lineHeight: 22 },
-  backText: { color: colors.blue, fontSize: 17 },
-  navTitle: {
-    ...typography.headline,
-    color: colors.label,
-    position: "absolute",
-    left: 0, right: 0,
-    textAlign: "center"
-  },
-  saveBtn: { fontSize: 17, fontWeight: "600", textAlign: "right", minWidth: 60 },
+    // Nav bar
+    navBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: spacing.screenH,
+      paddingTop: 16,
+      paddingBottom: 12,
+      borderBottomWidth: 0.5,
+      borderBottomColor: theme.border,
+      backgroundColor: theme.background
+    },
+    backBtn: { flexDirection: "row", alignItems: "center", gap: 4, minWidth: 60 },
+    backChevron: { color: theme.primary, fontSize: 22, lineHeight: 22 },
+    backText: { color: theme.primary, fontSize: 17 },
+    navTitle: {
+      ...typography.headline,
+      color: theme.text,
+      position: "absolute",
+      left: 0, right: 0,
+      textAlign: "center"
+    },
+    saveBtn: { fontSize: 17, fontWeight: "600", textAlign: "right", minWidth: 60 },
 
-  body: { flex: 1 },
+    body: { flex: 1 },
 
-  // ── Search step ──
-  searchScrollContent: { paddingBottom: 120 },
-  searchInputWrap: {
-    margin: 16,
-    marginBottom: 8,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10
-  },
-  searchIcon: { fontSize: 15, color: colors.label4 },
-  searchInput: { flex: 1, ...typography.body, color: colors.label, paddingVertical: 0 },
+    // ── Search step ──
+    searchScrollContent: { paddingBottom: 120 },
+    searchInputWrap: {
+      margin: 16,
+      marginBottom: 8,
+      backgroundColor: theme.card,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 13,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10
+    },
+    searchIcon: { fontSize: 15, color: theme.quietText },
+    searchInput: { flex: 1, ...typography.body, color: theme.text, paddingVertical: 0 },
 
-  popularLabel: {
-    ...typography.sectionHeader,
-    color: colors.label3,
-    paddingHorizontal: spacing.screenH,
-    paddingBottom: 8,
-    paddingTop: 4
-  },
-  popularGrid: { paddingHorizontal: 16, paddingBottom: 12, rowGap: 8 },
-  popularRow: { gap: 8 },
-  popularCard: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10
-  },
-  popularCardName: { ...typography.subheadline, color: colors.label },
-  popularCardPrice: { ...typography.caption1, color: colors.label3, marginTop: 2 },
+    popularLabel: {
+      ...typography.sectionHeader,
+      color: theme.mutedText,
+      paddingHorizontal: spacing.screenH,
+      paddingBottom: 8,
+      paddingTop: 4
+    },
+    popularGrid: { paddingHorizontal: 16, paddingBottom: 12, rowGap: 8 },
+    popularRow: { gap: 8 },
+    popularCard: {
+      flex: 1,
+      backgroundColor: theme.card,
+      borderRadius: 14,
+      padding: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10
+    },
+    popularCardName: { ...typography.subheadline, color: theme.text },
+    popularCardPrice: { ...typography.caption1, color: theme.mutedText, marginTop: 2 },
 
-  resultsList: {
-    marginHorizontal: 16,
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    overflow: "hidden"
-  },
-  resultRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    gap: 14,
-    minHeight: spacing.rowH + 8
-  },
-  resultMiddle: { flex: 1 },
-  resultName: { ...typography.subheadline, color: colors.label },
-  resultCategory: { ...typography.caption1, color: colors.label3, marginTop: 1 },
-  resultPrice: { ...typography.subheadline, color: colors.label3 },
-  rowSeparatorFromLeft: {
-    position: "absolute",
-    left: 62, right: 0, bottom: 0,
-    height: 0.5,
-    backgroundColor: colors.separator
-  },
+    resultsList: {
+      marginHorizontal: 16,
+      backgroundColor: theme.card,
+      borderRadius: 16,
+      overflow: "hidden"
+    },
+    resultRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      paddingVertical: 13,
+      gap: 14,
+      minHeight: spacing.rowH + 8
+    },
+    resultMiddle: { flex: 1 },
+    resultName: { ...typography.subheadline, color: theme.text },
+    resultCategory: { ...typography.caption1, color: theme.mutedText, marginTop: 1 },
+    resultPrice: { ...typography.subheadline, color: theme.mutedText },
+    rowSeparatorFromLeft: {
+      position: "absolute",
+      left: 62, right: 0, bottom: 0,
+      height: 0.5,
+      backgroundColor: theme.border
+    },
+    addCustomPlus: { fontSize: 20, color: theme.primary, fontWeight: "700" },
 
-  avatar: {
-    width: spacing.avatarMd,
-    height: spacing.avatarMd,
-    borderRadius: spacing.avatarRadius.md,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  avatarText: { fontSize: 13, fontWeight: "700" },
+    avatar: {
+      width: spacing.avatarMd,
+      height: spacing.avatarMd,
+      borderRadius: spacing.avatarRadius.md,
+      alignItems: "center",
+      justifyContent: "center"
+    },
+    avatarText: { fontSize: 13, fontWeight: "700" },
 
-  // ── Form step ──
-  formScrollContent: { paddingBottom: 120 },
+    // ── Form step ──
+    formScrollContent: { paddingBottom: 120 },
 
-  selectedHeader: {
-    margin: spacing.screenH,
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14
-  },
-  avatarLg: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  avatarLgText: { fontSize: 14, fontWeight: "700" },
-  selectedName: { ...typography.headline, color: colors.label },
-  selectedCategory: { ...typography.caption1, color: colors.label3, marginTop: 2 },
-  changeLink: { ...typography.footnote, color: colors.blue },
+    selectedHeader: {
+      margin: spacing.screenH,
+      backgroundColor: theme.card,
+      borderRadius: 16,
+      padding: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14
+    },
+    avatarLg: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+    avatarLgText: { fontSize: 14, fontWeight: "700" },
+    selectedName: { ...typography.headline, color: theme.text },
+    selectedCategory: { ...typography.caption1, color: theme.mutedText, marginTop: 2 },
+    changeLink: { ...typography.footnote, color: theme.primary },
 
-  formCard: {
-    marginHorizontal: spacing.screenH,
-    marginBottom: 8,
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    overflow: "hidden"
-  },
-  formCardLast: { marginBottom: 32 },
+    formCard: {
+      marginHorizontal: spacing.screenH,
+      marginBottom: 8,
+      backgroundColor: theme.card,
+      borderRadius: 16,
+      overflow: "hidden"
+    },
+    formCardLast: { marginBottom: 32 },
 
-  formRow: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    minHeight: spacing.rowH + 4,
-    gap: 12
-  },
-  formLabel: { ...typography.subheadline, color: colors.label },
-  formSub: { ...typography.caption1, color: colors.label3, marginTop: 2 },
-  formRowRight: { flexDirection: "row", alignItems: "center", gap: 4 },
-  formValueText: { ...typography.subheadline, color: colors.label3 },
-  chevron: { fontSize: 18, color: colors.label4 },
+    formRow: {
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      minHeight: spacing.rowH + 4,
+      gap: 12
+    },
+    formLabel: { ...typography.subheadline, color: theme.text },
+    formSub: { ...typography.caption1, color: theme.mutedText, marginTop: 2 },
+    formRowRight: { flexDirection: "row", alignItems: "center", gap: 4 },
+    formValueText: { ...typography.subheadline, color: theme.mutedText },
+    chevron: { fontSize: 18, color: theme.quietText },
 
-  amountRight: { flexDirection: "row", alignItems: "center", gap: 4 },
-  amountCurrency: { ...typography.subheadline, color: colors.label3 },
-  amountInput: { ...typography.subheadline, color: colors.label, width: 80, textAlign: "right" },
+    amountRight: { flexDirection: "row", alignItems: "center", gap: 4 },
+    amountCurrency: { ...typography.subheadline, color: theme.mutedText },
+    amountInput: { ...typography.subheadline, color: theme.text, width: 80, textAlign: "right" },
 
-  renewalDate: { ...typography.subheadline, color: colors.blue },
+    renewalDate: { ...typography.subheadline, color: theme.primary },
 
-  segmented: {
-    flexDirection: "row",
-    backgroundColor: colors.surfaceHigh,
-    borderRadius: 8,
-    padding: 2,
-    gap: 2
-  },
-  segment: { borderRadius: 6, paddingHorizontal: 12, paddingVertical: 6 },
-  segmentActive: { backgroundColor: colors.bg },
-  segmentText: { ...typography.subheadline, fontWeight: "600" },
-  segmentTextActive: { color: colors.label },
-  segmentTextInactive: { color: colors.label3 },
+    segmented: {
+      flexDirection: "row",
+      backgroundColor: theme.surfaceAlt,
+      borderRadius: 8,
+      padding: 2,
+      gap: 2
+    },
+    segment: { borderRadius: 6, paddingHorizontal: 12, paddingVertical: 6 },
+    segmentActive: { backgroundColor: theme.background },
+    segmentText: { ...typography.subheadline, fontWeight: "600" },
+    segmentTextActive: { color: theme.text },
+    segmentTextInactive: { color: theme.mutedText },
 
-  notesInput: {
-    ...typography.subheadline,
-    color: colors.label,
-    paddingHorizontal: 16,
-    paddingTop: 2,
-    paddingBottom: 14,
-    minHeight: 44
-  },
+    notesInput: {
+      ...typography.subheadline,
+      color: theme.text,
+      paddingHorizontal: 16,
+      paddingTop: 2,
+      paddingBottom: 14,
+      minHeight: 44
+    },
 
-  fullSeparator: { height: 0.5, backgroundColor: colors.separator },
+    fullSeparator: { height: 0.5, backgroundColor: theme.border },
 
-  notifHeader: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 },
-  notifSectionLabel: { ...typography.sectionHeader, color: colors.label3 },
-  notifRow: {
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14
-  },
-  notifIconWrap: {
-    width: 34, height: 34, borderRadius: 10,
-    backgroundColor: "rgba(255,159,10,0.15)",
-    alignItems: "center", justifyContent: "center"
-  },
-  notifIcon: { fontSize: 18 },
-  notifTextWrap: { flex: 1 },
+    notifHeader: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 },
+    notifSectionLabel: { ...typography.sectionHeader, color: theme.mutedText },
+    notifRow: {
+      paddingHorizontal: 16,
+      paddingVertical: 13,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14
+    },
+    notifIconWrap: {
+      width: 34, height: 34, borderRadius: 10,
+      backgroundColor: theme.warningSurface,
+      alignItems: "center", justifyContent: "center"
+    },
+    notifIcon: { fontSize: 18 },
+    notifTextWrap: { flex: 1 },
 
-  // Bottom save bar
-  bottomBar: {
-    position: "absolute",
-    bottom: 0, left: 0, right: 0,
-    backgroundColor: colors.bg,
-    paddingHorizontal: 16,
-    paddingBottom: Platform.OS === "ios" ? 40 : 24,
-    paddingTop: 12,
-    borderTopWidth: 0.5,
-    borderTopColor: colors.separator
-  },
-  saveButton: {
-    borderRadius: 14,
-    paddingVertical: 17,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  saveButtonText: { fontSize: 17, fontWeight: "600", color: "#fff" }
-});
+    // Bottom save bar
+    bottomBar: {
+      position: "absolute",
+      bottom: 0, left: 0, right: 0,
+      backgroundColor: theme.background,
+      paddingHorizontal: 16,
+      paddingBottom: Platform.OS === "ios" ? 40 : 24,
+      paddingTop: 12,
+      borderTopWidth: 0.5,
+      borderTopColor: theme.border
+    },
+    saveButton: {
+      borderRadius: 14,
+      paddingVertical: 17,
+      alignItems: "center",
+      justifyContent: "center"
+    },
+    saveButtonText: { fontSize: 17, fontWeight: "600", color: theme.onPrimary }
+  });
+}

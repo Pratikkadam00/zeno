@@ -14,14 +14,23 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "../src/auth/authStore";
-import { colors } from "../src/theme/colors";
+import { useSubRadarTheme } from "../src/theme/theme-provider";
+import type { ThemeTokens } from "../src/theme/tokens";
 import { spacing } from "../src/theme/spacing";
 import { type } from "../src/theme/typography";
+import { withAlpha } from "../src/utils/subscription-ui";
 
 const TERMS_URL = "https://example.com/terms";
 const PRIVACY_URL = "https://example.com/privacy";
 
+// Brand button colors — intentionally theme-invariant (Apple/Google guidelines).
+const APPLE_BUTTON_BG = "#FFFFFF";
+const APPLE_BUTTON_TEXT = "#000000";
+const GOOGLE_BRAND_BLUE = "#4285F4";
+
 export default function LoginScreen() {
+  const { theme } = useSubRadarTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const {
     status,
     isAuthenticated,
@@ -120,7 +129,7 @@ export default function LoginScreen() {
         >
           <View style={styles.topSection}>
             <View style={styles.brandBlock}>
-              <View style={styles.iconContainer}>
+              <View style={styles.iconContainer} accessible={false} importantForAccessibility="no-hide-descendants">
                 <Text style={styles.brandIcon}>Z</Text>
               </View>
               <Text style={styles.appName}>Zeno</Text>
@@ -131,20 +140,21 @@ export default function LoginScreen() {
               <View style={styles.inputBlock}>
                 <Text style={styles.fieldLabel}>Email</Text>
                 <View style={styles.inputContainer}>
-                  <Text style={styles.inputIcon}>{"\u2709"}</Text>
+                  <Text style={styles.inputIcon} accessible={false}>{"✉"}</Text>
                   <TextInput
+                    accessibilityLabel="Email address"
                     autoCapitalize="none"
                     autoComplete="email"
                     autoCorrect={false}
-                    cursorColor={colors.blue}
+                    cursorColor={theme.primary}
                     editable={!isBusy}
                     keyboardType="email-address"
                     onChangeText={setEmail}
                     onSubmitEditing={handleMagicLink}
                     placeholder="you@example.com"
-                    placeholderTextColor={colors.label4}
+                    placeholderTextColor={theme.quietText}
                     returnKeyType="send"
-                    selectionColor={colors.blue}
+                    selectionColor={theme.primary}
                     style={styles.input}
                     value={email}
                   />
@@ -152,8 +162,8 @@ export default function LoginScreen() {
 
                 {message ? (
                   <View style={styles.successState}>
-                    <Text style={styles.successText}>
-                      {"\u2713"}
+                    <Text style={styles.successText} accessible={false}>
+                      {"✓"}
                     </Text>
                     <Text style={styles.successMessage}>{message}</Text>
                   </View>
@@ -168,17 +178,18 @@ export default function LoginScreen() {
 
               <Pressable
                 accessibilityRole="button"
+                accessibilityState={{ disabled: !canSubmitEmail }}
                 disabled={!canSubmitEmail}
                 onPress={handleMagicLink}
                 style={({ pressed }) => [
                   styles.primaryButton,
                   {
-                    backgroundColor: canSubmitEmail ? colors.blue : "rgba(10,132,255,0.4)",
+                    backgroundColor: canSubmitEmail ? theme.primary : withAlpha(theme.primary, 0.4),
                     opacity: pressed ? 0.9 : 1
                   }
                 ]}
               >
-                {activeProvider === "magic" ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Send sign-in link</Text>}
+                {activeProvider === "magic" ? <ActivityIndicator color={theme.onPrimary} /> : <Text style={styles.primaryButtonText}>Send sign-in link</Text>}
               </Pressable>
 
               <View style={styles.dividerRow}>
@@ -190,6 +201,7 @@ export default function LoginScreen() {
               <View style={styles.socialStack}>
                 <Pressable
                   accessibilityRole="button"
+                  accessibilityLabel="Continue with Apple"
                   disabled={isBusy}
                   onPress={handleApple}
                   style={({ pressed }) => [
@@ -199,7 +211,7 @@ export default function LoginScreen() {
                     }
                   ]}
                 >
-                  {activeProvider === "apple" ? <ActivityIndicator color="#fff" /> : (
+                  {activeProvider === "apple" ? <ActivityIndicator color={APPLE_BUTTON_TEXT} /> : (
                     <>
                       <Text style={styles.appleIcon}>Apple</Text>
                       <Text style={styles.appleButtonText}>Continue with Apple</Text>
@@ -209,6 +221,7 @@ export default function LoginScreen() {
 
                 <Pressable
                   accessibilityRole="button"
+                  accessibilityLabel="Continue with Google"
                   disabled={isBusy}
                   onPress={handleGoogle}
                   style={({ pressed }) => [
@@ -218,9 +231,9 @@ export default function LoginScreen() {
                     }
                   ]}
                 >
-                  {activeProvider === "google" ? <ActivityIndicator color={colors.label} /> : (
+                  {activeProvider === "google" ? <ActivityIndicator color={theme.text} /> : (
                     <>
-                      <View style={styles.googleMark}>
+                      <View style={styles.googleMark} accessible={false} importantForAccessibility="no-hide-descendants">
                         <Text style={styles.googleMarkText}>G</Text>
                       </View>
                       <Text style={styles.googleButtonText}>Continue with Google</Text>
@@ -231,6 +244,7 @@ export default function LoginScreen() {
                 {__DEV__ ? (
                   <Pressable
                     accessibilityRole="button"
+                    accessibilityLabel="Developer login"
                     disabled={isBusy || !canSubmitDemo}
                     onPress={handleDemoLogin}
                     style={({ pressed }) => [
@@ -240,7 +254,7 @@ export default function LoginScreen() {
                       }
                     ]}
                   >
-                    {activeProvider === "demo" ? <ActivityIndicator color={colors.label} /> : <Text style={styles.devButtonText}>{"\uD83D\uDD27"} Dev login</Text>}
+                    {activeProvider === "demo" ? <ActivityIndicator color={theme.text} /> : <Text style={styles.devButtonText}>{"🔧"} Dev login</Text>}
                   </Pressable>
                 ) : null}
               </View>
@@ -250,11 +264,11 @@ export default function LoginScreen() {
           <View style={styles.bottomSection}>
             <Text style={styles.privacyTextBase}>
               By continuing you agree to our
-              <Text onPress={() => openLink(TERMS_URL)} style={styles.privacyLink}>
+              <Text accessibilityRole="link" onPress={() => openLink(TERMS_URL)} style={styles.privacyLink}>
                 {" Terms"}
               </Text>
               <Text style={styles.privacyTextBase}> and </Text>
-              <Text onPress={() => openLink(PRIVACY_URL)} style={styles.privacyLink}>
+              <Text accessibilityRole="link" onPress={() => openLink(PRIVACY_URL)} style={styles.privacyLink}>
                 Privacy Policy
               </Text>
             </Text>
@@ -264,237 +278,241 @@ export default function LoginScreen() {
 
       {isBusy ? (
         <View style={styles.overlay}>
-          <ActivityIndicator size="large" color={colors.blue} />
+          <ActivityIndicator size="large" color={theme.primary} />
         </View>
       ) : null}
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.bg,
-    position: "relative"
-  },
-  keyboard: {
-    flex: 1
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "space-between",
-    paddingBottom: 40,
-    paddingHorizontal: 24
-  },
-  topSection: {
-    flex: 1,
-    justifyContent: "center",
-    paddingTop: 60
-  },
-  brandBlock: {
-    alignItems: "center",
-    marginBottom: 48
-  },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.blue,
-    marginBottom: 20
-  },
-  brandIcon: {
-    color: "#fff",
-    fontSize: 40,
-    fontWeight: "800",
-    letterSpacing: -2
-  },
-  appName: {
-    color: colors.label,
-    fontSize: 28,
-    fontWeight: "700",
-    letterSpacing: -1
-  },
-  tagline: {
-    ...type.callout,
-    color: colors.label3,
-    marginTop: 4,
-    textAlign: "center"
-  },
-  formSection: {
-    gap: spacing.sectionGap - 8
-  },
-  inputBlock: {
-    gap: 8
-  },
-  fieldLabel: {
-    ...type.footnote,
-    color: colors.label3
-  },
-  inputContainer: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10
-  },
-  inputIcon: {
-    fontSize: 16,
-    color: colors.label3
-  },
-  input: {
-    flex: 1,
-    ...type.body,
-    color: colors.label,
-    paddingVertical: 0
-  },
-  successState: {
-    backgroundColor: "rgba(48,209,88,0.08)",
-    borderColor: "rgba(48,209,88,0.3)",
-    borderWidth: 0.5,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8
-  },
-  successText: {
-    color: colors.green,
-    fontSize: 14
-  },
-  successMessage: {
-    ...type.footnote,
-    color: colors.green
-  },
-  primaryButton: {
-    width: "100%",
-    borderRadius: 14,
-    paddingVertical: 17,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  primaryButtonText: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "600"
-  },
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 24
-  },
-  dividerLine: {
-    flex: 1,
-    height: 0.5,
-    backgroundColor: colors.separator
-  },
-  dividerText: {
-    ...type.footnote,
-    color: colors.label4
-  },
-  socialStack: {
-    gap: 12
-  },
-  appleButton: {
-    width: "100%",
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    paddingVertical: 15,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10
-  },
-  appleIcon: {
-    color: "#000",
-    fontSize: 20,
-    fontWeight: "700"
-  },
-  appleButtonText: {
-    color: "#000",
-    fontSize: 17,
-    fontWeight: "600"
-  },
-  googleButton: {
-    width: "100%",
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    paddingVertical: 15,
-    borderWidth: 0.5,
-    borderColor: colors.separatorOpaque,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10
-  },
-  googleMark: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  googleMarkText: {
-    color: "#4285F4",
-    fontSize: 12,
-    fontWeight: "700"
-  },
-  googleButtonText: {
-    color: colors.label,
-    fontSize: 17,
-    fontWeight: "600"
-  },
-  devButton: {
-    width: "100%",
-    backgroundColor: colors.surfaceHigh,
-    borderRadius: 14,
-    paddingVertical: 13,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginTop: 4
-  },
-  devButtonText: {
-    color: colors.label3,
-    fontSize: 15,
-    fontWeight: "500"
-  },
-  errorState: {
-    backgroundColor: "rgba(255,69,58,0.08)",
-    borderColor: "rgba(255,69,58,0.2)",
-    borderWidth: 0.5,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10
-  },
-  errorText: {
-    ...type.footnote,
-    color: colors.red
-  },
-  bottomSection: {
-    marginTop: 24
-  },
-  privacyTextBase: {
-    ...type.caption1,
-    color: colors.label4,
-    textAlign: "center"
-  },
-  privacyLink: {
-    color: colors.blue,
-    ...type.caption1
-  },
-  overlay: {
-    position: "absolute",
-    inset: 0,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.5)"
-  }
-});
+function createStyles(theme: ThemeTokens) {
+  return StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background,
+      position: "relative"
+    },
+    keyboard: {
+      flex: 1
+    },
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: "space-between",
+      paddingBottom: 40,
+      paddingHorizontal: 24
+    },
+    topSection: {
+      flex: 1,
+      justifyContent: "center",
+      paddingTop: 60
+    },
+    brandBlock: {
+      alignItems: "center",
+      marginBottom: 48
+    },
+    iconContainer: {
+      width: 80,
+      height: 80,
+      borderRadius: 20,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.primary,
+      marginBottom: 20
+    },
+    brandIcon: {
+      color: theme.onPrimary,
+      fontSize: 40,
+      fontWeight: "800",
+      letterSpacing: -2
+    },
+    appName: {
+      color: theme.text,
+      fontSize: 28,
+      fontWeight: "700",
+      letterSpacing: -1
+    },
+    tagline: {
+      ...type.callout,
+      color: theme.mutedText,
+      marginTop: 4,
+      textAlign: "center"
+    },
+    formSection: {
+      gap: spacing.sectionGap - 8
+    },
+    inputBlock: {
+      gap: 8
+    },
+    fieldLabel: {
+      ...type.footnote,
+      color: theme.mutedText
+    },
+    inputContainer: {
+      backgroundColor: theme.card,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10
+    },
+    inputIcon: {
+      fontSize: 16,
+      color: theme.mutedText
+    },
+    input: {
+      flex: 1,
+      ...type.body,
+      color: theme.text,
+      paddingVertical: 0
+    },
+    successState: {
+      backgroundColor: theme.successSurface,
+      borderColor: withAlpha(theme.success, 0.3),
+      borderWidth: 0.5,
+      borderRadius: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8
+    },
+    successText: {
+      color: theme.success,
+      fontSize: 14
+    },
+    successMessage: {
+      ...type.footnote,
+      color: theme.success
+    },
+    primaryButton: {
+      width: "100%",
+      borderRadius: 14,
+      paddingVertical: 17,
+      alignItems: "center",
+      justifyContent: "center"
+    },
+    primaryButtonText: {
+      color: theme.onPrimary,
+      fontSize: 17,
+      fontWeight: "600"
+    },
+    dividerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      marginBottom: 24
+    },
+    dividerLine: {
+      flex: 1,
+      height: 0.5,
+      backgroundColor: theme.border
+    },
+    dividerText: {
+      ...type.footnote,
+      color: theme.quietText
+    },
+    socialStack: {
+      gap: 12
+    },
+    appleButton: {
+      width: "100%",
+      backgroundColor: APPLE_BUTTON_BG,
+      borderRadius: 14,
+      paddingVertical: 15,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+      borderWidth: 0.5,
+      borderColor: theme.border
+    },
+    appleIcon: {
+      color: APPLE_BUTTON_TEXT,
+      fontSize: 20,
+      fontWeight: "700"
+    },
+    appleButtonText: {
+      color: APPLE_BUTTON_TEXT,
+      fontSize: 17,
+      fontWeight: "600"
+    },
+    googleButton: {
+      width: "100%",
+      backgroundColor: theme.card,
+      borderRadius: 14,
+      paddingVertical: 15,
+      borderWidth: 0.5,
+      borderColor: theme.border,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10
+    },
+    googleMark: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: "#FFFFFF",
+      alignItems: "center",
+      justifyContent: "center"
+    },
+    googleMarkText: {
+      color: GOOGLE_BRAND_BLUE,
+      fontSize: 12,
+      fontWeight: "700"
+    },
+    googleButtonText: {
+      color: theme.text,
+      fontSize: 17,
+      fontWeight: "600"
+    },
+    devButton: {
+      width: "100%",
+      backgroundColor: theme.surfaceAlt,
+      borderRadius: 14,
+      paddingVertical: 13,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      marginTop: 4
+    },
+    devButtonText: {
+      color: theme.mutedText,
+      fontSize: 15,
+      fontWeight: "500"
+    },
+    errorState: {
+      backgroundColor: theme.dangerSurface,
+      borderColor: withAlpha(theme.danger, 0.2),
+      borderWidth: 0.5,
+      borderRadius: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 10
+    },
+    errorText: {
+      ...type.footnote,
+      color: theme.danger
+    },
+    bottomSection: {
+      marginTop: 24
+    },
+    privacyTextBase: {
+      ...type.caption1,
+      color: theme.quietText,
+      textAlign: "center"
+    },
+    privacyLink: {
+      color: theme.primary,
+      ...type.caption1
+    },
+    overlay: {
+      position: "absolute",
+      inset: 0,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.overlay
+    }
+  });
+}

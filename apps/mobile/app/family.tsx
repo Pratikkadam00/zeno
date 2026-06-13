@@ -1,7 +1,7 @@
 import { ScrollView, Text, View } from "react-native";
 import { Screen, Surface } from "../src/components/ui";
 import { useSubscriptionStore } from "../src/data/subscription-store";
-import { formatMoney } from "../src/notifications/renewal-reminders";
+import { formatMoney } from "../src/utils/format";
 import { useSubRadarTheme } from "../src/theme/theme-provider";
 
 export default function FamilyVaultScreen() {

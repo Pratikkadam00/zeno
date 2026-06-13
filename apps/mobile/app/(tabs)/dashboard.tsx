@@ -5,16 +5,16 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "../../src/auth/authStore";
 import { checkStatus, type BillingPlan } from "../../src/billing/revenueCat";
-import { InsightCard } from "../../components/insights/InsightCard";
 import { ThemeToggle } from "../../src/components/ui";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
 import { generateInsights, getTotalSavingOpportunity } from "../../src/insights/insightsEngine";
-import { formatMoney, notificationLabel } from "../../src/notifications/renewal-reminders";
-import { colors } from "../../src/theme/colors";
+import { formatMoney, notificationLabel } from "../../src/utils/format";
+import { formatRenewalDate, getAvatarStyle, getDaysRemaining, getUrgencyBadge, withAlpha } from "../../src/utils/subscription-ui";
+import { useSubRadarTheme } from "../../src/theme/theme-provider";
+import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
 import { spacing } from "../../src/theme/spacing";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const FREE_LIMIT = 8;
 
 const intelligenceFeatures = [
@@ -30,54 +30,12 @@ const intelligenceFeatures = [
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function getDaysRemaining(dateValue?: string | null): number | null {
-  if (!dateValue) return null;
-  const target = new Date(dateValue);
-  if (Number.isNaN(target.getTime())) return null;
-  const today = new Date();
-  const todayUTC = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
-  const targetUTC = Date.UTC(target.getUTCFullYear(), target.getUTCMonth(), target.getUTCDate());
-  return Math.max(0, Math.ceil((targetUTC - todayUTC) / DAY_MS));
-}
-
-function formatRenewalDate(dateValue?: string | null): string {
-  if (!dateValue) return "No date";
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return "No date";
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
-function getAvatarStyle(category: string) {
-  const map: Record<string, { bg: string; text: string }> = {
-    entertainment:    { bg: "rgba(255,69,58,0.15)",    text: "#FF453A" },
-    streaming:        { bg: "rgba(255,69,58,0.15)",    text: "#FF453A" },
-    ai_tools:         { bg: "rgba(191,90,242,0.15)",   text: "#BF5AF2" },
-    developer_tools:  { bg: "rgba(191,90,242,0.15)",   text: "#BF5AF2" },
-    productivity:     { bg: "rgba(10,132,255,0.15)",   text: "#0A84FF" },
-    gaming:           { bg: "rgba(48,209,88,0.15)",    text: "#30D158" },
-    health:           { bg: "rgba(255,159,10,0.15)",   text: "#FF9F0A" },
-    finance:          { bg: "rgba(90,200,245,0.15)",   text: "#5AC8F5" },
-    education:        { bg: "rgba(255,214,10,0.15)",   text: "#FFD60A" },
-    music:            { bg: "rgba(255,55,95,0.15)",    text: "#FF375F" },
-    family:           { bg: "rgba(48,209,88,0.15)",    text: "#30D158" },
-  };
-  return map[category] ?? { bg: "rgba(255,255,255,0.08)", text: "rgba(255,255,255,0.4)" };
-}
-
-function getUrgencyBadge(days: number | null): { bg: string; text: string; label: string } | null {
-  if (days === null) return null;
-  if (days === 0)  return { bg: "rgba(255,69,58,0.2)",    text: "#FF453A",              label: "TODAY"     };
-  if (days <= 3)   return { bg: "rgba(255,69,58,0.15)",   text: "#FF6961",              label: `${days} days` };
-  if (days <= 7)   return { bg: "rgba(255,159,10,0.15)",  text: colors.orange,          label: `${days} days` };
-  return             { bg: "rgba(255,255,255,0.06)", text: "rgba(255,255,255,0.3)", label: `${days} days` };
-}
-
-function insightAccent(type: string): string {
-  if (type === "unused_review")       return colors.orange;
-  if (type === "duplicate_category")  return colors.blue;
-  if (type === "annual_savings")      return colors.green;
-  if (type === "trial_ending")        return colors.red;
-  return colors.purple;
+function insightAccent(type: string, theme: ThemeTokens): string {
+  if (type === "unused_review")       return theme.warning;
+  if (type === "duplicate_category")  return theme.primary;
+  if (type === "annual_savings")      return theme.success;
+  if (type === "trial_ending")        return theme.danger;
+  return theme.secondary;
 }
 
 function canAccessFeature(plan: BillingPlan, minimumPlan: BillingPlan): boolean {
@@ -89,6 +47,8 @@ function canAccessFeature(plan: BillingPlan, minimumPlan: BillingPlan): boolean 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function DashboardScreen() {
+  const { theme } = useSubRadarTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { subscriptions, totalMonthlyMinor, upcoming, spendSummary, reminderPlan } = useSubscriptionStore();
   const { plan, setPlan } = useAuthStore();
   const [dismissedInsights, setDismissedInsights] = useState<string[]>([]);
@@ -139,7 +99,7 @@ export default function DashboardScreen() {
           {/* ── Nav bar ── */}
           <View style={styles.navBar}>
             <Text style={styles.brand}>zeno</Text>
-            <View style={styles.avatarCircle}>
+            <View style={styles.avatarCircle} importantForAccessibility="no-hide-descendants" accessible={false}>
               <Text style={styles.avatarCircleText}>Z</Text>
             </View>
           </View>
@@ -160,6 +120,8 @@ export default function DashboardScreen() {
           {/* ── Free tier counter ── */}
           {plan === "free" ? (
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Free tier: ${subscriptions.length} of ${FREE_LIMIT} subscriptions used`}
               onPress={() => { if (subscriptions.length >= FREE_LIMIT) router.push("/paywall"); }}
               style={styles.freeCounter}
             >
@@ -178,7 +140,7 @@ export default function DashboardScreen() {
                 <View style={styles.urgentAccentRight} />
               </View>
               <View style={styles.urgentBody}>
-                <View style={styles.urgentIcon}>
+                <View style={styles.urgentIcon} accessible={false} importantForAccessibility="no-hide-descendants">
                   <Text style={styles.urgentIconText}>⚠</Text>
                 </View>
                 <View style={styles.urgentMiddle}>
@@ -194,6 +156,8 @@ export default function DashboardScreen() {
                   </Text>
                 </View>
                 <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Cancel ${urgentRenewal.sub.name}`}
                   style={styles.urgentCancelBtn}
                   onPress={() => router.push(`/subscription/cancel/${urgentRenewal.sub.id}` as never)}
                 >
@@ -205,56 +169,78 @@ export default function DashboardScreen() {
 
           {/* ── Upcoming renewals ── */}
           <Text style={styles.sectionLabel}>UPCOMING RENEWALS</Text>
-          <View style={styles.groupCard}>
-            {upcoming.slice(0, 5).map((sub, index) => {
-              const avatar = getAvatarStyle(sub.category);
-              const days = getDaysRemaining(sub.nextRenewalDate);
-              const badge = getUrgencyBadge(days);
-              const isLast = index === Math.min(upcoming.length, 5) - 1;
-              return (
-                <Link href={`/subscription/${sub.id}` as never} key={sub.id} asChild>
-                  <Pressable>
-                    <View style={styles.row}>
-                      <View style={[styles.avatar, { backgroundColor: avatar.bg }]}>
-                        <Text style={[styles.avatarText, { color: avatar.text }]}>
-                          {sub.name.charAt(0).toUpperCase()}
-                        </Text>
-                      </View>
-                      <View style={styles.rowMiddle}>
-                        <Text style={styles.rowTitle}>{sub.name}</Text>
-                        <Text style={styles.rowMeta}>
-                          {formatRenewalDate(sub.nextRenewalDate)} · {sub.billingCycle}
-                        </Text>
-                      </View>
-                      <View style={styles.rowRight}>
-                        <Text style={styles.rowPrice}>
-                          {formatMoney(sub.price.amountMinor, sub.price.currency)}
-                        </Text>
-                        {badge ? (
-                          <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-                            <Text style={[styles.badgeText, { color: badge.text }]}>{badge.label}</Text>
-                          </View>
-                        ) : null}
-                      </View>
-                    </View>
-                    {!isLast ? <View style={styles.separator} /> : null}
-                  </Pressable>
-                </Link>
-              );
-            })}
-            {upcoming.length === 0 ? (
-              <View style={styles.emptyRow}>
-                <Text style={styles.emptyText}>No upcoming renewals</Text>
+          {upcoming.length === 0 ? (
+            /* ── Empty state ── */
+            <View style={styles.emptyCard}>
+              <View style={styles.emptyIconWrap} accessible={false} importantForAccessibility="no-hide-descendants">
+                <Text style={styles.emptyIcon}>🗓️</Text>
               </View>
-            ) : null}
-          </View>
+              <Text style={styles.emptyTitle}>No upcoming renewals</Text>
+              <Text style={styles.emptyBody}>
+                Once you track subscriptions, their next charges show up here so you're never surprised.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                style={styles.emptyPrimaryBtn}
+                onPress={() => router.push("/discover")}
+              >
+                <Text style={styles.emptyPrimaryBtnText}>Find my subscriptions</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                style={styles.emptySecondaryBtn}
+                onPress={() => router.push("/subscription/add")}
+              >
+                <Text style={styles.emptySecondaryBtnText}>Add one manually</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.groupCard}>
+              {upcoming.slice(0, 5).map((sub, index) => {
+                const avatar = getAvatarStyle(sub.category, theme);
+                const days = getDaysRemaining(sub.nextRenewalDate);
+                const badge = getUrgencyBadge(days, theme);
+                const isLast = index === Math.min(upcoming.length, 5) - 1;
+                return (
+                  <Link href={`/subscription/${sub.id}` as never} key={sub.id} asChild>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`${sub.name}, ${formatMoney(sub.price.amountMinor, sub.price.currency)}, renews ${formatRenewalDate(sub.nextRenewalDate)}`}>
+                      <View style={styles.row}>
+                        <View style={[styles.avatar, { backgroundColor: avatar.bg }]}>
+                          <Text style={[styles.avatarText, { color: avatar.text }]}>
+                            {sub.name.charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+                        <View style={styles.rowMiddle}>
+                          <Text style={styles.rowTitle}>{sub.name}</Text>
+                          <Text style={styles.rowMeta}>
+                            {formatRenewalDate(sub.nextRenewalDate)} · {sub.billingCycle}
+                          </Text>
+                        </View>
+                        <View style={styles.rowRight}>
+                          <Text style={styles.rowPrice}>
+                            {formatMoney(sub.price.amountMinor, sub.price.currency)}
+                          </Text>
+                          {badge ? (
+                            <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+                              <Text style={[styles.badgeText, { color: badge.text }]}>{badge.label}</Text>
+                            </View>
+                          ) : null}
+                        </View>
+                      </View>
+                      {!isLast ? <View style={styles.separator} /> : null}
+                    </Pressable>
+                  </Link>
+                );
+              })}
+            </View>
+          )}
 
           {/* ── Insights preview ── */}
           {allInsights.length > 0 ? (
             <>
               <Text style={[styles.sectionLabel, styles.sectionLabelMargin]}>INSIGHTS</Text>
               {savingOpportunity > 20 ? (
-                <Pressable style={styles.savingCallout} onPress={() => router.push("/analytics")}>
+                <Pressable accessibilityRole="button" style={styles.savingCallout} onPress={() => router.push("/analytics")}>
                   <Text style={styles.savingCalloutText}>
                     You could save ${savingOpportunity.toFixed(0)}/mo — tap to see how
                   </Text>
@@ -262,25 +248,30 @@ export default function DashboardScreen() {
               ) : null}
               {previewInsights.map((insight) => (
                 <View key={insight.id} style={styles.insightCard}>
-                  <View style={[styles.insightAccentBar, { backgroundColor: insightAccent(insight.type) }]} />
+                  <View style={[styles.insightAccentBar, { backgroundColor: insightAccent(insight.type, theme) }]} />
                   <View style={styles.insightContent}>
                     <Text style={styles.insightTitle}>{insight.title}</Text>
                     <Text style={styles.insightBody}>{insight.message}</Text>
                     {insight.actionLabel ? (
-                      <Pressable onPress={() => router.push("/analytics")}>
+                      <Pressable accessibilityRole="button" onPress={() => router.push("/analytics")}>
                         <Text style={styles.insightAction}>{insight.actionLabel}</Text>
                       </Pressable>
                     ) : null}
                   </View>
-                  <Pressable onPress={() => setDismissedInsights((c) => [...c, insight.id])}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Dismiss insight"
+                    hitSlop={10}
+                    onPress={() => setDismissedInsights((c) => [...c, insight.id])}
+                  >
                     <Text style={styles.insightDismiss}>×</Text>
                   </Pressable>
                 </View>
               ))}
               <Link href="/analytics" asChild>
-                <Pressable style={styles.seeAllRow}>
+                <Pressable accessibilityRole="link" style={styles.seeAllRow}>
                   <Text style={styles.seeAllText}>See all {allInsights.length} insights</Text>
-                  <Text style={styles.seeAllChevron}>›</Text>
+                  <Text style={styles.seeAllChevron} accessible={false}>›</Text>
                 </Pressable>
               </Link>
             </>
@@ -288,7 +279,7 @@ export default function DashboardScreen() {
 
           {/* ── Spend coach ── */}
           <View style={styles.coachCard}>
-            <View style={styles.coachIcon}>
+            <View style={styles.coachIcon} accessible={false} importantForAccessibility="no-hide-descendants">
               <Text style={styles.coachIconText}>AI</Text>
             </View>
             <Text style={styles.coachTitle}>Spend coach</Text>
@@ -297,7 +288,7 @@ export default function DashboardScreen() {
                 `You spend ${formatMoney(totalMonthlyMinor)} per month. Review AI and productivity tools first.`}
             </Text>
             <Link href="/coach" asChild>
-              <Pressable style={styles.coachBtn}>
+              <Pressable accessibilityRole="button" style={styles.coachBtn}>
                 <Text style={styles.coachBtnText}>Open spend coach</Text>
               </Pressable>
             </Link>
@@ -312,10 +303,12 @@ export default function DashboardScreen() {
                 return (
                   <Pressable
                     key={feature.href}
+                    accessibilityRole="button"
+                    accessibilityLabel={locked ? `${feature.label}, locked, upgrade to unlock` : feature.label}
                     onPress={() => router.push((locked ? "/paywall" : feature.href) as never)}
                     style={[styles.featurePill, locked ? styles.featurePillLocked : styles.featurePillActive]}
                   >
-                    <Text style={[styles.featurePillText, { color: locked ? colors.orange : colors.blue }]}>
+                    <Text style={[styles.featurePillText, { color: locked ? theme.warning : theme.primary }]}>
                       {locked ? "🔒 " : ""}{feature.label}
                     </Text>
                   </Pressable>
@@ -352,13 +345,13 @@ export default function DashboardScreen() {
 
           {/* ── Primary actions ── */}
           <View style={styles.actionsRow}>
-            <Link href="/discovery" asChild>
-              <Pressable style={styles.primaryBtn}>
+            <Link href="/discover" asChild>
+              <Pressable accessibilityRole="button" style={styles.primaryBtn}>
                 <Text style={styles.primaryBtnText}>Scan for subscriptions</Text>
               </Pressable>
             </Link>
             <Link href="/subscription/add" asChild>
-              <Pressable style={styles.secondaryBtn}>
+              <Pressable accessibilityRole="button" style={styles.secondaryBtn}>
                 <Text style={styles.secondaryBtnText}>Add manually</Text>
               </Pressable>
             </Link>
@@ -366,7 +359,7 @@ export default function DashboardScreen() {
 
           {/* ── Settings link ── */}
           <Link href="/settings" asChild>
-            <Pressable style={styles.settingsLink}>
+            <Pressable accessibilityRole="link" style={styles.settingsLink}>
               <Text style={styles.settingsLinkText}>Settings and security</Text>
             </Pressable>
           </Link>
@@ -379,487 +372,542 @@ export default function DashboardScreen() {
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.bg
-  },
-  scroll: {
-    backgroundColor: colors.bg
-  },
-  scrollContent: {
-    paddingBottom: 100,
-    backgroundColor: colors.bg
-  },
+function createStyles(theme: ThemeTokens) {
+  return StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background
+    },
+    scroll: {
+      backgroundColor: theme.background
+    },
+    scrollContent: {
+      paddingBottom: 100,
+      backgroundColor: theme.background
+    },
 
-  // Nav bar
-  navBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.screenH,
-    paddingTop: 16,
-    paddingBottom: 8,
-    backgroundColor: colors.bg
-  },
-  brand: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: colors.label,
-    letterSpacing: -1.5
-  },
-  avatarCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.blue,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  avatarCircleText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#fff"
-  },
+    // Nav bar
+    navBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: spacing.screenH,
+      paddingTop: 16,
+      paddingBottom: 8,
+      backgroundColor: theme.background
+    },
+    brand: {
+      fontSize: 28,
+      fontWeight: "800",
+      color: theme.text,
+      letterSpacing: -1.5
+    },
+    avatarCircle: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: theme.primary,
+      alignItems: "center",
+      justifyContent: "center"
+    },
+    avatarCircleText: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: theme.onPrimary
+    },
 
-  // Hero
-  hero: {
-    paddingHorizontal: spacing.screenH,
-    paddingTop: 8,
-    paddingBottom: 28
-  },
-  heroLabel: {
-    ...typography.sectionHeader,
-    color: colors.label3,
-    marginBottom: 8
-  },
-  heroAmount: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: 2
-  },
-  heroCurrency: {
-    fontSize: 22,
-    fontWeight: "300",
-    color: colors.label3,
-    marginTop: 8
-  },
-  heroWhole: {
-    fontSize: 52,
-    fontWeight: "700",
-    color: colors.label,
-    letterSpacing: -2.5
-  },
-  heroDecimal: {
-    fontSize: 28,
-    fontWeight: "300",
-    color: colors.label3,
-    letterSpacing: -1
-  },
-  heroSubtitle: {
-    ...typography.footnote,
-    color: colors.label3,
-    marginTop: 6
-  },
+    // Hero
+    hero: {
+      paddingHorizontal: spacing.screenH,
+      paddingTop: 8,
+      paddingBottom: 28
+    },
+    heroLabel: {
+      ...typography.sectionHeader,
+      color: theme.mutedText,
+      marginBottom: 8
+    },
+    heroAmount: {
+      flexDirection: "row",
+      alignItems: "baseline",
+      gap: 2
+    },
+    heroCurrency: {
+      fontSize: 22,
+      fontWeight: "300",
+      color: theme.mutedText,
+      marginTop: 8
+    },
+    heroWhole: {
+      fontSize: 52,
+      fontWeight: "700",
+      color: theme.text,
+      letterSpacing: -2.5
+    },
+    heroDecimal: {
+      fontSize: 28,
+      fontWeight: "300",
+      color: theme.mutedText,
+      letterSpacing: -1
+    },
+    heroSubtitle: {
+      ...typography.footnote,
+      color: theme.mutedText,
+      marginTop: 6
+    },
 
-  // Free counter
-  freeCounter: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    alignSelf: "flex-start",
-    marginHorizontal: spacing.screenH,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "rgba(10,132,255,0.24)",
-    backgroundColor: "rgba(10,132,255,0.08)",
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 7
-  },
-  freeCounterText: {
-    ...typography.footnote,
-    fontWeight: "600",
-    color: colors.blue
-  },
-  freeCounterMeta: {
-    ...typography.caption2,
-    color: colors.label3
-  },
+    // Free counter
+    freeCounter: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      alignSelf: "flex-start",
+      marginHorizontal: spacing.screenH,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: withAlpha(theme.primary, 0.24),
+      backgroundColor: theme.primarySurface,
+      borderRadius: 20,
+      paddingHorizontal: 12,
+      paddingVertical: 7
+    },
+    freeCounterText: {
+      ...typography.footnote,
+      fontWeight: "600",
+      color: theme.primary
+    },
+    freeCounterMeta: {
+      ...typography.caption2,
+      color: theme.mutedText
+    },
 
-  // Urgent alert card
-  urgentCard: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    overflow: "hidden"
-  },
-  urgentAccentBar: {
-    height: 3,
-    flexDirection: "row"
-  },
-  urgentAccentLeft: {
-    flex: 1,
-    backgroundColor: colors.red
-  },
-  urgentAccentRight: {
-    flex: 1,
-    backgroundColor: colors.orange
-  },
-  urgentBody: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14
-  },
-  urgentIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: "rgba(255,69,58,0.15)",
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  urgentIconText: {
-    fontSize: 18,
-    color: colors.red
-  },
-  urgentMiddle: {
-    flex: 1
-  },
-  urgentTitle: {
-    ...typography.headline,
-    color: colors.label
-  },
-  urgentSubtitle: {
-    ...typography.footnote,
-    color: colors.label3,
-    marginTop: 2
-  },
-  urgentCancelBtn: {
-    backgroundColor: colors.red,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 7
-  },
-  urgentCancelText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#fff"
-  },
+    // Urgent alert card
+    urgentCard: {
+      marginHorizontal: 16,
+      marginBottom: 12,
+      backgroundColor: theme.card,
+      borderRadius: 16,
+      overflow: "hidden"
+    },
+    urgentAccentBar: {
+      height: 3,
+      flexDirection: "row"
+    },
+    urgentAccentLeft: {
+      flex: 1,
+      backgroundColor: theme.danger
+    },
+    urgentAccentRight: {
+      flex: 1,
+      backgroundColor: theme.warning
+    },
+    urgentBody: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 14
+    },
+    urgentIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      backgroundColor: theme.dangerSurface,
+      alignItems: "center",
+      justifyContent: "center"
+    },
+    urgentIconText: {
+      fontSize: 18,
+      color: theme.danger
+    },
+    urgentMiddle: {
+      flex: 1
+    },
+    urgentTitle: {
+      ...typography.headline,
+      color: theme.text
+    },
+    urgentSubtitle: {
+      ...typography.footnote,
+      color: theme.mutedText,
+      marginTop: 2
+    },
+    urgentCancelBtn: {
+      backgroundColor: theme.danger,
+      borderRadius: 20,
+      paddingHorizontal: 14,
+      paddingVertical: 7
+    },
+    urgentCancelText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: theme.onPrimary
+    },
 
-  // Section label
-  sectionLabel: {
-    ...typography.sectionHeader,
-    color: colors.label3,
-    paddingHorizontal: spacing.screenH,
-    paddingBottom: 8
-  },
-  sectionLabelMargin: {
-    marginTop: 28
-  },
-  sectionLabelInCard: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 10,
-    marginTop: 0
-  },
+    // Section label
+    sectionLabel: {
+      ...typography.sectionHeader,
+      color: theme.mutedText,
+      paddingHorizontal: spacing.screenH,
+      paddingBottom: 8
+    },
+    sectionLabelMargin: {
+      marginTop: 28
+    },
+    sectionLabelInCard: {
+      paddingHorizontal: 16,
+      paddingTop: 14,
+      paddingBottom: 10,
+      marginTop: 0
+    },
 
-  // Grouped card
-  groupCard: {
-    marginHorizontal: 16,
-    backgroundColor: colors.surface,
-    borderRadius: spacing.groupRadius,
-    overflow: "hidden"
-  },
+    // Grouped card
+    groupCard: {
+      marginHorizontal: 16,
+      backgroundColor: theme.card,
+      borderRadius: spacing.groupRadius,
+      overflow: "hidden"
+    },
 
-  // Row
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    minHeight: spacing.rowH + 8
-  },
-  avatar: {
-    width: spacing.avatarMd,
-    height: spacing.avatarMd,
-    borderRadius: spacing.avatarRadius.md,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  avatarText: {
-    fontSize: 14,
-    fontWeight: "700"
-  },
-  rowMiddle: {
-    flex: 1
-  },
-  rowTitle: {
-    ...typography.subheadline,
-    color: colors.label
-  },
-  rowMeta: {
-    ...typography.caption1,
-    color: colors.label3,
-    marginTop: 1
-  },
-  rowRight: {
-    alignItems: "flex-end"
-  },
-  rowPrice: {
-    ...typography.subheadline,
-    fontWeight: "500",
-    color: colors.label,
-    fontVariant: ["tabular-nums"]
-  },
-  badge: {
-    borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    marginTop: 3
-  },
-  badgeText: {
-    ...typography.caption1
-  },
-  separator: {
-    position: "absolute",
-    left: 66,
-    right: 0,
-    bottom: 0,
-    height: 0.5,
-    backgroundColor: colors.separator
-  },
-  emptyRow: {
-    padding: 16,
-    alignItems: "center"
-  },
-  emptyText: {
-    ...typography.callout,
-    color: colors.label3
-  },
+    // Row
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+      paddingHorizontal: 16,
+      paddingVertical: 13,
+      minHeight: spacing.rowH + 8
+    },
+    avatar: {
+      width: spacing.avatarMd,
+      height: spacing.avatarMd,
+      borderRadius: spacing.avatarRadius.md,
+      alignItems: "center",
+      justifyContent: "center"
+    },
+    avatarText: {
+      fontSize: 14,
+      fontWeight: "700"
+    },
+    rowMiddle: {
+      flex: 1
+    },
+    rowTitle: {
+      ...typography.subheadline,
+      color: theme.text
+    },
+    rowMeta: {
+      ...typography.caption1,
+      color: theme.mutedText,
+      marginTop: 1
+    },
+    rowRight: {
+      alignItems: "flex-end"
+    },
+    rowPrice: {
+      ...typography.subheadline,
+      fontWeight: "500",
+      color: theme.text,
+      fontVariant: ["tabular-nums"]
+    },
+    badge: {
+      borderRadius: 20,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      marginTop: 3
+    },
+    badgeText: {
+      ...typography.caption1
+    },
+    separator: {
+      position: "absolute",
+      left: 66,
+      right: 0,
+      bottom: 0,
+      height: 0.5,
+      backgroundColor: theme.border
+    },
 
-  // Saving callout
-  savingCallout: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-    borderRadius: spacing.groupRadius,
-    borderWidth: 0.5,
-    borderColor: "rgba(48,209,88,0.3)",
-    backgroundColor: "rgba(48,209,88,0.12)",
-    padding: 12
-  },
-  savingCalloutText: {
-    ...typography.footnote,
-    fontWeight: "600",
-    color: colors.green,
-    lineHeight: 18
-  },
+    // Empty state
+    emptyCard: {
+      marginHorizontal: 16,
+      backgroundColor: theme.card,
+      borderRadius: spacing.groupRadius,
+      paddingVertical: 28,
+      paddingHorizontal: 24,
+      alignItems: "center"
+    },
+    emptyIconWrap: {
+      width: 56,
+      height: 56,
+      borderRadius: 18,
+      backgroundColor: theme.primarySurface,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 14
+    },
+    emptyIcon: {
+      fontSize: 26
+    },
+    emptyTitle: {
+      fontSize: 17,
+      fontWeight: "600",
+      color: theme.text,
+      letterSpacing: -0.3,
+      marginBottom: 6
+    },
+    emptyBody: {
+      ...typography.footnote,
+      color: theme.mutedText,
+      textAlign: "center",
+      lineHeight: 19,
+      marginBottom: 18
+    },
+    emptyPrimaryBtn: {
+      alignSelf: "stretch",
+      minHeight: 48,
+      backgroundColor: theme.primary,
+      borderRadius: theme.radius,
+      alignItems: "center",
+      justifyContent: "center"
+    },
+    emptyPrimaryBtnText: {
+      fontSize: 15,
+      fontWeight: "600",
+      color: theme.onPrimary
+    },
+    emptySecondaryBtn: {
+      alignSelf: "stretch",
+      minHeight: 44,
+      marginTop: 8,
+      alignItems: "center",
+      justifyContent: "center"
+    },
+    emptySecondaryBtnText: {
+      ...typography.footnote,
+      fontWeight: "600",
+      color: theme.primary
+    },
 
-  // Insight card
-  insightCard: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-    backgroundColor: colors.surface,
-    borderRadius: spacing.groupRadius,
-    padding: 14,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-    overflow: "hidden"
-  },
-  insightAccentBar: {
-    width: 3,
-    alignSelf: "stretch",
-    borderRadius: 2
-  },
-  insightContent: {
-    flex: 1
-  },
-  insightTitle: {
-    ...typography.subheadline,
-    fontWeight: "600",
-    color: colors.label
-  },
-  insightBody: {
-    ...typography.footnote,
-    color: colors.label3,
-    marginTop: 4,
-    lineHeight: 18
-  },
-  insightAction: {
-    ...typography.footnote,
-    fontWeight: "600",
-    color: colors.blue,
-    marginTop: 8
-  },
-  insightDismiss: {
-    fontSize: 20,
-    color: colors.label4,
-    padding: 4
-  },
+    // Saving callout
+    savingCallout: {
+      marginHorizontal: 16,
+      marginBottom: 8,
+      borderRadius: spacing.groupRadius,
+      borderWidth: 0.5,
+      borderColor: withAlpha(theme.success, 0.3),
+      backgroundColor: theme.successSurface,
+      padding: 12
+    },
+    savingCalloutText: {
+      ...typography.footnote,
+      fontWeight: "600",
+      color: theme.success,
+      lineHeight: 18
+    },
 
-  // See all
-  seeAllRow: {
-    marginHorizontal: 16,
-    marginTop: 4,
-    backgroundColor: colors.surface,
-    borderRadius: spacing.groupRadius,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    flexDirection: "row",
-    alignItems: "center"
-  },
-  seeAllText: {
-    ...typography.subheadline,
-    color: colors.blue,
-    flex: 1
-  },
-  seeAllChevron: {
-    fontSize: 18,
-    color: colors.label4
-  },
+    // Insight card
+    insightCard: {
+      marginHorizontal: 16,
+      marginBottom: 8,
+      backgroundColor: theme.card,
+      borderRadius: spacing.groupRadius,
+      padding: 14,
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 12,
+      overflow: "hidden"
+    },
+    insightAccentBar: {
+      width: 3,
+      alignSelf: "stretch",
+      borderRadius: 2
+    },
+    insightContent: {
+      flex: 1
+    },
+    insightTitle: {
+      ...typography.subheadline,
+      fontWeight: "600",
+      color: theme.text
+    },
+    insightBody: {
+      ...typography.footnote,
+      color: theme.mutedText,
+      marginTop: 4,
+      lineHeight: 18
+    },
+    insightAction: {
+      ...typography.footnote,
+      fontWeight: "600",
+      color: theme.primary,
+      marginTop: 8
+    },
+    insightDismiss: {
+      fontSize: 20,
+      color: theme.quietText,
+      padding: 4
+    },
 
-  // Coach card
-  coachCard: {
-    marginHorizontal: 16,
-    marginTop: 28,
-    backgroundColor: colors.surface,
-    borderRadius: spacing.groupRadius,
-    padding: spacing.innerPad,
-    overflow: "hidden"
-  },
-  coachIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(10,132,255,0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12
-  },
-  coachIconText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: colors.blue
-  },
-  coachTitle: {
-    ...typography.title3,
-    color: colors.label,
-    marginBottom: 6
-  },
-  coachBody: {
-    ...typography.callout,
-    color: colors.label2,
-    lineHeight: 22
-  },
-  coachBtn: {
-    alignSelf: "flex-start",
-    marginTop: 14,
-    backgroundColor: colors.blue,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 10
-  },
-  coachBtnText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#fff"
-  },
+    // See all
+    seeAllRow: {
+      marginHorizontal: 16,
+      marginTop: 4,
+      backgroundColor: theme.card,
+      borderRadius: spacing.groupRadius,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      flexDirection: "row",
+      alignItems: "center"
+    },
+    seeAllText: {
+      ...typography.subheadline,
+      color: theme.primary,
+      flex: 1
+    },
+    seeAllChevron: {
+      fontSize: 18,
+      color: theme.quietText
+    },
 
-  // Intelligence suite pills
-  pillGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingBottom: 14
-  },
-  featurePill: {
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 0.5
-  },
-  featurePillActive: {
-    borderColor: "rgba(10,132,255,0.22)",
-    backgroundColor: "rgba(10,132,255,0.08)"
-  },
-  featurePillLocked: {
-    borderColor: "rgba(255,159,10,0.28)",
-    backgroundColor: "rgba(255,159,10,0.10)"
-  },
-  featurePillText: {
-    ...typography.footnote,
-    fontWeight: "600"
-  },
+    // Coach card
+    coachCard: {
+      marginHorizontal: 16,
+      marginTop: 28,
+      backgroundColor: theme.card,
+      borderRadius: spacing.groupRadius,
+      padding: spacing.innerPad,
+      overflow: "hidden"
+    },
+    coachIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      backgroundColor: theme.primarySurface,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 12
+    },
+    coachIconText: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: theme.primary
+    },
+    coachTitle: {
+      ...typography.title3,
+      color: theme.text,
+      marginBottom: 6
+    },
+    coachBody: {
+      ...typography.callout,
+      color: theme.mutedText,
+      lineHeight: 22
+    },
+    coachBtn: {
+      alignSelf: "flex-start",
+      marginTop: 14,
+      backgroundColor: theme.primary,
+      borderRadius: 14,
+      paddingHorizontal: 16,
+      paddingVertical: 10
+    },
+    coachBtnText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.onPrimary
+    },
 
-  // Reminders
-  reminderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12
-  },
-  reminderDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: colors.orange
-  },
-  reminderText: {
-    ...typography.footnote,
-    color: colors.label3,
-    flex: 1
-  },
+    // Intelligence suite pills
+    pillGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      paddingHorizontal: 16,
+      paddingBottom: 14
+    },
+    featurePill: {
+      borderRadius: 20,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderWidth: 0.5
+    },
+    featurePillActive: {
+      borderColor: withAlpha(theme.primary, 0.22),
+      backgroundColor: theme.primarySurface
+    },
+    featurePillLocked: {
+      borderColor: withAlpha(theme.warning, 0.28),
+      backgroundColor: theme.warningSurface
+    },
+    featurePillText: {
+      ...typography.footnote,
+      fontWeight: "600"
+    },
 
-  // Theme toggle
-  themeToggleWrap: {
-    marginHorizontal: 16,
-    marginTop: 28
-  },
+    // Reminders
+    reminderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      paddingHorizontal: 16,
+      paddingVertical: 12
+    },
+    reminderDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 4,
+      backgroundColor: theme.warning
+    },
+    reminderText: {
+      ...typography.footnote,
+      color: theme.mutedText,
+      flex: 1
+    },
 
-  // Actions
-  actionsRow: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    gap: 12
-  },
-  primaryBtn: {
-    backgroundColor: colors.blue,
-    borderRadius: 14,
-    paddingVertical: 17,
-    alignItems: "center"
-  },
-  primaryBtnText: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: "#fff"
-  },
-  secondaryBtn: {
-    backgroundColor: colors.fillSecondary,
-    borderRadius: 14,
-    paddingVertical: 17,
-    alignItems: "center"
-  },
-  secondaryBtnText: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: colors.blue
-  },
+    // Theme toggle
+    themeToggleWrap: {
+      marginHorizontal: 16,
+      marginTop: 28
+    },
 
-  // Settings link
-  settingsLink: {
-    alignItems: "center",
-    paddingVertical: 16
-  },
-  settingsLinkText: {
-    ...typography.footnote,
-    fontWeight: "600",
-    color: colors.blue
-  }
-});
+    // Actions
+    actionsRow: {
+      marginHorizontal: 16,
+      marginTop: 16,
+      gap: 12
+    },
+    primaryBtn: {
+      backgroundColor: theme.primary,
+      borderRadius: 14,
+      paddingVertical: 17,
+      alignItems: "center"
+    },
+    primaryBtnText: {
+      fontSize: 17,
+      fontWeight: "600",
+      color: theme.onPrimary
+    },
+    secondaryBtn: {
+      backgroundColor: theme.surfaceAlt,
+      borderRadius: 14,
+      paddingVertical: 17,
+      alignItems: "center"
+    },
+    secondaryBtnText: {
+      fontSize: 17,
+      fontWeight: "600",
+      color: theme.primary
+    },
+
+    // Settings link
+    settingsLink: {
+      alignItems: "center",
+      paddingVertical: 16
+    },
+    settingsLinkText: {
+      ...typography.footnote,
+      fontWeight: "600",
+      color: theme.primary
+    }
+  });
+}

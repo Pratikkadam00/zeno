@@ -19,6 +19,11 @@ export type ThemeTokens = {
   success: string;
   warning: string;
   danger: string;
+  primarySurface: string;
+  successSurface: string;
+  warningSurface: string;
+  dangerSurface: string;
+  overlay: string;
   radius: number;
   cardRadius: number;
   compact: boolean;
@@ -48,6 +53,11 @@ export const themes: Record<ThemePreference, ThemeTokens> = {
     success: "#84CC16",
     warning: "#F59E0B",
     danger: "#EF4444",
+    primarySurface: "rgba(124,58,237,0.16)",
+    successSurface: "rgba(132,204,22,0.16)",
+    warningSurface: "rgba(245,158,11,0.16)",
+    dangerSurface: "rgba(239,68,68,0.16)",
+    overlay: "rgba(0,0,0,0.6)",
     radius: 20,
     cardRadius: 20,
     compact: false,
@@ -74,6 +84,11 @@ export const themes: Record<ThemePreference, ThemeTokens> = {
     success: "#15803D",
     warning: "#F59E0B",
     danger: "#EF4444",
+    primarySurface: "rgba(37,99,235,0.10)",
+    successSurface: "rgba(21,128,61,0.10)",
+    warningSurface: "rgba(245,158,11,0.14)",
+    dangerSurface: "rgba(239,68,68,0.10)",
+    overlay: "rgba(15,23,42,0.45)",
     radius: 12,
     cardRadius: 12,
     compact: false,
@@ -100,6 +115,11 @@ export const themes: Record<ThemePreference, ThemeTokens> = {
     success: "#22C55E",
     warning: "#D97706",
     danger: "#EF4444",
+    primarySurface: "rgba(21,128,61,0.15)",
+    successSurface: "rgba(34,197,94,0.15)",
+    warningSurface: "rgba(217,119,6,0.15)",
+    dangerSurface: "rgba(239,68,68,0.15)",
+    overlay: "rgba(0,0,0,0.6)",
     radius: 4,
     cardRadius: 4,
     compact: true,
