@@ -3,35 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
-import { CountUp, Magnetic, Marquee, Reveal, StaggerGroup, staggerChild } from "./primitives";
+import { CountUp, Magnetic, Reveal, StaggerGroup, staggerChild } from "./primitives";
 import { WaitlistForm } from "./WaitlistForm";
 import styles from "../../app/home.module.css";
-
-// ── Logo marquee ────────────────────────────────────────────────────────────
-const LOGOS = [
-  { name: "Netflix", c: "#E50914" }, { name: "Spotify", c: "#1DB954" }, { name: "Adobe", c: "#FF0000" },
-  { name: "ChatGPT", c: "#10A37F" }, { name: "Disney+", c: "#113CCF" }, { name: "Amazon Prime", c: "#00A8E1" },
-  { name: "YouTube", c: "#FF0000" }, { name: "Notion", c: "#ffffff" }, { name: "Dropbox", c: "#0061FF" },
-  { name: "Midjourney", c: "#8B5CF6" }, { name: "iCloud", c: "#3B82F6" }, { name: "Audible", c: "#F8991C" }
-];
-
-export function LogoMarquee() {
-  return (
-    <section className={styles.sectionTight}>
-      <div className={styles.container}>
-        <p className={styles.marqueeLabel}>Tracks the 600+ services you actually pay for</p>
-      </div>
-      <Marquee speed={42}>
-        {LOGOS.map((l) => (
-          <span key={l.name} className={styles.logoItem}>
-            <span className={styles.logoDot} style={{ background: l.c }} />
-            {l.name}
-          </span>
-        ))}
-      </Marquee>
-    </section>
-  );
-}
 
 // ── Features ──────────────────────────────────────────────────────────────
 export function Features() {

@@ -2,7 +2,7 @@ import { Nav } from "@/components/site/Nav";
 import { Hero } from "@/components/site/Hero";
 import { Footer } from "@/components/site/Footer";
 import { ScrollProgress } from "@/components/site/ScrollProgress";
-import { AnalyticsTeaser, FAQ, Features, FinalCTA, HowItWorks, LogoMarquee, Pricing, Stats } from "@/components/site/sections";
+import { AnalyticsTeaser, FAQ, Features, FinalCTA, HowItWorks, Pricing, Stats } from "@/components/site/sections";
 import styles from "./home.module.css";
 
 export default function HomePage() {
@@ -12,7 +12,6 @@ export default function HomePage() {
       <Nav />
       <main>
         <Hero />
-        <LogoMarquee />
         <Features />
         <HowItWorks />
         <Stats />
