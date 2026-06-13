@@ -1,13 +1,13 @@
 import { findServiceBySlug } from "@subradar/service-catalog";
 import type { BillingCycle, CancellationDifficulty } from "@subradar/shared";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { Animated, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Animated, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, ToastAndroid, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSubscriptionStore } from "../../../src/data/subscription-store";
 import { cancelNotificationsForSubscription } from "../../../src/notifications/notificationService";
 import { formatMoney } from "../../../src/utils/format";
-import { getAvatarStyle, withAlpha } from "../../../src/utils/subscription-ui";
+import { formatShortDate, getAvatarStyle, getDaysRemaining, withAlpha } from "../../../src/utils/subscription-ui";
 import { useZenoTheme } from "../../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../../src/theme/tokens";
 import { type as typography } from "../../../src/theme/typography";
@@ -16,10 +16,36 @@ import { spacing } from "../../../src/theme/spacing";
 // ─── Pure helpers (logic unchanged) ──────────────────────────────────────────
 
 function getDifficultyMeta(difficulty: CancellationDifficulty, theme: ThemeTokens) {
-  if (difficulty === "easy")    return { label: "✓ Easy to cancel",  bg: theme.successSurface, border: withAlpha(theme.success, 0.2), color: theme.success };
-  if (difficulty === "medium")  return { label: "⚠ Moderate steps",  bg: theme.warningSurface, border: withAlpha(theme.warning, 0.2), color: theme.warning };
-  if (difficulty === "hard")    return { label: "✕ Hard to cancel",  bg: theme.dangerSurface,  border: withAlpha(theme.danger, 0.2),  color: theme.danger };
-  return { label: "⚠ Dark pattern — they will try to stop you", bg: theme.dangerSurface, border: withAlpha(theme.danger, 0.25), color: theme.danger };
+  if (difficulty === "easy")
+    return {
+      label: "✓ Easy to cancel",
+      note: "A couple of taps and you're done.",
+      bg: theme.successSurface, border: withAlpha(theme.success, 0.2), color: theme.success
+    };
+  if (difficulty === "medium")
+    return {
+      label: "⚠ Moderate steps",
+      note: "A few steps — follow them in order below.",
+      bg: theme.warningSurface, border: withAlpha(theme.warning, 0.2), color: theme.warning
+    };
+  if (difficulty === "hard")
+    return {
+      label: "✕ Hard to cancel",
+      note: "This one buries the cancel option. Follow the steps carefully.",
+      bg: theme.dangerSurface, border: withAlpha(theme.danger, 0.2), color: theme.danger
+    };
+  return {
+    label: "⚠ Dark pattern",
+    note: "Known for hard-to-cancel flows — they'll try to stop you. Follow these steps and don't accept any \"stay\" offers.",
+    bg: theme.dangerSurface, border: withAlpha(theme.danger, 0.25), color: theme.danger
+  };
+}
+
+function getRenewalLabel(days: number | null, dateValue?: string): string {
+  if (days === null) return `Next renewal date unknown`;
+  if (days === 0) return `Renews TODAY — ${formatShortDate(dateValue)}`;
+  if (days === 1) return `Renews tomorrow — ${formatShortDate(dateValue)}`;
+  return `Renews in ${days} days — ${formatShortDate(dateValue)}`;
 }
 
 function getGenericSteps(serviceName: string): string[] {
@@ -55,7 +81,7 @@ export default function SubscriptionCancelScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { subscriptions, updateSubscription } = useSubscriptionStore();
+  const { subscriptions, markCancelled } = useSubscriptionStore();
   const subscription = subscriptions.find((item) => item.id === id);
 
   const [currentStep, setCurrentStep]     = useState(0);
@@ -103,23 +129,42 @@ export default function SubscriptionCancelScreen() {
   const avatar = getAvatarStyle(sub.category, theme);
   const difficulty = service?.cancellationDifficulty ? getDifficultyMeta(service.cancellationDifficulty, theme) : null;
   const annualMinor = getAnnualAmountMinor(sub.price.amountMinor, sub.billingCycle);
+  const daysRemaining = getDaysRemaining(sub.nextRenewalDate);
+  const renewalLabel = getRenewalLabel(daysRemaining, sub.nextRenewalDate);
   const steps = service?.cancellationGuideSteps?.length
     ? service.cancellationGuideSteps
     : getGenericSteps(sub.name);
   const cancelUrl = service?.cancellationUrl ?? service?.website;
-  const ctaText = getThemeCta(theme.id);
 
   async function handleOpenCancelPage() {
-    if (cancelUrl) await Linking.openURL(cancelUrl);
+    if (!cancelUrl) {
+      // No URL to open — still guide the user to confirm once they've cancelled elsewhere.
+      setCurrentStep(1);
+      setShowConfirm(true);
+      return;
+    }
+    try {
+      await Linking.openURL(cancelUrl);
+    } catch {
+      Alert.alert("Couldn't open the page", "Open your browser and go to the service's account or billing settings to cancel.");
+    }
     setCurrentStep(1);
     setShowConfirm(true);
   }
 
   async function handleConfirmedCancel() {
-    updateSubscription(sub.id, { status: "cancelled" });
+    markCancelled(sub.id);
     await cancelNotificationsForSubscription(sub.id);
     setCancelSuccess(true);
-    setTimeout(() => router.replace("/dashboard"), 2000);
+    const message = `${sub.name} marked as cancelled. Reminders cleared.`;
+    if (Platform.OS === "android") {
+      ToastAndroid.show(message, ToastAndroid.LONG);
+      router.replace("/dashboard");
+    } else {
+      Alert.alert("Subscription cancelled", message, [
+        { text: "OK", onPress: () => router.replace("/dashboard") }
+      ]);
+    }
   }
 
   return (
@@ -147,8 +192,15 @@ export default function SubscriptionCancelScreen() {
             </View>
             <Text style={styles.heroName}>{sub.name}</Text>
             <Text style={styles.heroMeta}>
-              {sub.billingCycle} · {formatMoney(sub.price.amountMinor, sub.price.currency)} · renews in{" "}
-              {service ? "soon" : "—"}
+              {formatMoney(sub.price.amountMinor, sub.price.currency)} · {sub.billingCycle}
+            </Text>
+            <Text style={[
+              styles.heroRenewal,
+              daysRemaining !== null && daysRemaining <= 3 ? { color: theme.danger }
+                : daysRemaining !== null && daysRemaining <= 7 ? { color: theme.warning }
+                : null
+            ]}>
+              {renewalLabel}
             </Text>
           </View>
 
@@ -167,10 +219,14 @@ export default function SubscriptionCancelScreen() {
             </View>
           ) : null}
 
-          {/* Difficulty badge */}
+          {/* Difficulty badge + plain-language note */}
           {difficulty ? (
-            <View style={[styles.difficultyBadge, { backgroundColor: difficulty.bg, borderColor: difficulty.border }]}>
+            <View
+              style={[styles.difficultyCard, { backgroundColor: difficulty.bg, borderColor: difficulty.border }]}
+              accessibilityLabel={`${difficulty.label}. ${difficulty.note}`}
+            >
               <Text style={[styles.difficultyText, { color: difficulty.color }]}>{difficulty.label}</Text>
+              <Text style={styles.difficultyNote}>{difficulty.note}</Text>
             </View>
           ) : null}
 
@@ -206,16 +262,30 @@ export default function SubscriptionCancelScreen() {
             })}
           </View>
 
-          {/* Primary CTA */}
+          {/* Primary CTA: open the service's cancellation page */}
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Cancel ${sub.name} subscription`}
+            accessibilityLabel={cancelUrl ? `Open ${sub.name} cancellation page` : `Cancel ${sub.name} subscription`}
+            accessibilityHint={cancelUrl ? "Opens the service's cancellation page in your browser" : undefined}
             style={styles.ctaButton}
             onPress={() => void handleOpenCancelPage()}
           >
-            <Text style={styles.ctaArrow} accessible={false}>↗</Text>
-            <Text style={styles.ctaText}>{ctaText}</Text>
+            {cancelUrl ? <Text style={styles.ctaArrow} accessible={false}>↗</Text> : null}
+            <Text style={styles.ctaText}>{cancelUrl ? "Open cancellation page" : getThemeCta(theme.id)}</Text>
           </Pressable>
+
+          {/* Direct "already cancelled" path — always reachable */}
+          {!showConfirm ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Mark ${sub.name} as cancelled`}
+              accessibilityHint="Marks this subscription cancelled and clears its renewal reminders"
+              style={styles.markCancelledBtn}
+              onPress={() => void handleConfirmedCancel()}
+            >
+              <Text style={styles.markCancelledText}>I've already cancelled — mark as cancelled</Text>
+            </Pressable>
+          ) : null}
 
           {/* Confirm / Success section */}
           {showConfirm ? (
@@ -305,7 +375,7 @@ function createStyles(theme: ThemeTokens) {
       borderBottomWidth: 0.5,
       borderBottomColor: theme.border
     },
-    backBtn: { flexDirection: "row", alignItems: "center", gap: 4, minWidth: 60 },
+    backBtn: { flexDirection: "row", alignItems: "center", gap: 4, minWidth: 60, minHeight: 44 },
     backChevron: { color: theme.primary, fontSize: 22, lineHeight: 22 },
     backText: { color: theme.primary, fontSize: 17 },
     navTitle: {
@@ -328,6 +398,7 @@ function createStyles(theme: ThemeTokens) {
     heroAvatarText: { fontSize: 28, fontWeight: "800" },
     heroName: { ...typography.title2, color: theme.text, letterSpacing: -0.5, textAlign: "center", marginBottom: 4 },
     heroMeta: { ...typography.footnote, color: theme.mutedText, textAlign: "center" },
+    heroRenewal: { ...typography.footnote, fontWeight: "600", color: theme.text, textAlign: "center", marginTop: 4 },
 
     // Savings card
     savingsCard: {
@@ -348,20 +419,18 @@ function createStyles(theme: ThemeTokens) {
     savingsLabel: { fontSize: 13, color: theme.success },
     savingsAmount: { fontSize: 17, fontWeight: "700", color: theme.success, fontVariant: ["tabular-nums"], letterSpacing: -0.5 },
 
-    // Difficulty badge
-    difficultyBadge: {
-      alignSelf: "flex-start",
-      marginLeft: 16,
+    // Difficulty card
+    difficultyCard: {
+      marginHorizontal: 16,
       marginBottom: 16,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      borderRadius: 10,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderWidth: 0.5
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      borderWidth: 0.5,
+      gap: 4
     },
-    difficultyText: { fontSize: 12, fontWeight: "500", letterSpacing: -0.1 },
+    difficultyText: { fontSize: 13, fontWeight: "700", letterSpacing: -0.1 },
+    difficultyNote: { fontSize: 13, lineHeight: 18, color: theme.mutedText },
 
     // Steps
     sectionLabel: { ...typography.sectionHeader, color: theme.mutedText, paddingHorizontal: spacing.screenH, paddingBottom: 12 },
@@ -395,6 +464,20 @@ function createStyles(theme: ThemeTokens) {
     ctaArrow: { fontSize: 16, color: theme.background, lineHeight: 18 },
     ctaText: { fontSize: 16, fontWeight: "600", color: theme.background, letterSpacing: -0.2 },
 
+    // Mark-as-cancelled (secondary path)
+    markCancelledBtn: {
+      marginHorizontal: 16,
+      marginTop: 4,
+      marginBottom: 8,
+      minHeight: 44,
+      borderRadius: 14,
+      paddingVertical: 13,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.surfaceAlt
+    },
+    markCancelledText: { fontSize: 15, fontWeight: "600", color: theme.text, textAlign: "center" },
+
     // Confirm card
     confirmCard: {
       marginHorizontal: 16,
@@ -405,9 +488,9 @@ function createStyles(theme: ThemeTokens) {
     },
     confirmTitle: { fontSize: 16, fontWeight: "600", color: theme.text, marginBottom: 16 },
     confirmButtons: { flexDirection: "row", gap: 12 },
-    yesBtn: { flex: 1, backgroundColor: theme.success, borderRadius: 12, paddingVertical: 13, alignItems: "center" },
+    yesBtn: { flex: 1, minHeight: 44, justifyContent: "center", backgroundColor: theme.success, borderRadius: 12, paddingVertical: 13, alignItems: "center" },
     yesBtnText: { fontSize: 15, fontWeight: "600", color: theme.onPrimary, textAlign: "center" },
-    notYetBtn: { flex: 1, backgroundColor: theme.surfaceAlt, borderRadius: 12, paddingVertical: 13, alignItems: "center" },
+    notYetBtn: { flex: 1, minHeight: 44, justifyContent: "center", backgroundColor: theme.surfaceAlt, borderRadius: 12, paddingVertical: 13, alignItems: "center" },
     notYetBtnText: { fontSize: 15, fontWeight: "500", color: theme.mutedText, textAlign: "center" },
 
     // Success card
