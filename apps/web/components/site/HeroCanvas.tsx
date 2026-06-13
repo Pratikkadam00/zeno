@@ -83,8 +83,13 @@ export default function HeroCanvas() {
     <Canvas
       dpr={[1, 1.8]}
       camera={{ position: [0, 0.35, 6.2], fov: 42 }}
-      gl={{ antialias: true, alpha: true }}
+      gl={{ antialias: true, alpha: true, powerPreference: "default", failIfMajorPerformanceCaveat: false }}
       style={{ position: "absolute", inset: 0 }}
+      onCreated={({ gl }) => {
+        // If the GPU drops the context (driver hiccup, many tab switches),
+        // prevent the default so the browser can restore it instead of erroring.
+        gl.domElement.addEventListener("webglcontextlost", (e) => e.preventDefault(), false);
+      }}
     >
       <fog attach="fog" args={["#07080c", 6, 13]} />
       <ambientLight intensity={0.4} />

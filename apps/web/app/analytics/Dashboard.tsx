@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AreaChart, DivergingBars, Donut, Sparkline } from "./charts";
 import styles from "./analytics.module.css";
@@ -66,19 +65,15 @@ export default function Dashboard() {
   return (
     <main className={styles.shell}>
       <div className={styles.inner}>
+        <div className={styles.glowTop} />
         {/* Header */}
         <header className={styles.header}>
-          <div>
-            <div className={styles.brandRow}>
-              <Link href="/" className={styles.brandRow} style={{ marginBottom: 0, textDecoration: "none" }} aria-label="Back to Zeno home">
-                <span className={styles.brandMark}>Z</span>
-                <span className={styles.brandName}>Zeno</span>
-              </Link>
-              <span className={styles.brandSep}>/</span>
-              <span className={styles.brandTag}>Growth Analytics</span>
-            </div>
-            <h1 className={styles.title}>Revenue &amp; growth</h1>
-            <p className={styles.subtitle}>
+          <div className={styles.headerLead}>
+            <span className={styles.eyebrow}><span className={styles.eyebrowDot} />Growth analytics</span>
+            <h1 className={styles.title}>Revenue &amp; <span className={styles.titleGrad}>growth.</span></h1>
+            <p className={styles.lead}>
+              The live numbers behind Zeno — MRR, retention, churn and acquisition, wired to one source.
+              <br />
               <span className={styles.live}><span className={styles.liveDot} />Live</span>
               {"  ·  "}as of <span className={styles.asOf}>{AS_OF_LABEL}</span>
             </p>

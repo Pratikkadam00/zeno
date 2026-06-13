@@ -6,11 +6,11 @@ import { Magnetic } from "./primitives";
 import styles from "../../app/home.module.css";
 
 const links = [
-  { href: "#features", label: "Features" },
-  { href: "#how", label: "How it works" },
-  { href: "#pricing", label: "Pricing" },
+  { href: "/#features", label: "Features" },
+  { href: "/#how", label: "How it works" },
+  { href: "/#pricing", label: "Pricing" },
   { href: "/analytics", label: "Analytics" },
-  { href: "#faq", label: "FAQ" }
+  { href: "/#faq", label: "FAQ" }
 ];
 
 export function Nav() {
@@ -36,7 +36,7 @@ export function Nav() {
         </div>
         <div className={styles.navRight}>
           <Magnetic strength={0.3}>
-            <a href="#waitlist" className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`}>Join waitlist</a>
+            <a href="/#waitlist" className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`}>Join waitlist</a>
           </Magnetic>
         </div>
       </div>
