@@ -15,6 +15,7 @@ import {
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ServiceAutocomplete, servicePriceLabel } from "../../components/subscriptions/ServiceAutocomplete";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
 import { useSubRadarTheme } from "../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../src/theme/tokens";
@@ -24,19 +25,23 @@ import { getAvatarStyle, withAlpha } from "../../src/utils/subscription-ui";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function servicePriceLabel(service: Service): string {
-  if (service.defaultMonthlyPrice) return `$${service.defaultMonthlyPrice.toFixed(2)}/mo`;
-  if (service.defaultAnnualPrice)  return `$${service.defaultAnnualPrice.toFixed(2)}/yr`;
-  return "—";
+/** Short price label for grid/list rows; "—" when the catalog has no price. */
+function priceLabelOrDash(service: Service): string {
+  return servicePriceLabel(service) ?? "—";
 }
 
+/**
+ * Map a catalog ServiceCategory onto the app's SubscriptionCategory. Mirrors the
+ * mapping discover.tsx uses (replicated locally — the catalog's own mapper is not
+ * imported so the two screens can diverge independently if needed).
+ */
 function mapCategory(cat?: string): SubscriptionCategory {
-  if (cat === "streaming" || cat === "entertainment" || cat === "gaming" || cat === "music") return "entertainment";
-  if (cat === "ai_tools")   return "ai_tools";
+  if (cat === "streaming" || cat === "gaming" || cat === "music") return "entertainment";
+  if (cat === "ai_tools")     return "ai_tools";
   if (cat === "productivity") return "productivity";
-  if (cat === "health")     return "health";
-  if (cat === "finance")    return "finance";
-  if (cat === "education")  return "education";
+  if (cat === "health")       return "health";
+  if (cat === "finance")      return "finance";
+  if (cat === "education")    return "education";
   if (cat === "cloud" || cat === "security") return "developer_tools";
   return "other";
 }
@@ -47,6 +52,23 @@ function formatDate(date: Date): string {
 
 const BILLING_CYCLES = ["monthly", "annual", "weekly"] as const;
 
+/** All app categories, in tap-cycle order, with human labels. */
+const CATEGORIES: { value: SubscriptionCategory; label: string }[] = [
+  { value: "entertainment",   label: "Entertainment" },
+  { value: "ai_tools",        label: "AI tools" },
+  { value: "productivity",    label: "Productivity" },
+  { value: "developer_tools", label: "Developer tools" },
+  { value: "health",          label: "Health" },
+  { value: "finance",         label: "Finance" },
+  { value: "education",       label: "Education" },
+  { value: "family",          label: "Family" },
+  { value: "other",           label: "Other" }
+];
+
+function categoryLabel(value: SubscriptionCategory): string {
+  return CATEGORIES.find((entry) => entry.value === value)?.label ?? "Other";
+}
+
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function AddSubscriptionScreen() {
@@ -54,8 +76,17 @@ export default function AddSubscriptionScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { addSubscription, suggestions } = useSubscriptionStore();
 
+  // Step 1 (search) state.
   const [query, setQuery]           = useState("");
   const [selected, setSelected]     = useState<Service | null>(null);
+  // `inForm` flips to the details step; set when a service is picked or a
+  // custom name is confirmed. Lets the user reach the form without a catalog hit.
+  const [inForm, setInForm]         = useState(false);
+
+  // Step 2 (details) state.
+  const [name, setName]             = useState("");
+  const [serviceSlug, setSlug]      = useState<string | undefined>(undefined);
+  const [category, setCategory]     = useState<SubscriptionCategory>("other");
   const [amount, setAmount]         = useState("9.99");
   const [billingCycle, setBilling]  = useState<BillingCycle>("monthly");
   const [notes, setNotes]           = useState("");
@@ -71,34 +102,79 @@ export default function AddSubscriptionScreen() {
   }, []);
 
   const matches = useMemo(() => suggestions(query), [query, suggestions]);
-
   const popularServices = useMemo(() => getPopularServices().slice(0, 8), []);
 
   const formValid = useMemo(() => {
     const parsed = Number.parseFloat(amount || "0");
-    const hasName = Boolean(selected) || query.trim().length > 0;
-    return hasName && Number.isFinite(parsed) && parsed > 0;
-  }, [amount, query, selected]);
+    return name.trim().length > 0 && Number.isFinite(parsed) && parsed > 0;
+  }, [amount, name]);
 
+  /** Autofill the details form from a picked catalog service. */
+  function applyService(service: Service) {
+    setSelected(service);
+    setSlug(service.slug);
+    setName(service.name);
+    setCategory(mapCategory(service.category));
+    // Prefer the monthly price; fall back to the annual price + annual cycle.
+    if (service.defaultMonthlyPrice != null) {
+      setAmount(service.defaultMonthlyPrice.toFixed(2));
+      setBilling("monthly");
+    } else if (service.defaultAnnualPrice != null) {
+      setAmount(service.defaultAnnualPrice.toFixed(2));
+      setBilling("annual");
+    }
+  }
+
+  /** Step 1: tap a catalog result/popular card → autofill and enter the form. */
   function handleSelectService(service: Service) {
     Keyboard.dismiss();
-    setSelected(service);
-    setQuery(service.name);
-    if (service.defaultMonthlyPrice) {
-      setAmount(service.defaultMonthlyPrice.toFixed(2));
+    applyService(service);
+    setInForm(true);
+  }
+
+  /** Step 1: tap "Add custom service" → enter the form with the typed name. */
+  function handleAddCustom() {
+    Keyboard.dismiss();
+    setSelected(null);
+    setSlug(undefined);
+    setName(query.trim());
+    setCategory("other");
+    setInForm(true);
+  }
+
+  /** Form: user edits the name field, which detaches any locked catalog match. */
+  function handleNameChange(text: string) {
+    setName(text);
+    if (selected) {
+      setSelected(null);
+      setSlug(undefined);
     }
+  }
+
+  /** Form: pick a catalog match from the inline type-ahead. */
+  function handleInlineSelect(service: Service) {
+    Keyboard.dismiss();
+    applyService(service);
+  }
+
+  /** Form: keep the free-text name (dismiss the type-ahead, stay custom). */
+  function handleKeepCustom() {
+    Keyboard.dismiss();
+    setSelected(null);
+    setSlug(undefined);
   }
 
   function handleSave() {
     if (!formValid) return;
     const amountMinor = Math.round(Number.parseFloat(amount || "0") * 100);
     addSubscription({
-      name: (selected?.name ?? query.trim()) || "New subscription",
-      serviceSlug: selected?.slug,
-      category: mapCategory(selected?.category),
+      name: name.trim() || "New subscription",
+      serviceSlug,
+      category,
       amountMinor,
       billingCycle,
-      nextRenewalDate: renewalDate.toISOString()
+      nextRenewalDate: renewalDate.toISOString(),
+      source: "manual"
     });
     router.back();
   }
@@ -116,13 +192,15 @@ export default function AddSubscriptionScreen() {
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search 500+ services..."
+          placeholder="Search 600+ services..."
           placeholderTextColor={theme.quietText}
           style={styles.searchInput}
           autoFocus
           selectionColor={theme.primary}
           autoCapitalize="none"
           autoCorrect={false}
+          returnKeyType="done"
+          onSubmitEditing={() => { if (query.trim().length > 0) handleAddCustom(); }}
           accessibilityLabel="Search services"
         />
       </View>
@@ -137,7 +215,7 @@ export default function AddSubscriptionScreen() {
               <Pressable
                 key={service.id}
                 accessibilityRole="button"
-                accessibilityLabel={`${service.name}, ${servicePriceLabel(service)}`}
+                accessibilityLabel={`${service.name}, ${priceLabelOrDash(service)}`}
                 onPress={() => handleSelectService(service)}
               >
                 <View style={styles.resultRow}>
@@ -150,7 +228,7 @@ export default function AddSubscriptionScreen() {
                     <Text style={styles.resultName} numberOfLines={1}>{service.name}</Text>
                     <Text style={styles.resultCategory}>{service.category.replace("_", " ")}</Text>
                   </View>
-                  <Text style={styles.resultPrice}>{servicePriceLabel(service)}</Text>
+                  <Text style={styles.resultPrice}>{priceLabelOrDash(service)}</Text>
                 </View>
                 {!isLast ? <View style={styles.rowSeparatorFromLeft} /> : null}
               </Pressable>
@@ -159,8 +237,8 @@ export default function AddSubscriptionScreen() {
           {/* Add custom row */}
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Add custom service"
-            onPress={() => { Keyboard.dismiss(); setSelected(null); }}
+            accessibilityLabel={`Add ${query.trim()} as a custom service`}
+            onPress={handleAddCustom}
           >
             <View style={styles.resultRow}>
               <View style={[styles.avatar, { backgroundColor: theme.surfaceAlt }]}>
@@ -189,7 +267,7 @@ export default function AddSubscriptionScreen() {
               return (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`${item.name}, ${servicePriceLabel(item)}`}
+                  accessibilityLabel={`${item.name}, ${priceLabelOrDash(item)}`}
                   style={styles.popularCard}
                   onPress={() => handleSelectService(item)}
                 >
@@ -200,7 +278,7 @@ export default function AddSubscriptionScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.popularCardName} numberOfLines={1}>{item.name}</Text>
-                    <Text style={styles.popularCardPrice}>{servicePriceLabel(item)}</Text>
+                    <Text style={styles.popularCardPrice}>{priceLabelOrDash(item)}</Text>
                   </View>
                 </Pressable>
               );
@@ -220,27 +298,53 @@ export default function AddSubscriptionScreen() {
     >
       {/* Selected service header */}
       <View style={styles.selectedHeader}>
-        {selected ? (
-          <View style={[styles.avatarLg, { backgroundColor: getAvatarStyle(selected.category, theme).bg }]}>
-            <Text style={[styles.avatarLgText, { color: getAvatarStyle(selected.category, theme).text }]}>
-              {selected.name.slice(0, 2).toUpperCase()}
-            </Text>
-          </View>
-        ) : null}
+        <View style={[styles.avatarLg, { backgroundColor: getAvatarStyle(selected?.category ?? category, theme).bg }]}>
+          <Text style={[styles.avatarLgText, { color: getAvatarStyle(selected?.category ?? category, theme).text }]}>
+            {(name.trim() || "?").slice(0, 2).toUpperCase()}
+          </Text>
+        </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.selectedName}>{selected?.name ?? query.trim()}</Text>
-          {selected?.category ? (
-            <Text style={styles.selectedCategory}>{selected.category.replace("_", " ")}</Text>
-          ) : null}
+          <Text style={styles.selectedName} numberOfLines={1}>{name.trim() || "New subscription"}</Text>
+          <Text style={styles.selectedCategory}>
+            {selected ? selected.category.replace("_", " ") : "Custom service"}
+          </Text>
         </View>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Change selected service"
           hitSlop={8}
-          onPress={() => { setSelected(null); setQuery(""); }}
+          onPress={() => { setSelected(null); setSlug(undefined); setInForm(false); }}
         >
           <Text style={styles.changeLink}>Change</Text>
         </Pressable>
+      </View>
+
+      {/* Name + inline type-ahead */}
+      <View style={styles.formCard}>
+        <View style={styles.formRow}>
+          <Text style={styles.formLabel}>Name</Text>
+          <TextInput
+            value={name}
+            onChangeText={handleNameChange}
+            placeholder="Service name"
+            placeholderTextColor={theme.quietText}
+            style={styles.nameInput}
+            selectionColor={theme.primary}
+            autoCapitalize="words"
+            autoCorrect={false}
+            textAlign="right"
+            accessibilityLabel="Service name"
+          />
+        </View>
+      </View>
+      <View style={styles.autocompleteWrap}>
+        <ServiceAutocomplete
+          query={name}
+          selectedSlug={serviceSlug}
+          onSelect={handleInlineSelect}
+          onUseCustom={handleKeepCustom}
+          theme={theme}
+        />
       </View>
 
       {/* Amount & Billing */}
@@ -298,11 +402,22 @@ export default function AddSubscriptionScreen() {
       <View style={styles.formCard}>
         <View style={styles.formRow}>
           <Text style={styles.formLabel}>Category</Text>
-          <View style={styles.formRowRight}>
-            <Text style={styles.formValueText}>
-              {selected?.category.replace("_", " ") ?? "other"}
-            </Text>
-            <Text style={styles.chevron} accessible={false}>›</Text>
+          <View style={styles.categoryChips}>
+            {CATEGORIES.map((entry) => (
+              <Pressable
+                key={entry.value}
+                accessibilityRole="button"
+                accessibilityState={{ selected: category === entry.value }}
+                accessibilityLabel={`Category ${entry.label}`}
+                hitSlop={4}
+                onPress={() => setCategory(entry.value)}
+                style={[styles.categoryChip, category === entry.value && styles.categoryChipActive]}
+              >
+                <Text style={[styles.categoryChipText, category === entry.value && styles.categoryChipTextActive]}>
+                  {entry.label}
+                </Text>
+              </Pressable>
+            ))}
           </View>
         </View>
         <View style={styles.fullSeparator} />
@@ -403,20 +518,23 @@ export default function AddSubscriptionScreen() {
 
       {/* Body */}
       <View style={styles.body}>
-        {selected || (query.length > 0 && matches.length === 0) ? renderForm() : renderSearch()}
+        {inForm ? renderForm() : renderSearch()}
       </View>
 
-      {/* Fixed bottom save button */}
-      <View style={styles.bottomBar}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !formValid }}
-          onPress={handleSave}
-          style={[styles.saveButton, { backgroundColor: formValid ? theme.primary : withAlpha(theme.primary, 0.4) }]}
-        >
-          <Text style={styles.saveButtonText}>Add Subscription</Text>
-        </Pressable>
-      </View>
+      {/* Fixed bottom save button (only on the details step) */}
+      {inForm ? (
+        <View style={styles.bottomBar}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add subscription"
+            accessibilityState={{ disabled: !formValid }}
+            onPress={handleSave}
+            style={[styles.saveButton, { backgroundColor: formValid ? theme.primary : withAlpha(theme.primary, 0.4) }]}
+          >
+            <Text style={styles.saveButtonText}>Add Subscription</Text>
+          </Pressable>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -539,7 +657,7 @@ function createStyles(theme: ThemeTokens) {
     avatarLg: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
     avatarLgText: { fontSize: 14, fontWeight: "700" },
     selectedName: { ...typography.headline, color: theme.text },
-    selectedCategory: { ...typography.caption1, color: theme.mutedText, marginTop: 2 },
+    selectedCategory: { ...typography.caption1, color: theme.mutedText, marginTop: 2, textTransform: "capitalize" },
     changeLink: { ...typography.footnote, color: theme.primary },
 
     formCard: {
@@ -562,9 +680,14 @@ function createStyles(theme: ThemeTokens) {
     },
     formLabel: { ...typography.subheadline, color: theme.text },
     formSub: { ...typography.caption1, color: theme.mutedText, marginTop: 2 },
-    formRowRight: { flexDirection: "row", alignItems: "center", gap: 4 },
-    formValueText: { ...typography.subheadline, color: theme.mutedText },
-    chevron: { fontSize: 18, color: theme.quietText },
+
+    nameInput: { ...typography.subheadline, color: theme.text, flex: 1, paddingVertical: 0 },
+
+    autocompleteWrap: {
+      marginHorizontal: spacing.screenH,
+      marginTop: -2,
+      marginBottom: 8
+    },
 
     amountRight: { flexDirection: "row", alignItems: "center", gap: 4 },
     amountCurrency: { ...typography.subheadline, color: theme.mutedText },
@@ -584,6 +707,25 @@ function createStyles(theme: ThemeTokens) {
     segmentText: { ...typography.subheadline, fontWeight: "600" },
     segmentTextActive: { color: theme.text },
     segmentTextInactive: { color: theme.mutedText },
+
+    categoryChips: {
+      flex: 1,
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "flex-end",
+      gap: 6
+    },
+    categoryChip: {
+      borderRadius: 16,
+      borderWidth: 0.5,
+      borderColor: theme.border,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      minHeight: 30
+    },
+    categoryChipActive: { borderColor: theme.primary, backgroundColor: theme.primarySurface },
+    categoryChipText: { ...typography.caption1, color: theme.mutedText, fontWeight: "600" },
+    categoryChipTextActive: { color: theme.primary },
 
     notesInput: {
       ...typography.subheadline,
