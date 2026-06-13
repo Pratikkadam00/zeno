@@ -64,6 +64,11 @@ export default function Dashboard() {
 
   return (
     <main className={styles.shell}>
+      <div className={styles.bg} aria-hidden>
+        <span className={`${styles.amesh} ${styles.ameshA}`} />
+        <span className={`${styles.amesh} ${styles.ameshB}`} />
+        <span className={`${styles.amesh} ${styles.ameshC}`} />
+      </div>
       <div className={styles.inner}>
         <div className={styles.glowTop} />
         {/* Header */}

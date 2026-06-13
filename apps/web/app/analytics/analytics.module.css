@@ -333,3 +333,17 @@
 @media (prefers-reduced-motion: reduce) {
   .shell *, .shell *::before, .shell *::after { animation: none !important; }
 }
+
+/* ── Animated mesh background — matches the marketing hero ───────────────── */
+.shell::before { display: none; } /* retire the old static glows in favor of the mesh */
+.bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.amesh { position: absolute; border-radius: 50%; filter: blur(120px); opacity: 0.5; will-change: transform; }
+.ameshA { width: 62vw; height: 62vw; top: -24vw; left: -10vw; background: radial-gradient(circle, rgba(91, 140, 255, 0.5), transparent 64%); animation: amf1 24s ease-in-out infinite; }
+.ameshB { width: 52vw; height: 52vw; top: -16vw; right: -12vw; background: radial-gradient(circle, rgba(167, 139, 250, 0.34), transparent 64%); animation: amf2 28s ease-in-out infinite; }
+.ameshC { width: 48vw; height: 48vw; top: 6vw; left: 34vw; background: radial-gradient(circle, rgba(52, 211, 153, 0.22), transparent 64%); animation: amf3 32s ease-in-out infinite; }
+.bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 0, var(--a-bg-0) 56%); }
+
+@keyframes amf1 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(4vw, 3vw) scale(1.08); } }
+@keyframes amf2 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-3vw, 4vw) scale(1.06); } }
+@keyframes amf3 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(3vw, -3vw) scale(1.1); } }
+@media (prefers-reduced-motion: reduce) { .amesh { animation: none !important; } }

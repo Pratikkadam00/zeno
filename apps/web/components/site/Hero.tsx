@@ -5,45 +5,20 @@ import { WaitlistForm } from "./WaitlistForm";
 import { SplitWords } from "./primitives";
 import styles from "../../app/home.module.css";
 
-// Renewal dots placed around the orbit (angle in deg + color). Rendered as a
-// pure-CSS scene — no canvas, no WebGL, no animation loop — so it cannot crash
-// or leak across navigations and is safe to remount any number of times.
-const DOTS = [
-  { a: 0, c: "#34d399" },
-  { a: 52, c: "#5b8cff" },
-  { a: 104, c: "#fbbf24" },
-  { a: 155, c: "#22d3ee" },
-  { a: 206, c: "#fb7185" },
-  { a: 257, c: "#a78bfa" },
-  { a: 309, c: "#34d399" }
-];
-
 export function Hero() {
   return (
     <header className={styles.hero}>
-      {/* Pure-CSS animated scene */}
-      <div className={styles.heroScene} aria-hidden>
-        <span className={`${styles.aurora} ${styles.auroraA}`} />
-        <span className={`${styles.aurora} ${styles.auroraB}`} />
-        <span className={`${styles.aurora} ${styles.auroraC}`} />
-        <div className={styles.radar}>
-          <div className={styles.disc}>
-            <span className={`${styles.ring} ${styles.ring1}`} />
-            <span className={`${styles.ring} ${styles.ring2}`} />
-            <span className={`${styles.ring} ${styles.ring3}`} />
-            <span className={styles.sweep} />
-            <div className={styles.orbit}>
-              {DOTS.map((d, i) => (
-                <span key={i} className={styles.dot} style={{ ["--a" as string]: `${d.a}deg`, ["--c" as string]: d.c }} />
-              ))}
-            </div>
-          </div>
-          <span className={styles.orb} />
-        </div>
-        <span className={styles.heroGrain} />
+      {/* Full-screen, full-bleed pure-CSS animated background (no canvas/WebGL,
+          so it cannot crash or leak across navigations). */}
+      <div className={styles.heroBg} aria-hidden>
+        <span className={`${styles.mesh} ${styles.meshA}`} />
+        <span className={`${styles.mesh} ${styles.meshB}`} />
+        <span className={`${styles.mesh} ${styles.meshC}`} />
+        <span className={`${styles.mesh} ${styles.meshD}`} />
+        <span className={styles.heroSheen} />
+        <span className={styles.heroGridFull} />
+        <span className={styles.heroVignette} />
       </div>
-
-      <div className={styles.heroGlow} />
 
       <div className={styles.heroInner}>
         <div className={styles.heroContent}>
