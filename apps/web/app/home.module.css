@@ -349,3 +349,46 @@
 
 /* cursor-tilt wrapper around the phone (3D parallax on hover) */
 .phoneTilt { transform-style: preserve-3d; will-change: transform; }
+
+/* ── Phone screen carousel ───────────────────────────────────────────────── */
+.screen { width: 100%; }
+.appScreenTitle { font-family: var(--font-display); font-weight: 700; font-size: 18px; letter-spacing: -0.02em; color: #fff; }
+.phoneScreen { padding-bottom: 34px; }
+
+.slideDots { position: absolute; bottom: 15px; left: 0; right: 0; display: flex; justify-content: center; gap: 6px; z-index: 4; }
+.slideDot { width: 6px; height: 6px; border-radius: 999px; border: 0; padding: 0; background: rgba(255, 255, 255, 0.22); cursor: pointer; transition: width 0.25s ease, background 0.25s ease; }
+.slideDot:hover { background: rgba(255, 255, 255, 0.4); }
+.slideDotActive { width: 18px; background: var(--z-blue); }
+
+/* Calendar */
+.calKpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 16px 0 14px; }
+.calKpis > div { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--z-line); border-radius: 12px; padding: 10px 12px; }
+.calKpiVal { font-family: var(--font-mono); font-weight: 700; font-size: 16px; color: #fff; }
+.calKpiLab { font-size: 10px; color: var(--z-quiet); margin-top: 2px; }
+.calMonth { font-size: 12px; font-weight: 600; color: var(--z-muted); margin-bottom: 8px; text-align: center; }
+.calGrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.calHead { font-size: 9px; color: var(--z-quiet); text-align: center; padding-bottom: 3px; }
+.calCell { position: relative; aspect-ratio: 1; display: grid; place-items: center; font-family: var(--font-mono); font-size: 11px; color: var(--z-muted); border-radius: 8px; }
+.calCell[data-today="true"] { background: var(--z-blue); color: #fff; font-weight: 700; }
+.calDot { position: absolute; bottom: 3px; width: 4px; height: 4px; border-radius: 50%; }
+
+/* Discover */
+.discIntro { font-size: 13px; color: var(--z-muted); margin: 16px 0 16px; }
+.discCard { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--z-line); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+.discTop { display: flex; align-items: center; gap: 10px; margin-bottom: 13px; }
+.discIco { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-size: 15px; flex-shrink: 0; }
+.discName { font-size: 13px; font-weight: 600; color: #fff; }
+.discSub { font-size: 11px; color: var(--z-muted); margin-top: 2px; }
+.discBtn { text-align: center; font-size: 12px; font-weight: 700; padding: 9px; border-radius: 10px; background: var(--z-panel-hi); color: var(--z-text); }
+
+/* Cancel guide */
+.cgHero { text-align: center; padding: 8px 0 14px; }
+.cgIco { width: 46px; height: 46px; border-radius: 13px; display: inline-grid; place-items: center; font-weight: 800; font-size: 18px; margin-bottom: 10px; }
+.cgName { font-family: var(--font-display); font-weight: 700; font-size: 16px; color: #fff; }
+.cgMeta { font-size: 12px; color: var(--z-muted); margin-top: 3px; }
+.cgBadge { display: inline-block; margin-top: 9px; font-size: 10px; font-weight: 700; color: var(--z-rose); background: rgba(251, 113, 133, 0.14); padding: 3px 9px; border-radius: 999px; }
+.cgSave { font-size: 12px; color: var(--z-muted); background: rgba(52, 211, 153, 0.08); border: 1px solid rgba(52, 211, 153, 0.25); border-radius: 12px; padding: 10px 12px; margin-bottom: 14px; text-align: center; }
+.cgSave strong { color: var(--z-emerald); }
+.cgStep { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--z-text); padding: 7px 0; border-bottom: 1px solid var(--z-line); }
+.cgStepNum { width: 20px; height: 20px; border-radius: 6px; border: 1px solid var(--z-line-hi); display: grid; place-items: center; font-family: var(--font-mono); font-size: 10px; color: var(--z-blue); flex-shrink: 0; }
+.cgBtn { margin-top: 14px; text-align: center; font-size: 12.5px; font-weight: 700; padding: 11px; border-radius: 12px; background: linear-gradient(180deg, #6b97ff, var(--z-blue-deep)); color: #fff; }
