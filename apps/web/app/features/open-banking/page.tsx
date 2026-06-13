@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { ContentShell } from "@/components/site/ContentShell";
+import styles from "@/components/site/content.module.css";
 
 export const metadata: Metadata = {
   title: "Optional Open Banking — Read-only bank connections | Zeno",
@@ -13,17 +15,20 @@ export const metadata: Metadata = {
 
 export default function OpenBankingFeaturePage() {
   return (
-    <main className="page narrow">
-      <a href="/">SubRadar</a>
-      <h1>Optional Open Banking</h1>
-      <p>
-        Plaid and MX are modeled as read-only OAuth adapters. SubRadar sees transactions, not login credentials, and the core app works without this premium connection.
-      </p>
-      <ol className="steps">
-        <li>User starts a provider-hosted connection.</li>
-        <li>Provider returns a read-only token reference.</li>
+    <ContentShell
+      eyebrow="Optional Open Banking"
+      title="Read-only bank connections"
+      lead="Plaid and MX are modeled as read-only OAuth adapters. Zeno sees transactions, not login credentials, and the core app works without this premium connection."
+    >
+      <ol className={styles.steps}>
+        <li>You start a provider-hosted connection.</li>
+        <li>The provider returns a read-only token reference.</li>
         <li>Recurring charges are normalized locally before confirmation.</li>
       </ol>
-    </main>
+
+      <div className={styles.backRow}>
+        <a href="/">← Back to Zeno</a>
+      </div>
+    </ContentShell>
   );
 }

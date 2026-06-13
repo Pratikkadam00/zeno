@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { listPartnerIntegrations } from "@subradar/shared";
+import { ContentShell } from "@/components/site/ContentShell";
+import styles from "@/components/site/content.module.css";
 
 export const metadata: Metadata = {
   title: "Partner Integrations | Zeno",
@@ -16,19 +18,23 @@ export default function PartnersPage() {
   const integrations = listPartnerIntegrations();
 
   return (
-    <main className="page narrow">
-      <a href="/">SubRadar</a>
-      <h1>Partner Integrations</h1>
-      <p>
-        Partner manifests define scope, review status, and whether user-approved financial export is required.
-      </p>
-      <ol className="steps">
+    <ContentShell
+      eyebrow="Integrations"
+      title="Partner Integrations"
+      lead="Partner manifests define scope, review status, and whether user-approved financial export is required."
+    >
+      <ul className={styles.list}>
         {integrations.map((integration) => (
           <li key={integration.id}>
-            {integration.name}: {integration.status.replace("_", " ")}
+            <span>{integration.name}</span>
+            <span className={styles.tag}>{integration.status.replace("_", " ")}</span>
           </li>
         ))}
-      </ol>
-    </main>
+      </ul>
+
+      <div className={styles.backRow}>
+        <a href="/">← Back to Zeno</a>
+      </div>
+    </ContentShell>
   );
 }

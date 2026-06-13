@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { createBusinessSummary, demoBusinessWorkspace } from "@subradar/shared";
+import { ContentShell } from "@/components/site/ContentShell";
+import styles from "@/components/site/content.module.css";
 
 export const metadata: Metadata = {
   title: "Business Tier — Team subscription tracking | Zeno",
@@ -16,17 +18,29 @@ export default function BusinessFeaturePage() {
   const summary = createBusinessSummary(demoBusinessWorkspace, []);
 
   return (
-    <main className="page narrow">
-      <a href="/">SubRadar</a>
-      <h1>Business Tier</h1>
-      <p>
-        Track company subscriptions, finance seats, renewal load, and team spending without turning SubRadar into a bank-data warehouse.
-      </p>
-      <ol className="steps">
-        <li>{summary.workspaceName}</li>
-        <li>{summary.seatCount} configured seats</li>
-        <li>{summary.renewalCountNext30Days} renewals in the next 30 days in this empty demo snapshot</li>
-      </ol>
-    </main>
+    <ContentShell
+      eyebrow="Business Tier"
+      title="Subscription tracking for teams"
+      lead="Track company subscriptions, finance seats, renewal load, and team spending without turning Zeno into a bank-data warehouse."
+    >
+      <ul className={styles.list}>
+        <li>
+          <span>Workspace</span>
+          <span className={styles.tag}>{summary.workspaceName}</span>
+        </li>
+        <li>
+          <span>Configured seats</span>
+          <span className={styles.tag}>{summary.seatCount}</span>
+        </li>
+        <li>
+          <span>Renewals in the next 30 days</span>
+          <span className={styles.tag}>{summary.renewalCountNext30Days}</span>
+        </li>
+      </ul>
+
+      <div className={styles.backRow}>
+        <a href="/">← Back to Zeno</a>
+      </div>
+    </ContentShell>
   );
 }

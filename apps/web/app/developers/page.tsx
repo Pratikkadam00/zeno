@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { createPublicApiKeyPreview, type PublicApiKey } from "@subradar/shared";
+import { ContentShell } from "@/components/site/ContentShell";
+import styles from "@/components/site/content.module.css";
 
 export const metadata: Metadata = {
   title: "Public API for developers | Zeno",
@@ -24,17 +26,29 @@ export default function DevelopersPage() {
   const preview = createPublicApiKeyPreview(key);
 
   return (
-    <main className="page narrow">
-      <a href="/">SubRadar</a>
-      <h1>Public API</h1>
-      <p>
-        The power-user API uses scoped keys, masked previews, and explicit read/write scopes. Financial sync remains encrypted by default.
-      </p>
-      <ol className="steps">
-        <li>Example key: {preview.maskedKey}</li>
-        <li>Scopes: {preview.scopes.join(", ")}</li>
-        <li>Envelope: {"{ data, error, meta }"}</li>
-      </ol>
-    </main>
+    <ContentShell
+      eyebrow="Developers"
+      title="Public API"
+      lead="The power-user API uses scoped keys, masked previews, and explicit read/write scopes. Financial sync remains encrypted by default."
+    >
+      <ul className={styles.list}>
+        <li>
+          <span>Example key</span>
+          <span className={styles.code}>{preview.maskedKey}</span>
+        </li>
+        <li>
+          <span>Scopes</span>
+          <span className={styles.tag}>{preview.scopes.join(", ")}</span>
+        </li>
+        <li>
+          <span>Response envelope</span>
+          <span className={styles.code}>{"{ data, error, meta }"}</span>
+        </li>
+      </ul>
+
+      <div className={styles.backRow}>
+        <a href="/">← Back to Zeno</a>
+      </div>
+    </ContentShell>
   );
 }

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { createFamilyVaultSummary, demoFamilyMembers } from "@subradar/shared";
+import { ContentShell } from "@/components/site/ContentShell";
+import styles from "@/components/site/content.module.css";
 
 export const metadata: Metadata = {
   title: "Family Vault — Shared household subscriptions | Zeno",
@@ -16,17 +18,23 @@ export default function FamilyVaultFeaturePage() {
   const summary = createFamilyVaultSummary(demoFamilyMembers, []);
 
   return (
-    <main className="page narrow">
-      <a href="/">SubRadar</a>
-      <h1>Family Vault</h1>
-      <p>
-        Family Vault is the shared view for household subscriptions, ownership, and renewal accountability.
-      </p>
-      <ol className="steps">
+    <ContentShell
+      eyebrow="Family Vault"
+      title="Shared household subscriptions"
+      lead="Family Vault is the shared view for household subscriptions, ownership, and renewal accountability — so no one pays twice for the same streaming plan."
+    >
+      <ul className={styles.list}>
         {summary.members.map((member) => (
-          <li key={member.id}>{member.name}: {member.role}</li>
+          <li key={member.id}>
+            <span>{member.name}</span>
+            <span className={styles.tag}>{member.role}</span>
+          </li>
         ))}
-      </ol>
-    </main>
+      </ul>
+
+      <div className={styles.backRow}>
+        <a href="/">← Back to Zeno</a>
+      </div>
+    </ContentShell>
   );
 }

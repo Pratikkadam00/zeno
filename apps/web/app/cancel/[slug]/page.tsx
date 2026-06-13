@@ -1,6 +1,8 @@
 import { findServiceBySlug, services } from "@subradar/service-catalog";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { ContentShell } from "@/components/site/ContentShell";
+import styles from "@/components/site/content.module.css";
 
 export function generateStaticParams() {
   return services.map((service) => ({ slug: service.slug }));
@@ -31,6 +33,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
+const DIFFICULTY_BADGE: Record<string, string> = {
+  easy: styles.badgeEasy ?? "",
+  medium: styles.badgeMedium ?? "",
+  hard: styles.badgeHard ?? "",
+  dark_pattern: styles.badgeHard ?? ""
+};
+
 export default async function CancellationGuidePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const service = findServiceBySlug(slug);
@@ -38,21 +47,35 @@ export default async function CancellationGuidePage({ params }: { params: Promis
     notFound();
   }
 
+  const difficulty = service.cancellationDifficulty;
+  const difficultyLabel = difficulty.replace("_", " ");
+  const badgeClass = DIFFICULTY_BADGE[difficulty] ?? styles.badgeMedium ?? "";
+
   return (
-    <main className="page narrow">
-      <a href="/">SubRadar</a>
-      <h1>How to cancel {service.name}</h1>
-      <p>
-        Difficulty: <strong>{service.cancellationDifficulty.replace("_", " ")}</strong>
-      </p>
-      <ol className="steps">
+    <ContentShell
+      eyebrow="Cancellation guide"
+      title={`How to cancel ${service.name}`}
+      lead={`Follow these steps to stop your ${service.name} subscription. Zeno tracks the renewal date so you can cancel before the next charge lands.`}
+    >
+      <span className={`${styles.badge} ${badgeClass}`}>Difficulty: {difficultyLabel}</span>
+
+      <ol className={styles.steps}>
         {service.cancellationGuideSteps.map((step) => (
           <li key={step}>{step}</li>
         ))}
       </ol>
+
       {service.cancellationUrl ? (
-        <a className="primary" href={service.cancellationUrl}>Open cancellation page</a>
+        <p>
+          <a className={styles.cta} href={service.cancellationUrl} target="_blank" rel="noopener noreferrer">
+            Open {service.name} cancellation page →
+          </a>
+        </p>
       ) : null}
-    </main>
+
+      <div className={styles.backRow}>
+        <a href="/">← Back to Zeno</a>
+      </div>
+    </ContentShell>
   );
 }

@@ -1,0 +1,249 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   Zeno content sub-pages (features, cancel guides, partners, developers).
+   Readable article column on the dark brand bg. Uses global --z-* / --font-*.
+─────────────────────────────────────────────────────────────────────────── */
+
+.shell {
+  min-height: 100vh;
+  background: var(--z-bg);
+  color: var(--z-text);
+}
+
+/* Clears the fixed Nav. */
+.main {
+  padding-top: 140px;
+  padding-bottom: 96px;
+}
+
+.article {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 24px;
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--z-muted);
+}
+
+.eyebrow {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--z-blue);
+  margin: 0 0 14px;
+}
+
+.title {
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  font-size: clamp(34px, 5vw, 46px);
+  line-height: 1.08;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--z-text);
+  margin: 0 0 18px;
+}
+
+.lead {
+  font-size: 18px;
+  line-height: 1.65;
+  color: var(--z-text);
+  margin: 0 0 4px;
+}
+
+.rule {
+  height: 1px;
+  border: 0;
+  background: var(--z-line);
+  margin: 32px 0 36px;
+}
+
+.article h2 {
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  color: var(--z-text);
+  margin: 44px 0 14px;
+}
+
+.article p {
+  margin: 0 0 18px;
+}
+
+.article a {
+  color: var(--z-blue);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(91, 140, 255, 0.3);
+  transition: border-color 0.15s ease;
+}
+
+.article a:hover {
+  border-bottom-color: var(--z-blue);
+}
+
+.article strong {
+  color: var(--z-text);
+  font-weight: 600;
+}
+
+/* ── Ordered step list, rendered as compact cards ──────────────────────────── */
+.steps {
+  list-style: none;
+  counter-reset: step;
+  margin: 0 0 36px;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.steps li {
+  counter-increment: step;
+  position: relative;
+  padding: 16px 18px 16px 56px;
+  border: 1px solid var(--z-line);
+  border-radius: 14px;
+  background: var(--z-panel);
+  color: var(--z-text);
+  line-height: 1.55;
+}
+
+.steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 16px;
+  top: 14px;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(180deg, #6b97ff, var(--z-blue-deep));
+}
+
+/* Plain list variant (no numbers) for partner/integration rows. */
+.list {
+  list-style: none;
+  margin: 0 0 36px;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  border: 1px solid var(--z-line);
+  border-radius: 12px;
+  background: var(--z-panel);
+  color: var(--z-text);
+}
+
+.tag {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--z-muted);
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--z-line-hi);
+  background: var(--z-panel-hi);
+  white-space: nowrap;
+}
+
+/* ── Difficulty badge (cancel guides) ──────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid;
+  margin-bottom: 8px;
+}
+
+.badgeEasy {
+  color: #6ee7b7;
+  border-color: rgba(52, 211, 153, 0.4);
+  background: rgba(52, 211, 153, 0.08);
+}
+
+.badgeMedium {
+  color: #fcd34d;
+  border-color: rgba(251, 191, 36, 0.4);
+  background: rgba(251, 191, 36, 0.08);
+}
+
+.badgeHard {
+  color: #fca5a5;
+  border-color: rgba(244, 63, 94, 0.4);
+  background: rgba(244, 63, 94, 0.08);
+}
+
+/* ── Inline data chips (developer key preview, etc.) ───────────────────────── */
+.code {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 13.5px;
+  color: var(--z-cyan);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--z-line);
+  border-radius: 7px;
+  padding: 2px 8px;
+}
+
+/* ── Primary CTA button ────────────────────────────────────────────────────── */
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 50px;
+  padding: 0 24px;
+  border-radius: 13px;
+  font-weight: 600;
+  font-size: 15.5px;
+  color: #fff !important;
+  border: 0 !important;
+  background: linear-gradient(180deg, #6b97ff, var(--z-blue-deep));
+  box-shadow: 0 10px 34px rgba(91, 140, 255, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: box-shadow 0.25s ease, transform 0.2s ease;
+}
+
+.cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 44px rgba(91, 140, 255, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.backRow {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--z-line);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 13px;
+}
+
+.backRow a {
+  color: var(--z-muted);
+  border: 0;
+}
+
+.backRow a:hover {
+  color: var(--z-blue);
+}
+
+@media (max-width: 640px) {
+  .main {
+    padding-top: 112px;
+  }
+}

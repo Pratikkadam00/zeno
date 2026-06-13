@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { summarizeSpendTwin } from "@subradar/shared";
+import { ContentShell } from "@/components/site/ContentShell";
+import styles from "@/components/site/content.module.css";
 
 export const metadata: Metadata = {
   title: "Spend Twin — What your subscriptions really cost | Zeno",
@@ -14,15 +16,19 @@ export const metadata: Metadata = {
 
 export default function SpendTwinFeaturePage() {
   return (
-    <main className="page narrow">
-      <a href="/">SubRadar</a>
-      <h1>Spend Twin</h1>
+    <ContentShell
+      eyebrow="Spend Twin"
+      title="What your subscriptions really cost"
+      lead={`${summarizeSpendTwin(28400)} It turns abstract subscription totals into tradeoffs people understand quickly.`}
+    >
       <p>
-        {summarizeSpendTwin(28400)} It turns abstract subscription totals into tradeoffs people understand quickly.
+        In the mobile app this stays local-first and uses the encrypted subscription ledger as its
+        source — your numbers are computed on-device, never shipped to a server.
       </p>
-      <p>
-        In the mobile app this stays local-first and uses the encrypted subscription ledger as its source.
-      </p>
-    </main>
+
+      <div className={styles.backRow}>
+        <a href="/">← Back to Zeno</a>
+      </div>
+    </ContentShell>
   );
 }

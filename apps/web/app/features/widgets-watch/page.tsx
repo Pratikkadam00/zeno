@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { createWidgetSnapshot } from "@subradar/shared";
+import { ContentShell } from "@/components/site/ContentShell";
+import styles from "@/components/site/content.module.css";
 
 export const metadata: Metadata = {
   title: "Widgets + Watch — Renewals at a glance | Zeno",
@@ -16,17 +18,26 @@ export default function WidgetsWatchFeaturePage() {
   const snapshot = createWidgetSnapshot([]);
 
   return (
-    <main className="page narrow">
-      <a href="/">SubRadar</a>
-      <h1>Widgets + Watch</h1>
-      <p>
-        SubRadar widgets use a compact local snapshot for next renewal, monthly spend, and Apple Watch complication text.
-      </p>
-      <ol className="steps">
-        <li>Snapshot generated locally: {snapshot.generatedAt}</li>
-        <li>Complication fallback: {snapshot.watchComplicationText}</li>
-        <li>Server does not need raw financial records to render widget data.</li>
-      </ol>
-    </main>
+    <ContentShell
+      eyebrow="Widgets + Watch"
+      title="Renewals at a glance"
+      lead="Zeno widgets use a compact local snapshot for next renewal, monthly spend, and Apple Watch complication text."
+    >
+      <ul className={styles.list}>
+        <li>
+          <span>Snapshot generated locally</span>
+          <span className={styles.tag}>{snapshot.generatedAt}</span>
+        </li>
+        <li>
+          <span>Complication fallback</span>
+          <span className={styles.tag}>{snapshot.watchComplicationText}</span>
+        </li>
+      </ul>
+      <p>The server does not need raw financial records to render widget data.</p>
+
+      <div className={styles.backRow}>
+        <a href="/">← Back to Zeno</a>
+      </div>
+    </ContentShell>
   );
 }
