@@ -1,23 +1,33 @@
 "use client";
 
-import { motion } from "motion/react";
+import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { WaitlistForm } from "./WaitlistForm";
 import styles from "../../app/home.module.css";
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
-// App mockup rows (mirrors the real Zeno dashboard).
 const SUBS = [
-  { n: "Netflix", c: "#E50914", a: "$15.49", d: "1 day", danger: true },
-  { n: "Adobe CC", c: "#FF3B30", a: "$54.99", d: "2 days", danger: true },
-  { n: "Midjourney", c: "#8B5CF6", a: "$10.00", d: "5 days", danger: false },
-  { n: "Spotify", c: "#1DB954", a: "$10.99", d: "12 days", danger: false }
+  { n: "Netflix", c: "#E50914", amt: 15.49, d: "1 day", danger: true },
+  { n: "Adobe CC", c: "#FF3B30", amt: 54.99, d: "2 days", danger: true },
+  { n: "Midjourney", c: "#8B5CF6", amt: 10.0, d: "5 days", danger: false },
+  { n: "Spotify", c: "#1DB954", amt: 10.99, d: "12 days", danger: false }
 ];
+const BASE_SPEND = 107.46;
 
 export function Hero() {
+  // The mockup is interactive: hover rows, click a row (or the Cancel button)
+  // to cancel it — the total drops and the alert flips to a savings confirmation.
+  const [cancelled, setCancelled] = useState<string[]>([]);
+  const toggle = (n: string) => setCancelled((c) => (c.includes(n) ? c.filter((x) => x !== n) : [...c, n]));
+
+  const saved = SUBS.filter((s) => cancelled.includes(s.n)).reduce((sum, s) => sum + s.amt, 0);
+  const spend = Math.max(0, BASE_SPEND - saved);
+  const netflixCancelled = cancelled.includes("Netflix");
+  const [whole, cents] = spend.toFixed(2).split(".");
+
   return (
     <header className={styles.hero}>
-      {/* Full-bleed pure-CSS animated background */}
       <div className={styles.heroBg} aria-hidden>
         <span className={`${styles.mesh} ${styles.meshA}`} />
         <span className={`${styles.mesh} ${styles.meshB}`} />
@@ -64,7 +74,7 @@ export function Hero() {
             </motion.div>
           </div>
 
-          {/* Right: app mockup */}
+          {/* Right: interactive app mockup */}
           <motion.div
             className={styles.heroMockWrap}
             initial={{ opacity: 0, y: 40, rotateY: -12 }}
@@ -79,27 +89,44 @@ export function Hero() {
                   <span className={styles.appAvatar}>Z</span>
                 </div>
                 <div className={styles.appLabel}>Monthly spend</div>
-                <div className={styles.appSpend}>$107<span>.46</span></div>
-                <div className={styles.appMeta}>5 subscriptions · 3 renewing this week</div>
+                <div className={styles.appSpend}>${whole}<span>.{cents}</span></div>
+                <div className={styles.appMeta}>{5 - cancelled.length} subscriptions · {cancelled.length ? `${cancelled.length} cancelled` : "3 renewing this week"}</div>
 
-                <div className={styles.appAlert}>
-                  <span className={styles.appAlertIcon}>⚠</span>
-                  <div className={styles.appAlertText}>
-                    <strong>Netflix renews in 1 day</strong>
-                    <span>$15.49 · dark-pattern cancel</span>
-                  </div>
-                  <span className={styles.appCancel}>Cancel</span>
-                </div>
+                {/* Alert flips between warning and savings confirmation */}
+                <AnimatePresence mode="wait" initial={false}>
+                  {netflixCancelled ? (
+                    <motion.div key="done" className={styles.appAlertDone} initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease }}>
+                      <span className={styles.appAlertIconDone}>✓</span>
+                      <div className={styles.appAlertText}>
+                        <strong>Netflix cancelled</strong>
+                        <span>You just saved ${(15.49 * 12).toFixed(0)}/yr</span>
+                      </div>
+                      <button className={styles.appUndo} onClick={() => toggle("Netflix")}>Undo</button>
+                    </motion.div>
+                  ) : (
+                    <motion.div key="warn" className={styles.appAlert} initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease }}>
+                      <span className={styles.appAlertIcon}>⚠</span>
+                      <div className={styles.appAlertText}>
+                        <strong>Netflix renews in 1 day</strong>
+                        <span>$15.49 · dark-pattern cancel</span>
+                      </div>
+                      <button className={styles.appCancel} onClick={() => toggle("Netflix")}>Cancel</button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
-                <div className={styles.appListLabel}>Upcoming renewals</div>
-                {SUBS.map((s) => (
-                  <div key={s.n} className={styles.appRow}>
-                    <span className={styles.appIcon} style={{ background: `${s.c}22`, color: s.c }}>{s.n[0]}</span>
-                    <span className={styles.appName}>{s.n}</span>
-                    <span className={styles.appAmt}>{s.a}</span>
-                    <span className={styles.appDays} data-danger={s.danger}>{s.d}</span>
-                  </div>
-                ))}
+                <div className={styles.appListLabel}>Upcoming renewals · tap to cancel</div>
+                {SUBS.map((s) => {
+                  const off = cancelled.includes(s.n);
+                  return (
+                    <button key={s.n} className={styles.appRow} data-cancelled={off} onClick={() => toggle(s.n)} type="button">
+                      <span className={styles.appIcon} style={{ background: `${s.c}22`, color: s.c }}>{s.n[0]}</span>
+                      <span className={styles.appName}>{s.n}</span>
+                      <span className={styles.appAmt}>${s.amt.toFixed(2)}</span>
+                      <span className={styles.appDays} data-danger={s.danger} data-off={off}>{off ? "✓ cancelled" : s.d}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <span className={styles.phoneGlow} />
