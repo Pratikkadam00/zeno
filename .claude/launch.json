@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "zeno-web",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "dev", "-p", "3011"],
+      "cwd": "apps/web",
+      "port": 3011
+    }
+  ]
+}
