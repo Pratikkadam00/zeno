@@ -1,27 +1,50 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { motion } from "motion/react";
 import { WaitlistForm } from "./WaitlistForm";
 import { SplitWords } from "./primitives";
-import { SafeMount } from "./SafeMount";
 import styles from "../../app/home.module.css";
 
-// WebGL scene is client-only; render a CSS gradient until it mounts.
-const HeroCanvas = dynamic(() => import("./HeroCanvas"), {
-  ssr: false,
-  loading: () => <div className={styles.heroCanvasFallback} />
-});
+// Renewal dots placed around the orbit (angle in deg + color). Rendered as a
+// pure-CSS scene — no canvas, no WebGL, no animation loop — so it cannot crash
+// or leak across navigations and is safe to remount any number of times.
+const DOTS = [
+  { a: 0, c: "#34d399" },
+  { a: 52, c: "#5b8cff" },
+  { a: 104, c: "#fbbf24" },
+  { a: 155, c: "#22d3ee" },
+  { a: 206, c: "#fb7185" },
+  { a: 257, c: "#a78bfa" },
+  { a: 309, c: "#34d399" }
+];
 
 export function Hero() {
   return (
     <header className={styles.hero}>
-      <div className={styles.heroCanvas}>
-        <SafeMount fallback={<div className={styles.heroCanvasFallback} />}>
-          <HeroCanvas />
-        </SafeMount>
+      {/* Pure-CSS animated scene */}
+      <div className={styles.heroScene} aria-hidden>
+        <span className={`${styles.aurora} ${styles.auroraA}`} />
+        <span className={`${styles.aurora} ${styles.auroraB}`} />
+        <span className={`${styles.aurora} ${styles.auroraC}`} />
+        <div className={styles.radar}>
+          <div className={styles.disc}>
+            <span className={`${styles.ring} ${styles.ring1}`} />
+            <span className={`${styles.ring} ${styles.ring2}`} />
+            <span className={`${styles.ring} ${styles.ring3}`} />
+            <span className={styles.sweep} />
+            <div className={styles.orbit}>
+              {DOTS.map((d, i) => (
+                <span key={i} className={styles.dot} style={{ ["--a" as string]: `${d.a}deg`, ["--c" as string]: d.c }} />
+              ))}
+            </div>
+          </div>
+          <span className={styles.orb} />
+        </div>
+        <span className={styles.heroGrain} />
       </div>
+
       <div className={styles.heroGlow} />
+
       <div className={styles.heroInner}>
         <div className={styles.heroContent}>
           <motion.div
@@ -54,7 +77,6 @@ export function Hero() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.9, ease: [0.16, 1, 0.3, 1] }}
-            id="waitlist-hero"
           >
             <WaitlistForm />
             <div className={styles.heroNote}>
