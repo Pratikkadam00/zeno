@@ -181,13 +181,10 @@ function RootStack() {
       >
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="dashboard" options={{ title: "Zeno" }} />
-        <Stack.Screen name="add" options={{ title: "Add Subscription" }} />
-        <Stack.Screen name="calendar" options={{ title: "Renewal Calendar" }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="coach" options={{ title: "Spend Coach" }} />
         <Stack.Screen name="spend-twin" options={{ title: "Spend Twin" }} />
         <Stack.Screen name="family" options={{ title: "Family Vault" }} />
-        <Stack.Screen name="analytics" options={{ title: "Analytics" }} />
         <Stack.Screen name="open-banking" options={{ title: "Open Banking" }} />
         <Stack.Screen name="widgets" options={{ title: "Widgets" }} />
         <Stack.Screen name="business" options={{ title: "Business" }} />
@@ -196,6 +193,7 @@ function RootStack() {
         <Stack.Screen name="backend" options={{ title: "Backend" }} />
         <Stack.Screen name="settings" options={{ title: "Settings" }} />
         <Stack.Screen name="paywall" options={{ title: "Upgrade" }} />
+        <Stack.Screen name="subscription/add" options={{ title: "Add Subscription" }} />
         <Stack.Screen name="subscription/[id]" options={{ title: "Subscription" }} />
         <Stack.Screen name="subscription/cancel/[id]" options={{ title: "Cancel Subscription" }} />
       </Stack>
