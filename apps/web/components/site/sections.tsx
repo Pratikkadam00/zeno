@@ -283,39 +283,113 @@ export function AnalyticsTeaser() {
 }
 
 // ── Pricing ───────────────────────────────────────────────────────────────────
-const PLANS = [
-  { name: "Free", price: "$0", per: "forever", desc: "Track up to 10 subscriptions with renewal reminders.", features: ["Up to 10 subscriptions", "7 / 3 / day-of reminders", "Cancellation guides", "On-device & encrypted"], featured: false },
-  { name: "Pro", price: "$7.99", per: "/mo", desc: "Unlimited tracking, full discovery and analytics.", features: ["Unlimited subscriptions", "Gmail + bank discovery", "Spend analytics & insights", "Priority cancellation guides"], featured: true },
-  { name: "Family", price: "$9.99", per: "/mo", desc: "Everything in Pro, shared across up to 5 people.", features: ["Up to 5 members", "Shared family vault", "Per-member breakdowns", "Everything in Pro"], featured: false },
-  { name: "Business", price: "$39.99", per: "/mo", desc: "Seat management and SaaS spend for teams.", features: ["Team seats & roles", "SaaS spend reporting", "CSV / API export", "Priority support"], featured: false }
+// Pricing logic: Zeno is a money-SAVING app, so every paid tier is anchored to
+// the ~$219/yr the average person wastes on forgotten subscriptions — each plan
+// pays for itself by cancelling a single thing. Annual is the default (the
+// product is about annual renewals), priced at ~2 months free vs monthly. Tiers
+// roughly double in scope (1 person → household → team) so they don't cannibalise.
+type Plan = {
+  name: string; monthly: number; annual: number;
+  blurb: string; meta?: string; payback: string;
+  features: string[]; featured?: boolean;
+};
+const PLANS: Plan[] = [
+  {
+    name: "Free", monthly: 0, annual: 0,
+    blurb: "Enough to stop the bleeding on a handful of subscriptions.",
+    meta: "No card required",
+    payback: "Free forever",
+    features: ["Track up to 10 subscriptions", "7 / 3 / day-of renewal reminders", "Full cancellation guides", "On-device & encrypted"]
+  },
+  {
+    name: "Pro", monthly: 4.99, annual: 39.99, featured: true,
+    blurb: "The full radar — unlimited tracking, auto-discovery and the analytics to see where the money goes.",
+    payback: "Pays for itself the first thing you cancel",
+    features: ["Unlimited subscriptions", "Gmail + bank-statement discovery", "Spend analytics & insights", "Priority cancellation guides", "Multiple inboxes"]
+  },
+  {
+    name: "Family", monthly: 8.99, annual: 74.99,
+    blurb: "One dashboard for the whole household, with per-person breakdowns.",
+    meta: "Up to 5 members · ~$1.25 / person / mo",
+    payback: "Everything in Pro, shared",
+    features: ["Up to 5 members", "Shared family vault", "Per-member spend breakdowns", "Everything in Pro"]
+  },
+  {
+    name: "Business", monthly: 14.99, annual: 129.99,
+    blurb: "See and control SaaS spend across your team, with seats, roles and exports.",
+    meta: "Up to 10 seats · more on request",
+    payback: "Cheaper than one unused SaaS seat",
+    features: ["Up to 10 team seats & roles", "SaaS spend reporting", "CSV / API export", "Priority support", "Everything in Family"]
+  }
 ];
 
 export function Pricing() {
+  const [annual, setAnnual] = useState(true);
+  const money = (n: number) => (Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`);
+
   return (
     <section id="pricing" className={styles.section}>
       <div className={styles.sectionGlow} style={{ width: 500, height: 500, bottom: 0, right: -150, background: "rgba(52,211,153,0.12)" }} />
       <div className={styles.container}>
         <Reveal>
           <span className={styles.eyebrow}><span className={styles.eyebrowDot} />Pricing</span>
-          <h2 className={styles.h2}>Start free. Upgrade when it pays for itself.</h2>
-          <p className={styles.lead}>Cancelling one forgotten subscription usually covers a year of Pro. Founding-waitlist members get 3 months of Pro free at launch.</p>
+          <h2 className={styles.h2}>It pays for itself, or it&rsquo;s&nbsp;free.</h2>
+          <p className={styles.lead}>The average person wastes <strong style={{ color: "var(--z-text)" }}>~$219 a year</strong> on subscriptions they forgot about. Zeno Pro costs less than that in full — cancel one thing and it&rsquo;s already paid for. Start free, upgrade only when it earns it.</p>
         </Reveal>
+
+        <Reveal delay={0.05}>
+          <div className={styles.billingToggle} role="group" aria-label="Billing period">
+            <button className={`${styles.billingBtn} ${!annual ? styles.billingBtnActive : ""}`} aria-pressed={!annual} onClick={() => setAnnual(false)}>Monthly</button>
+            <button className={`${styles.billingBtn} ${annual ? styles.billingBtnActive : ""}`} aria-pressed={annual} onClick={() => setAnnual(true)}>
+              Annual <span className={styles.billingSave}>2 months free</span>
+            </button>
+          </div>
+        </Reveal>
+
         <StaggerGroup className={styles.pricing}>
-          {PLANS.map((p) => (
-            <motion.div key={p.name} className={`${styles.priceCard} ${p.featured ? styles.priceCardFeatured : ""}`} variants={staggerChild}>
-              {p.featured ? <span className={styles.priceTag}>Most popular</span> : null}
-              <div className={styles.priceName}>{p.name}</div>
-              <div className={styles.priceAmt}>{p.price}<span>{p.per}</span></div>
-              <div className={styles.priceDesc}>{p.desc}</div>
-              <ul className={styles.priceFeatures}>
-                {p.features.map((f) => (
-                  <li key={f} className={styles.priceFeature}><span className={styles.priceFeatureDot}>✓</span>{f}</li>
-                ))}
-              </ul>
-              <a href="#waitlist" className={`${styles.btn} ${p.featured ? styles.btnPrimary : styles.btnGhost}`}>Join waitlist</a>
-            </motion.div>
-          ))}
+          {PLANS.map((p) => {
+            const free = p.monthly === 0;
+            const perMo = annual ? p.annual / 12 : p.monthly;
+            const savePct = free ? 0 : Math.round((1 - p.annual / (p.monthly * 12)) * 100);
+            return (
+              <motion.div key={p.name} className={`${styles.priceCard} ${p.featured ? styles.priceCardFeatured : ""}`} variants={staggerChild}>
+                {p.featured ? <span className={styles.priceTag}>Most popular</span> : null}
+                <div className={styles.priceName}>{p.name}</div>
+
+                <div className={styles.priceAmt}>
+                  {free ? "$0" : money(perMo)}<span>{free ? "" : " /mo"}</span>
+                </div>
+                <div className={styles.priceBilled}>
+                  {free
+                    ? "Free forever"
+                    : annual
+                      ? <>billed {money(p.annual)}/yr <span className={styles.priceSavePill}>save {savePct}%</span></>
+                      : <>or {money(p.annual)}/yr</>}
+                </div>
+
+                <div className={styles.priceDesc}>{p.blurb}</div>
+                {p.meta ? <div className={styles.priceMeta}>{p.meta}</div> : null}
+
+                <ul className={styles.priceFeatures}>
+                  {p.features.map((f) => (
+                    <li key={f} className={styles.priceFeature}><span className={styles.priceFeatureDot}>✓</span>{f}</li>
+                  ))}
+                </ul>
+
+                <div className={styles.pricePayback}>{p.payback}</div>
+                <a href="#waitlist" className={`${styles.btn} ${p.featured ? styles.btnPrimary : styles.btnGhost}`}>
+                  {free ? "Start free" : "Join waitlist"}
+                </a>
+              </motion.div>
+            );
+          })}
         </StaggerGroup>
+
+        <Reveal delay={0.1}>
+          <p className={styles.priceFootnote}>
+            Founding-waitlist members get <strong style={{ color: "var(--z-text)" }}>Pro free for 3 months</strong> at launch. Cancel anytime — ironically, in one tap. Prices in USD, billed via the App Store / Google Play.
+          </p>
+        </Reveal>
       </div>
     </section>
   );
@@ -328,7 +402,7 @@ const FAQS = [
   { q: "How does discovery actually work?", a: "Connect one or more Gmail inboxes and Zeno reads billing receipts (read-only) to detect recurring charges, or import a statement CSV from any bank. It matches them against a 600-service catalog to fill in prices, cycles and cancellation guides." },
   { q: "Can Zeno cancel subscriptions for me?", a: "Zeno takes you straight to each service&rsquo;s real cancellation flow with step-by-step guidance and warnings about dark patterns, so cancelling takes one tap and a few seconds. You stay in control of the final confirmation." },
   { q: "Is my data private?", a: "Yes. Your subscription data is encrypted on your device, protected by a biometric app lock. Discovery happens locally — nothing is sold, and there are no data brokers in the loop." },
-  { q: "What will it cost?", a: "Free forever for up to 10 subscriptions. Pro is $7.99/mo for unlimited tracking, full discovery and analytics. Family and Business plans add shared vaults and team features." }
+  { q: "What will it cost?", a: "Free forever for up to 10 subscriptions. Pro is $4.99/mo — or $39.99/year, about two months free — for unlimited tracking, full discovery and analytics. Family ($8.99/mo) shares it across 5 people; Business ($14.99/mo) adds team seats and SaaS-spend reporting. Since the average person wastes ~$219/year on forgotten subscriptions, Pro pays for itself the first thing you cancel." }
 ];
 
 export function FAQ() {

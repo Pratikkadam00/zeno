@@ -15,7 +15,7 @@ import { withAlpha } from "../src/utils/subscription-ui";
 const fallbackPrices = {
   proMonthly: "$4.99",
   proAnnual:  "$39.99",
-  familyMonthly: "$7.99"
+  familyMonthly: "$8.99"
 };
 
 type ValueTone = "primary" | "danger" | "success" | "secondary" | "warning";

@@ -200,3 +200,20 @@
 .footerBottom { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 50px; padding-top: 28px; border-top: 1px solid var(--z-line); color: var(--z-quiet); font-size: 13px; }
 
 .sectionGlow { position: absolute; border-radius: 50%; filter: blur(120px); pointer-events: none; z-index: 0; opacity: 0.5; }
+
+/* ── Pricing: billing toggle + extras ───────────────────────────────────── */
+.billingToggle { display: inline-flex; margin-top: 30px; padding: 4px; gap: 2px; border: 1px solid var(--z-line); background: var(--z-bg-1); border-radius: 12px; }
+.billingBtn { appearance: none; border: 0; cursor: pointer; background: transparent; color: var(--z-muted); font-size: 14px; font-weight: 600; padding: 9px 18px; border-radius: 9px; display: inline-flex; align-items: center; gap: 8px; transition: color 0.18s ease, background 0.18s ease; }
+.billingBtn:hover { color: var(--z-text); }
+.billingBtnActive { color: #fff; background: linear-gradient(180deg, #6b97ff, var(--z-blue-deep)); box-shadow: 0 6px 18px rgba(91, 140, 255, 0.35); }
+.billingSave { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em; color: var(--z-emerald); background: rgba(52, 211, 153, 0.14); padding: 2px 7px; border-radius: 999px; }
+.billingBtnActive .billingSave { color: #04110c; background: var(--z-emerald); }
+
+.priceBilled { color: var(--z-quiet); font-size: 13px; margin: 2px 0 16px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 18px; }
+.priceSavePill { font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--z-emerald); background: rgba(52, 211, 153, 0.14); padding: 2px 7px; border-radius: 999px; }
+.priceMeta { font-family: var(--font-mono); font-size: 11.5px; color: var(--z-blue); margin-top: 8px; }
+.pricePayback { font-size: 12.5px; color: var(--z-quiet); font-style: italic; margin-bottom: 16px; padding-top: 14px; border-top: 1px solid var(--z-line); }
+.priceFootnote { text-align: center; color: var(--z-muted); font-size: 14px; line-height: 1.6; max-width: 64ch; margin: 44px auto 0; }
+
+/* tighten the amount sub-unit for the new /mo layout */
+.priceAmt span { font-size: 15px; }
