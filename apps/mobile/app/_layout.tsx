@@ -122,14 +122,17 @@ function RootStack() {
     }
 
     const topSegment = segments[0];
-    const isLoginRoute = topSegment === "login";
+    // Public routes are the onboarding screen ("/" → no segment) and login.
+    const onPublicRoute = topSegment === undefined || topSegment === "login";
 
-    if (!isAuthenticated && !isLoginRoute) {
+    if (!isAuthenticated && !onPublicRoute) {
+      // Logged out on a protected screen → send to sign in.
       router.replace("/login");
       return;
     }
 
-    if (isAuthenticated && isLoginRoute) {
+    if (isAuthenticated && onPublicRoute) {
+      // Logged in but sitting on onboarding/login → go straight to the app.
       router.replace("/dashboard");
     }
   }, [isAuthenticated, segments, status]);

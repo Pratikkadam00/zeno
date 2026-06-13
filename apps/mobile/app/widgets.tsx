@@ -2,6 +2,7 @@ import { ScrollView, Text, View } from "react-native";
 import { Screen, Surface } from "../src/components/ui";
 import { useSubscriptionStore } from "../src/data/subscription-store";
 import { useSubRadarTheme } from "../src/theme/theme-provider";
+import { formatDaysLabel } from "../src/utils/subscription-ui";
 
 export default function WidgetsScreen() {
   const { theme } = useSubRadarTheme();
@@ -21,7 +22,7 @@ export default function WidgetsScreen() {
           <Text style={{ color: theme.text, fontSize: 18, fontWeight: "900" }}>Next renewal</Text>
           <Text style={{ color: theme.mutedText, marginTop: 8, lineHeight: 21 }}>
             {widgetSnapshot.nextRenewal
-              ? `${widgetSnapshot.nextRenewal.name} · ${widgetSnapshot.nextRenewal.amountLabel} · ${widgetSnapshot.nextRenewal.daysUntil} days`
+              ? `${widgetSnapshot.nextRenewal.name} · ${widgetSnapshot.nextRenewal.amountLabel} · ${formatDaysLabel(widgetSnapshot.nextRenewal.daysUntil)}`
               : "No upcoming renewals"}
           </Text>
         </Surface>

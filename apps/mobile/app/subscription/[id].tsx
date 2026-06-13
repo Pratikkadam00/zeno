@@ -7,7 +7,7 @@ import { useMemo, useState } from "react";
 import { useSubscriptionStore, type SubscriptionNotificationSettings } from "../../src/data/subscription-store";
 import { cancelNotificationsForSubscription, scheduleRenewalNotificationsWithPreferences } from "../../src/notifications/notificationService";
 import { formatMoney } from "../../src/utils/format";
-import { formatMonthYear, formatShortDate, getAvatarStyle, getDaysRemaining } from "../../src/utils/subscription-ui";
+import { formatDaysLabel, formatMonthYear, formatShortDate, getAvatarStyle, getDaysRemaining } from "../../src/utils/subscription-ui";
 import { useSubRadarTheme } from "../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
@@ -39,8 +39,9 @@ function createMockChargeHistory(amountMinor: number, dateValue?: string) {
   const anchor = new Date(dateValue);
   if (Number.isNaN(anchor.getTime())) return [];
   return [1, 2, 3].map((monthsBack) => {
-    const date = new Date(anchor);
-    date.setMonth(date.getMonth() - monthsBack);
+    // Build each month from its own index (day 15, UTC) so month-end anchors
+    // like May 31 don't overflow (−2mo and −3mo would both land in March).
+    const date = new Date(Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth() - monthsBack, 15));
     return { date: formatMonthYear(date.toISOString()), amountMinor };
   });
 }
@@ -349,7 +350,7 @@ export default function SubscriptionDetailScreen() {
                     </View>
                     <View style={styles.urgencyTextWrap}>
                       <Text style={styles.urgencyTitle}>
-                        Renews in {daysRemaining === 0 ? "TODAY" : `${daysRemaining} days`}
+                        Renews {daysRemaining === 0 ? "" : "in "}{formatDaysLabel(daysRemaining)}
                       </Text>
                       <Text style={styles.urgencySub}>
                         {formatMoney(sub.price.amountMinor, sub.price.currency)} will be charged on {formatShortDate(sub.nextRenewalDate)}
@@ -377,7 +378,7 @@ export default function SubscriptionDetailScreen() {
                       : daysRemaining <= 7 ? theme.warning
                       : theme.text
                   }]}>
-                    {daysRemaining === null ? "—" : daysRemaining === 0 ? "TODAY" : `${daysRemaining} days`}
+                    {formatDaysLabel(daysRemaining)}
                   </Text>
                   <Text style={styles.statSub}>{formatShortDate(sub.nextRenewalDate)}</Text>
                 </View>
@@ -419,7 +420,7 @@ export default function SubscriptionDetailScreen() {
                   chargeHistory.map((entry, index) => {
                     const isLast = index === chargeHistory.length - 1;
                     return (
-                      <View key={entry.date}>
+                      <View key={`${index}-${entry.date}`}>
                         <View style={styles.historyRow}>
                           <Text style={styles.historyDate}>{entry.date}</Text>
                           <View style={styles.historyRight}>

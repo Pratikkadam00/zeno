@@ -1,6 +1,19 @@
 import type { Subscription } from "@subradar/shared";
 
-const now = "2026-05-24T00:00:00.000Z";
+// Seed dates are relative to first launch so the demo always shows a believable
+// mix of imminent renewals (and never stale "TODAY" badges from fixed dates).
+const launch = new Date();
+const now = (() => {
+  const created = new Date(launch);
+  created.setUTCMonth(created.getUTCMonth() - 2);
+  return created.toISOString();
+})();
+function renewalInDays(days: number): string {
+  const date = new Date(launch);
+  date.setUTCDate(date.getUTCDate() + days);
+  date.setUTCHours(9, 0, 0, 0);
+  return date.toISOString();
+}
 
 export const seedSubscriptions: Subscription[] = [
   {
@@ -13,7 +26,7 @@ export const seedSubscriptions: Subscription[] = [
     category: "productivity",
     price: { amountMinor: 5499, currency: "USD" },
     billingCycle: "monthly",
-    nextRenewalDate: "2026-05-27T09:00:00.000Z",
+    nextRenewalDate: renewalInDays(2),
     status: "active",
     ownerProfileId: "profile_local",
     valueRating: "medium",
@@ -29,7 +42,7 @@ export const seedSubscriptions: Subscription[] = [
     category: "ai_tools",
     price: { amountMinor: 1000, currency: "USD" },
     billingCycle: "monthly",
-    nextRenewalDate: "2026-05-31T09:00:00.000Z",
+    nextRenewalDate: renewalInDays(5),
     status: "active",
     ownerProfileId: "profile_local",
     valueRating: "high",
@@ -45,7 +58,7 @@ export const seedSubscriptions: Subscription[] = [
     category: "entertainment",
     price: { amountMinor: 1549, currency: "USD" },
     billingCycle: "monthly",
-    nextRenewalDate: "2026-06-04T09:00:00.000Z",
+    nextRenewalDate: renewalInDays(1),
     status: "active",
     ownerProfileId: "profile_local",
     valueRating: "medium",
@@ -61,7 +74,7 @@ export const seedSubscriptions: Subscription[] = [
     category: "family",
     price: { amountMinor: 1399, currency: "USD" },
     billingCycle: "monthly",
-    nextRenewalDate: "2026-06-08T09:00:00.000Z",
+    nextRenewalDate: renewalInDays(9),
     status: "active",
     ownerProfileId: "family_maya",
     valueRating: "high",
@@ -77,7 +90,7 @@ export const seedSubscriptions: Subscription[] = [
     category: "education",
     price: { amountMinor: 1299, currency: "USD" },
     billingCycle: "monthly",
-    nextRenewalDate: "2026-06-12T09:00:00.000Z",
+    nextRenewalDate: renewalInDays(14),
     status: "active",
     ownerProfileId: "family_avi",
     valueRating: "medium",

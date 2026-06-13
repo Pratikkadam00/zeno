@@ -1,6 +1,6 @@
 import { getPopularServices, type Service } from "@subradar/service-catalog";
 import type { BillingCycle, SubscriptionCategory } from "@subradar/shared";
-import { router } from "expo-router";
+import { router, Stack } from "expo-router";
 import { useMemo, useState } from "react";
 import {
   FlatList,
@@ -498,6 +498,8 @@ export default function AddSubscriptionScreen() {
   // ── Root ────────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"] as const}>
+      {/* Screen renders its own nav row, so hide the native stack header. */}
+      <Stack.Screen options={{ headerShown: false }} />
       {/* Nav bar */}
       <View style={styles.navBar}>
         <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.backBtn} onPress={() => router.back()}>
@@ -549,6 +551,7 @@ function createStyles(theme: ThemeTokens) {
     navBar: {
       flexDirection: "row",
       alignItems: "center",
+      justifyContent: "space-between",
       paddingHorizontal: spacing.screenH,
       paddingTop: 16,
       paddingBottom: 12,

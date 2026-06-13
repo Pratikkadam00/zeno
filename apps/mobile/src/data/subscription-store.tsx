@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import { Platform } from "react-native";
 import { openSubRadarDatabase, readAppMeta, writeAppMeta, type SubRadarDatabase } from "../storage/database";
 import { listSubscriptions, softDeleteSubscription, upsertSubscription } from "../storage/subscription-repository";
+import { rollRenewalForward } from "../utils/subscription-ui";
 import { seedSubscriptions } from "./seed-subscriptions";
 
 type CreateSubscriptionInput = {
@@ -171,20 +172,29 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
       }
     };
 
+    // Display set: roll overdue active renewals forward to their next cycle so
+    // a date that has already passed never shows as "TODAY". Mutations still
+    // operate on the raw state by id, so persistence is unaffected.
+    const displaySubscriptions = subscriptions.map((subscription) =>
+      subscription.status === "active" && subscription.nextRenewalDate
+        ? { ...subscription, nextRenewalDate: rollRenewalForward(subscription.nextRenewalDate, subscription.billingCycle) }
+        : subscription
+    );
+
     return {
-      subscriptions,
+      subscriptions: displaySubscriptions,
       hydrated,
       notificationSettings,
-      totalMonthlyMinor: subscriptions.reduce((sum, subscription) => sum + monthlyAmount(subscription), 0),
-      spendSummary: createSpendSummary(subscriptions),
-      spendTwin: createSpendTwin(subscriptions.reduce((sum, subscription) => sum + monthlyAmount(subscription), 0)),
-      familyVault: createFamilyVaultSummary(demoFamilyMembers, subscriptions),
-      analytics: createAnalyticsSnapshot(subscriptions),
-      widgetSnapshot: createWidgetSnapshot(subscriptions),
-      businessSummary: createBusinessSummary(demoBusinessWorkspace, subscriptions),
+      totalMonthlyMinor: displaySubscriptions.reduce((sum, subscription) => sum + monthlyAmount(subscription), 0),
+      spendSummary: createSpendSummary(displaySubscriptions),
+      spendTwin: createSpendTwin(displaySubscriptions.reduce((sum, subscription) => sum + monthlyAmount(subscription), 0)),
+      familyVault: createFamilyVaultSummary(demoFamilyMembers, displaySubscriptions),
+      analytics: createAnalyticsSnapshot(displaySubscriptions),
+      widgetSnapshot: createWidgetSnapshot(displaySubscriptions),
+      businessSummary: createBusinessSummary(demoBusinessWorkspace, displaySubscriptions),
       partnerIntegrations: partnerIntegrationManifests,
-      reminderPlan: createRenewalReminderPlan(subscriptions),
-      upcoming: [...subscriptions]
+      reminderPlan: createRenewalReminderPlan(displaySubscriptions),
+      upcoming: [...displaySubscriptions]
         .filter((subscription) => subscription.status === "active" && subscription.nextRenewalDate)
         .sort((a, b) => Date.parse(a.nextRenewalDate ?? "") - Date.parse(b.nextRenewalDate ?? ""))
         .slice(0, 5),

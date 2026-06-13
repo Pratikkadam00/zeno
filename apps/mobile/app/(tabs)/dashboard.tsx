@@ -9,7 +9,7 @@ import { ThemeToggle } from "../../src/components/ui";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
 import { generateInsights, getTotalSavingOpportunity } from "../../src/insights/insightsEngine";
 import { formatMoney, notificationLabel } from "../../src/utils/format";
-import { formatRenewalDate, getAvatarStyle, getDaysRemaining, getUrgencyBadge, withAlpha } from "../../src/utils/subscription-ui";
+import { formatDaysLabel, formatRenewalDate, getAvatarStyle, getDaysRemaining, getUrgencyBadge, withAlpha } from "../../src/utils/subscription-ui";
 import { useSubRadarTheme } from "../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
@@ -145,8 +145,8 @@ export default function DashboardScreen() {
                 </View>
                 <View style={styles.urgentMiddle}>
                   <Text style={styles.urgentTitle}>
-                    {urgentRenewal.sub.name} renews in{" "}
-                    {urgentRenewal.days === 0 ? "TODAY" : `${urgentRenewal.days} days`}
+                    {urgentRenewal.sub.name} renews{urgentRenewal.days === 0 ? " " : " in "}
+                    {formatDaysLabel(urgentRenewal.days)}
                   </Text>
                   <Text style={styles.urgentSubtitle}>
                     {formatMoney(urgentRenewal.sub.price.amountMinor, urgentRenewal.sub.price.currency)}
