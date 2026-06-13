@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AreaChart, DivergingBars, Donut, Sparkline } from "./charts";
 import styles from "./analytics.module.css";
@@ -69,8 +70,10 @@ export default function Dashboard() {
         <header className={styles.header}>
           <div>
             <div className={styles.brandRow}>
-              <span className={styles.brandMark}>Z</span>
-              <span className={styles.brandName}>Zeno</span>
+              <Link href="/" className={styles.brandRow} style={{ marginBottom: 0, textDecoration: "none" }} aria-label="Back to Zeno home">
+                <span className={styles.brandMark}>Z</span>
+                <span className={styles.brandName}>Zeno</span>
+              </Link>
               <span className={styles.brandSep}>/</span>
               <span className={styles.brandTag}>Growth Analytics</span>
             </div>

@@ -1,9 +1,9 @@
 /* ── Zeno Analytics console · scoped dark theme ───────────────────────────── */
 
 .shell {
-  --a-bg-0: #06080d;
-  --a-bg-1: #0b0e16;
-  --a-bg-2: #11151f;
+  --a-bg-0: #07080c;
+  --a-bg-1: #0b0d14;
+  --a-bg-2: #11141d;
   --a-panel: rgba(255, 255, 255, 0.022);
   --a-panel-hi: rgba(255, 255, 255, 0.04);
   --a-border: rgba(255, 255, 255, 0.07);

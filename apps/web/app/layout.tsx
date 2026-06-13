@@ -1,55 +1,32 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { Bricolage_Grotesque, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
-  variable: "--font-inter",
-  display: "swap"
-});
+const display = Bricolage_Grotesque({ subsets: ["latin"], weight: ["400", "600", "700", "800"], variable: "--font-display", display: "swap" });
+const body = Hanken_Grotesk({ subsets: ["latin"], weight: ["300", "400", "500", "600", "700"], variable: "--font-body", display: "swap" });
+const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-mono", display: "swap" });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://zeno.app"),
-  title: "Zeno — Know what you pay. Control what you keep.",
-  description: "Subscription manager that automatically finds every subscription, warns you before renewals, and gets you to cancel in one tap. No bank login required.",
-  keywords: "subscription manager, cancel subscriptions, track subscriptions, subscription tracker app",
+  title: "Zeno — Know what you pay. Cancel before it charges.",
+  description: "Zeno finds every subscription you pay for, warns you before each renewal, and gets you to cancel in one tap — without ever needing your bank login. Join the waitlist.",
+  keywords: "subscription manager, cancel subscriptions, subscription tracker app, renewal reminders, free trial tracker",
   openGraph: {
-    title: "Zeno — Know what you pay. Control what you keep.",
-    description: "Subscription manager that automatically finds every subscription, warns you before renewals, and gets you to cancel in one tap. No bank login required.",
+    title: "Zeno — Know what you pay. Cancel before it charges.",
+    description: "The subscription radar that finds every recurring charge, warns you before renewals, and cancels in one tap. No bank login required. Join the waitlist.",
     url: "https://zeno.app",
     siteName: "Zeno",
     type: "website",
     locale: "en_US",
-    images: [
-      {
-        url: "/og.png",
-        width: 1200,
-        height: 630,
-        alt: "Zeno subscription manager dashboard"
-      }
-    ]
-  }
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno — subscription radar" }]
+  },
+  twitter: { card: "summary_large_image", title: "Zeno — Know what you pay.", description: "Find every subscription, get warned before renewals, cancel in one tap." }
 };
-
-// Runs before paint: applies the stored theme (same localStorage key as
-// components/theme-toggle.tsx) or the OS preference, to avoid a flash of
-// the wrong theme.
-const themeInitScript = `(function(){try{var s=window.localStorage.getItem("subradar.web.theme");var d=s?s==="dark":window.matchMedia("(prefers-color-scheme: dark)").matches;document.documentElement.classList.toggle("dark",d);document.documentElement.style.colorScheme=d?"dark":"light";}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
-      </head>
-      <body className={inter.variable}>
-        {children}
-        <div className="fixed bottom-5 right-5 z-50">
-          <ThemeToggle />
-        </div>
-      </body>
+    <html lang="en" className={`dark ${display.variable} ${body.variable} ${mono.variable}`} suppressHydrationWarning>
+      <body>{children}</body>
     </html>
   );
 }
