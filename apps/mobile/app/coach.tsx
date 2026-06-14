@@ -1,12 +1,42 @@
-import { ScrollView, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, ScrollView, Text, View } from "react-native";
+import { monthlyAmount } from "@subradar/shared";
 import { Screen, Surface } from "../src/components/ui";
+import { getAiCoaching, type AiCoaching } from "../src/api/client";
 import { useSubscriptionStore } from "../src/data/subscription-store";
 import { formatMoney } from "../src/utils/format";
 import { useZenoTheme } from "../src/theme/theme-provider";
 
 export default function CoachScreen() {
   const { theme } = useZenoTheme();
-  const { spendSummary } = useSubscriptionStore();
+  const { spendSummary, subscriptions, totalMonthlyMinor } = useSubscriptionStore();
+
+  const [ai, setAi] = useState<AiCoaching | null>(null);
+  const [loadingAi, setLoadingAi] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    setLoadingAi(true);
+    const payload = {
+      totalMonthlyMinor,
+      currency: "USD",
+      subscriptions: subscriptions
+        .filter((subscription) => subscription.status === "active")
+        .map((subscription) => ({
+          name: subscription.name,
+          category: subscription.category,
+          monthlyMinor: monthlyAmount(subscription),
+          billingCycle: subscription.billingCycle
+        })),
+      insights: spendSummary.insights.map((insight) => ({ title: insight.title, body: insight.body }))
+    };
+    void getAiCoaching(payload)
+      .then((result) => { if (active) setAi(result); })
+      .finally(() => { if (active) setLoadingAi(false); });
+    return () => { active = false; };
+  }, [subscriptions, totalMonthlyMinor, spendSummary.insights]);
+
+  const aiActive = ai?.source === "ai";
 
   return (
     <Screen>
@@ -14,14 +44,47 @@ export default function CoachScreen() {
         <View>
           <Text style={{ color: theme.text, fontSize: 30, lineHeight: 36, fontWeight: "900" }}>AI spend coach</Text>
           <Text style={{ color: theme.mutedText, marginTop: 6, fontSize: 16 }}>
-            Local deterministic insights first. Provider-backed coaching plugs in later.
+            {aiActive
+              ? "Personalized coaching from your configured AI model, grounded in your subscriptions."
+              : "Deterministic insights computed on-device. Add an AI key on the server to unlock personalized coaching."}
           </Text>
         </View>
 
         <Surface>
-          <Text style={{ color: theme.text, fontSize: 24, fontWeight: "900" }}>{formatMoney(spendSummary.totalMonthlyMinor)}</Text>
+          <Text style={{ color: theme.text, fontSize: 24, fontWeight: "900" }}>{formatMoney(totalMonthlyMinor)}</Text>
           <Text style={{ color: theme.mutedText, marginTop: 4 }}>Estimated monthly subscription spend</Text>
         </Surface>
+
+        {loadingAi ? (
+          <Surface>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <ActivityIndicator color={theme.secondary} />
+              <Text style={{ color: theme.mutedText }}>Asking your AI coach…</Text>
+            </View>
+          </Surface>
+        ) : aiActive && ai.source === "ai" ? (
+          <>
+            {ai.summary ? (
+              <Surface>
+                <Text style={{ color: theme.mutedText, fontSize: 12, fontWeight: "800", letterSpacing: 1 }}>AI COACH</Text>
+                <Text style={{ color: theme.text, marginTop: 8, fontSize: 16, lineHeight: 22 }}>{ai.summary}</Text>
+              </Surface>
+            ) : null}
+            <View style={{ gap: 12 }}>
+              {ai.recommendations.map((rec, index) => (
+                <Surface key={`ai-${index}-${rec.title}`}>
+                  <Text style={{ color: theme.text, fontSize: 17, fontWeight: "900" }}>{rec.title}</Text>
+                  <Text style={{ color: theme.mutedText, marginTop: 8, lineHeight: 21 }}>{rec.detail}</Text>
+                  {rec.estimatedMonthlySavingsLabel ? (
+                    <Text style={{ color: theme.secondary, marginTop: 8, fontWeight: "800" }}>
+                      Potential savings: {rec.estimatedMonthlySavingsLabel}
+                    </Text>
+                  ) : null}
+                </Surface>
+              ))}
+            </View>
+          </>
+        ) : null}
 
         {spendSummary?.byCategory?.length ? (
           <>
@@ -38,6 +101,9 @@ export default function CoachScreen() {
             </Surface>
 
             <View style={{ gap: 12 }}>
+              {!aiActive ? (
+                <Text style={{ color: theme.mutedText, fontSize: 13, fontWeight: "800", letterSpacing: 1 }}>RULE-BASED INSIGHTS</Text>
+              ) : null}
               {spendSummary.insights.map((insight) => (
                 <Surface key={`${insight.kind}-${insight.title}`}>
                   <Text style={{ color: theme.text, fontSize: 17, fontWeight: "900" }}>{insight.title}</Text>

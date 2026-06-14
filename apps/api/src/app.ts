@@ -10,6 +10,7 @@ import { createLinkToken, exchangePublicToken, getRecentTransactions, plaidConfi
 import { applyWebhookEvent, billingConfigured, fetchEntitlement, getCachedEntitlement, verifyWebhookAuth, webhookConfigured } from "./billing";
 import { pullChanges, pushChanges, type EncryptedChange } from "./sync";
 import { createHousehold, getHousehold, joinHousehold, setMemberSpend } from "./family";
+import { coachConfigured, coachModel, generateCoaching } from "./coach";
 
 export type BuildAppOptions = {
   logger?: boolean;
@@ -33,6 +34,21 @@ const familyJoinSchema = z.object({
 const familySpendSchema = z.object({
   memberId: z.string().min(1).max(128),
   monthlySpendMinor: z.number().int().min(0)
+});
+const coachRequestSchema = z.object({
+  totalMonthlyMinor: z.number().int().min(0),
+  currency: z.string().length(3).optional(),
+  subscriptions: z.array(z.object({
+    name: z.string().min(1).max(80),
+    category: z.string().min(1).max(40),
+    monthlyMinor: z.number().int().min(0),
+    billingCycle: z.string().min(1).max(20)
+  })).max(200),
+  insights: z.array(z.object({
+    title: z.string().min(1).max(200),
+    body: z.string().min(1).max(600)
+  })).max(20).optional(),
+  question: z.string().max(500).optional()
 });
 const plaidLinkTokenSchema = z.object({ userId: z.string().min(1).max(128).optional() });
 const plaidExchangeSchema = z.object({ publicToken: z.string().min(1) });
@@ -121,6 +137,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       "encrypted_sync_envelope_only",
       "local_email_receipt_parsing_architecture",
       "local_spend_coach_architecture",
+      "ai_spend_coach_when_configured",
       "renewal_reminder_plan_7_3_day_of",
       "open_banking_provider_adapters",
       "spend_twin",
@@ -236,6 +253,25 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       return fail("NOT_FOUND", "Household not found.", request.id);
     }
     return ok({ household }, request.id);
+  });
+
+  // ── AI spend coach. Live when ANTHROPIC_API_KEY is set; otherwise reports
+  //    "unconfigured" so the client falls back to local rule-based insights. ──
+  app.post("/api/v1/coach", async (request, reply) => {
+    const parsed = parseBody(coachRequestSchema, request.body, request.id);
+    if (!parsed.ok) {
+      reply.code(400);
+      return parsed.error;
+    }
+    if (!coachConfigured()) {
+      return ok({ source: "unconfigured" as const, model: coachModel() }, request.id);
+    }
+    try {
+      return ok(await generateCoaching(parsed.data), request.id);
+    } catch (error) {
+      reply.code(502);
+      return fail("UPSTREAM_ERROR", error instanceof Error ? error.message : "AI coach request failed.", request.id);
+    }
   });
 
   // ── Billing entitlement (server is the source of truth for Pro/Family). ──

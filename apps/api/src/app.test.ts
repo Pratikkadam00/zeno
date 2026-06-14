@@ -371,4 +371,35 @@ describe("api app", () => {
     });
     expect(bad.statusCode).toBe(404);
   });
+
+  it("reports the AI coach as unconfigured when no key is set", async () => {
+    const previous = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    try {
+      const app = await buildApp();
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/coach",
+        payload: {
+          totalMonthlyMinor: 4599,
+          subscriptions: [{ name: "Netflix", category: "entertainment", monthlyMinor: 1549, billingCycle: "monthly" }]
+        }
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json().data.source).toBe("unconfigured");
+    } finally {
+      if (previous === undefined) delete process.env.ANTHROPIC_API_KEY;
+      else process.env.ANTHROPIC_API_KEY = previous;
+    }
+  });
+
+  it("rejects a malformed AI coach request", async () => {
+    const app = await buildApp();
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/coach",
+      payload: { totalMonthlyMinor: -5, subscriptions: [] }
+    });
+    expect(response.statusCode).toBe(400);
+  });
 });

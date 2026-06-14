@@ -135,6 +135,39 @@ export async function pullSyncChanges(userId: string, cursor?: string): Promise<
   }
 }
 
+export type CoachRecommendation = { title: string; detail: string; estimatedMonthlySavingsLabel?: string };
+export type AiCoaching =
+  | { source: "ai"; model: string; summary: string; recommendations: CoachRecommendation[] }
+  | { source: "unconfigured"; model: string };
+
+export type CoachSubscriptionInput = { name: string; category: string; monthlyMinor: number; billingCycle: string };
+export type CoachInsightInput = { title: string; body: string };
+export type CoachRequestInput = {
+  totalMonthlyMinor: number;
+  currency?: string;
+  subscriptions: CoachSubscriptionInput[];
+  insights?: CoachInsightInput[];
+  question?: string;
+};
+
+// Ask the server-side AI coach for a coaching plan. Returns null if the server
+// is unreachable; { source: "unconfigured" } when no AI key is set on the
+// server. Either way the screen falls back to local rule-based insights.
+export async function getAiCoaching(input: CoachRequestInput): Promise<AiCoaching | null> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/coach`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input)
+    });
+    if (!response.ok) return null;
+    const envelope = await response.json() as ApiEnvelope<AiCoaching>;
+    return envelope.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export type FamilyMember = { id: string; name: string; monthlySpendMinor: number };
 export type Household = { id: string; shareCode: string; ownerId: string; members: FamilyMember[]; createdAt: string };
 
