@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
 import { MotionProvider } from "@/components/site/MotionProvider";
+import { JsonLd } from "@/components/site/JsonLd";
 import "./globals.css";
 
 const display = Bricolage_Grotesque({ subsets: ["latin"], weight: ["400", "600", "700", "800"], variable: "--font-display", display: "swap" });
@@ -9,6 +10,7 @@ const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500", "600", 
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://zeno.app"),
+  alternates: { canonical: "/" },
   title: "Zeno — Know what you pay. Cancel before it charges.",
   description: "Zeno finds every subscription you pay for, warns you before each renewal, and gets you to cancel in one tap — without ever needing your bank login. Join the waitlist.",
   keywords: "subscription manager, cancel subscriptions, subscription tracker app, renewal reminders, free trial tracker",
@@ -29,6 +31,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`dark ${display.variable} ${body.variable} ${mono.variable}`} suppressHydrationWarning>
       <body>
         <a href="#main" className="skip-to-content">Skip to content</a>
+        <JsonLd
+          data={[
+            {
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "Zeno",
+              url: "https://zeno.app",
+              logo: "https://zeno.app/og.png",
+              description: "Zeno is a subscription manager that finds every recurring charge, warns you before renewals, and helps you cancel in one tap — without your bank login."
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: "Zeno",
+              url: "https://zeno.app"
+            }
+          ]}
+        />
         <MotionProvider>{children}</MotionProvider>
       </body>
     </html>

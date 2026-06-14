@@ -2,6 +2,7 @@ import { findServiceBySlug, services } from "@subradar/service-catalog";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ContentShell } from "@/components/site/ContentShell";
+import { JsonLd } from "@/components/site/JsonLd";
 import styles from "@/components/site/content.module.css";
 
 export function generateStaticParams() {
@@ -21,15 +22,19 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const title = `How to cancel ${service.name} — Zeno`;
   const description = `Step-by-step guide to cancel your ${service.name} subscription (difficulty: ${service.cancellationDifficulty.replace("_", " ")}), with a direct link to the cancellation page when available.`;
 
+  const path = `/cancel/${slug}`;
   return {
     title,
     description,
+    alternates: { canonical: path },
     openGraph: {
       title,
       description,
+      url: path,
       type: "article",
       images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno subscription manager dashboard" }]
-    }
+    },
+    twitter: { card: "summary_large_image", title, description }
   };
 }
 
@@ -57,6 +62,19 @@ export default async function CancellationGuidePage({ params }: { params: Promis
       title={`How to cancel ${service.name}`}
       lead={`Follow these steps to stop your ${service.name} subscription. Zeno tracks the renewal date so you can cancel before the next charge lands.`}
     >
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "HowTo",
+          name: `How to cancel ${service.name}`,
+          description: `Step-by-step guide to cancel your ${service.name} subscription.`,
+          step: service.cancellationGuideSteps.map((step, i) => ({
+            "@type": "HowToStep",
+            position: i + 1,
+            text: step
+          }))
+        }}
+      />
       <span className={`${styles.badge} ${badgeClass}`}>Difficulty: {difficultyLabel}</span>
 
       <ol className={styles.steps}>
