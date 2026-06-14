@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Magnetic } from "./primitives";
 import styles from "../../app/home.module.css";
 
@@ -35,13 +35,13 @@ export function WaitlistForm({ compact = false }: { compact?: boolean }) {
 
   if (state === "done") {
     return (
-      <motion.div className={styles.waitSuccess} initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}>
+      <m.div className={styles.waitSuccess} initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}>
         <span className={styles.waitSuccessIcon}>✓</span>
         <div>
           <div style={{ fontWeight: 600 }}>You&rsquo;re on the list.</div>
           <div style={{ color: "var(--z-muted)", fontSize: 13.5, marginTop: 2 }}>We&rsquo;ll email <strong>{email}</strong> the moment Zeno hits the App Store.</div>
         </div>
-      </motion.div>
+      </m.div>
     );
   }
 

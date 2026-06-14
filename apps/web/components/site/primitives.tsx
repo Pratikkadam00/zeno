@@ -1,6 +1,6 @@
 "use client";
 
-import { animate, motion, useInView, useMotionValue, useSpring, type Variants } from "motion/react";
+import { animate, m, useInView, useMotionValue, useSpring, type Variants } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 // ── Reveal: fade + rise into view, once ─────────────────────────────────────
@@ -13,7 +13,7 @@ export function Reveal({
 }: { children: ReactNode; delay?: number; y?: number; className?: string | undefined; as?: "div" | "span" | "li" }) {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-12% 0px" });
-  const MotionTag = as === "span" ? motion.span : as === "li" ? motion.li : motion.div;
+  const MotionTag = as === "span" ? m.span : as === "li" ? m.li : m.div;
   return (
     <MotionTag
       ref={ref as never}
@@ -41,9 +41,9 @@ export function StaggerGroup({ children, className }: { children: ReactNode; cla
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-10% 0px" });
   return (
-    <motion.div ref={ref} className={className} variants={staggerParent} initial="hidden" animate={inView ? "show" : "hidden"}>
+    <m.div ref={ref} className={className} variants={staggerParent} initial="hidden" animate={inView ? "show" : "hidden"}>
       {children}
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -63,7 +63,7 @@ export function Magnetic({ children, strength = 0.4, className }: { children: Re
     y.set((e.clientY - (r.top + r.height / 2)) * strength);
   }
   return (
-    <motion.div
+    <m.div
       ref={ref}
       className={className}
       style={{ x: sx, y: sy, display: "inline-block" }}
@@ -71,7 +71,7 @@ export function Magnetic({ children, strength = 0.4, className }: { children: Re
       onMouseLeave={() => { x.set(0); y.set(0); }}
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 }
 

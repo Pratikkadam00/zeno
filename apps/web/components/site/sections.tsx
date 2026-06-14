@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import { CountUp, Magnetic, Reveal, StaggerGroup, staggerChild } from "./primitives";
 import { FAQS } from "./faq-data";
 import { WaitlistForm } from "./WaitlistForm";
@@ -108,11 +108,11 @@ function MockDiscovery() {
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--z-quiet)" }}>4 found · 1 inbox</span>
       </div>
       {rows.map((r, i) => (
-        <motion.div key={r.n} className={styles.mockRow} initial={{ opacity: 0, x: 16 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1, duration: 0.5 }}>
+        <m.div key={r.n} className={styles.mockRow} initial={{ opacity: 0, x: 16 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1, duration: 0.5 }}>
           <span className={styles.mockAvatar} style={{ background: r.t, color: r.c }}>{r.n[0]}</span>
           <div><div className={styles.mockName}>{r.n}</div><div className={styles.mockMeta}>{r.b}</div></div>
           <span className={styles.mockAmt}>{r.a}</span>
-        </motion.div>
+        </m.div>
       ))}
     </div>
   );
@@ -131,11 +131,11 @@ function MockRadar() {
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--z-emerald)" }}>$80.48 due</span>
       </div>
       {items.map((r, i) => (
-        <motion.div key={r.n} className={styles.mockRow} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.12, duration: 0.5 }}>
+        <m.div key={r.n} className={styles.mockRow} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.12, duration: 0.5 }}>
           <span className={styles.mockAvatar} style={{ background: "rgba(255,255,255,0.05)" }}>🔔</span>
           <div><div className={styles.mockName}>{r.n} renews</div><div className={styles.mockMeta}>Reminder scheduled</div></div>
           <span className={styles.mockBadge} style={{ marginLeft: "auto", color: r.c, background: r.bg }}>{r.d}</span>
-        </motion.div>
+        </m.div>
       ))}
     </div>
   );
@@ -151,10 +151,10 @@ function MockCancel() {
       </div>
       <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--z-quiet)", margin: "6px 0 12px" }}>HOW TO CANCEL · 6 STEPS</div>
       {["Go to account.adobe.com/plans", "Click Manage plan → Cancel", "Decline the retention offers", "Confirm — check your email"].map((s, i) => (
-        <motion.div key={s} style={{ display: "flex", gap: 12, alignItems: "center", padding: "9px 0", borderBottom: "1px solid var(--z-line)" }} initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
+        <m.div key={s} style={{ display: "flex", gap: 12, alignItems: "center", padding: "9px 0", borderBottom: "1px solid var(--z-line)" }} initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
           <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--z-blue)", width: 22, height: 22, borderRadius: 7, border: "1px solid var(--z-line-hi)", display: "grid", placeItems: "center" }}>{i + 1}</span>
           <span style={{ fontSize: 14, color: "var(--z-text)" }}>{s}</span>
-        </motion.div>
+        </m.div>
       ))}
     </div>
   );
@@ -164,10 +164,10 @@ function MockPrivacy() {
   return (
     <div className={styles.visual} style={{ display: "grid", placeItems: "center" }}>
       <div style={{ textAlign: "center", padding: 20 }}>
-        <motion.div
+        <m.div
           style={{ width: 92, height: 92, borderRadius: 26, margin: "0 auto 22px", display: "grid", placeItems: "center", fontSize: 42, background: "rgba(34,211,238,0.1)", border: "1px solid rgba(34,211,238,0.3)" }}
           initial={{ scale: 0.8, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        >🔒</motion.div>
+        >🔒</m.div>
         <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22 }}>Encrypted on device</div>
         <div style={{ color: "var(--z-muted)", fontSize: 14.5, marginTop: 8, maxWidth: 280 }}>Your subscriptions never leave your phone in plain text. No bank connection required.</div>
       </div>
@@ -192,11 +192,11 @@ export function HowItWorks() {
         </Reveal>
         <StaggerGroup className={styles.steps}>
           {STEPS.map((s, i) => (
-            <motion.div key={s.t} className={styles.step} variants={staggerChild}>
+            <m.div key={s.t} className={styles.step} variants={staggerChild}>
               <span className={styles.stepNum}>{String(i + 1).padStart(2, "0")}</span>
               <h3 className={styles.stepTitle}>{s.t}</h3>
               <p className={styles.stepBody} dangerouslySetInnerHTML={{ __html: s.b }} />
-            </motion.div>
+            </m.div>
           ))}
         </StaggerGroup>
       </div>
@@ -246,7 +246,7 @@ export function AnalyticsTeaser() {
               </div>
               <div className={styles.teaserBars}>
                 {bars.map((h, i) => (
-                  <motion.div key={i} className={styles.teaserBar} initial={{ height: 0 }} whileInView={{ height: `${h}%` }} viewport={{ once: true }} transition={{ delay: i * 0.05, duration: 0.7, ease: [0.16, 1, 0.3, 1] }} />
+                  <m.div key={i} className={styles.teaserBar} initial={{ height: 0 }} whileInView={{ height: `${h}%` }} viewport={{ once: true }} transition={{ delay: i * 0.05, duration: 0.7, ease: [0.16, 1, 0.3, 1] }} />
                 ))}
               </div>
             </div>
@@ -327,7 +327,7 @@ export function Pricing() {
             const perMo = annual ? p.annual / 12 : p.monthly;
             const savePct = free ? 0 : Math.round((1 - p.annual / (p.monthly * 12)) * 100);
             return (
-              <motion.div key={p.name} className={`${styles.priceCard} ${p.featured ? styles.priceCardFeatured : ""}`} variants={staggerChild}>
+              <m.div key={p.name} className={`${styles.priceCard} ${p.featured ? styles.priceCardFeatured : ""}`} variants={staggerChild}>
                 {p.featured ? <span className={styles.priceTag}>Most popular</span> : null}
                 <div className={styles.priceName}>{p.name}</div>
 
@@ -355,7 +355,7 @@ export function Pricing() {
                 <a href="#waitlist" className={`${styles.btn} ${p.featured ? styles.btnPrimary : styles.btnGhost}`}>
                   {free ? "Start free" : "Join waitlist"}
                 </a>
-              </motion.div>
+              </m.div>
             );
           })}
         </StaggerGroup>
@@ -392,9 +392,9 @@ export function FAQ() {
               </button>
               <AnimatePresence initial={false}>
                 {open === i ? (
-                  <motion.div id={`faq-a-${i}`} role="region" aria-labelledby={`faq-q-${i}`} className={styles.faqA} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}>
+                  <m.div id={`faq-a-${i}`} role="region" aria-labelledby={`faq-q-${i}`} className={styles.faqA} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}>
                     <p className={styles.faqAInner} dangerouslySetInnerHTML={{ __html: f.a }} />
-                  </motion.div>
+                  </m.div>
                 ) : null}
               </AnimatePresence>
             </div>

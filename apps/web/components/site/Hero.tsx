@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring } from "motion/react";
+import { AnimatePresence, m, useMotionValue, useReducedMotion, useSpring } from "motion/react";
 import { WaitlistForm } from "./WaitlistForm";
 import styles from "../../app/home.module.css";
 
@@ -15,6 +15,20 @@ const SUBS = [
 ];
 const BASE_SPEND = 107.46;
 const SCREENS = ["Dashboard", "Calendar", "Discover", "Cancel"] as const;
+
+// Visually hidden, but still read by screen readers (the standard sr-only
+// recipe). Kept inline so this lives entirely in-component and needs no CSS.
+const srOnly: React.CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: "hidden",
+  clip: "rect(0, 0, 0, 0)",
+  whiteSpace: "nowrap",
+  border: 0
+};
 
 export function Hero() {
   const [cancelled, setCancelled] = useState<string[]>([]);
@@ -37,6 +51,22 @@ export function Hero() {
     return () => clearInterval(id);
   }, [reduceMotion]);
 
+  // The interactive mockup is purely visual, so its state changes are invisible
+  // to screen-reader users. We mirror them into a polite live region: the active
+  // screen name as the carousel advances, and the Netflix cancel/undo toggle.
+  // Per-effect mount guards keep the very first render from announcing anything.
+  const [announce, setAnnounce] = useState("");
+  const slideMounted = useRef(false);
+  const cancelMounted = useRef(false);
+  useEffect(() => {
+    if (!slideMounted.current) { slideMounted.current = true; return; }
+    setAnnounce(`${SCREENS[slide]} screen`);
+  }, [slide]);
+  useEffect(() => {
+    if (!cancelMounted.current) { cancelMounted.current = true; return; }
+    setAnnounce(netflixCancelled ? "Netflix cancelled" : "reminder restored");
+  }, [netflixCancelled]);
+
   // Cursor-driven 3D tilt + lift.
   const tiltRef = useRef<HTMLDivElement>(null);
   const rx = useMotionValue(0);
@@ -57,6 +87,8 @@ export function Hero() {
 
   return (
     <header className={styles.hero}>
+      {/* Mirrors the visual-only mockup state to assistive tech. */}
+      <span aria-live="polite" role="status" style={srOnly}>{announce}</span>
       <div className={styles.heroBg} aria-hidden>
         <span className={`${styles.mesh} ${styles.meshA}`} />
         <span className={`${styles.mesh} ${styles.meshB}`} />
@@ -70,42 +102,45 @@ export function Hero() {
       <div className={styles.heroInner}>
         <div className={styles.heroGrid}>
           <div className={styles.heroCopy}>
-            <motion.div className={styles.heroBadge} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease }}>
+            <m.div className={styles.heroBadge} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease }}>
               <span className={styles.heroBadgePill}>SOON</span>
               Launching on iOS &amp; Android — join the waitlist
-            </motion.div>
-            <motion.h1 className={styles.heroTitle} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.75, delay: 0.08, ease }}>
+            </m.div>
+            <m.h1 className={styles.heroTitle} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.75, delay: 0.08, ease }}>
               Know what you pay.<br />
               <span className={styles.gradText}>Cancel before it charges.</span>
-            </motion.h1>
-            <motion.p className={styles.heroSub} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.22, ease }}>
+            </m.h1>
+            <m.p className={styles.heroSub} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.22, ease }}>
               Zeno is the subscription radar that finds every recurring charge, warns you days before each renewal, and gets you to cancel in one tap — without ever touching your bank login.
-            </motion.p>
-            <motion.div className={styles.heroForm} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.34, ease }}>
+            </m.p>
+            <m.div className={styles.heroForm} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.34, ease }}>
               <WaitlistForm />
               <div className={styles.heroNote}>
                 <span className={styles.heroNoteItem}><span className={styles.heroCheck}>✓</span> No bank login</span>
                 <span className={styles.heroNoteItem}><span className={styles.heroCheck}>✓</span> Scanned on-device</span>
                 <span className={styles.heroNoteItem}><span className={styles.heroCheck}>✓</span> Free to start</span>
               </div>
-            </motion.div>
-            <motion.div className={styles.heroStats} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.46, ease }}>
-              <div className={styles.heroStat}><span className={styles.heroStatVal}>$219</span><span className={styles.heroStatLabel}>wasted / year, avg.</span></div>
+            </m.div>
+            {/* Hero strip = the promise (how it feels to use Zeno). The hard
+                numbers ($219 / 600+ / 3 / 0) live in the Stats band below, so
+                these stay action-framed to avoid reading as a duplicate. */}
+            <m.div className={styles.heroStats} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.46, ease }}>
+              <div className={styles.heroStat}><span className={styles.heroStatVal}>1 tap</span><span className={styles.heroStatLabel}>to cancel a renewal</span></div>
               <span className={styles.heroStatDiv} />
-              <div className={styles.heroStat}><span className={styles.heroStatVal}>600+</span><span className={styles.heroStatLabel}>services tracked</span></div>
+              <div className={styles.heroStat}><span className={styles.heroStatVal}>7 days</span><span className={styles.heroStatLabel}>heads-up before it charges</span></div>
               <span className={styles.heroStatDiv} />
-              <div className={styles.heroStat}><span className={styles.heroStatVal}>0</span><span className={styles.heroStatLabel}>bank logins</span></div>
-            </motion.div>
+              <div className={styles.heroStat}><span className={styles.heroStatVal}>100%</span><span className={styles.heroStatLabel}>on-device &amp; encrypted</span></div>
+            </m.div>
           </div>
 
           {/* Interactive, auto-cycling app mockup */}
-          <motion.div className={styles.heroMockWrap} initial={{ opacity: 0, y: 40, rotateY: -12 }} animate={{ opacity: 1, y: 0, rotateY: 0 }} transition={{ duration: 1, delay: 0.3, ease }}>
-            <motion.div ref={tiltRef} className={styles.phoneTilt} style={{ rotateX: srx, rotateY: sry, scale: ssc }} onMouseMove={onTilt} onMouseEnter={onEnter} onMouseLeave={onLeave}>
+          <m.div className={styles.heroMockWrap} initial={{ opacity: 0, y: 40, rotateY: -12 }} animate={{ opacity: 1, y: 0, rotateY: 0 }} transition={{ duration: 1, delay: 0.3, ease }}>
+            <m.div ref={tiltRef} className={styles.phoneTilt} style={{ rotateX: srx, rotateY: sry, scale: ssc }} onMouseMove={onTilt} onMouseEnter={onEnter} onMouseLeave={onLeave}>
               <div className={styles.phone}>
                 <div className={styles.phoneNotch} />
                 <div className={styles.phoneScreen}>
                   <AnimatePresence mode="wait">
-                    <motion.div
+                    <m.div
                       key={slide}
                       className={styles.screen}
                       initial={{ opacity: 0, x: 28 }}
@@ -117,7 +152,7 @@ export function Hero() {
                       {slide === 1 ? <ScreenCalendar /> : null}
                       {slide === 2 ? <ScreenDiscover /> : null}
                       {slide === 3 ? <ScreenCancel /> : null}
-                    </motion.div>
+                    </m.div>
                   </AnimatePresence>
                 </div>
                 <div className={styles.slideDots}>
@@ -126,16 +161,16 @@ export function Hero() {
                   ))}
                 </div>
               </div>
-            </motion.div>
+            </m.div>
             <span className={styles.phoneGlow} />
-          </motion.div>
+          </m.div>
         </div>
       </div>
 
-      <motion.div className={styles.scrollCue} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2, duration: 1 }}>
+      <m.div className={styles.scrollCue} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2, duration: 1 }}>
         Scroll
         <span className={styles.scrollLine} />
-      </motion.div>
+      </m.div>
     </header>
   );
 }
@@ -158,17 +193,17 @@ function ScreenDashboard({ whole, cents, cancelled, netflixCancelled, toggle }: 
       <div className={styles.appMeta}>{5 - cancelled.length} subscriptions · {cancelled.length ? `${cancelled.length} cancelled` : "3 renewing this week"}</div>
       <AnimatePresence mode="wait" initial={false}>
         {netflixCancelled ? (
-          <motion.div key="done" className={styles.appAlertDone} initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease }}>
+          <m.div key="done" className={styles.appAlertDone} initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease }}>
             <span className={styles.appAlertIconDone}>✓</span>
             <div className={styles.appAlertText}><strong>Netflix cancelled</strong><span>You just saved ${(15.49 * 12).toFixed(0)}/yr</span></div>
             <button className={styles.appUndo} onClick={() => toggle("Netflix")}>Undo</button>
-          </motion.div>
+          </m.div>
         ) : (
-          <motion.div key="warn" className={styles.appAlert} initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease }}>
+          <m.div key="warn" className={styles.appAlert} initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease }}>
             <span className={styles.appAlertIcon}>⚠</span>
             <div className={styles.appAlertText}><strong>Netflix renews in 1 day</strong><span>$15.49 · dark-pattern cancel</span></div>
             <button className={styles.appCancel} onClick={() => toggle("Netflix")}>Cancel</button>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
       <div className={styles.appListLabel}>Upcoming renewals · tap to cancel</div>

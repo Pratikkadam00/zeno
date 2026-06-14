@@ -121,4 +121,13 @@
 @keyframes draw { from { stroke-dasharray: 2200; stroke-dashoffset: 2200; } to { stroke-dasharray: 2200; stroke-dashoffset: 0; } }
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 
+/* ── Mobile: stack KPIs + let the range toggle wrap ──────────────────────── */
+@media (max-width: 560px) {
+  .inner { padding: 108px 18px 80px; }
+  /* Single column so the large mono values don't crowd narrow screens */
+  .kpiRow { grid-template-columns: 1fr; }
+  /* Let the range toggle wrap instead of overflowing next to the title */
+  .rangeToggle { flex-wrap: wrap; }
+}
+
 @media (prefers-reduced-motion: reduce) { .shell *, .shell *::before, .shell *::after { animation: none !important; } }

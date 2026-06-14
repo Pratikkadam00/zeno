@@ -1,6 +1,6 @@
 "use client";
 
-import { MotionConfig } from "motion/react";
+import { LazyMotion, MotionConfig, domAnimation } from "motion/react";
 import type { ReactNode } from "react";
 
 /**
@@ -8,7 +8,15 @@ import type { ReactNode } from "react";
  * setting. reducedMotion="user" disables transform/layout animations (the
  * hero tilt, slide transitions, parallax, rises) while keeping opacity fades,
  * so scroll-reveal content still ends up visible rather than stuck at opacity:0.
+ *
+ * LazyMotion + the lightweight `m` components keep the eager bundle small: only
+ * the `domAnimation` feature set is loaded (strict={false} still tolerates any
+ * stray `motion.*` usage so a partial conversion can't break rendering).
  */
 export function MotionProvider({ children }: { children: ReactNode }) {
-  return <MotionConfig reducedMotion="user">{children}</MotionConfig>;
+  return (
+    <LazyMotion features={domAnimation} strict={false}>
+      <MotionConfig reducedMotion="user">{children}</MotionConfig>
+    </LazyMotion>
+  );
 }
