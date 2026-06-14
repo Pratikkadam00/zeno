@@ -20,3 +20,7 @@ apps/api/data/*.db
 *.apk
 zeno-settings.png
 .claude/settings.local.json
+
+# Local waitlist capture (dev / self-hosted fallback sink)
+.data/
+**/.data/

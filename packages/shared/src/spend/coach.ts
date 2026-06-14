@@ -70,7 +70,8 @@ export function monthlyAmount(subscription: Subscription): number {
     return Math.round(subscription.price.amountMinor / 12);
   }
   if (subscription.billingCycle === "weekly") {
-    return Math.round(subscription.price.amountMinor * 4.33);
+    // 52 weeks / 12 months — 4.33 undercounts annualised weekly spend.
+    return Math.round((subscription.price.amountMinor * 52) / 12);
   }
   if (subscription.billingCycle === "quarterly") {
     return Math.round(subscription.price.amountMinor / 3);

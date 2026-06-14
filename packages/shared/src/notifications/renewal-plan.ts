@@ -45,7 +45,7 @@ export function createRenewalReminderPlan(
       }
 
       const trigger = new Date(renewalDate);
-      trigger.setDate(trigger.getDate() - spec.offsetDays);
+      trigger.setUTCDate(trigger.getUTCDate() - spec.offsetDays);
       if (trigger.getTime() < nowMs) {
         continue;
       }
@@ -108,7 +108,10 @@ function applyQuietHours(trigger: Date, preference: ReminderPreferenceLookup[Ren
     return trigger;
   }
 
-  const hour = trigger.getHours();
+  // Operate in UTC consistently — renewal dates are UTC ISO strings, so using
+  // local getHours()/setHours() made reminder times depend on the server's
+  // timezone (non-deterministic across environments).
+  const hour = trigger.getUTCHours();
   const withinQuietHours = start < end
     ? hour >= start && hour < end
     : hour >= start || hour < end;
@@ -118,9 +121,9 @@ function applyQuietHours(trigger: Date, preference: ReminderPreferenceLookup[Ren
   }
 
   const adjusted = new Date(trigger);
-  adjusted.setHours(end, 0, 0, 0);
+  adjusted.setUTCHours(end, 0, 0, 0);
   if (start > end && hour >= start) {
-    adjusted.setDate(adjusted.getDate() + 1);
+    adjusted.setUTCDate(adjusted.getUTCDate() + 1);
   }
   return adjusted;
 }
