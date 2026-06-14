@@ -2,10 +2,10 @@ import { ScrollView, Text, View } from "react-native";
 import { Screen, Surface } from "../src/components/ui";
 import { useSubscriptionStore } from "../src/data/subscription-store";
 import { formatMoney } from "../src/utils/format";
-import { useSubRadarTheme } from "../src/theme/theme-provider";
+import { useZenoTheme } from "../src/theme/theme-provider";
 
 export default function FamilyVaultScreen() {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   const { familyVault } = useSubscriptionStore();
 
   return (

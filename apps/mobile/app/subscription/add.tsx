@@ -17,7 +17,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ServiceAutocomplete, servicePriceLabel } from "../../components/subscriptions/ServiceAutocomplete";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
-import { useSubRadarTheme } from "../../src/theme/theme-provider";
+import { useZenoTheme } from "../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
 import { spacing } from "../../src/theme/spacing";
@@ -72,7 +72,7 @@ function categoryLabel(value: SubscriptionCategory): string {
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function AddSubscriptionScreen() {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { addSubscription, suggestions } = useSubscriptionStore();
 

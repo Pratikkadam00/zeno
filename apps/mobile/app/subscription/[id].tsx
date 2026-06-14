@@ -8,7 +8,7 @@ import { useSubscriptionStore, type SubscriptionNotificationSettings } from "../
 import { cancelNotificationsForSubscription, scheduleRenewalNotificationsWithPreferences } from "../../src/notifications/notificationService";
 import { formatMoney } from "../../src/utils/format";
 import { formatDaysLabel, formatMonthYear, formatShortDate, getAvatarStyle, getDaysRemaining } from "../../src/utils/subscription-ui";
-import { useSubRadarTheme } from "../../src/theme/theme-provider";
+import { useZenoTheme } from "../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
 import { spacing } from "../../src/theme/spacing";
@@ -60,7 +60,7 @@ const billingCycleOptions: BillingCycle[] = ["weekly", "monthly", "quarterly", "
 
 export default function SubscriptionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const {
     subscriptions,

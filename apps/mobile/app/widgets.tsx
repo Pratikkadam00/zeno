@@ -1,11 +1,11 @@
 import { ScrollView, Text, View } from "react-native";
 import { Screen, Surface } from "../src/components/ui";
 import { useSubscriptionStore } from "../src/data/subscription-store";
-import { useSubRadarTheme } from "../src/theme/theme-provider";
+import { useZenoTheme } from "../src/theme/theme-provider";
 import { formatDaysLabel } from "../src/utils/subscription-ui";
 
 export default function WidgetsScreen() {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   const { widgetSnapshot } = useSubscriptionStore();
 
   return (

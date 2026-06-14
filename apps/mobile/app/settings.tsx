@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useAuthStore } from "../src/auth/authStore";
+import { useSubscriptionStore } from "../src/data/subscription-store";
 import { spacing } from "../src/theme/spacing";
 import { type as typography } from "../src/theme/typography";
 import { router } from "expo-router";
@@ -15,7 +16,7 @@ import {
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useSubRadarTheme } from "../src/theme/theme-provider";
+import { useZenoTheme } from "../src/theme/theme-provider";
 import type { ThemeTokens } from "../src/theme/tokens";
 import { withAlpha } from "../src/utils/subscription-ui";
 
@@ -42,13 +43,14 @@ type SettingsSection = {
 };
 
 export default function SettingsScreen() {
-  const { theme, themeId } = useSubRadarTheme();
+  const { theme, themeId } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { plan, accountId, logout } = useAuthStore((state) => ({
     plan: state.plan,
     accountId: state.accountId,
     logout: state.logout
   }));
+  const { clearAllData } = useSubscriptionStore();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const userEmail = accountId ?? "you@example.com";
@@ -188,15 +190,6 @@ export default function SettingsScreen() {
           onPress: () => router.push("/discover")
         },
         {
-          id: "export",
-          icon: "📤",
-          iconBg: theme.successSurface,
-          label: "Export data",
-          sub: "Download all your subscription data",
-          right: "›",
-          onPress: () => {}
-        },
-        {
           id: "delete",
           icon: "🗑",
           iconBg: theme.dangerSurface,
@@ -209,7 +202,11 @@ export default function SettingsScreen() {
               {
                 text: "Delete",
                 style: "destructive",
-                onPress: () => {}
+                onPress: () => {
+                  void clearAllData().then(() => {
+                    router.replace("/dashboard");
+                  });
+                }
               }
             ]);
           }

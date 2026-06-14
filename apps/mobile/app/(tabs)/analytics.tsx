@@ -8,7 +8,7 @@ import { generateInsights, getTotalSavingOpportunity } from "../../src/insights/
 import type { Insight } from "../../src/insights/insightsEngine";
 import { formatMoney } from "../../src/utils/format";
 import { formatShortDate, getAvatarStyle, getCategoryColor, getDaysRemaining, getUrgencyBadge, withAlpha } from "../../src/utils/subscription-ui";
-import { useSubRadarTheme } from "../../src/theme/theme-provider";
+import { useZenoTheme } from "../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
 import { spacing } from "../../src/theme/spacing";
@@ -51,7 +51,7 @@ function formatMonthLabel(date: Date): string {
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function AnalyticsScreen() {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { subscriptions, spendSummary } = useSubscriptionStore();
   const [dismissed, setDismissed] = useState<string[]>([]);

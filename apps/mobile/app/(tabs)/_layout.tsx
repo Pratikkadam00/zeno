@@ -2,7 +2,7 @@ import { Tabs } from "expo-router";
 import { CalendarDays, Compass, House, LineChart } from "lucide-react-native";
 import type { ComponentType } from "react";
 import { View } from "react-native";
-import { useSubRadarTheme } from "../../src/theme/theme-provider";
+import { useZenoTheme } from "../../src/theme/theme-provider";
 import { withAlpha } from "../../src/utils/subscription-ui";
 
 type IconProps = { color: string; size: number; strokeWidth: number };
@@ -25,7 +25,7 @@ function TabIcon({ Icon, color, focused, tint }: { Icon: ComponentType<IconProps
 }
 
 export default function TabsLayout() {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
 
   return (
     <Tabs

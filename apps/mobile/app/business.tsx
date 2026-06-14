@@ -2,10 +2,10 @@ import { ScrollView, Text, View } from "react-native";
 import { Kpi, Screen, Surface } from "../src/components/ui";
 import { useSubscriptionStore } from "../src/data/subscription-store";
 import { formatMoney } from "../src/utils/format";
-import { useSubRadarTheme } from "../src/theme/theme-provider";
+import { useZenoTheme } from "../src/theme/theme-provider";
 
 export default function BusinessScreen() {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   const { businessSummary } = useSubscriptionStore();
 
   return (

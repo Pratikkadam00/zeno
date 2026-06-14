@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useEffect, useMemo, useState } from "react";
 import { useAuthStore } from "../src/auth/authStore";
 import { getOfferings, getPackagePrice, purchaseFamily, purchasePro, restorePurchases, type BillingPlan, type ProBillingPeriod, type ZenoOfferings } from "../src/billing/revenueCat";
-import { useSubRadarTheme } from "../src/theme/theme-provider";
+import { useZenoTheme } from "../src/theme/theme-provider";
 import type { ThemeTokens } from "../src/theme/tokens";
 import { type as typography } from "../src/theme/typography";
 import { spacing } from "../src/theme/spacing";
@@ -63,7 +63,7 @@ function splitPrice(priceStr: string): { dollars: string; cents: string } {
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function PaywallScreen() {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const setPlan = useAuthStore((state) => state.setPlan);
   const [period, setPeriod]                     = useState<ProBillingPeriod>("annual");

@@ -86,6 +86,13 @@ export async function softDeleteSubscription(db: SubRadarDatabase, id: string): 
   );
 }
 
+// Hard-delete every subscription row. Used by "Delete all data", which permanently
+// removes records from the device rather than soft-deleting (which would leave
+// rows behind that listSubscriptions already filters out).
+export async function clearAllSubscriptions(db: SubRadarDatabase): Promise<void> {
+  await db.runAsync("DELETE FROM subscriptions");
+}
+
 function mapRow(row: SubscriptionRow): Subscription {
   return {
     id: row.id,

@@ -3,9 +3,13 @@ import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
+import { themes } from "../theme/tokens";
 
 const pushTokenKey = "zeno_push_token";
 const notificationChannelId = "zeno-renewals";
+// Channels are created outside React (no hook available here), so the LED/accent
+// color is sourced from the default theme's brand token instead of a magic hex.
+const notificationAccentColor = themes.millennial.primary;
 
 export type RenewalNotificationSubscription = {
   id: string;
@@ -30,7 +34,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
       name: "Renewal reminders",
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: "#2563EB"
+      lightColor: notificationAccentColor
     });
   }
 
@@ -123,6 +127,10 @@ export async function scheduleRenewalNotificationsWithPreferences(
       }
     });
   }
+}
+
+export async function cancelAllNotifications(): Promise<void> {
+  await Notifications.cancelAllScheduledNotificationsAsync();
 }
 
 export async function cancelNotificationsForSubscription(subscriptionId: string): Promise<void> {

@@ -10,7 +10,7 @@ import { useSubscriptionStore } from "../../src/data/subscription-store";
 import { generateInsights, getTotalSavingOpportunity } from "../../src/insights/insightsEngine";
 import { formatMoney, notificationLabel } from "../../src/utils/format";
 import { formatDaysLabel, formatRenewalDate, getAvatarStyle, getDaysRemaining, getUrgencyBadge, withAlpha } from "../../src/utils/subscription-ui";
-import { useSubRadarTheme } from "../../src/theme/theme-provider";
+import { useZenoTheme } from "../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
 import { spacing } from "../../src/theme/spacing";
@@ -47,7 +47,7 @@ function canAccessFeature(plan: BillingPlan, minimumPlan: BillingPlan): boolean 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function DashboardScreen() {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { subscriptions, totalMonthlyMinor, upcoming, spendSummary, reminderPlan } = useSubscriptionStore();
   const { plan, setPlan } = useAuthStore();

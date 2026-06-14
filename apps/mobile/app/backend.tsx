@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { PrimaryButton, Screen, Surface } from "../src/components/ui";
 import { getMobileBackendStatus, type MobileBackendStatus } from "../src/api/client";
-import { useSubRadarTheme } from "../src/theme/theme-provider";
+import { useZenoTheme } from "../src/theme/theme-provider";
 
 export default function BackendScreen() {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   const [status, setStatus] = useState<MobileBackendStatus | null>(null);
 
   const refresh = () => {

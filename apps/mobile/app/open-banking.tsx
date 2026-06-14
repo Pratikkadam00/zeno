@@ -2,10 +2,10 @@ import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { PrimaryButton, Screen, Surface } from "../src/components/ui";
 import { createOpenBankingIntentViaApi } from "../src/api/client";
-import { useSubRadarTheme } from "../src/theme/theme-provider";
+import { useZenoTheme } from "../src/theme/theme-provider";
 
 export default function OpenBankingScreen() {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   const [message, setMessage] = useState("No connection intent created yet.");
 
   return (

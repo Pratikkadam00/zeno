@@ -3,7 +3,7 @@ import { Link } from "expo-router";
 import { useEffect, useRef } from "react";
 import { Animated, Pressable, StyleSheet, Text, View, type PressableProps, type StyleProp, type ViewProps, type ViewStyle } from "react-native";
 import { themeOrder } from "../theme/tokens";
-import { useSubRadarTheme } from "../theme/theme-provider";
+import { useZenoTheme } from "../theme/theme-provider";
 
 const themeLabels: Record<ThemePreference, { icon: string; label: string }> = {
   genz: { icon: "⚡", label: "Pulse" },
@@ -12,12 +12,12 @@ const themeLabels: Record<ThemePreference, { icon: string; label: string }> = {
 };
 
 export function Screen({ children, style }: ViewProps) {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   return <View style={[styles.screen, { backgroundColor: theme.background }, style]}>{children}</View>;
 }
 
 export function Surface({ children, style }: ViewProps) {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   return (
     <View
       style={[
@@ -37,7 +37,7 @@ export function Surface({ children, style }: ViewProps) {
 }
 
 export function PrimaryButton({ children, style, ...props }: Omit<PressableProps, "children" | "style"> & { children: string; style?: StyleProp<ViewStyle> }) {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   return (
     <Pressable accessibilityRole="button" {...props} style={({ pressed }) => [styles.button, { backgroundColor: theme.primary, borderRadius: theme.radius, opacity: pressed ? 0.86 : 1 }, style]}>
       <Text style={[styles.buttonText, { color: theme.onPrimary, fontWeight: theme.heavyText ? "900" : "800" }]}>{children}</Text>
@@ -46,7 +46,7 @@ export function PrimaryButton({ children, style, ...props }: Omit<PressableProps
 }
 
 export function TextLink({ href, children }: { href: string; children: string }) {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   return (
     <Link href={href as never} asChild>
       <Pressable accessibilityRole="link">
@@ -57,7 +57,7 @@ export function TextLink({ href, children }: { href: string; children: string })
 }
 
 export function ThemeToggle() {
-  const { theme, themeId, setThemeId } = useSubRadarTheme();
+  const { theme, themeId, setThemeId } = useZenoTheme();
   const fade = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -112,7 +112,7 @@ export function ThemeToggle() {
 }
 
 export function Kpi({ label, value }: { label: string; value: string }) {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   return (
     <Surface style={styles.kpi}>
       <Text style={[styles.kpiValue, { color: theme.text, fontFamily: theme.numberFontFamily }]}>{value}</Text>

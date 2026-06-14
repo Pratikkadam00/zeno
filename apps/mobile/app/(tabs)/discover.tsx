@@ -18,7 +18,7 @@ import {
   type ParsedSubscription
 } from "../../src/discovery/emailScanner";
 import { scheduleRenewalNotifications } from "../../src/notifications/notificationService";
-import { useSubRadarTheme } from "../../src/theme/theme-provider";
+import { useZenoTheme } from "../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
 import { spacing } from "../../src/theme/spacing";
@@ -56,7 +56,7 @@ const exportGuides = [
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function DiscoverScreen() {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { addSubscription } = useSubscriptionStore();
   const [accounts, setAccounts]           = useState<GmailAccount[]>([]);
@@ -530,7 +530,7 @@ function EditSubscriptionModal({ candidate, onClose, onSave }: {
   onClose: () => void;
   onSave: (candidate: DetectedSubscription) => void;
 }) {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [draft, setDraft] = useState<DetectedSubscription | null>(candidate);
   useEffect(() => { setDraft(candidate); }, [candidate]);

@@ -75,15 +75,13 @@ export function SubRadarThemeProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useSubRadarTheme(): ThemeContextValue {
+export function useZenoTheme(): ThemeContextValue {
   const value = useContext(ThemeContext);
   if (!value) {
-    throw new Error("useSubRadarTheme must be used inside SubRadarThemeProvider");
+    throw new Error("useZenoTheme must be used inside SubRadarThemeProvider");
   }
   return value;
 }
-
-export const useZenoTheme = useSubRadarTheme;
 
 const styles = StyleSheet.create({
   provider: {

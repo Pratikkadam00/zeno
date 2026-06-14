@@ -8,7 +8,7 @@ import { formatMoney } from "../../src/utils/format";
 import { formatShortDate, getAvatarStyle, getDaysRemaining, getUrgencyBadge } from "../../src/utils/subscription-ui";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
 import type { Subscription } from "@subradar/shared";
-import { useSubRadarTheme } from "../../src/theme/theme-provider";
+import { useZenoTheme } from "../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
 import { spacing } from "../../src/theme/spacing";
@@ -78,7 +78,7 @@ function DayPanel({
   subscriptions: Subscription[];
   onClose: () => void;
 }) {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const slideAnim = useRef(new Animated.Value(-20)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -154,7 +154,7 @@ function RenewalGroup({
   subscriptions: Subscription[];
   total: number;
 }) {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   if (subscriptions.length === 0) return null;
   return (
@@ -207,7 +207,7 @@ function RenewalGroup({
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function CalendarScreen() {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const calendarTheme = useMemo(() => getCalendarTheme(theme), [theme]);
   const { subscriptions } = useSubscriptionStore();

@@ -3,8 +3,9 @@ import { createAnalyticsSnapshot, createBusinessSummary, createFamilyVaultSummar
 import * as Crypto from "expo-crypto";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform } from "react-native";
+import { cancelAllNotifications } from "../notifications/notificationService";
 import { openSubRadarDatabase, readAppMeta, writeAppMeta, type SubRadarDatabase } from "../storage/database";
-import { listSubscriptions, softDeleteSubscription, upsertSubscription } from "../storage/subscription-repository";
+import { clearAllSubscriptions, listSubscriptions, softDeleteSubscription, upsertSubscription } from "../storage/subscription-repository";
 import { rollRenewalForward } from "../utils/subscription-ui";
 import { seedSubscriptions } from "./seed-subscriptions";
 
@@ -55,6 +56,7 @@ type SubscriptionStore = {
   pauseSubscription: (id: string) => void;
   markCancelled: (id: string) => void;
   updateNotificationSettings: (id: string, changes: Partial<SubscriptionNotificationSettings>) => void;
+  clearAllData: () => Promise<void>;
   suggestions: (query: string) => ReturnType<typeof searchServices>;
 };
 
@@ -288,6 +290,25 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
           return nextSettings;
         });
         persistNotificationSettings(nextSettings);
+      },
+      async clearAllData() {
+        // (a) empty in-memory subscriptions and (b) per-subscription notification settings.
+        setSubscriptions([]);
+        setNotificationSettings({});
+        // (c) clear the SQLite rows and the persisted notification-settings blob.
+        const db = dbRef.current;
+        if (db) {
+          await clearAllSubscriptions(db).catch((error) => {
+            console.warn("Failed to clear subscriptions.", error);
+          });
+          await writeAppMeta(db, notificationSettingsMetaKey, JSON.stringify({})).catch((error) => {
+            console.warn("Failed to clear notification settings.", error);
+          });
+        }
+        // (d) cancel every scheduled renewal notification.
+        await cancelAllNotifications().catch((error) => {
+          console.warn("Failed to cancel scheduled notifications.", error);
+        });
       },
       suggestions(query) {
         return searchServices(query, 8);

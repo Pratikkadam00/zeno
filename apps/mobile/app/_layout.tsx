@@ -9,7 +9,7 @@ import { checkStatus, initRevenueCat } from "../src/billing/revenueCat";
 import { SubscriptionStoreProvider, useSubscriptionStore } from "../src/data/subscription-store";
 import { cleanupNotificationHandlers, setupNotificationHandlers } from "../src/notifications/notificationHandlers";
 import { registerForPushNotifications, rescheduleAllNotifications } from "../src/notifications/notificationService";
-import { SubRadarThemeProvider, useSubRadarTheme } from "../src/theme/theme-provider";
+import { SubRadarThemeProvider, useZenoTheme } from "../src/theme/theme-provider";
 
 export default function RootLayout() {
   return (
@@ -22,7 +22,7 @@ export default function RootLayout() {
 }
 
 function RootStack() {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   const { subscriptions, notificationSettings, hydrated } = useSubscriptionStore();
   const segments = useSegments();
   const appState = useRef<AppStateStatus>(AppState.currentState);

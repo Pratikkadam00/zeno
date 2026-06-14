@@ -1,7 +1,7 @@
 import { createPublicApiKeyPreview, type PublicApiKey } from "@subradar/shared";
 import { ScrollView, Text, View } from "react-native";
 import { Screen, Surface } from "../src/components/ui";
-import { useSubRadarTheme } from "../src/theme/theme-provider";
+import { useZenoTheme } from "../src/theme/theme-provider";
 
 const demoKey: PublicApiKey = {
   id: "key_mobile_demo",
@@ -12,7 +12,7 @@ const demoKey: PublicApiKey = {
 };
 
 export default function PublicApiScreen() {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   const preview = createPublicApiKeyPreview(demoKey);
 
   return (

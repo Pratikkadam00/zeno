@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "../src/auth/authStore";
-import { useSubRadarTheme } from "../src/theme/theme-provider";
+import { useZenoTheme } from "../src/theme/theme-provider";
 import type { ThemeTokens } from "../src/theme/tokens";
 import { spacing } from "../src/theme/spacing";
 import { type } from "../src/theme/typography";
@@ -29,7 +29,7 @@ const APPLE_BUTTON_TEXT = "#000000";
 const GOOGLE_BRAND_BLUE = "#4285F4";
 
 export default function LoginScreen() {
-  const { theme } = useSubRadarTheme();
+  const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const {
     status,
