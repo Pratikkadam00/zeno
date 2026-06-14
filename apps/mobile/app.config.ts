@@ -2,7 +2,8 @@ import type { ExpoConfig } from "expo/config";
 
 const config: ExpoConfig = {
   name: "Zeno",
-  slug: "subradar",
+  slug: "zeno",
+  owner: "pratikk_expo",
   scheme: "subradar",
   version: "0.1.0",
   orientation: "portrait",
@@ -64,6 +65,9 @@ const config: ExpoConfig = {
     typedRoutes: true
   },
   extra: {
+    eas: {
+      projectId: "5de3240d-3fbf-4aa7-ae0b-492bfa5db627"
+    },
     apiBaseUrl: process.env.PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8787/api/v1",
     google: {
       expoClientId: process.env.GOOGLE_EXPO_CLIENT_ID,
