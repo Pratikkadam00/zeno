@@ -137,7 +137,7 @@ export async function pullSyncChanges(userId: string, cursor?: string): Promise<
 
 export type CoachRecommendation = { title: string; detail: string; estimatedMonthlySavingsLabel?: string };
 export type AiCoaching =
-  | { source: "ai"; model: string; summary: string; recommendations: CoachRecommendation[] }
+  | { source: "ai"; provider: "anthropic" | "groq"; model: string; summary: string; recommendations: CoachRecommendation[] }
   | { source: "unconfigured"; model: string };
 
 export type CoachSubscriptionInput = { name: string; category: string; monthlyMinor: number; billingCycle: string };

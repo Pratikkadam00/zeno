@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { buildApp } from "./app";
 
+function restoreEnv(key: string, value: string | undefined): void {
+  if (value === undefined) delete process.env[key];
+  else process.env[key] = value;
+}
+
 describe("api app", () => {
   it("returns the API health envelope", async () => {
     const app = await buildApp();
@@ -372,9 +377,15 @@ describe("api app", () => {
     expect(bad.statusCode).toBe(404);
   });
 
-  it("reports the AI coach as unconfigured when no key is set", async () => {
-    const previous = process.env.ANTHROPIC_API_KEY;
+  it("reports the AI coach as unconfigured when no provider key is set", async () => {
+    const saved = {
+      anthropic: process.env.ANTHROPIC_API_KEY,
+      groq: process.env.GROQ_API_KEY,
+      provider: process.env.COACH_PROVIDER
+    };
     delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.GROQ_API_KEY;
+    delete process.env.COACH_PROVIDER;
     try {
       const app = await buildApp();
       const response = await app.inject({
@@ -388,8 +399,9 @@ describe("api app", () => {
       expect(response.statusCode).toBe(200);
       expect(response.json().data.source).toBe("unconfigured");
     } finally {
-      if (previous === undefined) delete process.env.ANTHROPIC_API_KEY;
-      else process.env.ANTHROPIC_API_KEY = previous;
+      restoreEnv("ANTHROPIC_API_KEY", saved.anthropic);
+      restoreEnv("GROQ_API_KEY", saved.groq);
+      restoreEnv("COACH_PROVIDER", saved.provider);
     }
   });
 
