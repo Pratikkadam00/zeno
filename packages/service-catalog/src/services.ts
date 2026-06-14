@@ -106,6 +106,199 @@ const guideOverrides: Record<string, string[]> = {
     "Click Manage",
     "Select Cancel subscription",
     "Choose to cancel at end of period"
+  ],
+  "disney-plus": [
+    "Go to disneyplus.com and log in",
+    "Click your profile icon, then Account",
+    "Under Subscription, select your Disney+ plan",
+    "Click Cancel Subscription and complete the short survey",
+    "Confirm - access continues until the end of the billing period"
+  ],
+  hulu: [
+    "Go to secure.hulu.com/account",
+    "Scroll to Your Subscription and click Cancel",
+    "Hulu offers to pause instead - choose Continue to Cancel",
+    "Pick a reason and click Cancel",
+    "You keep access until the current period ends"
+  ],
+  max: [
+    "Go to max.com and sign in",
+    "Click your profile, then Settings then Subscription",
+    "If you subscribed via Apple/Amazon/Roku, cancel there instead",
+    "Click Manage Subscription then Cancel Subscription",
+    "Confirm cancellation"
+  ],
+  "youtube-premium": [
+    "Go to youtube.com/paid_memberships (or myaccount.google.com)",
+    "Click Manage membership",
+    "Click Deactivate / Cancel",
+    "Click Continue to cancel through any retention offers",
+    "Premium runs until the end of the billing cycle"
+  ],
+  "apple-tv-plus": [
+    "On iPhone/iPad open Settings and tap your name",
+    "Tap Subscriptions, then Apple TV+",
+    "Tap Cancel Subscription and confirm",
+    "On the web: tv.apple.com, account icon, Manage Subscriptions"
+  ],
+  peacock: [
+    "Go to peacocktv.com and sign in",
+    "Click your account, then Plans & Payment",
+    "Click Change or Cancel Plan, then Cancel Plan",
+    "Confirm - access continues until the renewal date"
+  ],
+  "paramount-plus": [
+    "Go to paramountplus.com and sign in",
+    "Click your account icon, then Account",
+    "Under Subscription & Billing, click Cancel Subscription",
+    "Decline the retention offer and confirm",
+    "If billed via Apple/Amazon/Roku, cancel through that provider"
+  ],
+  crunchyroll: [
+    "Go to crunchyroll.com and sign in",
+    "Open your profile menu, then Settings, then Membership",
+    "Click Cancel Membership and confirm",
+    "Premium continues until the period ends",
+    "If you subscribed in the app store, cancel there instead"
+  ],
+  "perplexity-pro": [
+    "Go to perplexity.ai and sign in",
+    "Open Settings (gear icon), then the Account section",
+    "Click Manage Subscription, then Cancel",
+    "Confirm cancellation"
+  ],
+  "github-copilot": [
+    "Go to github.com/settings/copilot",
+    "Under your Copilot plan, click Cancel Copilot",
+    "Confirm - access continues until the end of the billing cycle"
+  ],
+  "cursor-pro": [
+    "Go to cursor.com and sign in",
+    "Open Settings, then Billing / Manage Subscription",
+    "Click Cancel Subscription in the Stripe billing portal",
+    "Confirm"
+  ],
+  "grammarly-premium": [
+    "Go to account.grammarly.com and sign in",
+    "Open the Subscription tab",
+    "Click Cancel Subscription and decline the offers",
+    "Select a reason and confirm - Premium stays active until the period ends"
+  ],
+  notion: [
+    "Go to notion.so and open Settings",
+    "Click Plans (or Billing) in the sidebar",
+    "Click Change Plan, then Downgrade to Free / Cancel",
+    "Confirm - paid features remain until the cycle ends"
+  ],
+  figma: [
+    "Open figma.com, click your account, then Settings",
+    "Go to the Billing tab for your team",
+    "Lower the seats to zero or click Cancel Plan",
+    "Confirm - note Figma bills annually by default"
+  ],
+  "canva-pro": [
+    "Go to canva.com, click your account, then Settings",
+    "Open Billing & plans",
+    "Click your plan, then Cancel subscription",
+    "Decline the discount offer and confirm - Pro continues until renewal"
+  ],
+  "dropbox-plus": [
+    "Go to dropbox.com/account/billing",
+    "Click Cancel plan under your plan",
+    "Dropbox offers a discount - choose Continue to cancel",
+    "Pick a reason and confirm - access continues until the period ends"
+  ],
+  "microsoft-365": [
+    "Go to account.microsoft.com/services",
+    "Find Microsoft 365 and click Manage",
+    "Turn off Recurring billing, or click Cancel subscription",
+    "Turning off recurring billing keeps access until the period ends"
+  ],
+  "google-workspace": [
+    "Go to admin.google.com, then Billing, then Subscriptions",
+    "Select your Workspace subscription",
+    "Click Cancel Subscription",
+    "Confirm - note any commitment terms on annual plans"
+  ],
+  "1password": [
+    "Go to your account at start.1password.com",
+    "Open the Billing section",
+    "Click Cancel / change plan",
+    "Confirm"
+  ],
+  nordvpn: [
+    "Go to my.nordaccount.com and sign in",
+    "Open Billing, then Subscriptions",
+    "Turn off Auto-renewal (there is no instant cancel - disabling auto-renew stops future charges)",
+    "If within 30 days, request a refund via live chat",
+    "Confirm"
+  ],
+  expressvpn: [
+    "Go to expressvpn.com and sign in to your account",
+    "Open Subscription, then Manage Settings",
+    "Turn off automatic renewal",
+    "For a refund within 30 days, contact 24/7 live chat",
+    "Confirm"
+  ],
+  "slack-pro": [
+    "Go to your workspace, then Settings & administration, then Billing",
+    "Open the plan settings and choose to cancel / downgrade",
+    "Switch the workspace to the Free plan",
+    "Confirm - Slack credits unused time on annual plans"
+  ],
+  "zoom-pro": [
+    "Go to zoom.us/billing and sign in",
+    "Under Current Plans, click Cancel Subscription",
+    "Choose to cancel at the end of the term",
+    "Confirm"
+  ],
+  audible: [
+    "Go to audible.com and hover your name, then Account Details",
+    "Click Cancel membership (use desktop web - the app hides this)",
+    "Audible offers to pause or take 3 free months - decline and Continue to cancel",
+    "Select a reason and confirm - you keep books you already own"
+  ],
+  "apple-music": [
+    "On iPhone open Settings and tap your name, then Subscriptions",
+    "Tap Apple Music, then Cancel Subscription",
+    "Confirm",
+    "On Android: open the Apple Music app, account icon, Manage Subscription"
+  ],
+  "youtube-music": [
+    "Go to music.youtube.com (or myaccount.google.com)",
+    "Click your profile, then Paid memberships",
+    "Click Manage membership, then Cancel",
+    "Continue past any offers and confirm"
+  ],
+  peloton: [
+    "Go to onepeloton.com and sign in (use the web, not the app)",
+    "Open your account, then Subscriptions / Membership",
+    "Click Manage, then Cancel Membership",
+    "Confirm - separate App and All-Access memberships are cancelled separately"
+  ],
+  headspace: [
+    "Go to headspace.com and log in (web, not the app store)",
+    "Open your account / Subscription settings",
+    "Click Turn off auto-renew / Cancel subscription",
+    "Confirm - access continues until the period ends"
+  ],
+  calm: [
+    "Cancel where you subscribed: iPhone Settings then Subscriptions, or Google Play",
+    "If you signed up on calm.com, open Account then Manage Subscription",
+    "Click Cancel / Turn off auto-renew",
+    "Confirm"
+  ],
+  masterclass: [
+    "Go to masterclass.com and sign in",
+    "Open Settings, then the Account / Subscription tab",
+    "Click Cancel Subscription (annual plans bill yearly)",
+    "Confirm - access continues until the term ends"
+  ],
+  skillshare: [
+    "Go to skillshare.com and sign in",
+    "Open Account Settings, then the Membership / Payments tab",
+    "Click Cancel Membership",
+    "Confirm - Premium stays active until the period ends"
   ]
 };
 
