@@ -9,6 +9,7 @@ import { checkStatus, initRevenueCat } from "../src/billing/revenueCat";
 import { SubscriptionStoreProvider, useSubscriptionStore } from "../src/data/subscription-store";
 import { cleanupNotificationHandlers, setupNotificationHandlers } from "../src/notifications/notificationHandlers";
 import { registerForPushNotifications, rescheduleAllNotifications } from "../src/notifications/notificationService";
+import { refreshWidgetSnapshot } from "../src/widgets/widgetBridge";
 import { SubRadarThemeProvider, useZenoTheme } from "../src/theme/theme-provider";
 
 export default function RootLayout() {
@@ -23,7 +24,7 @@ export default function RootLayout() {
 
 function RootStack() {
   const { theme } = useZenoTheme();
-  const { subscriptions, notificationSettings, quietHours, hydrated } = useSubscriptionStore();
+  const { subscriptions, notificationSettings, quietHours, widgetSnapshot, hydrated } = useSubscriptionStore();
   const segments = useSegments();
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const biometricInFlight = useRef(false);
@@ -151,6 +152,7 @@ function RootStack() {
     // per-subscription settings during the launch window.
     if (hydrated) {
       void rescheduleAllNotifications(notificationSubscriptions, notificationSettings, quietHours);
+      void refreshWidgetSnapshot(widgetSnapshot);
     }
 
     const subscription = AppState.addEventListener("change", (nextState) => {
@@ -164,7 +166,7 @@ function RootStack() {
     });
 
     return () => subscription.remove();
-  }, [isAuthenticated, hydrated, notificationSubscriptions, notificationSettings, quietHours, requireBiometricUnlock]);
+  }, [isAuthenticated, hydrated, notificationSubscriptions, notificationSettings, quietHours, widgetSnapshot, requireBiometricUnlock]);
 
   if (status === "loading") {
     return (
