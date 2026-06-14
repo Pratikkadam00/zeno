@@ -1,0 +1,65 @@
+import type { Subscription } from "../domain";
+import { monthlyAmount } from "./coach";
+
+export type MonthlySpendPoint = {
+  year: number;
+  month: number; // 0-11
+  label: string;
+  amountMinor: number;
+};
+
+/**
+ * Actual cash-out per calendar month derived from real subscription attributes
+ * (createdAt, billingCycle, price, renewal anniversary) over the trailing
+ * `months` window. Unlike an amortized monthly figure, annual charges land as a
+ * spike in their anniversary month and quarterly charges every third month, so
+ * the chart reflects when money actually leaves — and a sub only contributes
+ * from the month it was added. Deterministic (UTC) for stable SSR/hydration.
+ */
+export function buildMonthlySpendHistory(subscriptions: Subscription[], months = 6, now: Date = new Date()): MonthlySpendPoint[] {
+  const monthFmt = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" });
+  const points: MonthlySpendPoint[] = [];
+
+  for (let i = months - 1; i >= 0; i -= 1) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    const year = d.getUTCFullYear();
+    const month = d.getUTCMonth();
+    let amountMinor = 0;
+    for (const subscription of subscriptions) {
+      amountMinor += chargeInMonth(subscription, year, month);
+    }
+    points.push({ year, month, label: monthFmt.format(d), amountMinor });
+  }
+
+  return points;
+}
+
+function anchorMonth(subscription: Subscription): number {
+  const ref = subscription.nextRenewalDate ?? subscription.createdAt;
+  return new Date(ref).getUTCMonth();
+}
+
+function chargeInMonth(subscription: Subscription, year: number, month: number): number {
+  if (subscription.status !== "active") return 0;
+  if (subscription.billingCycle === "trial" || subscription.billingCycle === "unknown") return 0;
+
+  const created = new Date(subscription.createdAt);
+  const monthStamp = Date.UTC(year, month, 1);
+  if (monthStamp < Date.UTC(created.getUTCFullYear(), created.getUTCMonth(), 1)) {
+    return 0; // subscription didn't exist yet
+  }
+
+  const price = subscription.price.amountMinor;
+  switch (subscription.billingCycle) {
+    case "monthly":
+      return price;
+    case "weekly":
+      return monthlyAmount(subscription); // month-equivalent of weekly charges
+    case "quarterly":
+      return (((month - anchorMonth(subscription)) % 3) + 3) % 3 === 0 ? price : 0;
+    case "annual":
+      return month === anchorMonth(subscription) ? price : 0;
+    default:
+      return 0;
+  }
+}

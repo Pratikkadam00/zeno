@@ -12,6 +12,7 @@ export * from "./public-api/keys";
 export * from "./scale/business";
 export * from "./schemas";
 export * from "./spend/coach";
+export * from "./spend/history";
 export * from "./spend/twin";
 export * from "./trials/trial-guardian";
 export * from "./widgets/snapshot";

@@ -1,4 +1,4 @@
-import { monthlyAmount } from "@subradar/shared";
+import { buildMonthlySpendHistory, monthlyAmount } from "@subradar/shared";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -44,9 +44,6 @@ function labelCategory(category: string): string {
   return category.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function formatMonthLabel(date: Date): string {
-  return date.toLocaleDateString(undefined, { month: "short" });
-}
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
@@ -72,18 +69,16 @@ export default function AnalyticsScreen() {
     [subscriptions, sortDirection]
   );
 
-  // ── 6-month chart data ──
+  // ── 6-month spend history (actual cash-out per month, derived from real
+  // subscription cycles — annual charges spike in their anniversary month). ──
   const chartData = useMemo(() => {
-    const now = new Date();
-    return Array.from({ length: 6 }).map((_, i) => {
-      const base = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
-      return {
-        label: formatMonthLabel(base),
-        isCurrent: i === 5,
-        amountMinor: totalMonthlyMinor  // flat approximation — no historical data
-      };
-    });
-  }, [totalMonthlyMinor]);
+    const history = buildMonthlySpendHistory(subscriptions, 6);
+    return history.map((point, i) => ({
+      label: point.label,
+      isCurrent: i === history.length - 1,
+      amountMinor: point.amountMinor
+    }));
+  }, [subscriptions]);
 
   const maxBarAmount = Math.max(...chartData.map((d) => d.amountMinor), 1);
 
