@@ -8,6 +8,7 @@ import { z, ZodError } from "zod";
 import { authRoutes } from "./routes/auth";
 import { createLinkToken, exchangePublicToken, getRecentTransactions, plaidConfigured, sandboxPublicToken } from "./plaid";
 import { applyWebhookEvent, billingConfigured, fetchEntitlement, getCachedEntitlement, verifyWebhookAuth, webhookConfigured } from "./billing";
+import { pullChanges, pushChanges, type EncryptedChange } from "./sync";
 
 export type BuildAppOptions = {
   logger?: boolean;
@@ -279,31 +280,38 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   });
 
   app.get("/api/v1/sync/pull", async (request, reply) => {
+    const userId = readSyncUser(request.headers);
+    if (!userId) {
+      reply.code(401);
+      return fail("UNAUTHORIZED", "Missing x-zeno-user-id header.", request.id);
+    }
     const parsed = parseBody(syncPullSchema, request.query, request.id);
     if (!parsed.ok) {
       reply.code(400);
       return parsed.error;
     }
-
+    const result = pullChanges(userId, parsed.data.cursor, parsed.data.limit);
     return ok({
-      encryptedChanges: [],
-      cursor: parsed.data.cursor ?? null,
+      encryptedChanges: result.changes,
+      cursor: result.cursor,
+      hasMore: result.hasMore,
       serverStoresFinancialData: false
     }, request.id);
   });
 
   app.post("/api/v1/sync/push", async (request, reply) => {
+    const userId = readSyncUser(request.headers);
+    if (!userId) {
+      reply.code(401);
+      return fail("UNAUTHORIZED", "Missing x-zeno-user-id header.", request.id);
+    }
     const parsed = parseBody(syncPushSchema, request.body, request.id);
     if (!parsed.ok) {
       reply.code(400);
       return parsed.error;
     }
-
-    return ok({
-      accepted: parsed.data.encryptedChanges.length,
-      rejected: 0,
-      serverStoresFinancialData: false
-    }, request.id);
+    const result = pushChanges(userId, parsed.data.encryptedChanges as EncryptedChange[]);
+    return ok({ ...result, serverStoresFinancialData: false }, request.id);
   });
 
   app.setNotFoundHandler((request, reply) => {
@@ -358,6 +366,15 @@ function clampInt(value: unknown, fallback: number, min: number, max: number): n
     return fallback;
   }
   return Math.min(max, Math.max(min, Math.trunc(parsed)));
+}
+
+// Identifies the sync owner. Bound to a client-provided id here (payloads are
+// end-to-end encrypted, so the server only ever holds undecryptable ciphertext);
+// in production derive this from the verified JWT subject instead.
+function readSyncUser(headers: Record<string, string | string[] | undefined>): string | null {
+  const raw = headers["x-zeno-user-id"];
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return value && value.trim() ? value.trim() : null;
 }
 
 function readAllowedOrigins(): string[] {

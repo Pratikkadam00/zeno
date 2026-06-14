@@ -94,6 +94,47 @@ export async function getServerEntitlement(appUserId: string): Promise<ServerEnt
   }
 }
 
+export type SyncChange = {
+  entityType: "subscription" | "preference" | "profile";
+  entityId: string;
+  operation: "create" | "update" | "delete";
+  encryptedPayload: string;
+  vectorClock: Record<string, number>;
+};
+
+// Push locally-encrypted changes to the cloud backup. Payloads are ciphertext —
+// the server stores opaque blobs it can't read. Returns null if unreachable.
+export async function pushSyncChanges(userId: string, changes: SyncChange[]): Promise<{ accepted: number; rejected: number; cursor: string } | null> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/sync/push`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-zeno-user-id": userId },
+      body: JSON.stringify({ encryptedChanges: changes })
+    });
+    if (!response.ok) return null;
+    const envelope = await response.json() as ApiEnvelope<{ accepted: number; rejected: number; cursor: string }>;
+    return envelope.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// Pull encrypted changes since a cursor (for restore / multi-device merge).
+export async function pullSyncChanges(userId: string, cursor?: string): Promise<{ changes: SyncChange[]; cursor: string; hasMore: boolean } | null> {
+  try {
+    const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
+    const response = await fetch(`${getApiBaseUrl()}/sync/pull${query}`, {
+      headers: { "x-zeno-user-id": userId }
+    });
+    if (!response.ok) return null;
+    const envelope = await response.json() as ApiEnvelope<{ encryptedChanges: SyncChange[]; cursor: string; hasMore: boolean }>;
+    if (!envelope.data) return null;
+    return { changes: envelope.data.encryptedChanges, cursor: envelope.data.cursor, hasMore: envelope.data.hasMore };
+  } catch {
+    return null;
+  }
+}
+
 export async function createOpenBankingIntentViaApi(provider: "plaid" | "mx"): Promise<OpenBankingConnectionIntent> {
   const response = await fetch(`${getApiBaseUrl()}/open-banking/${provider}/intent`, {
     method: "POST"

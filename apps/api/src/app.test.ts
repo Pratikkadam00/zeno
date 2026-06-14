@@ -83,6 +83,7 @@ describe("api app", () => {
     const response = await app.inject({
       method: "POST",
       url: "/api/v1/sync/push",
+      headers: { "x-zeno-user-id": "schema-test-user" },
       payload: { subscriptions: [{ name: "Netflix", amount: 1549 }] }
     });
 
@@ -303,5 +304,42 @@ describe("api app", () => {
       if (previousAuth === undefined) delete process.env.REVENUECAT_WEBHOOK_AUTH;
       else process.env.REVENUECAT_WEBHOOK_AUTH = previousAuth;
     }
+  });
+
+  it("requires a user header for sync", async () => {
+    const app = await buildApp();
+    const response = await app.inject({ method: "POST", url: "/api/v1/sync/push", payload: { encryptedChanges: [] } });
+    expect(response.statusCode).toBe(401);
+    expect(response.json().error.code).toBe("UNAUTHORIZED");
+  });
+
+  it("stores encrypted changes on push and replays them on pull (per user, LWW)", async () => {
+    const app = await buildApp();
+    const headers = { "x-zeno-user-id": "sync-user-A" };
+    const change = (v: number, payload: string) => ({
+      entityType: "subscription" as const,
+      entityId: "sub_1",
+      operation: "update" as const,
+      encryptedPayload: payload,
+      vectorClock: { deviceA: v }
+    });
+
+    const push1 = await app.inject({ method: "POST", url: "/api/v1/sync/push", headers, payload: { encryptedChanges: [change(2, "cipher-v2")] } });
+    expect(push1.statusCode).toBe(200);
+    expect(push1.json().data.accepted).toBe(1);
+
+    // A stale (lower-version) change is rejected, not applied.
+    const stale = await app.inject({ method: "POST", url: "/api/v1/sync/push", headers, payload: { encryptedChanges: [change(1, "cipher-v1")] } });
+    expect(stale.json().data.rejected).toBe(1);
+
+    const pull = await app.inject({ method: "GET", url: "/api/v1/sync/pull", headers });
+    const body = pull.json();
+    expect(body.data.encryptedChanges).toHaveLength(1);
+    expect(body.data.encryptedChanges[0].encryptedPayload).toBe("cipher-v2");
+    expect(body.data.serverStoresFinancialData).toBe(false);
+
+    // A different user sees none of user A's data.
+    const other = await app.inject({ method: "GET", url: "/api/v1/sync/pull", headers: { "x-zeno-user-id": "sync-user-B" } });
+    expect(other.json().data.encryptedChanges).toHaveLength(0);
   });
 });

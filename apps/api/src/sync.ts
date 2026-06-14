@@ -1,0 +1,84 @@
+// Encrypted cloud sync + backup. The client encrypts every change locally and
+// pushes opaque ciphertext blobs — the server stores them per user and replays
+// them on pull, so losing/replacing a device doesn't lose data. The server
+// never sees plaintext financial data (only encryptedPayload it can't read).
+//
+// Conflict resolution is last-write-wins by the change's vector-clock total.
+// Storage is in-memory here (single node, fine for dev/demo + tests); back it
+// with a database (encrypted-blob column keyed by user + entity) in production.
+
+export type EncryptedChange = {
+  entityType: "subscription" | "preference" | "profile";
+  entityId: string;
+  operation: "create" | "update" | "delete";
+  encryptedPayload: string;
+  vectorClock: Record<string, number>;
+};
+
+type StoredRecord = EncryptedChange & { version: number; seq: number };
+
+const store = new Map<string, Map<string, StoredRecord>>();
+let globalSeq = 0;
+
+function keyOf(change: { entityType: string; entityId: string }): string {
+  return `${change.entityType}:${change.entityId}`;
+}
+
+function versionOf(vectorClock: Record<string, number>): number {
+  let total = 0;
+  for (const value of Object.values(vectorClock)) total += value;
+  return total;
+}
+
+function userStore(userId: string): Map<string, StoredRecord> {
+  let s = store.get(userId);
+  if (!s) {
+    s = new Map();
+    store.set(userId, s);
+  }
+  return s;
+}
+
+export function pushChanges(userId: string, changes: EncryptedChange[]): { accepted: number; rejected: number; cursor: string } {
+  const records = userStore(userId);
+  let accepted = 0;
+  let rejected = 0;
+  for (const change of changes) {
+    const key = keyOf(change);
+    const existing = records.get(key);
+    const incomingVersion = versionOf(change.vectorClock);
+    // Accept new entities and any change at or beyond the stored version (LWW).
+    if (!existing || incomingVersion >= existing.version) {
+      globalSeq += 1;
+      records.set(key, { ...change, version: incomingVersion, seq: globalSeq });
+      accepted += 1;
+    } else {
+      rejected += 1;
+    }
+  }
+  return { accepted, rejected, cursor: String(globalSeq) };
+}
+
+export function pullChanges(userId: string, cursor: string | undefined, limit: number): {
+  changes: EncryptedChange[];
+  cursor: string;
+  hasMore: boolean;
+} {
+  const records = store.get(userId);
+  const since = cursor ? Number(cursor) || 0 : 0;
+  const fresh = records
+    ? [...records.values()].filter((record) => record.seq > since).sort((a, b) => a.seq - b.seq)
+    : [];
+  const page = fresh.slice(0, limit);
+  const nextCursor = page.length ? String(page[page.length - 1]!.seq) : String(since);
+  return {
+    changes: page.map(({ version, seq, ...change }) => change),
+    cursor: nextCursor,
+    hasMore: fresh.length > page.length
+  };
+}
+
+export function clearSyncStore(): void {
+  store.clear();
+  globalSeq = 0;
+}
