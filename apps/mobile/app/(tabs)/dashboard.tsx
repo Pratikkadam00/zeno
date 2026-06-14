@@ -25,6 +25,7 @@ const intelligenceFeatures = [
   { href: "/business",     label: "Business Tier",       minimumPlan: "pro"    },
   { href: "/public-api",   label: "Public API",          minimumPlan: "pro"    },
   { href: "/partners",     label: "Partners",            minimumPlan: "pro"    },
+  { href: "/wrapped",      label: "Year in Review",      minimumPlan: "free"   },
   { href: "/backend",      label: "Backend Connection",  minimumPlan: "free"   }
 ] as const;
 

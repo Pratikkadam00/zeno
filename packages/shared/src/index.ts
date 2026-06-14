@@ -15,5 +15,6 @@ export * from "./spend/coach";
 export * from "./spend/history";
 export * from "./spend/price-radar";
 export * from "./spend/twin";
+export * from "./spend/year-in-review";
 export * from "./trials/trial-guardian";
 export * from "./widgets/snapshot";
