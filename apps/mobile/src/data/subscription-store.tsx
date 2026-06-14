@@ -1,5 +1,5 @@
 import { searchServices } from "@subradar/service-catalog";
-import { createAnalyticsSnapshot, createBusinessSummary, createFamilyVaultSummary, createRenewalReminderPlan, createSpendSummary, createSpendTwin, createWidgetSnapshot, demoBusinessWorkspace, demoFamilyMembers, monthlyAmount, partnerIntegrationManifests, type AnalyticsSnapshot, type BillingCycle, type BusinessSubscriptionSummary, type FamilyVaultSummary, type PartnerIntegrationManifest, type RenewalReminderPlan, type SpendSummary, type SpendTwinComparison, type Subscription, type SubscriptionCategory, type SubscriptionStatus, type WidgetSnapshot } from "@subradar/shared";
+import { createAnalyticsSnapshot, createBusinessSummary, createFamilyVaultSummary, createRenewalReminderPlan, createSpendSummary, createSpendTwin, createWidgetSnapshot, demoBusinessWorkspace, demoFamilyMembers, getEndingTrials, monthlyAmount, partnerIntegrationManifests, type AnalyticsSnapshot, type BillingCycle, type BusinessSubscriptionSummary, type EndingTrial, type FamilyVaultSummary, type PartnerIntegrationManifest, type RenewalReminderPlan, type SpendSummary, type SpendTwinComparison, type Subscription, type SubscriptionCategory, type SubscriptionStatus, type WidgetSnapshot } from "@subradar/shared";
 import * as Crypto from "expo-crypto";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform } from "react-native";
@@ -50,6 +50,7 @@ type SubscriptionStore = {
   partnerIntegrations: PartnerIntegrationManifest[];
   reminderPlan: RenewalReminderPlan[];
   upcoming: Subscription[];
+  endingTrials: EndingTrial[];
   addSubscription: (input: CreateSubscriptionInput) => string;
   updateSubscription: (id: string, changes: UpdateSubscriptionInput) => void;
   deleteSubscription: (id: string) => void;
@@ -213,9 +214,10 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
       partnerIntegrations: partnerIntegrationManifests,
       reminderPlan: createRenewalReminderPlan(displaySubscriptions),
       upcoming: [...displaySubscriptions]
-        .filter((subscription) => subscription.status === "active" && subscription.nextRenewalDate)
+        .filter((subscription) => subscription.status === "active" && subscription.nextRenewalDate && subscription.billingCycle !== "trial")
         .sort((a, b) => Date.parse(a.nextRenewalDate ?? "") - Date.parse(b.nextRenewalDate ?? ""))
         .slice(0, 5),
+      endingTrials: getEndingTrials(displaySubscriptions),
       addSubscription(input) {
         const now = new Date().toISOString();
         const id = `sub_${Crypto.randomUUID()}`;

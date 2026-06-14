@@ -16,6 +16,8 @@ export type RenewalNotificationSubscription = {
   name: string;
   amount: number;
   nextRenewalDate: string;
+  /** When true, nextRenewalDate is a free-trial conversion date → trial copy. */
+  isTrial?: boolean;
 };
 
 export type RenewalNotificationPreferences = {
@@ -108,29 +110,55 @@ export async function scheduleRenewalNotificationsWithPreferences(
   }
 
   const amount = formatAmount(subscription.amount);
-  const notificationPlan = [
-    {
-      daysBefore: 7,
-      title: `${subscription.name} renews in 7 days`,
-      body: `${amount} · Tap to review`,
-      action: "view",
-      enabled: preferences.sevenDay
-    },
-    {
-      daysBefore: 3,
-      title: `⚠️ ${subscription.name} renews in 3 days`,
-      body: `${amount} · Tap to cancel now`,
-      action: "cancel",
-      enabled: preferences.threeDay
-    },
-    {
-      daysBefore: 0,
-      title: `${subscription.name} charged today`,
-      body: `${amount} was charged · Was this expected?`,
-      action: "confirm",
-      enabled: preferences.dayOf
-    }
-  ] as const;
+  // Free trials get earlier, sharper "cancel before you're charged" copy keyed
+  // to the conversion date; paid subscriptions get the standard renewal radar.
+  const notificationPlan = subscription.isTrial
+    ? [
+        {
+          daysBefore: 2,
+          title: `⚠️ ${subscription.name} free trial ends in 2 days`,
+          body: `Cancel before you're charged ${amount}`,
+          action: "cancel",
+          enabled: preferences.sevenDay
+        },
+        {
+          daysBefore: 1,
+          title: `⏰ ${subscription.name} free trial ends tomorrow`,
+          body: `Cancel now to avoid the ${amount} charge`,
+          action: "cancel",
+          enabled: preferences.threeDay
+        },
+        {
+          daysBefore: 0,
+          title: `${subscription.name} free trial ends today`,
+          body: `${amount} will be charged unless you cancel`,
+          action: "cancel",
+          enabled: preferences.dayOf
+        }
+      ] as const
+    : [
+        {
+          daysBefore: 7,
+          title: `${subscription.name} renews in 7 days`,
+          body: `${amount} · Tap to review`,
+          action: "view",
+          enabled: preferences.sevenDay
+        },
+        {
+          daysBefore: 3,
+          title: `⚠️ ${subscription.name} renews in 3 days`,
+          body: `${amount} · Tap to cancel now`,
+          action: "cancel",
+          enabled: preferences.threeDay
+        },
+        {
+          daysBefore: 0,
+          title: `${subscription.name} charged today`,
+          body: `${amount} was charged · Was this expected?`,
+          action: "confirm",
+          enabled: preferences.dayOf
+        }
+      ] as const;
 
   for (const plan of notificationPlan) {
     if (!plan.enabled) {

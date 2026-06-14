@@ -49,7 +49,7 @@ function canAccessFeature(plan: BillingPlan, minimumPlan: BillingPlan): boolean 
 export default function DashboardScreen() {
   const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { subscriptions, totalMonthlyMinor, upcoming, spendSummary, reminderPlan } = useSubscriptionStore();
+  const { subscriptions, totalMonthlyMinor, upcoming, spendSummary, reminderPlan, endingTrials } = useSubscriptionStore();
   const { plan, setPlan } = useAuthStore();
   const [dismissedInsights, setDismissedInsights] = useState<string[]>([]);
 
@@ -165,6 +165,46 @@ export default function DashboardScreen() {
                 </Pressable>
               </View>
             </View>
+          ) : null}
+
+          {/* ── Free trials ending (Trial Guardian) ── */}
+          {endingTrials.length > 0 ? (
+            <>
+              <Text style={styles.sectionLabel}>FREE TRIALS ENDING</Text>
+              <View style={[styles.groupCard, { marginBottom: 12 }]}>
+                {endingTrials.slice(0, 4).map((trial, index) => {
+                  const sub = trial.subscription;
+                  const isLast = index === Math.min(endingTrials.length, 4) - 1;
+                  const label = trial.daysUntilEnd === 0
+                    ? "Ends today"
+                    : `Ends in ${trial.daysUntilEnd} day${trial.daysUntilEnd === 1 ? "" : "s"}`;
+                  return (
+                    <View key={sub.id}>
+                      <View style={styles.row}>
+                        <View style={[styles.avatar, { backgroundColor: theme.warningSurface }]}>
+                          <Text style={[styles.avatarText, { color: theme.warning }]}>{sub.name.charAt(0).toUpperCase()}</Text>
+                        </View>
+                        <View style={styles.rowMiddle}>
+                          <Text style={styles.rowTitle}>{sub.name}</Text>
+                          <Text style={[styles.rowMeta, { color: trial.daysUntilEnd <= 1 ? theme.danger : theme.mutedText }]}>
+                            {label} · then {formatMoney(sub.price.amountMinor, sub.price.currency)}
+                          </Text>
+                        </View>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Cancel ${sub.name} before the free trial converts`}
+                          style={styles.urgentCancelBtn}
+                          onPress={() => router.push(`/subscription/cancel/${sub.id}` as never)}
+                        >
+                          <Text style={styles.urgentCancelText}>Cancel</Text>
+                        </Pressable>
+                      </View>
+                      {!isLast ? <View style={styles.separator} /> : null}
+                    </View>
+                  );
+                })}
+              </View>
+            </>
           ) : null}
 
           {/* ── Upcoming renewals ── */}

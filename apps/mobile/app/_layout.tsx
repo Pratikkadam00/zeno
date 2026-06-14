@@ -41,7 +41,8 @@ function RootStack() {
       id: subscription.id,
       name: subscription.name,
       amount: subscription.price.amountMinor / 100,
-      nextRenewalDate: subscription.nextRenewalDate ?? ""
+      nextRenewalDate: subscription.nextRenewalDate ?? "",
+      isTrial: subscription.billingCycle === "trial"
     })), [subscriptions]);
 
   const requireBiometricUnlock = useCallback(async () => {

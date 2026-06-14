@@ -172,7 +172,9 @@ export default function AddSubscriptionScreen() {
       serviceSlug,
       category,
       amountMinor,
-      billingCycle,
+      // A free trial is stored as a "trial" cycle whose renewal date is the
+      // conversion date — so the Trial Guardian and notifications can track it.
+      billingCycle: isTrial ? "trial" : billingCycle,
       nextRenewalDate: renewalDate.toISOString(),
       source: "manual"
     });
