@@ -255,4 +255,53 @@ describe("api app", () => {
       }
     }
   });
+
+  it("returns a free/unconfigured entitlement when RevenueCat is not set up", async () => {
+    const previousKey = process.env.REVENUECAT_SECRET_KEY;
+    delete process.env.REVENUECAT_SECRET_KEY;
+    try {
+      const app = await buildApp();
+      const response = await app.inject({ method: "GET", url: "/api/v1/billing/entitlement?appUserId=fresh-user-1" });
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.data.plan).toBe("free");
+      expect(body.data.source).toBe("unconfigured");
+    } finally {
+      if (previousKey === undefined) delete process.env.REVENUECAT_SECRET_KEY;
+      else process.env.REVENUECAT_SECRET_KEY = previousKey;
+    }
+  });
+
+  it("rejects an unauthorized RevenueCat webhook and trusts an authorized one", async () => {
+    const previousAuth = process.env.REVENUECAT_WEBHOOK_AUTH;
+    process.env.REVENUECAT_WEBHOOK_AUTH = "test-webhook-secret";
+    try {
+      const app = await buildApp();
+      const appUserId = "webhook-user-1";
+      const payload = { event: { app_user_id: appUserId, type: "INITIAL_PURCHASE", entitlement_ids: ["pro"] } };
+
+      const bad = await app.inject({
+        method: "POST",
+        url: "/api/v1/billing/webhook",
+        headers: { authorization: "Bearer wrong" },
+        payload
+      });
+      expect(bad.statusCode).toBe(401);
+
+      const good = await app.inject({
+        method: "POST",
+        url: "/api/v1/billing/webhook",
+        headers: { authorization: "Bearer test-webhook-secret" },
+        payload
+      });
+      expect(good.statusCode).toBe(200);
+
+      // The webhook updated the server's source of truth → entitlement reflects Pro.
+      const entitlement = await app.inject({ method: "GET", url: `/api/v1/billing/entitlement?appUserId=${appUserId}` });
+      expect(entitlement.json().data.plan).toBe("pro");
+    } finally {
+      if (previousAuth === undefined) delete process.env.REVENUECAT_WEBHOOK_AUTH;
+      else process.env.REVENUECAT_WEBHOOK_AUTH = previousAuth;
+    }
+  });
 });

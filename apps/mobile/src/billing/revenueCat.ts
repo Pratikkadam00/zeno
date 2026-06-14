@@ -1,5 +1,6 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
+import { getServerEntitlement } from "../api/client";
 import Purchases, {
   type CustomerInfo,
   type PurchasesOffering,
@@ -73,7 +74,21 @@ export async function checkStatus(): Promise<BillingPlan> {
   }
 
   const customerInfo = await Purchases.getCustomerInfo();
-  return getPlanFromCustomerInfo(customerInfo);
+  const clientPlan = getPlanFromCustomerInfo(customerInfo);
+
+  // The server independently verifies with RevenueCat, so it wins — a tampered
+  // client can't grant itself Pro. Fall back to the client result only when the
+  // server is unreachable or billing isn't configured server-side.
+  try {
+    const appUserId = await Purchases.getAppUserID();
+    const server = await getServerEntitlement(appUserId);
+    if (server && server.source !== "unconfigured") {
+      return server.plan;
+    }
+  } catch {
+    // ignore — fall back to clientPlan
+  }
+  return clientPlan;
 }
 
 export async function restorePurchases(): Promise<BillingPlan> {

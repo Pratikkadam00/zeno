@@ -78,6 +78,22 @@ export async function connectPlaidSandbox(): Promise<{ transactionCount: number 
   return { transactionCount: count };
 }
 
+export type ServerEntitlement = { plan: "free" | "pro" | "family"; active: boolean; source: string };
+
+// The server independently verifies entitlements with RevenueCat, so it's the
+// source of truth for Pro/Family. Returns null if unreachable (caller falls back
+// to the client SDK result).
+export async function getServerEntitlement(appUserId: string): Promise<ServerEntitlement | null> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/billing/entitlement?appUserId=${encodeURIComponent(appUserId)}`);
+    if (!response.ok) return null;
+    const envelope = await response.json() as ApiEnvelope<ServerEntitlement>;
+    return envelope.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function createOpenBankingIntentViaApi(provider: "plaid" | "mx"): Promise<OpenBankingConnectionIntent> {
   const response = await fetch(`${getApiBaseUrl()}/open-banking/${provider}/intent`, {
     method: "POST"

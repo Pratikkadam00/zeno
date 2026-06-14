@@ -7,6 +7,7 @@ import { randomUUID } from "node:crypto";
 import { z, ZodError } from "zod";
 import { authRoutes } from "./routes/auth";
 import { createLinkToken, exchangePublicToken, getRecentTransactions, plaidConfigured, sandboxPublicToken } from "./plaid";
+import { applyWebhookEvent, billingConfigured, fetchEntitlement, getCachedEntitlement, verifyWebhookAuth, webhookConfigured } from "./billing";
 
 export type BuildAppOptions = {
   logger?: boolean;
@@ -15,6 +16,7 @@ export type BuildAppOptions = {
 const DEFAULT_SERVICES_LIMIT = 25;
 const MAX_SERVICES_LIMIT = 100;
 
+const entitlementQuerySchema = z.object({ appUserId: z.string().min(1).max(256) });
 const plaidLinkTokenSchema = z.object({ userId: z.string().min(1).max(128).optional() });
 const plaidExchangeSchema = z.object({ publicToken: z.string().min(1) });
 const plaidTransactionsSchema = z.object({ accessToken: z.string().min(1) });
@@ -167,6 +169,41 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     });
 
     return ok({ intent }, request.id);
+  });
+
+  // ── Billing entitlement (server is the source of truth for Pro/Family). ──
+  app.get("/api/v1/billing/entitlement", async (request, reply) => {
+    const parsed = parseBody(entitlementQuerySchema, request.query, request.id);
+    if (!parsed.ok) {
+      reply.code(400);
+      return parsed.error;
+    }
+    const cached = getCachedEntitlement(parsed.data.appUserId);
+    if (cached) {
+      return ok(cached, request.id);
+    }
+    if (!billingConfigured()) {
+      return ok({ plan: "free", active: false, expiresAt: null, source: "unconfigured" }, request.id);
+    }
+    try {
+      return ok(await fetchEntitlement(parsed.data.appUserId), request.id);
+    } catch (error) {
+      reply.code(502);
+      return fail("UPSTREAM_ERROR", error instanceof Error ? error.message : "Entitlement lookup failed.", request.id);
+    }
+  });
+
+  app.post("/api/v1/billing/webhook", async (request, reply) => {
+    if (!webhookConfigured()) {
+      reply.code(503);
+      return fail("SERVICE_UNAVAILABLE", "Billing webhook is not configured.", request.id);
+    }
+    if (!verifyWebhookAuth(request.headers.authorization)) {
+      reply.code(401);
+      return fail("UNAUTHORIZED", "Invalid webhook authorization.", request.id);
+    }
+    applyWebhookEvent(request.body);
+    return ok({ received: true }, request.id);
   });
 
   // ── Plaid (optional bank connect). Live when PLAID_CLIENT_ID/SECRET are set,
