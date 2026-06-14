@@ -18,6 +18,22 @@ export function calculateNextRenewal(lastCharged: Date, cycle: DiscoveryBillingC
   return next;
 }
 
+// Infer a billing cycle from the gaps (in days) between successive charges of
+// the same service. Uses the median gap so one odd interval (a missed/duplicated
+// receipt) doesn't skew it. Returns null when no known cadence matches, so the
+// caller keeps its text-derived guess.
+export function inferRecurringCycle(gaps: number[]): DiscoveryBillingCycle | null {
+  if (gaps.length === 0) {
+    return null;
+  }
+  const sorted = [...gaps].sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
+  if (median >= 5 && median <= 9) return "weekly";
+  if (median >= 24 && median <= 35) return "monthly";
+  if (median >= 350 && median <= 380) return "annual";
+  return null;
+}
+
 export function confidenceRank(confidence: DiscoveryConfidence): number {
   if (confidence === "high") {
     return 3;

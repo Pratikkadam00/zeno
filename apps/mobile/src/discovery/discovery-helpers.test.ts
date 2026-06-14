@@ -1,5 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { calculateNextRenewal, confidenceRank, isWithin, slugify, titleCase } from "./discovery-helpers";
+import { calculateNextRenewal, confidenceRank, inferRecurringCycle, isWithin, slugify, titleCase } from "./discovery-helpers";
+
+describe("inferRecurringCycle", () => {
+  it("infers monthly / weekly / annual from the median gap", () => {
+    expect(inferRecurringCycle([30, 31, 29])).toBe("monthly");
+    expect(inferRecurringCycle([7, 7, 8])).toBe("weekly");
+    expect(inferRecurringCycle([365, 366])).toBe("annual");
+  });
+
+  it("resists a single odd gap via the median", () => {
+    expect(inferRecurringCycle([30, 30, 200])).toBe("monthly");
+  });
+
+  it("returns null for no gaps or an unknown cadence", () => {
+    expect(inferRecurringCycle([])).toBeNull();
+    expect(inferRecurringCycle([120, 130])).toBeNull(); // quarterly-ish, not supported
+  });
+});
 
 describe("calculateNextRenewal", () => {
   it("adds one month for monthly cycles", () => {

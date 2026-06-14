@@ -2,7 +2,7 @@ import { getServiceBySlug, searchServices, services, type Service } from "@subra
 import { exchangeCodeAsync, type AuthRequest, type AuthSessionResult } from "expo-auth-session";
 import { discovery as googleDiscovery } from "expo-auth-session/providers/google";
 import { getGmailAccountToken, listGmailAddresses, removeGmailAccount, saveGmailAccount } from "../security/secure-store";
-import { calculateNextRenewal, confidenceRank, isWithin, slugify, titleCase } from "./discovery-helpers";
+import { calculateNextRenewal, confidenceRank, inferRecurringCycle, isWithin, slugify, titleCase } from "./discovery-helpers";
 
 export type ParsedSubscription = {
   name: string;
@@ -259,18 +259,55 @@ export function parseEmailBody(emailBody: string, senderDomain: string): ParsedS
 }
 
 export function processResults(parsed: ParsedSubscription[]): ParsedSubscription[] {
-  const grouped = new Map<string, ParsedSubscription>();
-
+  // Group ALL receipts per service (not just the single best), so the cadence
+  // across multiple charges can confirm a recurring subscription.
+  const groups = new Map<string, ParsedSubscription[]>();
   for (const subscription of parsed) {
     const matched = enrichWithCatalogMatch(subscription);
     const key = slugify(matched.serviceId ?? matched.name);
-    const current = grouped.get(key);
-    if (!current || compareParsed(matched, current) < 0) {
-      grouped.set(key, matched);
-    }
+    const list = groups.get(key) ?? [];
+    list.push(matched);
+    groups.set(key, list);
   }
 
-  return [...grouped.values()].sort((a, b) => compareParsed(a, b));
+  return [...groups.values()].map(collapseRecurringGroup).sort((a, b) => compareParsed(a, b));
+}
+
+// Collapse a service's receipts into one detection. With ≥2 dated charges, the
+// gaps between them infer the real billing cycle (beating a single email's
+// text guess) and confirm recurrence (confidence → high, renewal projected
+// from the latest charge).
+function collapseRecurringGroup(group: ParsedSubscription[]): ParsedSubscription {
+  const best = [...group].sort((a, b) => compareParsed(a, b))[0] as ParsedSubscription;
+  if (group.length < 2) {
+    return best;
+  }
+
+  const dates = group
+    .map((candidate) => Date.parse(candidate.lastCharged))
+    .filter((time) => !Number.isNaN(time))
+    .sort((a, b) => a - b);
+  if (dates.length < 2) {
+    return best;
+  }
+
+  const gaps: number[] = [];
+  for (let i = 1; i < dates.length; i += 1) {
+    gaps.push((dates[i]! - dates[i - 1]!) / 86_400_000);
+  }
+  const cycle = inferRecurringCycle(gaps);
+  if (!cycle) {
+    return best;
+  }
+
+  const lastCharged = new Date(dates[dates.length - 1]!);
+  return {
+    ...best,
+    billingCycle: cycle,
+    lastCharged: lastCharged.toISOString(),
+    nextRenewal: calculateNextRenewal(lastCharged, cycle).toISOString(),
+    confidence: "high"
+  };
 }
 
 async function collectCandidates(
