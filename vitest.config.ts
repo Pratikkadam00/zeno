@@ -11,8 +11,14 @@ export default defineConfig({
   test: {
     include: [
       "apps/**/*.test.ts",
-      "packages/**/*.test.ts"
+      "apps/**/*.test.tsx",
+      "packages/**/*.test.ts",
+      "packages/**/*.test.tsx"
     ],
-    environment: "node"
+    environment: "node",
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"]
+    }
   }
 });
