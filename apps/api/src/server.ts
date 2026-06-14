@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { buildApp } from "./app";
 
 const port = Number.parseInt(process.env.API_PORT ?? "8787", 10);

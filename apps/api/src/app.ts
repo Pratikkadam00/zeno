@@ -6,6 +6,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
 import { z, ZodError } from "zod";
 import { authRoutes } from "./routes/auth";
+import { createLinkToken, exchangePublicToken, getRecentTransactions, plaidConfigured, sandboxPublicToken } from "./plaid";
 
 export type BuildAppOptions = {
   logger?: boolean;
@@ -13,6 +14,10 @@ export type BuildAppOptions = {
 
 const DEFAULT_SERVICES_LIMIT = 25;
 const MAX_SERVICES_LIMIT = 100;
+
+const plaidLinkTokenSchema = z.object({ userId: z.string().min(1).max(128).optional() });
+const plaidExchangeSchema = z.object({ publicToken: z.string().min(1) });
+const plaidTransactionsSchema = z.object({ accessToken: z.string().min(1) });
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({
@@ -162,6 +167,78 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     });
 
     return ok({ intent }, request.id);
+  });
+
+  // ── Plaid (optional bank connect). Live when PLAID_CLIENT_ID/SECRET are set,
+  //    otherwise these report not-configured so the client stays in mock mode. ──
+  app.post("/api/v1/plaid/link-token", async (request, reply) => {
+    if (!plaidConfigured()) {
+      reply.code(503);
+      return fail("SERVICE_UNAVAILABLE", "Bank connect is not configured on this server.", request.id);
+    }
+    const parsed = parseBody(plaidLinkTokenSchema, request.body ?? {}, request.id);
+    if (!parsed.ok) {
+      reply.code(400);
+      return parsed.error;
+    }
+    try {
+      return ok(await createLinkToken(parsed.data.userId ?? "zeno-sandbox-user"), request.id);
+    } catch (error) {
+      reply.code(502);
+      return fail("UPSTREAM_ERROR", error instanceof Error ? error.message : "Plaid request failed.", request.id);
+    }
+  });
+
+  app.post("/api/v1/plaid/exchange", async (request, reply) => {
+    if (!plaidConfigured()) {
+      reply.code(503);
+      return fail("SERVICE_UNAVAILABLE", "Bank connect is not configured on this server.", request.id);
+    }
+    const parsed = parseBody(plaidExchangeSchema, request.body, request.id);
+    if (!parsed.ok) {
+      reply.code(400);
+      return parsed.error;
+    }
+    try {
+      return ok(await exchangePublicToken(parsed.data.publicToken), request.id);
+    } catch (error) {
+      reply.code(502);
+      return fail("UPSTREAM_ERROR", error instanceof Error ? error.message : "Plaid request failed.", request.id);
+    }
+  });
+
+  app.post("/api/v1/plaid/transactions", async (request, reply) => {
+    if (!plaidConfigured()) {
+      reply.code(503);
+      return fail("SERVICE_UNAVAILABLE", "Bank connect is not configured on this server.", request.id);
+    }
+    const parsed = parseBody(plaidTransactionsSchema, request.body, request.id);
+    if (!parsed.ok) {
+      reply.code(400);
+      return parsed.error;
+    }
+    try {
+      const transactions = await getRecentTransactions(parsed.data.accessToken);
+      return ok({ transactions, count: transactions.length }, request.id);
+    } catch (error) {
+      reply.code(502);
+      return fail("UPSTREAM_ERROR", error instanceof Error ? error.message : "Plaid request failed.", request.id);
+    }
+  });
+
+  // Sandbox-only convenience: mint a public token without the native Link UI so
+  // the connect→exchange→transactions flow is testable end-to-end in sandbox.
+  app.post("/api/v1/plaid/sandbox/public-token", async (request, reply) => {
+    if (!plaidConfigured() || (process.env.PLAID_ENV ?? "sandbox") !== "sandbox") {
+      reply.code(503);
+      return fail("SERVICE_UNAVAILABLE", "Sandbox token minting is only available in sandbox mode.", request.id);
+    }
+    try {
+      return ok({ publicToken: await sandboxPublicToken() }, request.id);
+    } catch (error) {
+      reply.code(502);
+      return fail("UPSTREAM_ERROR", error instanceof Error ? error.message : "Plaid request failed.", request.id);
+    }
   });
 
   app.get("/api/v1/sync/pull", async (request, reply) => {

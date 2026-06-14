@@ -5,7 +5,9 @@ export type ApiErrorCode =
   | "NOT_FOUND"
   | "RATE_LIMITED"
   | "CONFLICT"
-  | "INTERNAL";
+  | "INTERNAL"
+  | "SERVICE_UNAVAILABLE"
+  | "UPSTREAM_ERROR";
 
 export type ApiError = {
   code: ApiErrorCode;

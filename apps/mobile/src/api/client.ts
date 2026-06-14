@@ -51,6 +51,33 @@ export async function getMobileBackendStatus(): Promise<MobileBackendStatus> {
   }
 }
 
+async function postJson<T>(path: string, body: unknown = {}): Promise<T> {
+  const response = await fetch(`${getApiBaseUrl()}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const envelope = await response.json() as ApiEnvelope<T>;
+  if (!response.ok || envelope.data == null) {
+    throw new Error(envelope.error?.message ?? `${path} failed (HTTP ${response.status})`);
+  }
+  return envelope.data;
+}
+
+// Create a Plaid Link token (production: hand this to the native Plaid Link SDK).
+export async function createPlaidLinkToken(): Promise<{ linkToken: string; expiration: string }> {
+  return postJson<{ linkToken: string; expiration: string }>("/plaid/link-token");
+}
+
+// Sandbox-only end-to-end connection (no native Link UI): mint a public token,
+// exchange it, and pull transactions — returns how many were fetched.
+export async function connectPlaidSandbox(): Promise<{ transactionCount: number }> {
+  const { publicToken } = await postJson<{ publicToken: string }>("/plaid/sandbox/public-token");
+  const { accessToken } = await postJson<{ accessToken: string }>("/plaid/exchange", { publicToken });
+  const { count } = await postJson<{ count: number }>("/plaid/transactions", { accessToken });
+  return { transactionCount: count };
+}
+
 export async function createOpenBankingIntentViaApi(provider: "plaid" | "mx"): Promise<OpenBankingConnectionIntent> {
   const response = await fetch(`${getApiBaseUrl()}/open-banking/${provider}/intent`, {
     method: "POST"
