@@ -24,3 +24,6 @@ zeno-settings.png
 # Local waitlist capture (dev / self-hosted fallback sink)
 .data/
 **/.data/
+
+# Claude Code local agent dir
+.claude/
