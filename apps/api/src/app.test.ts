@@ -342,4 +342,33 @@ describe("api app", () => {
     const other = await app.inject({ method: "GET", url: "/api/v1/sync/pull", headers: { "x-zeno-user-id": "sync-user-B" } });
     expect(other.json().data.encryptedChanges).toHaveLength(0);
   });
+
+  it("creates a household and lets a member join by share code", async () => {
+    const app = await buildApp();
+    const create = await app.inject({
+      method: "POST",
+      url: "/api/v1/family/create",
+      payload: { ownerId: "owner-1", ownerName: "Maya", monthlySpendMinor: 5000 }
+    });
+    expect(create.statusCode).toBe(200);
+    const household = create.json().data.household;
+    expect(household.shareCode).toMatch(/^[A-Z2-9]{6}$/);
+    expect(household.members).toHaveLength(1);
+
+    const join = await app.inject({
+      method: "POST",
+      url: "/api/v1/family/join",
+      payload: { shareCode: household.shareCode, memberId: "member-2", memberName: "Liam", monthlySpendMinor: 3000 }
+    });
+    expect(join.statusCode).toBe(200);
+    const joined = join.json().data.household;
+    expect(joined.members.map((m: { name: string }) => m.name).sort()).toEqual(["Liam", "Maya"]);
+
+    const bad = await app.inject({
+      method: "POST",
+      url: "/api/v1/family/join",
+      payload: { shareCode: "ZZZZZZ", memberId: "x", memberName: "X" }
+    });
+    expect(bad.statusCode).toBe(404);
+  });
 });

@@ -135,6 +135,43 @@ export async function pullSyncChanges(userId: string, cursor?: string): Promise<
   }
 }
 
+export type FamilyMember = { id: string; name: string; monthlySpendMinor: number };
+export type Household = { id: string; shareCode: string; ownerId: string; members: FamilyMember[]; createdAt: string };
+
+async function familyPost(path: string, body: unknown): Promise<Household | null> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    if (!response.ok) return null;
+    const envelope = await response.json() as ApiEnvelope<{ household: Household }>;
+    return envelope.data?.household ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function createHousehold(ownerId: string, ownerName: string, monthlySpendMinor: number): Promise<Household | null> {
+  return familyPost("/family/create", { ownerId, ownerName, monthlySpendMinor });
+}
+
+export function joinHousehold(shareCode: string, memberId: string, memberName: string, monthlySpendMinor: number): Promise<Household | null> {
+  return familyPost("/family/join", { shareCode, memberId, memberName, monthlySpendMinor });
+}
+
+export async function getHousehold(householdId: string): Promise<Household | null> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/family/${encodeURIComponent(householdId)}`);
+    if (!response.ok) return null;
+    const envelope = await response.json() as ApiEnvelope<{ household: Household }>;
+    return envelope.data?.household ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function createOpenBankingIntentViaApi(provider: "plaid" | "mx"): Promise<OpenBankingConnectionIntent> {
   const response = await fetch(`${getApiBaseUrl()}/open-banking/${provider}/intent`, {
     method: "POST"

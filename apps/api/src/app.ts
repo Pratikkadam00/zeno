@@ -9,6 +9,7 @@ import { authRoutes } from "./routes/auth";
 import { createLinkToken, exchangePublicToken, getRecentTransactions, plaidConfigured, sandboxPublicToken } from "./plaid";
 import { applyWebhookEvent, billingConfigured, fetchEntitlement, getCachedEntitlement, verifyWebhookAuth, webhookConfigured } from "./billing";
 import { pullChanges, pushChanges, type EncryptedChange } from "./sync";
+import { createHousehold, getHousehold, joinHousehold, setMemberSpend } from "./family";
 
 export type BuildAppOptions = {
   logger?: boolean;
@@ -18,6 +19,21 @@ const DEFAULT_SERVICES_LIMIT = 25;
 const MAX_SERVICES_LIMIT = 100;
 
 const entitlementQuerySchema = z.object({ appUserId: z.string().min(1).max(256) });
+const familyCreateSchema = z.object({
+  ownerId: z.string().min(1).max(128),
+  ownerName: z.string().min(1).max(80),
+  monthlySpendMinor: z.number().int().min(0).optional()
+});
+const familyJoinSchema = z.object({
+  shareCode: z.string().min(4).max(12),
+  memberId: z.string().min(1).max(128),
+  memberName: z.string().min(1).max(80),
+  monthlySpendMinor: z.number().int().min(0).optional()
+});
+const familySpendSchema = z.object({
+  memberId: z.string().min(1).max(128),
+  monthlySpendMinor: z.number().int().min(0)
+});
 const plaidLinkTokenSchema = z.object({ userId: z.string().min(1).max(128).optional() });
 const plaidExchangeSchema = z.object({ publicToken: z.string().min(1) });
 const plaidTransactionsSchema = z.object({ accessToken: z.string().min(1) });
@@ -170,6 +186,56 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     });
 
     return ok({ intent }, request.id);
+  });
+
+  // ── Family / household sharing (share-code join + combined spend view). ──
+  app.post("/api/v1/family/create", async (request, reply) => {
+    const parsed = parseBody(familyCreateSchema, request.body, request.id);
+    if (!parsed.ok) {
+      reply.code(400);
+      return parsed.error;
+    }
+    const household = createHousehold(parsed.data.ownerId, parsed.data.ownerName, parsed.data.monthlySpendMinor ?? 0);
+    return ok({ household }, request.id);
+  });
+
+  app.post("/api/v1/family/join", async (request, reply) => {
+    const parsed = parseBody(familyJoinSchema, request.body, request.id);
+    if (!parsed.ok) {
+      reply.code(400);
+      return parsed.error;
+    }
+    const household = joinHousehold(parsed.data.shareCode, parsed.data.memberId, parsed.data.memberName, parsed.data.monthlySpendMinor ?? 0);
+    if (!household) {
+      reply.code(404);
+      return fail("NOT_FOUND", "No household found for that code.", request.id);
+    }
+    return ok({ household }, request.id);
+  });
+
+  app.get("/api/v1/family/:householdId", async (request, reply) => {
+    const householdId = (request.params as { householdId?: string }).householdId ?? "";
+    const household = getHousehold(householdId);
+    if (!household) {
+      reply.code(404);
+      return fail("NOT_FOUND", "Household not found.", request.id);
+    }
+    return ok({ household }, request.id);
+  });
+
+  app.post("/api/v1/family/:householdId/spend", async (request, reply) => {
+    const householdId = (request.params as { householdId?: string }).householdId ?? "";
+    const parsed = parseBody(familySpendSchema, request.body, request.id);
+    if (!parsed.ok) {
+      reply.code(400);
+      return parsed.error;
+    }
+    const household = setMemberSpend(householdId, parsed.data.memberId, parsed.data.monthlySpendMinor);
+    if (!household) {
+      reply.code(404);
+      return fail("NOT_FOUND", "Household not found.", request.id);
+    }
+    return ok({ household }, request.id);
   });
 
   // ── Billing entitlement (server is the source of truth for Pro/Family). ──
