@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildApp } from "./app";
+import { coachSystemPrompt } from "./coach";
 
 function restoreEnv(key: string, value: string | undefined): void {
   if (value === undefined) delete process.env[key];
@@ -413,5 +414,16 @@ describe("api app", () => {
       payload: { totalMonthlyMinor: -5, subscriptions: [] }
     });
     expect(response.statusCode).toBe(400);
+  });
+
+  it("loads the AI coach constitution into the system prompt", () => {
+    const prompt = coachSystemPrompt();
+    // Charter loaded (persona + scope) ...
+    expect(prompt).toMatch(/Zeno'?s Spend Coach/i);
+    expect(prompt.toLowerCase()).toContain("subscription");
+    // ... anti-jailbreak language present ...
+    expect(prompt.toLowerCase()).toContain("instructions");
+    // ... and the enforced output contract appended.
+    expect(prompt).toContain("outOfScope");
   });
 });
