@@ -3,7 +3,7 @@ import { createAnalyticsSnapshot, createBusinessSummary, createFamilyVaultSummar
 import * as Crypto from "expo-crypto";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform } from "react-native";
-import { cancelAllNotifications } from "../notifications/notificationService";
+import { cancelAllNotifications, type QuietHours } from "../notifications/notificationService";
 import { openSubRadarDatabase, readAppMeta, writeAppMeta, type SubRadarDatabase } from "../storage/database";
 import { clearAllSubscriptions, listSubscriptions, softDeleteSubscription, upsertSubscription } from "../storage/subscription-repository";
 import { rollRenewalForward } from "../utils/subscription-ui";
@@ -56,6 +56,8 @@ type SubscriptionStore = {
   pauseSubscription: (id: string) => void;
   markCancelled: (id: string) => void;
   updateNotificationSettings: (id: string, changes: Partial<SubscriptionNotificationSettings>) => void;
+  quietHours: QuietHours;
+  setQuietHours: (changes: Partial<QuietHours>) => void;
   clearAllData: () => Promise<void>;
   suggestions: (query: string) => ReturnType<typeof searchServices>;
 };
@@ -68,6 +70,9 @@ const defaultNotificationSettings: SubscriptionNotificationSettings = {
 
 const seededMetaKey = "subscriptions.seeded.v1";
 const notificationSettingsMetaKey = "notification.settings.v1";
+const quietHoursMetaKey = "notification.quietHours.v1";
+
+const defaultQuietHours: QuietHours = { enabled: false, startHour: 22, endHour: 8 };
 
 // expo-sqlite is not configured for web; web sessions stay in-memory.
 const persistenceEnabled = Platform.OS !== "web";
@@ -80,6 +85,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
   const [notificationSettings, setNotificationSettings] = useState<Record<string, SubscriptionNotificationSettings>>(() => Object.fromEntries(
     seedSubscriptions.map((subscription) => [subscription.id, defaultNotificationSettings])
   ));
+  const [quietHours, setQuietHoursState] = useState<QuietHours>(defaultQuietHours);
   const dbRef = useRef<SubRadarDatabase | null>(null);
 
   useEffect(() => {
@@ -106,8 +112,17 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
 
         const persisted = await listSubscriptions(db);
         const storedSettings = await readAppMeta(db, notificationSettingsMetaKey);
+        const storedQuietHours = await readAppMeta(db, quietHoursMetaKey);
         if (cancelled) {
           return;
+        }
+
+        if (storedQuietHours) {
+          try {
+            setQuietHoursState({ ...defaultQuietHours, ...(JSON.parse(storedQuietHours) as Partial<QuietHours>) });
+          } catch (error) {
+            console.warn("Corrupt quiet-hours setting in database; using defaults.", error);
+          }
         }
 
         setSubscriptions(persisted);
@@ -187,6 +202,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
       subscriptions: displaySubscriptions,
       hydrated,
       notificationSettings,
+      quietHours,
       totalMonthlyMinor: displaySubscriptions.reduce((sum, subscription) => sum + monthlyAmount(subscription), 0),
       spendSummary: createSpendSummary(displaySubscriptions),
       spendTwin: createSpendTwin(displaySubscriptions.reduce((sum, subscription) => sum + monthlyAmount(subscription), 0)),
@@ -291,6 +307,16 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         });
         persistNotificationSettings(nextSettings);
       },
+      setQuietHours(changes) {
+        const next = { ...quietHours, ...changes };
+        setQuietHoursState(next);
+        const db = dbRef.current;
+        if (db) {
+          void writeAppMeta(db, quietHoursMetaKey, JSON.stringify(next)).catch((error) => {
+            console.warn("Failed to persist quiet hours.", error);
+          });
+        }
+      },
       async clearAllData() {
         // (a) empty in-memory subscriptions and (b) per-subscription notification settings.
         setSubscriptions([]);
@@ -314,7 +340,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         return searchServices(query, 8);
       }
     };
-  }, [hydrated, notificationSettings, subscriptions]);
+  }, [hydrated, notificationSettings, quietHours, subscriptions]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

@@ -24,6 +24,36 @@ export type RenewalNotificationPreferences = {
   dayOf: boolean;
 };
 
+export type QuietHours = {
+  enabled: boolean;
+  startHour: number; // 0-23, local time
+  endHour: number;   // 0-23, local time
+};
+
+// If a trigger lands inside the user's quiet window, push it to the window's end
+// (local wall-clock). Handles windows that wrap past midnight (e.g. 22:00-08:00).
+export function shiftOutOfQuietHours(date: Date, quiet?: QuietHours): Date {
+  if (!quiet?.enabled) {
+    return date;
+  }
+  const { startHour: start, endHour: end } = quiet;
+  if (start === end) {
+    return date;
+  }
+  const hour = date.getHours();
+  const inQuiet = start < end ? hour >= start && hour < end : hour >= start || hour < end;
+  if (!inQuiet) {
+    return date;
+  }
+  const adjusted = new Date(date);
+  adjusted.setHours(end, 0, 0, 0);
+  // Wrapping window and we're in the late-night portion → the end is tomorrow.
+  if (start > end && hour >= start) {
+    adjusted.setDate(adjusted.getDate() + 1);
+  }
+  return adjusted;
+}
+
 export async function registerForPushNotifications(): Promise<string | null> {
   if (Platform.OS === "web" || !Device.isDevice) {
     return null;
@@ -67,7 +97,8 @@ export async function scheduleRenewalNotifications(subscription: RenewalNotifica
 
 export async function scheduleRenewalNotificationsWithPreferences(
   subscription: RenewalNotificationSubscription,
-  preferences: RenewalNotificationPreferences
+  preferences: RenewalNotificationPreferences,
+  quietHours?: QuietHours
 ): Promise<void> {
   await cancelNotificationsForSubscription(subscription.id);
 
@@ -106,7 +137,7 @@ export async function scheduleRenewalNotificationsWithPreferences(
       continue;
     }
 
-    const triggerDate = getNineAmTriggerDate(renewalDate, plan.daysBefore);
+    const triggerDate = shiftOutOfQuietHours(getNineAmTriggerDate(renewalDate, plan.daysBefore), quietHours);
     if (triggerDate.getTime() <= Date.now()) {
       continue;
     }
@@ -144,7 +175,8 @@ export async function cancelNotificationsForSubscription(subscriptionId: string)
 
 export async function rescheduleAllNotifications(
   subscriptions: RenewalNotificationSubscription[],
-  preferencesById: Record<string, RenewalNotificationPreferences> = {}
+  preferencesById: Record<string, RenewalNotificationPreferences> = {},
+  quietHours?: QuietHours
 ): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
 
@@ -157,7 +189,8 @@ export async function rescheduleAllNotifications(
 
     await scheduleRenewalNotificationsWithPreferences(
       subscription,
-      preferencesById[subscription.id] ?? { sevenDay: true, threeDay: true, dayOf: true }
+      preferencesById[subscription.id] ?? { sevenDay: true, threeDay: true, dayOf: true },
+      quietHours
     );
   }
 }

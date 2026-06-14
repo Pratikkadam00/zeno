@@ -26,7 +26,6 @@ const PRIVACY_URL = "https://example.com/privacy";
 const FEEDBACK_EMAIL = "mailto:feedback@zeno.app";
 const SHARE_URL = "https://example.com/zeno";
 const APP_VERSION = "1.0.0";
-const quietHoursRange = "10:00 PM – 8:00 AM";
 
 type UserPlan = "free" | "pro" | "family";
 type SettingsSection = {
@@ -39,8 +38,15 @@ type SettingsSection = {
   right?: string;
   isSwitch?: boolean;
   switchValue?: boolean;
+  onToggle?: (value: boolean) => void;
   onPress?: () => void;
 };
+
+function formatHour(hour: number): string {
+  const period = hour < 12 ? "AM" : "PM";
+  const display = hour % 12 === 0 ? 12 : hour % 12;
+  return `${display}:00 ${period}`;
+}
 
 export default function SettingsScreen() {
   const { theme, themeId } = useZenoTheme();
@@ -50,8 +56,16 @@ export default function SettingsScreen() {
     accountId: state.accountId,
     logout: state.logout
   }));
-  const { clearAllData } = useSubscriptionStore();
+  const { clearAllData, quietHours, setQuietHours } = useSubscriptionStore();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
+  const quietWindowLabel = `${formatHour(quietHours.startHour)} – ${formatHour(quietHours.endHour)}`;
+  const QUIET_PRESETS: Array<{ label: string; startHour: number; endHour: number }> = [
+    { label: "10 PM – 8 AM", startHour: 22, endHour: 8 },
+    { label: "11 PM – 7 AM", startHour: 23, endHour: 7 },
+    { label: "9 PM – 9 AM", startHour: 21, endHour: 9 },
+    { label: "Midnight – 9 AM", startHour: 0, endHour: 9 }
+  ];
 
   const userEmail = accountId ?? "you@example.com";
   const userPlan = (plan ?? "free") as UserPlan;
@@ -162,9 +176,31 @@ export default function SettingsScreen() {
           icon: "🌙",
           iconBg: theme.surfaceAlt,
           label: "Quiet hours",
-          sub: quietHoursRange,
+          sub: quietHours.enabled ? `${quietWindowLabel} · reminders shift to morning` : "Off",
+          isSwitch: true,
+          switchValue: quietHours.enabled,
+          onToggle: (value) => setQuietHours({ enabled: value })
+        },
+        {
+          id: "quiet-window",
+          icon: "🕘",
+          iconBg: theme.surfaceAlt,
+          label: "Quiet window",
+          value: quietWindowLabel,
           right: "›",
-          onPress: () => {}
+          onPress: () => {
+            Alert.alert(
+              "Quiet window",
+              "Renewal reminders that fall inside this window are delayed to the end of it.",
+              [
+                ...QUIET_PRESETS.map((preset) => ({
+                  text: preset.label,
+                  onPress: () => setQuietHours({ startHour: preset.startHour, endHour: preset.endHour, enabled: true })
+                })),
+                { text: "Cancel", style: "cancel" as const }
+              ]
+            );
+          }
         },
         {
           id: "alert-style",
@@ -340,7 +376,11 @@ export default function SettingsScreen() {
                         accessibilityLabel={row.label}
                         value={row.switchValue ?? notificationsEnabled}
                         onValueChange={(value) => {
-                          setNotificationsEnabled(value);
+                          if (row.onToggle) {
+                            row.onToggle(value);
+                          } else {
+                            setNotificationsEnabled(value);
+                          }
                         }}
                         trackColor={{ false: theme.surfaceAlt, true: theme.success }}
                         thumbColor={theme.onPrimary}

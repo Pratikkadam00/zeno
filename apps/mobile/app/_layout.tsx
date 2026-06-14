@@ -23,7 +23,7 @@ export default function RootLayout() {
 
 function RootStack() {
   const { theme } = useZenoTheme();
-  const { subscriptions, notificationSettings, hydrated } = useSubscriptionStore();
+  const { subscriptions, notificationSettings, quietHours, hydrated } = useSubscriptionStore();
   const segments = useSegments();
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const biometricInFlight = useRef(false);
@@ -149,7 +149,7 @@ function RootStack() {
     // we'd cancel all reminders and reschedule from seed data with the wrong
     // per-subscription settings during the launch window.
     if (hydrated) {
-      void rescheduleAllNotifications(notificationSubscriptions, notificationSettings);
+      void rescheduleAllNotifications(notificationSubscriptions, notificationSettings, quietHours);
     }
 
     const subscription = AppState.addEventListener("change", (nextState) => {
@@ -158,12 +158,12 @@ function RootStack() {
 
       if (wasBackgrounded && nextState === "active" && useAuthStore.getState().isAuthenticated) {
         void requireBiometricUnlock();
-        void rescheduleAllNotifications(notificationSubscriptions, notificationSettings);
+        void rescheduleAllNotifications(notificationSubscriptions, notificationSettings, quietHours);
       }
     });
 
     return () => subscription.remove();
-  }, [isAuthenticated, hydrated, notificationSubscriptions, notificationSettings, requireBiometricUnlock]);
+  }, [isAuthenticated, hydrated, notificationSubscriptions, notificationSettings, quietHours, requireBiometricUnlock]);
 
   if (status === "loading") {
     return (
