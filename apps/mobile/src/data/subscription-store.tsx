@@ -1,5 +1,5 @@
 import { searchServices } from "@subradar/service-catalog";
-import { createAnalyticsSnapshot, createBusinessSummary, createFamilyVaultSummary, createRenewalReminderPlan, createSpendSummary, createSpendTwin, createWidgetSnapshot, demoBusinessWorkspace, demoFamilyMembers, getEndingTrials, monthlyAmount, partnerIntegrationManifests, type AnalyticsSnapshot, type BillingCycle, type BusinessSubscriptionSummary, type EndingTrial, type FamilyVaultSummary, type PartnerIntegrationManifest, type RenewalReminderPlan, type SpendSummary, type SpendTwinComparison, type Subscription, type SubscriptionCategory, type SubscriptionStatus, type WidgetSnapshot } from "@subradar/shared";
+import { createAnalyticsSnapshot, createBusinessSummary, createFamilyVaultSummary, createRenewalReminderPlan, createSpendSummary, createSpendTwin, createWidgetSnapshot, demoBusinessWorkspace, demoFamilyMembers, detectPriceHikes, getEndingTrials, monthlyAmount, partnerIntegrationManifests, type AnalyticsSnapshot, type BillingCycle, type BusinessSubscriptionSummary, type EndingTrial, type FamilyVaultSummary, type PartnerIntegrationManifest, type PriceHike, type PriceHistoryEntry, type RenewalReminderPlan, type SpendSummary, type SpendTwinComparison, type Subscription, type SubscriptionCategory, type SubscriptionStatus, type WidgetSnapshot } from "@subradar/shared";
 import * as Crypto from "expo-crypto";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform } from "react-native";
@@ -51,6 +51,7 @@ type SubscriptionStore = {
   reminderPlan: RenewalReminderPlan[];
   upcoming: Subscription[];
   endingTrials: EndingTrial[];
+  priceHikes: PriceHike[];
   addSubscription: (input: CreateSubscriptionInput) => string;
   updateSubscription: (id: string, changes: UpdateSubscriptionInput) => void;
   deleteSubscription: (id: string) => void;
@@ -72,6 +73,7 @@ const defaultNotificationSettings: SubscriptionNotificationSettings = {
 const seededMetaKey = "subscriptions.seeded.v1";
 const notificationSettingsMetaKey = "notification.settings.v1";
 const quietHoursMetaKey = "notification.quietHours.v1";
+const priceHistoryMetaKey = "price.history.v1";
 
 const defaultQuietHours: QuietHours = { enabled: false, startHour: 22, endHour: 8 };
 
@@ -87,6 +89,9 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
     seedSubscriptions.map((subscription) => [subscription.id, defaultNotificationSettings])
   ));
   const [quietHours, setQuietHoursState] = useState<QuietHours>(defaultQuietHours);
+  const [priceHistory, setPriceHistory] = useState<Record<string, PriceHistoryEntry[]>>(() => Object.fromEntries(
+    seedSubscriptions.map((subscription) => [subscription.id, [{ at: subscription.createdAt, amountMinor: subscription.price.amountMinor }]])
+  ));
   const dbRef = useRef<SubRadarDatabase | null>(null);
 
   useEffect(() => {
@@ -114,6 +119,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         const persisted = await listSubscriptions(db);
         const storedSettings = await readAppMeta(db, notificationSettingsMetaKey);
         const storedQuietHours = await readAppMeta(db, quietHoursMetaKey);
+        const storedPriceHistory = await readAppMeta(db, priceHistoryMetaKey);
         if (cancelled) {
           return;
         }
@@ -141,6 +147,24 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         setNotificationSettings(Object.fromEntries(
           persisted.map((subscription) => [subscription.id, restored[subscription.id] ?? defaultNotificationSettings])
         ));
+
+        // Restore price history; seed any subscription without one with a single
+        // baseline point (current price) so future changes can be detected as hikes.
+        let restoredHistory: Record<string, PriceHistoryEntry[]> = {};
+        if (storedPriceHistory) {
+          try {
+            restoredHistory = JSON.parse(storedPriceHistory) as Record<string, PriceHistoryEntry[]>;
+          } catch (error) {
+            console.warn("Corrupt price history in database; reseeding.", error);
+          }
+        }
+        setPriceHistory(Object.fromEntries(
+          persisted.map((subscription) => [
+            subscription.id,
+            restoredHistory[subscription.id] ?? [{ at: subscription.createdAt, amountMinor: subscription.price.amountMinor }]
+          ])
+        ));
+
         setHydrated(true);
       } catch (error) {
         console.warn("Subscription database unavailable; using in-memory data.", error);
@@ -169,6 +193,15 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
     if (db) {
       void writeAppMeta(db, notificationSettingsMetaKey, JSON.stringify(settings)).catch((error) => {
         console.warn("Failed to persist notification settings.", error);
+      });
+    }
+  };
+
+  const persistPriceHistory = (history: Record<string, PriceHistoryEntry[]>) => {
+    const db = dbRef.current;
+    if (db) {
+      void writeAppMeta(db, priceHistoryMetaKey, JSON.stringify(history)).catch((error) => {
+        console.warn("Failed to persist price history.", error);
       });
     }
   };
@@ -218,6 +251,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         .sort((a, b) => Date.parse(a.nextRenewalDate ?? "") - Date.parse(b.nextRenewalDate ?? ""))
         .slice(0, 5),
       endingTrials: getEndingTrials(displaySubscriptions),
+      priceHikes: detectPriceHikes(displaySubscriptions, priceHistory),
       addSubscription(input) {
         const now = new Date().toISOString();
         const id = `sub_${Crypto.randomUUID()}`;
@@ -244,9 +278,23 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         persistNotificationSettings(nextSettings);
         setSubscriptions((current) => [subscription, ...current]);
         persistSubscription(subscription);
+        const nextHistory = { ...priceHistory, [id]: [{ at: now, amountMinor: input.amountMinor }] };
+        setPriceHistory(nextHistory);
+        persistPriceHistory(nextHistory);
         return id;
       },
       updateSubscription(id, changes) {
+        // Record a price-history point when the amount actually changes, so the
+        // Price-Hike Radar can detect increases over time.
+        if (changes.amountMinor !== undefined) {
+          const current = subscriptions.find((s) => s.id === id);
+          if (current && changes.amountMinor !== current.price.amountMinor) {
+            const prior = priceHistory[id] ?? [{ at: current.createdAt, amountMinor: current.price.amountMinor }];
+            const nextHistory = { ...priceHistory, [id]: [...prior, { at: new Date().toISOString(), amountMinor: changes.amountMinor }] };
+            setPriceHistory(nextHistory);
+            persistPriceHistory(nextHistory);
+          }
+        }
         applyChange(id, (subscription) => ({
           ...subscription,
           name: changes.name ?? subscription.name,
@@ -323,11 +371,15 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         // (a) empty in-memory subscriptions and (b) per-subscription notification settings.
         setSubscriptions([]);
         setNotificationSettings({});
+        setPriceHistory({});
         // (c) clear the SQLite rows and the persisted notification-settings blob.
         const db = dbRef.current;
         if (db) {
           await clearAllSubscriptions(db).catch((error) => {
             console.warn("Failed to clear subscriptions.", error);
+          });
+          await writeAppMeta(db, priceHistoryMetaKey, JSON.stringify({})).catch((error) => {
+            console.warn("Failed to clear price history.", error);
           });
           await writeAppMeta(db, notificationSettingsMetaKey, JSON.stringify({})).catch((error) => {
             console.warn("Failed to clear notification settings.", error);
@@ -342,7 +394,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         return searchServices(query, 8);
       }
     };
-  }, [hydrated, notificationSettings, quietHours, subscriptions]);
+  }, [hydrated, notificationSettings, priceHistory, quietHours, subscriptions]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

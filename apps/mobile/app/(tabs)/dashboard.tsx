@@ -49,7 +49,7 @@ function canAccessFeature(plan: BillingPlan, minimumPlan: BillingPlan): boolean 
 export default function DashboardScreen() {
   const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { subscriptions, totalMonthlyMinor, upcoming, spendSummary, reminderPlan, endingTrials } = useSubscriptionStore();
+  const { subscriptions, totalMonthlyMinor, upcoming, spendSummary, reminderPlan, endingTrials, priceHikes } = useSubscriptionStore();
   const { plan, setPlan } = useAuthStore();
   const [dismissedInsights, setDismissedInsights] = useState<string[]>([]);
 
@@ -197,6 +197,43 @@ export default function DashboardScreen() {
                           onPress={() => router.push(`/subscription/cancel/${sub.id}` as never)}
                         >
                           <Text style={styles.urgentCancelText}>Cancel</Text>
+                        </Pressable>
+                      </View>
+                      {!isLast ? <View style={styles.separator} /> : null}
+                    </View>
+                  );
+                })}
+              </View>
+            </>
+          ) : null}
+
+          {/* ── Price increases (Price-Hike Radar) ── */}
+          {priceHikes.length > 0 ? (
+            <>
+              <Text style={styles.sectionLabel}>PRICE INCREASES</Text>
+              <View style={[styles.groupCard, { marginBottom: 12 }]}>
+                {priceHikes.slice(0, 3).map((hike, index) => {
+                  const sub = hike.subscription;
+                  const isLast = index === Math.min(priceHikes.length, 3) - 1;
+                  return (
+                    <View key={sub.id}>
+                      <View style={styles.row}>
+                        <View style={[styles.avatar, { backgroundColor: theme.dangerSurface }]}>
+                          <Text style={[styles.avatarText, { color: theme.danger }]}>↑</Text>
+                        </View>
+                        <View style={styles.rowMiddle}>
+                          <Text style={styles.rowTitle}>{sub.name} went up {hike.increasePct}%</Text>
+                          <Text style={styles.rowMeta}>
+                            {formatMoney(hike.previousMinor, sub.price.currency)} → {formatMoney(hike.currentMinor, sub.price.currency)}
+                          </Text>
+                        </View>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Review ${sub.name}`}
+                          style={styles.urgentCancelBtn}
+                          onPress={() => router.push(`/subscription/${sub.id}` as never)}
+                        >
+                          <Text style={styles.urgentCancelText}>Review</Text>
                         </Pressable>
                       </View>
                       {!isLast ? <View style={styles.separator} /> : null}
