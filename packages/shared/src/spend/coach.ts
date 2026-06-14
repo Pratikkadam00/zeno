@@ -76,7 +76,12 @@ export function monthlyAmount(subscription: Subscription): number {
   if (subscription.billingCycle === "quarterly") {
     return Math.round(subscription.price.amountMinor / 3);
   }
-  return subscription.price.amountMinor;
+  if (subscription.billingCycle === "monthly") {
+    return subscription.price.amountMinor;
+  }
+  // trial / lifetime / unknown cycles have no predictable recurring monthly
+  // charge, so they do not contribute to recurring monthly spend.
+  return 0;
 }
 
 function categoryBudgetInsights(categoryMap: Map<SubscriptionCategory, { monthlyMinor: number; count: number; ids: string[] }>): SpendInsight[] {

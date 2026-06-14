@@ -26,7 +26,9 @@ export function createWidgetSnapshot(subscriptions: Subscription[], now = new Da
     generatedAt: now.toISOString(),
     monthlySpendLabel: formatMoneyMinor(monthlySpend),
     activeCount: active.length,
-    watchComplicationText: next ? `${next.name} ${daysUntil(next.nextRenewalDate ?? "", now)}d` : "No renewals"
+    watchComplicationText: next
+      ? `${next.name} ${complicationDueLabel(daysUntil(next.nextRenewalDate ?? "", now))}`
+      : "No renewals"
   };
 
   if (next?.nextRenewalDate) {
@@ -43,5 +45,11 @@ export function createWidgetSnapshot(subscriptions: Subscription[], now = new Da
 }
 
 function daysUntil(date: string, now: Date): number {
-  return Math.max(0, Math.ceil((Date.parse(date) - now.getTime()) / 86_400_000));
+  // Floor so a renewal less than 24h away reads as 0 ("today") rather than
+  // rounding up to a full day and hiding the imminent charge.
+  return Math.max(0, Math.floor((Date.parse(date) - now.getTime()) / 86_400_000));
+}
+
+function complicationDueLabel(days: number): string {
+  return days <= 0 ? "today" : `${days}d`;
 }

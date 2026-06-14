@@ -20,7 +20,9 @@ export type RecurringChargeCandidate = {
   nextRenewalDate?: string;
 };
 
+const WEEK_MS = 1000 * 60 * 60 * 24 * 7;
 const MONTH_MS = 1000 * 60 * 60 * 24 * 30;
+const QUARTER_MS = MONTH_MS * 3;
 const YEAR_MS = 1000 * 60 * 60 * 24 * 365;
 
 export function parseCsv(text: string): Array<Record<string, string>> {
@@ -30,7 +32,22 @@ export function parseCsv(text: string): Array<Record<string, string>> {
     return [];
   }
 
-  return body.map((cells) => Object.fromEntries(header.map((key, index) => [key.trim(), cells[index]?.trim() ?? ""])));
+  // De-duplicate header keys so repeated column names don't silently overwrite
+  // one another (Object.fromEntries keeps only the last value for a duplicate
+  // key). Repeats are suffixed (e.g. "amount", "amount_2") so every column is
+  // preserved.
+  const keys = dedupeHeaderKeys(header.map((key) => key.trim()));
+
+  return body.map((cells) => Object.fromEntries(keys.map((key, index) => [key, cells[index]?.trim() ?? ""])));
+}
+
+function dedupeHeaderKeys(keys: string[]): string[] {
+  const seen = new Map<string, number>();
+  return keys.map((key) => {
+    const count = seen.get(key) ?? 0;
+    seen.set(key, count + 1);
+    return count === 0 ? key : `${key}_${count + 1}`;
+  });
 }
 
 export function mapBankRows(rows: Array<Record<string, string>>, currency: Money["currency"] = "USD"): CsvTransaction[] {
@@ -44,14 +61,72 @@ export function mapBankRows(rows: Array<Record<string, string>>, currency: Money
       return [];
     }
 
+    const postedAt = parseDateUtc(date);
+    if (!postedAt) {
+      // Skip rows whose date can't be parsed rather than throwing (a single bad
+      // row should not abort the whole import).
+      return [];
+    }
+
     return [{
-      postedAt: new Date(date).toISOString(),
+      postedAt,
       merchant,
       amountMinor: Math.abs(amount),
       currency,
       raw: row
     }];
   });
+}
+
+// Parse a bank-statement date into a UTC ISO string, or null if unparseable.
+//
+// Dates are interpreted in UTC so the local timezone can never shift the calendar
+// day (e.g. `new Date("2026-01-02")` is already UTC midnight, but
+// `new Date("2026/01/02")` is parsed in the local tz and can roll back a day).
+//
+// Ambiguous slash dates are interpreted as US-style MM/DD/YYYY. This is the one
+// documented convention; DD/MM/YYYY ("EU") inputs are not auto-detected.
+function parseDateUtc(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  // ISO-8601 (YYYY-MM-DD, optionally with a time). Date.parse treats the
+  // date-only form as UTC, so it is timezone-stable as-is.
+  const iso = /^(\d{4})-(\d{2})-(\d{2})(?:[T ].*)?$/.exec(trimmed);
+  if (iso) {
+    return finalizeUtcDate(Number(iso[1]), Number(iso[2]), Number(iso[3]));
+  }
+
+  // Slash dates: documented as US-style MM/DD/YYYY (or MM/DD/YY).
+  const slash = /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/.exec(trimmed);
+  if (slash) {
+    const month = Number(slash[1]);
+    const day = Number(slash[2]);
+    let year = Number(slash[3]);
+    if ((slash[3] ?? "").length === 2) {
+      year += year < 70 ? 2000 : 1900;
+    }
+    return finalizeUtcDate(year, month, day);
+  }
+
+  return null;
+}
+
+function finalizeUtcDate(year: number, month: number, day: number): string | null {
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return null;
+  }
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    return null;
+  }
+  const date = new Date(Date.UTC(year, month - 1, day));
+  // Reject overflow (e.g. 02/30 -> Mar 2) so impossible dates aren't silently shifted.
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    return null;
+  }
+  return date.toISOString();
 }
 
 export function detectRecurringCharges(transactions: CsvTransaction[]): RecurringChargeCandidate[] {
@@ -115,20 +190,52 @@ function firstValue(row: Record<string, string>, keys: string[]): string | undef
 }
 
 function findDominantAmountCluster(transactions: CsvTransaction[]): CsvTransaction[] {
+  if (transactions.length === 0) {
+    return [];
+  }
+
+  // Sort by amount so a cluster is a contiguous run. Each candidate reference
+  // opens a window of FIXED width measured from that single reference; members
+  // must fall within that one window. Because every member is compared to the
+  // same reference (not to its neighbour), the cluster can never span more than
+  // the tolerance — so two charges that are each "close" to an intermediate
+  // amount but far from each other cannot be merged. This makes clustering
+  // transitive and bounded, unlike a per-pair/per-anchor relative tolerance.
+  const sorted = [...transactions].sort((a, b) => a.amountMinor - b.amountMinor);
   let best: CsvTransaction[] = [];
 
-  for (const transaction of transactions) {
-    const tolerance = Math.max(Math.round(transaction.amountMinor * 0.05), 100);
-    const cluster = transactions.filter((candidate) => Math.abs(candidate.amountMinor - transaction.amountMinor) <= tolerance);
+  for (let start = 0; start < sorted.length; start += 1) {
+    const reference = sorted[start];
+    if (!reference) {
+      continue;
+    }
+    const tolerance = amountTolerance(reference.amountMinor);
+    const cluster: CsvTransaction[] = [];
+    for (let i = start; i < sorted.length; i += 1) {
+      const item = sorted[i];
+      if (!item || item.amountMinor - reference.amountMinor > tolerance) {
+        break;
+      }
+      cluster.push(item);
+    }
     if (cluster.length > best.length) {
       best = cluster;
     }
   }
 
-  return best;
+  // Return members in chronological order: callers (cadence inference, next-date
+  // projection) rely on the cluster being date-sorted, and we clustered over an
+  // amount-sorted copy above.
+  return [...best].sort((a, b) => Date.parse(a.postedAt) - Date.parse(b.postedAt));
 }
 
-function inferCadence(transactions: CsvTransaction[]): "monthly" | "annual" | "unknown" {
+// Stable tolerance for a single reference amount: an absolute floor (one dollar)
+// or a fixed 5% relative band, whichever is larger.
+function amountTolerance(referenceMinor: number): number {
+  return Math.max(Math.round(referenceMinor * 0.05), 100);
+}
+
+function inferCadence(transactions: CsvTransaction[]): "weekly" | "monthly" | "quarterly" | "annual" | "unknown" {
   const intervals = transactions
     .slice(1)
     .map((item, index) => Date.parse(item.postedAt) - Date.parse(transactions[index]?.postedAt ?? item.postedAt));
@@ -137,11 +244,20 @@ function inferCadence(transactions: CsvTransaction[]): "monthly" | "annual" | "u
     return "unknown";
   }
 
-  const average = intervals.reduce((sum, value) => sum + value, 0) / intervals.length;
-  if (average >= MONTH_MS * 0.75 && average <= MONTH_MS * 1.35) {
+  // Use the MEDIAN interval, not the average: a single irregular gap (a missed
+  // or doubled charge) skews the mean enough to misclassify an otherwise regular
+  // cadence, whereas the median is robust to such outliers.
+  const typical = median(intervals);
+  if (typical >= WEEK_MS * 0.6 && typical <= WEEK_MS * 1.4) {
+    return "weekly";
+  }
+  if (typical >= MONTH_MS * 0.75 && typical <= MONTH_MS * 1.35) {
     return "monthly";
   }
-  if (average >= YEAR_MS * 0.85 && average <= YEAR_MS * 1.15) {
+  if (typical >= QUARTER_MS * 0.85 && typical <= QUARTER_MS * 1.15) {
+    return "quarterly";
+  }
+  if (typical >= YEAR_MS * 0.85 && typical <= YEAR_MS * 1.15) {
     return "annual";
   }
   return "unknown";
@@ -156,10 +272,20 @@ function scoreCandidate(transactions: CsvTransaction[], cadence: BillingCycle): 
 }
 
 function projectNextDate(date: string, cadence: BillingCycle): string | undefined {
-  if (cadence !== "monthly" && cadence !== "annual") {
-    return undefined;
+  const start = new Date(date);
+  if (cadence === "weekly") {
+    return new Date(start.getTime() + WEEK_MS).toISOString();
   }
-  return addMonthsClamped(new Date(date), cadence === "monthly" ? 1 : 12).toISOString();
+  if (cadence === "monthly") {
+    return addMonthsClamped(start, 1).toISOString();
+  }
+  if (cadence === "quarterly") {
+    return addMonthsClamped(start, 3).toISOString();
+  }
+  if (cadence === "annual") {
+    return addMonthsClamped(start, 12).toISOString();
+  }
+  return undefined;
 }
 
 function addMonthsClamped(date: Date, months: number): Date {

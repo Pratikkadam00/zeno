@@ -61,4 +61,84 @@ describe("CSV recurring detector", () => {
     expect(candidates[0]?.billingCycle).toBe("annual");
     expect(candidates[0]?.nextRenewalDate).toBe("2029-02-28T00:00:00.000Z");
   });
+
+  it("skips rows with an unparseable date instead of throwing", () => {
+    const rows = parseCsv([
+      "Date,Description,Amount",
+      "not-a-date,Netflix,-15.49",
+      "2026-13-40,Netflix,-15.49",
+      "2026-01-05,Netflix,-15.49",
+      "2026-02-05,Netflix,-15.49"
+    ].join("\n"));
+
+    const transactions = mapBankRows(rows);
+
+    // The two bad-date rows are dropped; only the two valid rows survive.
+    expect(transactions).toHaveLength(2);
+    expect(transactions.map((item) => item.postedAt)).toEqual([
+      "2026-01-05T00:00:00.000Z",
+      "2026-02-05T00:00:00.000Z"
+    ]);
+  });
+
+  it("parses dates in UTC so the calendar day is timezone-stable", () => {
+    const rows = parseCsv([
+      "Date,Description,Amount",
+      "01/02/2026,Spotify,-9.99"
+    ].join("\n"));
+
+    const transactions = mapBankRows(rows);
+
+    // Slash dates are interpreted as US MM/DD/YYYY and anchored to UTC midnight,
+    // so the day never shifts regardless of the local timezone.
+    expect(transactions).toHaveLength(1);
+    expect(transactions[0]?.postedAt).toBe("2026-01-02T00:00:00.000Z");
+  });
+
+  it("classifies cadence by the median interval, ignoring an outlier gap", () => {
+    // Roughly monthly spacing with one large gap (a missed charge). The mean
+    // interval would be pulled toward "unknown"/annual, but the median stays
+    // monthly.
+    const rows = parseCsv([
+      "Date,Description,Amount",
+      "2026-01-01,Figma,-15.00",
+      "2026-02-01,Figma,-15.00",
+      "2026-03-01,Figma,-15.00",
+      "2026-09-01,Figma,-15.00",
+      "2026-10-01,Figma,-15.00"
+    ].join("\n"));
+
+    const candidates = detectRecurringCharges(mapBankRows(rows));
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.billingCycle).toBe("monthly");
+  });
+
+  it("preserves every column when header names are duplicated", () => {
+    const rows = parseCsv([
+      "Date,Amount,Amount",
+      "2026-01-05,first,second"
+    ].join("\n"));
+
+    // The second "Amount" column is suffixed rather than overwriting the first,
+    // so no column value is lost.
+    expect(rows[0]).toEqual({ Date: "2026-01-05", Amount: "first", Amount_2: "second" });
+  });
+
+  it("does not merge far-apart amounts into one cluster", () => {
+    // Two distinct charges under one merchant: ~$10 and ~$50. A non-transitive
+    // tolerance could chain them together; a stable single-reference window must
+    // keep them separate (neither cluster reaches the 2-occurrence threshold on
+    // its own here, so nothing recurring should be reported).
+    const rows = parseCsv([
+      "Date,Description,Amount",
+      "2026-01-01,Acme,-10.00",
+      "2026-02-01,Acme,-30.00",
+      "2026-03-01,Acme,-50.00"
+    ].join("\n"));
+
+    const candidates = detectRecurringCharges(mapBankRows(rows));
+
+    expect(candidates).toHaveLength(0);
+  });
 });
