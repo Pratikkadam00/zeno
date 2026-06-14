@@ -1,6 +1,6 @@
 "use client";
 
-import { animate, motion, useInView, useMotionValue, useSpring, useTransform, type Variants } from "motion/react";
+import { animate, motion, useInView, useMotionValue, useSpring, type Variants } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 // ── Reveal: fade + rise into view, once ─────────────────────────────────────
@@ -44,30 +44,6 @@ export function StaggerGroup({ children, className }: { children: ReactNode; cla
     <motion.div ref={ref} className={className} variants={staggerParent} initial="hidden" animate={inView ? "show" : "hidden"}>
       {children}
     </motion.div>
-  );
-}
-
-// ── Word-by-word headline reveal ────────────────────────────────────────────
-export function SplitWords({ text, className, delay = 0 }: { text: string; className?: string | undefined; delay?: number }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-10% 0px" });
-  const words = text.split(" ");
-  return (
-    <span ref={ref} className={className} aria-label={text}>
-      {words.map((w, i) => (
-        <span key={`${w}-${i}`} style={{ display: "inline-block", overflow: "hidden", verticalAlign: "top" }} aria-hidden>
-          <motion.span
-            style={{ display: "inline-block" }}
-            initial={{ y: "110%" }}
-            animate={inView ? { y: 0 } : {}}
-            transition={{ duration: 0.8, delay: delay + i * 0.06, ease: [0.16, 1, 0.3, 1] }}
-          >
-            {w}
-            {i < words.length - 1 ? " " : ""}
-          </motion.span>
-        </span>
-      ))}
-    </span>
   );
 }
 
@@ -120,41 +96,3 @@ export function CountUp({
   const formatted = val.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   return <span ref={ref} className={className}>{prefix}{formatted}{suffix}</span>;
 }
-
-// ── Infinite marquee ────────────────────────────────────────────────────────
-export function Marquee({ children, speed = 38, reverse = false, className }: { children: ReactNode; speed?: number; reverse?: boolean; className?: string | undefined }) {
-  return (
-    <div className={className} style={{ overflow: "hidden", maskImage: "linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent)" }}>
-      <motion.div
-        style={{ display: "inline-flex", gap: "0", whiteSpace: "nowrap", willChange: "transform" }}
-        animate={{ x: reverse ? ["-50%", "0%"] : ["0%", "-50%"] }}
-        transition={{ duration: speed, ease: "linear", repeat: Infinity }}
-      >
-        {children}
-        {children}
-      </motion.div>
-    </div>
-  );
-}
-
-// ── Parallax on scroll (subtle) ─────────────────────────────────────────────
-export function useParallax(distance = 60) {
-  const ref = useRef<HTMLDivElement>(null);
-  const y = useMotionValue(0);
-  useEffect(() => {
-    function onScroll() {
-      const el = ref.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const progress = 1 - (rect.top + rect.height / 2) / window.innerHeight;
-      y.set(progress * distance);
-    }
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [distance, y]);
-  const sy = useSpring(y, { stiffness: 60, damping: 20 });
-  return { ref, y: sy };
-}
-
-export { motion, useTransform };

@@ -10,7 +10,7 @@ export default function HomePage() {
     <div className={styles.page}>
       <ScrollProgress />
       <Nav />
-      <main>
+      <main id="main">
         <Hero />
         <Features />
         <HowItWorks />

@@ -272,7 +272,7 @@ const PLANS: Plan[] = [
     name: "Free", monthly: 0, annual: 0,
     blurb: "Enough to stop the bleeding on a handful of subscriptions.",
     meta: "No card required",
-    payback: "Free forever",
+    payback: "$0 — no trial, no catch",
     features: ["Track up to 10 subscriptions", "7 / 3 / day-of renewal reminders", "Full cancellation guides", "On-device & encrypted"]
   },
   {
@@ -391,13 +391,13 @@ export function FAQ() {
         <div className={styles.faqList}>
           {FAQS.map((f, i) => (
             <div key={f.q} className={styles.faqItem}>
-              <button className={styles.faqQ} onClick={() => setOpen(open === i ? null : i)} aria-expanded={open === i}>
+              <button id={`faq-q-${i}`} className={styles.faqQ} onClick={() => setOpen(open === i ? null : i)} aria-expanded={open === i} aria-controls={`faq-a-${i}`}>
                 <span dangerouslySetInnerHTML={{ __html: f.q }} />
                 <span className={styles.faqIcon} style={{ transform: open === i ? "rotate(45deg)" : "none" }}>+</span>
               </button>
               <AnimatePresence initial={false}>
                 {open === i ? (
-                  <motion.div className={styles.faqA} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}>
+                  <motion.div id={`faq-a-${i}`} role="region" aria-labelledby={`faq-q-${i}`} className={styles.faqA} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}>
                     <p className={styles.faqAInner} dangerouslySetInnerHTML={{ __html: f.a }} />
                   </motion.div>
                 ) : null}

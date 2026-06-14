@@ -1,9 +1,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Zeno · Analytics data layer
 //
-// A single deterministic source of truth for the analytics console. Every KPI,
-// chart and table on the page derives from the functions here, so the numbers
-// are always internally consistent (revenue ties to plans, MRR ties to users,
+// A single deterministic source of truth for the analytics console. Every KPI
+// and chart on the page derives from the functions here, so the numbers are
+// always internally consistent (revenue ties to plans, MRR ties to users,
 // deltas tie to the prior period). A fixed "as of" date + seeded PRNG keeps
 // server and client renders identical (no hydration drift).
 // ─────────────────────────────────────────────────────────────────────────────
@@ -20,13 +20,8 @@ export const PAL = {
   cyan: "#22d3ee",
   slate: "#475067",
   bg1: "#0b0e16",
-  quiet: "#5c6577"
+  quiet: "#7c869a"
 } as const;
-
-export type AccentKey = "blue" | "emerald" | "amber" | "rose" | "cyan";
-export const accentHex: Record<AccentKey, string> = {
-  blue: PAL.blue, emerald: PAL.emerald, amber: PAL.amber, rose: PAL.rose, cyan: PAL.cyan
-};
 
 export const RANGES: { key: RangeKey; label: string; points: number; bucketDays: number }[] = [
   { key: "7D", label: "7 days", points: 7, bucketDays: 1 },
@@ -106,7 +101,7 @@ export function fmtNum(n: number, compact = false): string {
 }
 
 export function fmtPct(n: number, digits = 1): string {
-  return `${n >= 0 ? "" : ""}${n.toFixed(digits)}%`;
+  return `${n.toFixed(digits)}%`;
 }
 
 // ── Core series per range ───────────────────────────────────────────────────
@@ -162,11 +157,8 @@ export type Kpi = {
   key: string;
   label: string;
   value: string;
-  raw: number;
   delta: number;          // percent change vs prior period
-  spark: number[];        // mini sparkline series
   positiveIsGood: boolean;
-  accent: "blue" | "emerald" | "amber" | "rose" | "cyan";
 };
 
 function pctChange(now: number, prev: number): number {
@@ -192,60 +184,16 @@ export function getKpis(range: RangeKey): Kpi[] {
   const ltv = arpu / Math.max(churnRate / 100, 0.01);
   const trialConv = 31.4 + (makeRng(7)() - 0.5) * 4;
 
-  const sparkOf = (p: Point[]) => p.map((x) => x.value);
-
   return [
-    {
-      key: "mrr", label: "Monthly Recurring Revenue", value: fmtMoney(mrr, { compact: true }),
-      raw: mrr, delta: pctChange(mrr, mrrStart), spark: sparkOf(d.mrr), positiveIsGood: true, accent: "emerald"
-    },
-    {
-      key: "arr", label: "Annual Run Rate", value: fmtMoney(mrr * 12, { compact: true }),
-      raw: mrr * 12, delta: pctChange(mrr, mrrStart), spark: sparkOf(d.mrr), positiveIsGood: true, accent: "blue"
-    },
-    {
-      key: "revenue", label: "Revenue · period", value: fmtMoney(revenue, { compact: true }),
-      raw: revenue, delta: pctChange(revenue, revenuePrev), spark: sparkOf(d.revenue), positiveIsGood: true, accent: "blue"
-    },
-    {
-      key: "active", label: "Active subscribers", value: fmtNum(active, true),
-      raw: active, delta: pctChange(active, activeStart), spark: sparkOf(d.activeUsers), positiveIsGood: true, accent: "cyan"
-    },
-    {
-      key: "new", label: "New subscribers", value: fmtNum(newUsers, true),
-      raw: newUsers, delta: pctChange(newUsers, newUsers * 0.88), spark: sparkOf(d.newUsers), positiveIsGood: true, accent: "emerald"
-    },
-    {
-      key: "churn", label: "Churn rate", value: fmtPct(churnRate),
-      raw: churnRate, delta: -8.2, spark: sparkOf(d.churnedUsers), positiveIsGood: false, accent: "rose"
-    },
-    {
-      key: "arpu", label: "ARPU", value: fmtMoney(arpu, { cents: true }),
-      raw: arpu, delta: 2.1, spark: sparkOf(d.mrr), positiveIsGood: true, accent: "amber"
-    },
-    {
-      key: "ltv", label: "Lifetime value", value: fmtMoney(ltv, { compact: true }),
-      raw: ltv, delta: 6.7, spark: sparkOf(d.mrr), positiveIsGood: true, accent: "blue"
-    },
-    {
-      key: "trial", label: "Trial conversion", value: fmtPct(trialConv),
-      raw: trialConv, delta: 3.9, spark: sparkOf(d.newUsers), positiveIsGood: true, accent: "emerald"
-    }
-  ];
-}
-
-// ── MRR movement (new / expansion / contraction / churn) ────────────────────
-export type MrrMovement = { label: string; value: number; kind: "new" | "expansion" | "contraction" | "churn" };
-
-export function getMrrMovement(range: RangeKey): MrrMovement[] {
-  const s = seasonScale[range];
-  const rng = makeRng(range === "12M" ? 12 : range === "90D" ? 90 : range === "30D" ? 30 : 7);
-  const n = (base: number) => Math.round(base * s * (0.85 + rng() * 0.3));
-  return [
-    { label: "New", value: n(9200), kind: "new" },
-    { label: "Expansion", value: n(3400), kind: "expansion" },
-    { label: "Contraction", value: -n(1250), kind: "contraction" },
-    { label: "Churn", value: -n(2600), kind: "churn" }
+    { key: "mrr", label: "Monthly Recurring Revenue", value: fmtMoney(mrr, { compact: true }), delta: pctChange(mrr, mrrStart), positiveIsGood: true },
+    { key: "arr", label: "Annual Run Rate", value: fmtMoney(mrr * 12, { compact: true }), delta: pctChange(mrr, mrrStart), positiveIsGood: true },
+    { key: "revenue", label: "Revenue · period", value: fmtMoney(revenue, { compact: true }), delta: pctChange(revenue, revenuePrev), positiveIsGood: true },
+    { key: "active", label: "Active subscribers", value: fmtNum(active, true), delta: pctChange(active, activeStart), positiveIsGood: true },
+    { key: "new", label: "New subscribers", value: fmtNum(newUsers, true), delta: pctChange(newUsers, newUsers * 0.88), positiveIsGood: true },
+    { key: "churn", label: "Churn rate", value: fmtPct(churnRate), delta: -8.2, positiveIsGood: false },
+    { key: "arpu", label: "ARPU", value: fmtMoney(arpu, { cents: true }), delta: 2.1, positiveIsGood: true },
+    { key: "ltv", label: "Lifetime value", value: fmtMoney(ltv, { compact: true }), delta: 6.7, positiveIsGood: true },
+    { key: "trial", label: "Trial conversion", value: fmtPct(trialConv), delta: 3.9, positiveIsGood: true }
   ];
 }
 
@@ -261,126 +209,6 @@ export function getPlanBreakdown(): PlanSlice[] {
     { plan: "Business", subscribers: 2470, revenue: 37025, color: PAL.amber },
     { plan: "Free", subscribers: 14800, revenue: 0, color: PAL.slate }
   ];
-}
-
-// ── Acquisition channels ────────────────────────────────────────────────────
-export type Channel = { name: string; users: number; pct: number };
-
-export function getChannels(): Channel[] {
-  const raw = [
-    { name: "Organic search", users: 18420 },
-    { name: "App Store / Play", users: 12960 },
-    { name: "Referral", users: 7840 },
-    { name: "Paid social", users: 5210 },
-    { name: "Email / newsletter", users: 2380 },
-    { name: "Direct", users: 1420 }
-  ];
-  const total = raw.reduce((s, c) => s + c.users, 0);
-  return raw.map((c) => ({ ...c, pct: (c.users / total) * 100 }));
-}
-
-// ── Geography ───────────────────────────────────────────────────────────────
-export type Geo = { country: string; flag: string; users: number; pct: number };
-
-export function getGeography(): Geo[] {
-  const raw = [
-    { country: "United States", flag: "🇺🇸", users: 19240 },
-    { country: "United Kingdom", flag: "🇬🇧", users: 6120 },
-    { country: "India", flag: "🇮🇳", users: 5380 },
-    { country: "Canada", flag: "🇨🇦", users: 4210 },
-    { country: "Germany", flag: "🇩🇪", users: 3640 },
-    { country: "Australia", flag: "🇦🇺", users: 2980 },
-    { country: "Brazil", flag: "🇧🇷", users: 2410 }
-  ];
-  const total = 48230;
-  return raw.map((c) => ({ ...c, pct: (c.users / total) * 100 }));
-}
-
-// ── Top tracked services (what users track most) ────────────────────────────
-export type TopService = { name: string; tracked: number; mrrFlagged: number };
-
-export function getTopServices(): TopService[] {
-  return [
-    { name: "Netflix", tracked: 31420, mrrFlagged: 486000 },
-    { name: "Spotify", tracked: 28910, mrrFlagged: 318000 },
-    { name: "Amazon Prime", tracked: 24180, mrrFlagged: 360000 },
-    { name: "ChatGPT Plus", tracked: 19870, mrrFlagged: 397000 },
-    { name: "Adobe CC", tracked: 14260, mrrFlagged: 784000 },
-    { name: "Disney+", tracked: 12940, mrrFlagged: 181000 },
-    { name: "YouTube Premium", tracked: 11320, mrrFlagged: 158000 }
-  ];
-}
-
-// ── Cohort retention (monthly cohorts × months since signup) ────────────────
-export type Cohort = { label: string; size: number; retention: number[] };
-
-export function getCohorts(): Cohort[] {
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-  const rng = makeRng(555);
-  return months.map((m, i) => {
-    const span = months.length - i;
-    const size = Math.round(3200 + rng() * 2400);
-    const retention: number[] = [];
-    let r = 100;
-    for (let k = 0; k < span; k += 1) {
-      if (k === 0) retention.push(100);
-      else {
-        r = Math.max(38, r - (k === 1 ? 14 + rng() * 6 : 4 + rng() * 4));
-        retention.push(Math.round(r));
-      }
-    }
-    return { label: `${m} '26`, size, retention };
-  });
-}
-
-// ── Recent transactions ─────────────────────────────────────────────────────
-export type Txn = {
-  id: string;
-  user: string;
-  email: string;
-  plan: string;
-  amount: number;
-  status: "succeeded" | "refunded" | "failed" | "trial";
-  country: string;
-  flag: string;
-  minutesAgo: number;
-};
-
-export function getTransactions(): Txn[] {
-  const names = [
-    ["Maya Chen", "maya.chen", "🇺🇸"], ["Liam Walker", "liam.w", "🇬🇧"], ["Aarav Patel", "aarav.p", "🇮🇳"],
-    ["Sofia Rossi", "s.rossi", "🇨🇦"], ["Noah Becker", "n.becker", "🇩🇪"], ["Emma Wright", "emma.w", "🇦🇺"],
-    ["Lucas Silva", "lucas.s", "🇧🇷"], ["Olivia Park", "o.park", "🇺🇸"], ["Ethan Cole", "ethan.c", "🇬🇧"],
-    ["Ava Martin", "ava.m", "🇨🇦"], ["Kai Tanaka", "kai.t", "🇺🇸"], ["Zara Khan", "zara.k", "🇬🇧"]
-  ] as const;
-  const plans = ["Pro", "Family", "Business"];
-  const amounts: Record<string, number> = { Pro: 7.99, Family: 9.99, Business: 39.99 };
-  const statuses: Txn["status"][] = ["succeeded", "succeeded", "succeeded", "succeeded", "trial", "refunded", "failed"];
-  const rng = makeRng(4242);
-  return Array.from({ length: 12 }, (_, i) => {
-    const entry = names[i % names.length]!;
-    const [user, handle, flag] = entry;
-    const plan = plans[Math.floor(rng() * plans.length)] ?? "Pro";
-    const status = statuses[Math.floor(rng() * statuses.length)] ?? "succeeded";
-    return {
-      id: `txn_${(1000 + i).toString(36)}${Math.floor(rng() * 9000).toString(36)}`,
-      user,
-      email: `${handle}@example.com`,
-      plan,
-      amount: status === "trial" ? 0 : (amounts[plan] ?? 0),
-      status,
-      country: flag,
-      flag,
-      minutesAgo: Math.round(2 + i * 17 + rng() * 9)
-    };
-  });
-}
-
-export function relativeTime(minutesAgo: number): string {
-  if (minutesAgo < 60) return `${minutesAgo}m ago`;
-  const h = Math.floor(minutesAgo / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
 }
 
 export const AS_OF_LABEL = new Intl.DateTimeFormat("en-US", {

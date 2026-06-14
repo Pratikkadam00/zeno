@@ -19,7 +19,7 @@ export function ContentShell({ eyebrow, title, lead, children }: ContentShellPro
   return (
     <div className={styles.shell}>
       <Nav />
-      <main className={styles.main}>
+      <main id="main" className={styles.main}>
         <article className={styles.article}>
           <p className={styles.eyebrow}>{eyebrow}</p>
           <h1 className={styles.title}>{title}</h1>

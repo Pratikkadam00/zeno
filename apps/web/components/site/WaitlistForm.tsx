@@ -57,6 +57,7 @@ export function WaitlistForm({ compact = false }: { compact?: boolean }) {
         onChange={(e) => { setEmail(e.target.value); if (state === "error") setState("idle"); }}
         aria-label="Email address"
         aria-invalid={state === "error"}
+        aria-describedby={error ? "waitlist-error" : undefined}
       />
       <Magnetic strength={0.35}>
         <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={state === "loading"}>
@@ -64,7 +65,7 @@ export function WaitlistForm({ compact = false }: { compact?: boolean }) {
           {state !== "loading" ? <span aria-hidden>→</span> : null}
         </button>
       </Magnetic>
-      {error ? <div className={styles.waitError} role="alert" style={{ flexBasis: "100%" }}>{error}</div> : null}
+      {error ? <div id="waitlist-error" className={styles.waitError} role="alert" style={{ flexBasis: "100%" }}>{error}</div> : null}
     </form>
   );
 }

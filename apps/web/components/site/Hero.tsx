@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useMotionValue, useSpring } from "motion/react";
+import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring } from "motion/react";
 import { WaitlistForm } from "./WaitlistForm";
 import styles from "../../app/home.module.css";
 
@@ -26,13 +26,16 @@ export function Hero() {
   const whole = parts[0] ?? "0";
   const cents = parts[1] ?? "00";
 
-  // Auto-advancing screen carousel; pauses on hover.
+  // Auto-advancing screen carousel; pauses on hover and respects reduced-motion
+  // (users who prefer less motion drive it manually via the dots below).
   const [slide, setSlide] = useState(0);
   const pausedRef = useRef(false);
+  const reduceMotion = useReducedMotion();
   useEffect(() => {
+    if (reduceMotion) return;
     const id = setInterval(() => { if (!pausedRef.current) setSlide((s) => (s + 1) % SCREENS.length); }, 3800);
     return () => clearInterval(id);
-  }, []);
+  }, [reduceMotion]);
 
   // Cursor-driven 3D tilt + lift.
   const tiltRef = useRef<HTMLDivElement>(null);

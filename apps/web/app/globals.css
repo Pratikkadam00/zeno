@@ -213,34 +213,14 @@
   select {
     font: inherit;
   }
-}
 
-.page {
-  min-height: 100vh;
-}
-
-.narrow {
-  max-width: 760px;
-  margin: 0 auto;
-  padding: 48px 24px;
-}
-
-.steps {
-  color: var(--muted-foreground);
-  font-size: 18px;
-  line-height: 1.6;
-}
-
-.primary {
-  display: inline-flex;
-  min-height: 44px;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius);
-  background: var(--primary);
-  color: var(--primary-foreground);
-  font-weight: 600;
-  padding: 0 16px;
+  /* Visible keyboard focus everywhere (WCAG 2.4.7). Mouse clicks don't trigger
+     :focus-visible, so this only shows for keyboard/switch users. */
+  :focus-visible {
+    outline: 2px solid var(--z-blue);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
@@ -256,7 +236,7 @@
   --z-line-hi: rgba(255, 255, 255, 0.14);
   --z-text: #eef2f8;
   --z-muted: #99a2b4;
-  --z-quiet: #5c6577;
+  --z-quiet: #7c869a;
   --z-blue: #5b8cff;
   --z-blue-deep: #2a4ed0;
   --z-emerald: #34d399;
@@ -266,15 +246,27 @@
   --z-rose: #fb7185;
 }
 
-html { scroll-behavior: smooth; }
-body {
-  background: var(--z-bg);
-  color: var(--z-text);
-  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
+/* (html scroll-behavior + body bg/color/font are set in @layer base above.) */
+body { text-rendering: optimizeLegibility; }
 ::selection { background: rgba(91, 140, 255, 0.32); color: #fff; }
+
+/* Skip-to-content link — hidden until focused by keyboard users. */
+.skip-to-content {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 200;
+  transform: translateY(-160%);
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #6b97ff, var(--z-blue-deep));
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: 0 8px 24px rgba(91, 140, 255, 0.45);
+  transition: transform 0.18s ease;
+}
+.skip-to-content:focus { transform: translateY(0); }
 
 /* Brand scrollbar */
 ::-webkit-scrollbar { width: 11px; height: 11px; }
@@ -284,4 +276,15 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  /* Neutralize decorative CSS keyframe animations (mesh background, marquee,
+     floating elements) and snap transitions for users who request less motion.
+     JS/Motion animations are handled separately via <MotionConfig reducedMotion="user">. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

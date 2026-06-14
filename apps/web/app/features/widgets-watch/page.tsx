@@ -16,6 +16,11 @@ export const metadata: Metadata = {
 
 export default function WidgetsWatchFeaturePage() {
   const snapshot = createWidgetSnapshot([]);
+  const generatedAt = new Date(snapshot.generatedAt).toLocaleString("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC"
+  });
 
   return (
     <ContentShell
@@ -26,7 +31,7 @@ export default function WidgetsWatchFeaturePage() {
       <ul className={styles.list}>
         <li>
           <span>Snapshot generated locally</span>
-          <span className={styles.tag}>{snapshot.generatedAt}</span>
+          <span className={styles.tag}>{generatedAt} UTC</span>
         </li>
         <li>
           <span>Complication fallback</span>
