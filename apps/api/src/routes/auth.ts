@@ -613,8 +613,16 @@ function isDemoLoginEnabled(): boolean {
 }
 
 function allowUnverifiedOAuthTokens(): boolean {
-  return process.env.NODE_ENV !== "production"
-    && process.env.ALLOW_UNVERIFIED_OAUTH_TOKENS === "true";
+  const flagEnabled = process.env.ALLOW_UNVERIFIED_OAUTH_TOKENS === "true";
+  if (process.env.NODE_ENV === "production") {
+    // Unverified OAuth subjects must never be accepted in production, even if the
+    // env var is set. Refuse the flag and require real JWKS verification.
+    if (flagEnabled) {
+      console.warn("ALLOW_UNVERIFIED_OAUTH_TOKENS is ignored in production; real token verification is required.");
+    }
+    return false;
+  }
+  return flagEnabled;
 }
 
 function isDevMailAdapter(): boolean {

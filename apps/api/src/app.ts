@@ -11,6 +11,9 @@ export type BuildAppOptions = {
   logger?: boolean;
 };
 
+const DEFAULT_SERVICES_LIMIT = 25;
+const MAX_SERVICES_LIMIT = 100;
+
 export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({
     logger: options.logger ?? false,
@@ -29,7 +32,18 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   });
   await app.register(rateLimit, {
     max: 100,
-    timeWindow: "1 minute"
+    timeWindow: "1 minute",
+    // The plugin throws this return value; Fastify routes it through the error
+    // handler below, which serializes `envelope` as the standard fail response.
+    errorResponseBuilder: (request, context) => {
+      const error = new Error(`Rate limit exceeded, retry in ${context.after}.`) as RateLimitEnvelopeError;
+      error.statusCode = context.statusCode;
+      error.envelope = fail("RATE_LIMITED", `Rate limit exceeded, retry in ${context.after}.`, request.id, {
+        max: context.max,
+        ttl: context.ttl
+      });
+      return error;
+    }
   });
   await app.register(authRoutes, { prefix: "/api/v1" });
 
@@ -44,10 +58,22 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   }, request.id));
 
   app.get("/api/v1/services", async (request) => {
-    const query = (typeof request.query === "object" && request.query && "q" in request.query
-      ? String((request.query as { q?: unknown }).q ?? "")
-      : "").slice(0, 100);
-    return ok({ services: query ? searchServices(query, 25) : services }, request.id);
+    const rawQuery = typeof request.query === "object" && request.query ? request.query as Record<string, unknown> : {};
+    const query = String(rawQuery.q ?? "").slice(0, 100);
+    const limit = clampInt(rawQuery.limit, DEFAULT_SERVICES_LIMIT, 1, MAX_SERVICES_LIMIT);
+    const offset = clampInt(rawQuery.offset, 0, 0, Number.MAX_SAFE_INTEGER);
+
+    // Matching set: full catalog for unfiltered requests, ranked results for a query.
+    const matches = query ? searchServices(query, services.length) : services;
+    const page = matches.slice(offset, offset + limit);
+
+    return ok({
+      services: page,
+      total: matches.length,
+      limit,
+      offset,
+      returned: page.length
+    }, request.id);
   });
 
   app.get("/api/v1/services/:slug", async (request, reply) => {
@@ -166,13 +192,28 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     }, request.id);
   });
 
+  app.setNotFoundHandler((request, reply) => {
+    reply.code(404).send(fail("NOT_FOUND", "Route not found.", request.id));
+  });
+
   app.setErrorHandler((error, request, reply) => {
+    // Rate-limit rejections carry a pre-built fail envelope and a 429/403 status.
+    const envelopeError = error as Partial<RateLimitEnvelopeError>;
+    if (envelopeError.envelope && typeof envelopeError.statusCode === "number") {
+      reply.code(envelopeError.statusCode).send(envelopeError.envelope);
+      return;
+    }
     request.log.error(error);
     reply.code(500).send(fail("INTERNAL", "Unexpected server error.", request.id));
   });
 
   return app;
 }
+
+type RateLimitEnvelopeError = Error & {
+  statusCode: number;
+  envelope: ReturnType<typeof fail>;
+};
 
 type ParseResult<T extends z.ZodType> =
   | { ok: true; data: z.infer<T> }
@@ -195,6 +236,14 @@ function parseBody<T extends z.ZodType>(schema: T, body: unknown, requestId: str
     }
     return { ok: false, error: fail("BAD_REQUEST", "Request validation failed.", requestId) };
   }
+}
+
+function clampInt(value: unknown, fallback: number, min: number, max: number): number {
+  const parsed = typeof value === "number" ? value : Number.parseInt(String(value ?? ""), 10);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.min(max, Math.max(min, Math.trunc(parsed)));
 }
 
 function readAllowedOrigins(): string[] {
