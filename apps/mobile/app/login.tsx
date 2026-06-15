@@ -20,8 +20,11 @@ import { spacing } from "../src/theme/spacing";
 import { type } from "../src/theme/typography";
 import { withAlpha } from "../src/utils/subscription-ui";
 
-const TERMS_URL = "https://example.com/terms";
-const PRIVACY_URL = "https://example.com/privacy";
+const TERMS_URL = "https://zeno.app/legal/terms";
+const PRIVACY_URL = "https://zeno.app/legal/privacy";
+// Minimum age to use Zeno. Matches the Privacy Policy (Children's Privacy) and
+// keeps us clear of COPPA (under-13) and most minor-data regimes.
+const MINIMUM_AGE = 16;
 
 // Brand button colors — intentionally theme-invariant (Apple/Google guidelines).
 const APPLE_BUTTON_BG = "#FFFFFF";
@@ -46,15 +49,17 @@ export default function LoginScreen() {
   const [demoPassword, setDemoPassword] = useState("Zeno-Demo-2026!");
   const [message, setMessage] = useState<string | null>(null);
   const [activeProvider, setActiveProvider] = useState<"magic" | "demo" | "apple" | "google" | null>(null);
+  // Age + consent gate: must be checked before any sign-in method is enabled.
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
 
   const isBusy = status === "loading" || status === "pending" || activeProvider !== null;
   const canSubmitEmail = useMemo(
-    () => email.trim().length > 3 && email.includes("@") && !isBusy,
-    [email, isBusy]
+    () => email.trim().length > 3 && email.includes("@") && ageConfirmed && !isBusy,
+    [email, ageConfirmed, isBusy]
   );
   const canSubmitDemo = useMemo(
-    () => demoEmail.trim().length > 3 && demoPassword.length > 0 && !isBusy,
-    [demoEmail, demoPassword, isBusy]
+    () => demoEmail.trim().length > 3 && demoPassword.length > 0 && ageConfirmed && !isBusy,
+    [demoEmail, demoPassword, ageConfirmed, isBusy]
   );
 
   useEffect(() => {
@@ -79,6 +84,9 @@ export default function LoginScreen() {
   }
 
   async function handleApple() {
+    if (!ageConfirmed) {
+      return;
+    }
     setActiveProvider("apple");
     setMessage(null);
     try {
@@ -103,6 +111,9 @@ export default function LoginScreen() {
   }
 
   async function handleGoogle() {
+    if (!ageConfirmed) {
+      return;
+    }
     setActiveProvider("google");
     setMessage(null);
     try {
@@ -202,12 +213,13 @@ export default function LoginScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Continue with Apple"
-                  disabled={isBusy}
+                  accessibilityState={{ disabled: isBusy || !ageConfirmed }}
+                  disabled={isBusy || !ageConfirmed}
                   onPress={handleApple}
                   style={({ pressed }) => [
                     styles.appleButton,
                     {
-                      opacity: pressed ? 0.88 : 1
+                      opacity: !ageConfirmed ? 0.5 : pressed ? 0.88 : 1
                     }
                   ]}
                 >
@@ -222,12 +234,13 @@ export default function LoginScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Continue with Google"
-                  disabled={isBusy}
+                  accessibilityState={{ disabled: isBusy || !ageConfirmed }}
+                  disabled={isBusy || !ageConfirmed}
                   onPress={handleGoogle}
                   style={({ pressed }) => [
                     styles.googleButton,
                     {
-                      opacity: pressed ? 0.88 : 1
+                      opacity: !ageConfirmed ? 0.5 : pressed ? 0.88 : 1
                     }
                   ]}
                 >
@@ -262,16 +275,27 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.bottomSection}>
-            <Text style={styles.privacyTextBase}>
-              By continuing you agree to our
-              <Text accessibilityRole="link" onPress={() => openLink(TERMS_URL)} style={styles.privacyLink}>
-                {" Terms"}
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: ageConfirmed }}
+              accessibilityLabel={`I am at least ${MINIMUM_AGE} years old and agree to the Terms and Privacy Policy`}
+              onPress={() => setAgeConfirmed((prev) => !prev)}
+              style={styles.consentRow}
+            >
+              <View style={[styles.checkbox, ageConfirmed ? styles.checkboxChecked : null]}>
+                {ageConfirmed ? <Text style={styles.checkboxTick} accessible={false}>{"✓"}</Text> : null}
+              </View>
+              <Text style={styles.privacyTextBase}>
+                {`I'm at least ${MINIMUM_AGE} and agree to the`}
+                <Text accessibilityRole="link" onPress={() => openLink(TERMS_URL)} style={styles.privacyLink}>
+                  {" Terms"}
+                </Text>
+                <Text style={styles.privacyTextBase}> and </Text>
+                <Text accessibilityRole="link" onPress={() => openLink(PRIVACY_URL)} style={styles.privacyLink}>
+                  Privacy Policy
+                </Text>
               </Text>
-              <Text style={styles.privacyTextBase}> and </Text>
-              <Text accessibilityRole="link" onPress={() => openLink(PRIVACY_URL)} style={styles.privacyLink}>
-                Privacy Policy
-              </Text>
-            </Text>
+            </Pressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -506,6 +530,33 @@ function createStyles(theme: ThemeTokens) {
     privacyLink: {
       color: theme.primary,
       ...type.caption1
+    },
+    consentRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "center",
+      gap: 10,
+      paddingHorizontal: 8
+    },
+    checkbox: {
+      width: 22,
+      height: 22,
+      borderRadius: 6,
+      borderWidth: 1.5,
+      borderColor: theme.border,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 1
+    },
+    checkboxChecked: {
+      backgroundColor: theme.primary,
+      borderColor: theme.primary
+    },
+    checkboxTick: {
+      color: theme.onPrimary,
+      fontSize: 14,
+      fontWeight: "800",
+      lineHeight: 16
     },
     overlay: {
       position: "absolute",

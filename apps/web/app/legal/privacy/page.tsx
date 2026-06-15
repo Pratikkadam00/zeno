@@ -107,8 +107,11 @@ export default function PrivacyPage() {
       <h3>What we do not collect</h3>
       <ul>
         <li>
-          <strong>No bank credentials.</strong> Zeno never asks for your online-banking username,
-          password, or account login, and does not connect to your bank.
+          <strong>No bank credentials.</strong> Zeno never asks for, sees, or stores your
+          online-banking username, password, or login. Connecting a bank is entirely optional; if
+          you choose to, the connection is handled by a regulated account-aggregation provider
+          (such as Plaid) that authenticates you directly — Zeno receives only the transaction
+          information needed to detect subscriptions, never your credentials.
         </li>
         <li>
           <strong>No full payment card data.</strong> Billing is handled by the app stores.
@@ -170,6 +173,17 @@ export default function PrivacyPage() {
         <li><strong>Email delivery</strong> — to send waitlist and account emails;</li>
         <li><strong>App stores</strong> (Apple App Store, Google Play) — for app distribution and billing of paid plans;</li>
         <li><strong>Hosting & infrastructure</strong> — for the website and supporting services;</li>
+        <li>
+          <strong>AI coaching provider</strong> — if you use the optional AI spend coach, a summary
+          of your subscriptions (service names, amounts, categories, and the in-app insights — but
+          not your name, email, or bank data) is sent to our AI provider solely to generate
+          suggestions and return them to you;
+        </li>
+        <li>
+          <strong>Bank-connection aggregator</strong> (such as Plaid) — only if you opt in to
+          connecting a financial account, and only to retrieve transactions for subscription
+          detection;
+        </li>
         <li><strong>Optional analytics & crash reporting</strong> — using privacy-respecting, aggregated tooling.</li>
       </ul>
       <p>

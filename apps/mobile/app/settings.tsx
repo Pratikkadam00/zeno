@@ -21,10 +21,10 @@ import type { ThemeTokens } from "../src/theme/tokens";
 import { withAlpha } from "../src/utils/subscription-ui";
 
 const APP_STORE_REVIEW_URL = "https://apps.apple.com/";
-const TERMS_URL = "https://example.com/terms";
-const PRIVACY_URL = "https://example.com/privacy";
+const TERMS_URL = "https://zeno.app/legal/terms";
+const PRIVACY_URL = "https://zeno.app/legal/privacy";
 const FEEDBACK_EMAIL = "mailto:feedback@zeno.app";
-const SHARE_URL = "https://example.com/zeno";
+const SHARE_URL = "https://zeno.app";
 const APP_VERSION = "1.0.0";
 
 type UserPlan = "free" | "pro" | "family";
