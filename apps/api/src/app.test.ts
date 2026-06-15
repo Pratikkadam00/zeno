@@ -488,6 +488,21 @@ describe("api app", () => {
     expect(response.headers["strict-transport-security"]).toBeTruthy();
   });
 
+  it("protects Plaid and never accepts an access token from the client", async () => {
+    const app = await buildApp();
+    // No token → guarded.
+    expect((await app.inject({ method: "POST", url: "/api/v1/plaid/transactions" })).statusCode).toBe(401);
+    expect((await app.inject({ method: "POST", url: "/api/v1/plaid/exchange", payload: { publicToken: "x" } })).statusCode).toBe(401);
+
+    // With a token but Plaid unconfigured in tests → 503 (not 400/200). Proves the
+    // request passes auth and there's no client-supplied access_token path anymore.
+    const { token } = await tokenFor(app, "plaid@zeno.test");
+    const tx = await app.inject({ method: "POST", url: "/api/v1/plaid/transactions", headers: authH(token) });
+    expect(tx.statusCode).toBe(503);
+    const ex = await app.inject({ method: "POST", url: "/api/v1/plaid/exchange", headers: authH(token), payload: { publicToken: "x" } });
+    expect(ex.statusCode).toBe(503);
+  });
+
   it("loads the AI coach constitution into the system prompt", () => {
     const prompt = coachSystemPrompt();
     // Charter loaded (persona + scope) ...

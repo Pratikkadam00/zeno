@@ -14,6 +14,25 @@ export function plaidConfigured(): boolean {
   return Boolean(process.env.PLAID_CLIENT_ID && process.env.PLAID_SECRET);
 }
 
+// Plaid access tokens are bank-access CREDENTIALS and must never reach the client.
+// They are held server-side, keyed to the authenticated account id. In-memory for
+// now (matches sync/family/billing); productionize with an encrypted DB table
+// before launch — see SECURITY.md.
+type StoredPlaidItem = { accessToken: string; itemId: string };
+const plaidItemsByUser = new Map<string, StoredPlaidItem>();
+
+export function storePlaidItem(userId: string, item: StoredPlaidItem): void {
+  plaidItemsByUser.set(userId, item);
+}
+
+export function getStoredPlaidItem(userId: string): StoredPlaidItem | undefined {
+  return plaidItemsByUser.get(userId);
+}
+
+export function clearPlaidItems(): void {
+  plaidItemsByUser.clear();
+}
+
 async function plaidPost<T>(path: string, body: Record<string, unknown>): Promise<T> {
   const response = await fetch(`${plaidBase()}${path}`, {
     method: "POST",

@@ -82,8 +82,9 @@ export async function createPlaidLinkToken(): Promise<{ linkToken: string; expir
 // exchange it, and pull transactions — returns how many were fetched.
 export async function connectPlaidSandbox(): Promise<{ transactionCount: number }> {
   const { publicToken } = await postJson<{ publicToken: string }>("/plaid/sandbox/public-token");
-  const { accessToken } = await postJson<{ accessToken: string }>("/plaid/exchange", { publicToken });
-  const { count } = await postJson<{ count: number }>("/plaid/transactions", { accessToken });
+  // The server stores the access token; the client never receives it.
+  await postJson<{ itemId: string; connected: boolean }>("/plaid/exchange", { publicToken });
+  const { count } = await postJson<{ count: number }>("/plaid/transactions");
   return { transactionCount: count };
 }
 

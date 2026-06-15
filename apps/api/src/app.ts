@@ -7,7 +7,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
 import { z, ZodError } from "zod";
 import { authRoutes } from "./routes/auth";
-import { createLinkToken, exchangePublicToken, getRecentTransactions, plaidConfigured, sandboxPublicToken } from "./plaid";
+import { createLinkToken, exchangePublicToken, getRecentTransactions, getStoredPlaidItem, plaidConfigured, sandboxPublicToken, storePlaidItem } from "./plaid";
 import { applyWebhookEvent, billingConfigured, fetchEntitlement, getCachedEntitlement, verifyWebhookAuth, webhookConfigured } from "./billing";
 import { pullChanges, pushChanges, type EncryptedChange } from "./sync";
 import { createHousehold, getHousehold, joinHousehold, setMemberSpend, type Household } from "./family";
@@ -55,7 +55,6 @@ const coachRequestSchema = z.object({
 });
 const plaidLinkTokenSchema = z.object({ userId: z.string().min(1).max(128).optional() });
 const plaidExchangeSchema = z.object({ publicToken: z.string().min(1) });
-const plaidTransactionsSchema = z.object({ accessToken: z.string().min(1) });
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({
@@ -370,7 +369,11 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       return parsed.error;
     }
     try {
-      return ok(await exchangePublicToken(parsed.data.publicToken), request.id);
+      // The access token is bank-access credential — store it server-side keyed
+      // to the authenticated user and return ONLY the (non-sensitive) item id.
+      const { accessToken, itemId } = await exchangePublicToken(parsed.data.publicToken);
+      storePlaidItem(request.userId!, { accessToken, itemId });
+      return ok({ itemId, connected: true }, request.id);
     } catch (error) {
       reply.code(502);
       return fail("UPSTREAM_ERROR", error instanceof Error ? error.message : "Plaid request failed.", request.id);
@@ -382,13 +385,14 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       reply.code(503);
       return fail("SERVICE_UNAVAILABLE", "Bank connect is not configured on this server.", request.id);
     }
-    const parsed = parseBody(plaidTransactionsSchema, request.body, request.id);
-    if (!parsed.ok) {
-      reply.code(400);
-      return parsed.error;
+    // No access token from the client — look up this user's stored Plaid item.
+    const item = getStoredPlaidItem(request.userId!);
+    if (!item) {
+      reply.code(409);
+      return fail("CONFLICT", "No linked bank account. Connect a bank first.", request.id);
     }
     try {
-      const transactions = await getRecentTransactions(parsed.data.accessToken);
+      const transactions = await getRecentTransactions(item.accessToken);
       return ok({ transactions, count: transactions.length }, request.id);
     } catch (error) {
       reply.code(502);
