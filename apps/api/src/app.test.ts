@@ -416,6 +416,15 @@ describe("api app", () => {
     expect(response.statusCode).toBe(400);
   });
 
+  it("sets security headers on responses (helmet)", async () => {
+    const app = await buildApp();
+    const response = await app.inject({ method: "GET", url: "/api/v1/health" });
+    expect(response.headers["x-content-type-options"]).toBe("nosniff");
+    expect(response.headers["x-frame-options"]).toBe("SAMEORIGIN");
+    expect(response.headers["content-security-policy"]).toContain("frame-ancestors 'none'");
+    expect(response.headers["strict-transport-security"]).toBeTruthy();
+  });
+
   it("loads the AI coach constitution into the system prompt", () => {
     const prompt = coachSystemPrompt();
     // Charter loaded (persona + scope) ...

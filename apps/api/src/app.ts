@@ -1,4 +1,5 @@
 import cors from "@fastify/cors";
+import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import { findServiceBySlug, searchServices, services } from "@subradar/service-catalog";
 import { createBusinessSummary, createMockOpenBankingAdapter, createPublicApiKeyPreview, demoBusinessWorkspace, fail, listPartnerIntegrations, ok, syncPullSchema, syncPushSchema, type OpenBankingProvider, type PublicApiKey } from "@subradar/shared";
@@ -18,6 +19,10 @@ export type BuildAppOptions = {
 
 const DEFAULT_SERVICES_LIMIT = 25;
 const MAX_SERVICES_LIMIT = 100;
+
+// Per-route rate limits, tighter than the global 100/min/IP bucket, for endpoints
+// that are expensive (call paid upstreams like Groq/Plaid) or abuse-prone.
+const limit = (max: number) => ({ config: { rateLimit: { max, timeWindow: "1 minute" } } });
 
 const entitlementQuerySchema = z.object({ appUserId: z.string().min(1).max(256) });
 const familyCreateSchema = z.object({
@@ -58,6 +63,19 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   const app = Fastify({
     logger: options.logger ?? false,
     genReqId: () => randomUUID()
+  });
+  // Security headers (HSTS, nosniff, frame-deny, referrer policy, etc.). This is
+  // a JSON API with no first-party HTML, so a strict default CSP is fine.
+  await app.register(helmet, {
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+        baseUri: ["'none'"]
+      }
+    },
+    crossOriginResourcePolicy: { policy: "same-site" },
+    referrerPolicy: { policy: "no-referrer" }
   });
   const allowedOrigins = readAllowedOrigins();
   await app.register(cors, {
@@ -188,7 +206,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     ]
   }, request.id));
 
-  app.post("/api/v1/open-banking/:provider/intent", async (request, reply) => {
+  app.post("/api/v1/open-banking/:provider/intent", limit(20), async (request, reply) => {
     const provider = readProviderParam(request.params);
     if (!provider) {
       reply.code(400);
@@ -206,7 +224,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   });
 
   // ── Family / household sharing (share-code join + combined spend view). ──
-  app.post("/api/v1/family/create", async (request, reply) => {
+  app.post("/api/v1/family/create", limit(10), async (request, reply) => {
     const parsed = parseBody(familyCreateSchema, request.body, request.id);
     if (!parsed.ok) {
       reply.code(400);
@@ -216,7 +234,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     return ok({ household }, request.id);
   });
 
-  app.post("/api/v1/family/join", async (request, reply) => {
+  app.post("/api/v1/family/join", limit(10), async (request, reply) => {
     const parsed = parseBody(familyJoinSchema, request.body, request.id);
     if (!parsed.ok) {
       reply.code(400);
@@ -240,7 +258,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     return ok({ household }, request.id);
   });
 
-  app.post("/api/v1/family/:householdId/spend", async (request, reply) => {
+  app.post("/api/v1/family/:householdId/spend", limit(30), async (request, reply) => {
     const householdId = (request.params as { householdId?: string }).householdId ?? "";
     const parsed = parseBody(familySpendSchema, request.body, request.id);
     if (!parsed.ok) {
@@ -257,7 +275,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 
   // ── AI spend coach. Live when ANTHROPIC_API_KEY is set; otherwise reports
   //    "unconfigured" so the client falls back to local rule-based insights. ──
-  app.post("/api/v1/coach", async (request, reply) => {
+  app.post("/api/v1/coach", limit(10), async (request, reply) => {
     const parsed = parseBody(coachRequestSchema, request.body, request.id);
     if (!parsed.ok) {
       reply.code(400);
@@ -275,7 +293,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   });
 
   // ── Billing entitlement (server is the source of truth for Pro/Family). ──
-  app.get("/api/v1/billing/entitlement", async (request, reply) => {
+  app.get("/api/v1/billing/entitlement", limit(30), async (request, reply) => {
     const parsed = parseBody(entitlementQuerySchema, request.query, request.id);
     if (!parsed.ok) {
       reply.code(400);
@@ -311,7 +329,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 
   // ── Plaid (optional bank connect). Live when PLAID_CLIENT_ID/SECRET are set,
   //    otherwise these report not-configured so the client stays in mock mode. ──
-  app.post("/api/v1/plaid/link-token", async (request, reply) => {
+  app.post("/api/v1/plaid/link-token", limit(10), async (request, reply) => {
     if (!plaidConfigured()) {
       reply.code(503);
       return fail("SERVICE_UNAVAILABLE", "Bank connect is not configured on this server.", request.id);
@@ -329,7 +347,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     }
   });
 
-  app.post("/api/v1/plaid/exchange", async (request, reply) => {
+  app.post("/api/v1/plaid/exchange", limit(10), async (request, reply) => {
     if (!plaidConfigured()) {
       reply.code(503);
       return fail("SERVICE_UNAVAILABLE", "Bank connect is not configured on this server.", request.id);
@@ -347,7 +365,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     }
   });
 
-  app.post("/api/v1/plaid/transactions", async (request, reply) => {
+  app.post("/api/v1/plaid/transactions", limit(20), async (request, reply) => {
     if (!plaidConfigured()) {
       reply.code(503);
       return fail("SERVICE_UNAVAILABLE", "Bank connect is not configured on this server.", request.id);
@@ -368,7 +386,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 
   // Sandbox-only convenience: mint a public token without the native Link UI so
   // the connect→exchange→transactions flow is testable end-to-end in sandbox.
-  app.post("/api/v1/plaid/sandbox/public-token", async (request, reply) => {
+  app.post("/api/v1/plaid/sandbox/public-token", limit(10), async (request, reply) => {
     if (!plaidConfigured() || (process.env.PLAID_ENV ?? "sandbox") !== "sandbox") {
       reply.code(503);
       return fail("SERVICE_UNAVAILABLE", "Sandbox token minting is only available in sandbox mode.", request.id);
@@ -381,7 +399,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     }
   });
 
-  app.get("/api/v1/sync/pull", async (request, reply) => {
+  app.get("/api/v1/sync/pull", limit(60), async (request, reply) => {
     const userId = readSyncUser(request.headers);
     if (!userId) {
       reply.code(401);
@@ -401,7 +419,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     }, request.id);
   });
 
-  app.post("/api/v1/sync/push", async (request, reply) => {
+  app.post("/api/v1/sync/push", limit(60), async (request, reply) => {
     const userId = readSyncUser(request.headers);
     if (!userId) {
       reply.code(401);

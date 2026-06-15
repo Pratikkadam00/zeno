@@ -390,9 +390,10 @@ async function exchangeAuthorizationCode(request: AuthRequest, result: AuthSessi
     throw new Error("Google did not return an authorization code.");
   }
 
+  // PKCE exchange — no client secret (native app). The code_verifier proves the
+  // exchange comes from the same client that started the flow.
   const tokenResponse = await exchangeCodeAsync({
     clientId: request.clientId,
-    clientSecret: request.clientSecret,
     code,
     redirectUri: request.redirectUri,
     scopes: gmailScopes,

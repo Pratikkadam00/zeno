@@ -72,7 +72,10 @@ export default function DiscoverScreen() {
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     clientId: googleClientId,
-    clientSecret: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_SECRET,
+    // No client secret in the app: native OAuth uses PKCE (usePKCE below). A
+    // client secret must never ship in a mobile bundle — it's extractable from
+    // the APK/IPA. Use an iOS/Android OAuth client (no secret) or exchange the
+    // code server-side. See SECURITY.md.
     responseType: ResponseType.Code,
     scopes: gmailScopes,
     usePKCE: true,
