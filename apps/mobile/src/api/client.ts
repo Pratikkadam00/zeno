@@ -1,7 +1,16 @@
 import Constants from "expo-constants";
 import type { ApiEnvelope, OpenBankingConnectionIntent } from "@subradar/shared";
+import { useAuthStore } from "../auth/authStore";
 
 const fallbackApiBaseUrl = "http://127.0.0.1:8787/api/v1";
+
+// Attaches the signed-in user's bearer token to a protected request. The API
+// derives identity from this token (never from a client-supplied id/header).
+// Returns {} when signed out — the server then replies 401 and callers fall back.
+async function authHeaders(): Promise<Record<string, string>> {
+  const token = await useAuthStore.getState().getValidAccessToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 export type MobileBackendStatus = {
   connected: boolean;
@@ -54,7 +63,7 @@ export async function getMobileBackendStatus(): Promise<MobileBackendStatus> {
 async function postJson<T>(path: string, body: unknown = {}): Promise<T> {
   const response = await fetch(`${getApiBaseUrl()}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(await authHeaders()) },
     body: JSON.stringify(body)
   });
   const envelope = await response.json() as ApiEnvelope<T>;
@@ -83,9 +92,10 @@ export type ServerEntitlement = { plan: "free" | "pro" | "family"; active: boole
 // The server independently verifies entitlements with RevenueCat, so it's the
 // source of truth for Pro/Family. Returns null if unreachable (caller falls back
 // to the client SDK result).
-export async function getServerEntitlement(appUserId: string): Promise<ServerEntitlement | null> {
+export async function getServerEntitlement(): Promise<ServerEntitlement | null> {
   try {
-    const response = await fetch(`${getApiBaseUrl()}/billing/entitlement?appUserId=${encodeURIComponent(appUserId)}`);
+    // Identity comes from the bearer token; the server ignores any client id.
+    const response = await fetch(`${getApiBaseUrl()}/billing/entitlement`, { headers: await authHeaders() });
     if (!response.ok) return null;
     const envelope = await response.json() as ApiEnvelope<ServerEntitlement>;
     return envelope.data ?? null;
@@ -104,11 +114,11 @@ export type SyncChange = {
 
 // Push locally-encrypted changes to the cloud backup. Payloads are ciphertext —
 // the server stores opaque blobs it can't read. Returns null if unreachable.
-export async function pushSyncChanges(userId: string, changes: SyncChange[]): Promise<{ accepted: number; rejected: number; cursor: string } | null> {
+export async function pushSyncChanges(changes: SyncChange[]): Promise<{ accepted: number; rejected: number; cursor: string } | null> {
   try {
     const response = await fetch(`${getApiBaseUrl()}/sync/push`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-zeno-user-id": userId },
+      headers: { "Content-Type": "application/json", ...(await authHeaders()) },
       body: JSON.stringify({ encryptedChanges: changes })
     });
     if (!response.ok) return null;
@@ -120,11 +130,11 @@ export async function pushSyncChanges(userId: string, changes: SyncChange[]): Pr
 }
 
 // Pull encrypted changes since a cursor (for restore / multi-device merge).
-export async function pullSyncChanges(userId: string, cursor?: string): Promise<{ changes: SyncChange[]; cursor: string; hasMore: boolean } | null> {
+export async function pullSyncChanges(cursor?: string): Promise<{ changes: SyncChange[]; cursor: string; hasMore: boolean } | null> {
   try {
     const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
     const response = await fetch(`${getApiBaseUrl()}/sync/pull${query}`, {
-      headers: { "x-zeno-user-id": userId }
+      headers: await authHeaders()
     });
     if (!response.ok) return null;
     const envelope = await response.json() as ApiEnvelope<{ encryptedChanges: SyncChange[]; cursor: string; hasMore: boolean }>;
@@ -157,7 +167,7 @@ export async function getAiCoaching(input: CoachRequestInput): Promise<AiCoachin
   try {
     const response = await fetch(`${getApiBaseUrl()}/coach`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(await authHeaders()) },
       body: JSON.stringify(input)
     });
     if (!response.ok) return null;
@@ -175,7 +185,7 @@ async function familyPost(path: string, body: unknown): Promise<Household | null
   try {
     const response = await fetch(`${getApiBaseUrl()}${path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(await authHeaders()) },
       body: JSON.stringify(body)
     });
     if (!response.ok) return null;
@@ -196,7 +206,7 @@ export function joinHousehold(shareCode: string, memberId: string, memberName: s
 
 export async function getHousehold(householdId: string): Promise<Household | null> {
   try {
-    const response = await fetch(`${getApiBaseUrl()}/family/${encodeURIComponent(householdId)}`);
+    const response = await fetch(`${getApiBaseUrl()}/family/${encodeURIComponent(householdId)}`, { headers: await authHeaders() });
     if (!response.ok) return null;
     const envelope = await response.json() as ApiEnvelope<{ household: Household }>;
     return envelope.data?.household ?? null;
@@ -207,7 +217,8 @@ export async function getHousehold(householdId: string): Promise<Household | nul
 
 export async function createOpenBankingIntentViaApi(provider: "plaid" | "mx"): Promise<OpenBankingConnectionIntent> {
   const response = await fetch(`${getApiBaseUrl()}/open-banking/${provider}/intent`, {
-    method: "POST"
+    method: "POST",
+    headers: await authHeaders()
   });
   if (!response.ok) {
     throw new Error(`Open banking intent failed with HTTP ${response.status}`);

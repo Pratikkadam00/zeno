@@ -5,7 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { AppState, Platform, Text, View, type AppStateStatus } from "react-native";
 import { useAuthStore } from "../src/auth/authStore";
-import { checkStatus, initRevenueCat } from "../src/billing/revenueCat";
+import { checkStatus, identifyRevenueCatUser, initRevenueCat, resetRevenueCatUser } from "../src/billing/revenueCat";
 import { SubscriptionStoreProvider, useSubscriptionStore } from "../src/data/subscription-store";
 import { cleanupNotificationHandlers, setupNotificationHandlers } from "../src/notifications/notificationHandlers";
 import { registerForPushNotifications, rescheduleAllNotifications } from "../src/notifications/notificationService";
@@ -31,6 +31,7 @@ function RootStack() {
   const {
     status,
     isAuthenticated,
+    accountId,
     hydrate,
     logout,
     setPlan,
@@ -88,11 +89,19 @@ function RootStack() {
   }, []);
 
   useEffect(() => {
+    // Anonymous → make sure RevenueCat isn't still bound to a previous account.
+    if (!accountId) {
+      void resetRevenueCatUser();
+      return;
+    }
+    // Bind RevenueCat to this account (so server-side entitlement lookups by the
+    // auth-token account id match), then read the verified plan.
     void initRevenueCat()
+      .then(() => identifyRevenueCatUser(accountId))
       .then(() => checkStatus())
       .then(setPlan)
       .catch(() => setPlan("free"));
-  }, [setPlan]);
+  }, [setPlan, accountId]);
 
   useEffect(() => {
     const handleUrl = async (url: string | null) => {

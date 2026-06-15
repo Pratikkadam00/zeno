@@ -73,6 +73,7 @@ type AuthStoreState = {
   refreshToken: () => Promise<void>;
   logout: () => Promise<void>;
   getAccessToken: () => Promise<string | null>;
+  getValidAccessToken: () => Promise<string | null>;
   setPlan: (plan: BillingPlan) => void;
 };
 
@@ -272,6 +273,20 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
   async getAccessToken() {
     const session = await readStoredSession();
     return session?.accessToken ?? null;
+  },
+
+  // Returns a non-expired access token for attaching to API requests, refreshing
+  // first if it's at/near expiry. Returns null if the user isn't signed in.
+  async getValidAccessToken() {
+    const session = await readStoredSession();
+    if (!session?.accessToken) {
+      return null;
+    }
+    if (session.accessTokenExpiresAt && session.accessTokenExpiresAt - 30_000 <= Date.now()) {
+      await get().refreshToken();
+      return (await readStoredSession())?.accessToken ?? null;
+    }
+    return session.accessToken;
   },
 
   setPlan(plan: BillingPlan) {

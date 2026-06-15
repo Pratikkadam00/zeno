@@ -7,6 +7,21 @@ function restoreEnv(key: string, value: string | undefined): void {
   else process.env[key] = value;
 }
 
+// Mint a real RS256 access token via the dev magic-link flow (no RESEND key →
+// the token is returned in devLink). Distinct email → distinct accountId (sub).
+async function tokenFor(app: Awaited<ReturnType<typeof buildApp>>, email: string): Promise<{ token: string; accountId: string }> {
+  const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email } });
+  const devLink = requested.json().data.devLink as string;
+  const rawToken = decodeURIComponent(devLink.split("token=")[1] ?? "");
+  const verified = await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(rawToken)}` });
+  const data = verified.json().data;
+  return { token: data.accessToken as string, accountId: data.accountId as string };
+}
+
+function authH(token: string): Record<string, string> {
+  return { authorization: `Bearer ${token}` };
+}
+
 describe("api app", () => {
   it("returns the API health envelope", async () => {
     const app = await buildApp();
@@ -86,10 +101,11 @@ describe("api app", () => {
 
   it("rejects unencrypted sync payloads by schema", async () => {
     const app = await buildApp();
+    const { token } = await tokenFor(app, "schema-test@zeno.test");
     const response = await app.inject({
       method: "POST",
       url: "/api/v1/sync/push",
-      headers: { "x-zeno-user-id": "schema-test-user" },
+      headers: authH(token),
       payload: { subscriptions: [{ name: "Netflix", amount: 1549 }] }
     });
 
@@ -108,7 +124,8 @@ describe("api app", () => {
 
   it("creates dev open-banking intents without bank credentials", async () => {
     const app = await buildApp();
-    const response = await app.inject({ method: "POST", url: "/api/v1/open-banking/plaid/intent" });
+    const { token } = await tokenFor(app, "ob@zeno.test");
+    const response = await app.inject({ method: "POST", url: "/api/v1/open-banking/plaid/intent", headers: authH(token) });
     const body = response.json();
 
     expect(response.statusCode).toBe(200);
@@ -118,8 +135,9 @@ describe("api app", () => {
 
   it("returns scale foundation manifests", async () => {
     const app = await buildApp();
+    const { token } = await tokenFor(app, "scale@zeno.test");
     const partners = await app.inject({ method: "GET", url: "/api/v1/partners" });
-    const keys = await app.inject({ method: "GET", url: "/api/v1/public-api/keys" });
+    const keys = await app.inject({ method: "GET", url: "/api/v1/public-api/keys", headers: authH(token) });
 
     expect(partners.statusCode).toBe(200);
     expect(partners.json().data.integrations.length).toBeGreaterThanOrEqual(5);
@@ -129,9 +147,12 @@ describe("api app", () => {
   it("returns the fail envelope when the rate limit is exceeded", async () => {
     const app = await buildApp();
 
+    // Use a PUBLIC route: protected routes 401 at the auth guard, which we want
+    // (an unauthenticated flood is rejected cheaply before counting). The global
+    // 100/min bucket is what we're asserting here.
     let limited: Awaited<ReturnType<typeof app.inject>> | undefined;
     for (let attempt = 0; attempt < 101; attempt += 1) {
-      const response = await app.inject({ method: "GET", url: "/api/v1/account" });
+      const response = await app.inject({ method: "GET", url: "/api/v1/capabilities" });
       if (response.statusCode === 429) {
         limited = response;
         break;
@@ -268,7 +289,8 @@ describe("api app", () => {
     delete process.env.REVENUECAT_SECRET_KEY;
     try {
       const app = await buildApp();
-      const response = await app.inject({ method: "GET", url: "/api/v1/billing/entitlement?appUserId=fresh-user-1" });
+      const { token } = await tokenFor(app, "fresh-user-1@zeno.test");
+      const response = await app.inject({ method: "GET", url: "/api/v1/billing/entitlement", headers: authH(token) });
       expect(response.statusCode).toBe(200);
       const body = response.json();
       expect(body.data.plan).toBe("free");
@@ -284,8 +306,10 @@ describe("api app", () => {
     process.env.REVENUECAT_WEBHOOK_AUTH = "test-webhook-secret";
     try {
       const app = await buildApp();
-      const appUserId = "webhook-user-1";
-      const payload = { event: { app_user_id: appUserId, type: "INITIAL_PURCHASE", entitlement_ids: ["pro"] } };
+      // Entitlement is keyed by the authenticated account id, so the webhook's
+      // app_user_id must be that same id for the read-back to match.
+      const { token, accountId } = await tokenFor(app, "webhook-user@zeno.test");
+      const payload = { event: { app_user_id: accountId, type: "INITIAL_PURCHASE", entitlement_ids: ["pro"] } };
 
       const bad = await app.inject({
         method: "POST",
@@ -304,7 +328,7 @@ describe("api app", () => {
       expect(good.statusCode).toBe(200);
 
       // The webhook updated the server's source of truth → entitlement reflects Pro.
-      const entitlement = await app.inject({ method: "GET", url: `/api/v1/billing/entitlement?appUserId=${appUserId}` });
+      const entitlement = await app.inject({ method: "GET", url: "/api/v1/billing/entitlement", headers: authH(token) });
       expect(entitlement.json().data.plan).toBe("pro");
     } finally {
       if (previousAuth === undefined) delete process.env.REVENUECAT_WEBHOOK_AUTH;
@@ -312,7 +336,7 @@ describe("api app", () => {
     }
   });
 
-  it("requires a user header for sync", async () => {
+  it("requires a valid token for sync (401 without one)", async () => {
     const app = await buildApp();
     const response = await app.inject({ method: "POST", url: "/api/v1/sync/push", payload: { encryptedChanges: [] } });
     expect(response.statusCode).toBe(401);
@@ -321,7 +345,8 @@ describe("api app", () => {
 
   it("stores encrypted changes on push and replays them on pull (per user, LWW)", async () => {
     const app = await buildApp();
-    const headers = { "x-zeno-user-id": "sync-user-A" };
+    const a = await tokenFor(app, "sync-a@zeno.test");
+    const headers = authH(a.token);
     const change = (v: number, payload: string) => ({
       entityType: "subscription" as const,
       entityId: "sub_1",
@@ -344,27 +369,34 @@ describe("api app", () => {
     expect(body.data.encryptedChanges[0].encryptedPayload).toBe("cipher-v2");
     expect(body.data.serverStoresFinancialData).toBe(false);
 
-    // A different user sees none of user A's data.
-    const other = await app.inject({ method: "GET", url: "/api/v1/sync/pull", headers: { "x-zeno-user-id": "sync-user-B" } });
+    // A DIFFERENT authenticated user (own token) sees none of user A's data.
+    const b = await tokenFor(app, "sync-b@zeno.test");
+    const other = await app.inject({ method: "GET", url: "/api/v1/sync/pull", headers: authH(b.token) });
     expect(other.json().data.encryptedChanges).toHaveLength(0);
   });
 
   it("creates a household and lets a member join by share code", async () => {
     const app = await buildApp();
+    const owner = await tokenFor(app, "owner@zeno.test");
     const create = await app.inject({
       method: "POST",
       url: "/api/v1/family/create",
-      payload: { ownerId: "owner-1", ownerName: "Maya", monthlySpendMinor: 5000 }
+      headers: authH(owner.token),
+      payload: { ownerName: "Maya", monthlySpendMinor: 5000 }
     });
     expect(create.statusCode).toBe(200);
     const household = create.json().data.household;
     expect(household.shareCode).toMatch(/^[A-Z2-9]{6}$/);
     expect(household.members).toHaveLength(1);
+    // Owner id comes from the token, not the body.
+    expect(household.ownerId).toBe(owner.accountId);
 
+    const member = await tokenFor(app, "member@zeno.test");
     const join = await app.inject({
       method: "POST",
       url: "/api/v1/family/join",
-      payload: { shareCode: household.shareCode, memberId: "member-2", memberName: "Liam", monthlySpendMinor: 3000 }
+      headers: authH(member.token),
+      payload: { shareCode: household.shareCode, memberName: "Liam", monthlySpendMinor: 3000 }
     });
     expect(join.statusCode).toBe(200);
     const joined = join.json().data.household;
@@ -373,9 +405,36 @@ describe("api app", () => {
     const bad = await app.inject({
       method: "POST",
       url: "/api/v1/family/join",
-      payload: { shareCode: "ZZZZZZ", memberId: "x", memberName: "X" }
+      headers: authH(member.token),
+      payload: { shareCode: "ZZZZZZ", memberName: "X" }
     });
     expect(bad.statusCode).toBe(404);
+  });
+
+  it("forbids reading a household you do not belong to (403), and 401 without a token", async () => {
+    const app = await buildApp();
+    const a = await tokenFor(app, "hh-a@zeno.test");
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/v1/family/create",
+      headers: authH(a.token),
+      payload: { ownerName: "A" }
+    });
+    const householdId = created.json().data.household.id as string;
+
+    // Owner can read it.
+    const ownerRead = await app.inject({ method: "GET", url: `/api/v1/family/${householdId}`, headers: authH(a.token) });
+    expect(ownerRead.statusCode).toBe(200);
+
+    // A different logged-in user passing someone else's household id → 403.
+    const b = await tokenFor(app, "hh-b@zeno.test");
+    const denied = await app.inject({ method: "GET", url: `/api/v1/family/${householdId}`, headers: authH(b.token) });
+    expect(denied.statusCode).toBe(403);
+    expect(denied.json().error.code).toBe("FORBIDDEN");
+
+    // No token at all → 401.
+    const noToken = await app.inject({ method: "GET", url: `/api/v1/family/${householdId}` });
+    expect(noToken.statusCode).toBe(401);
   });
 
   it("reports the AI coach as unconfigured when no provider key is set", async () => {
@@ -389,9 +448,11 @@ describe("api app", () => {
     delete process.env.COACH_PROVIDER;
     try {
       const app = await buildApp();
+      const { token } = await tokenFor(app, "coach@zeno.test");
       const response = await app.inject({
         method: "POST",
         url: "/api/v1/coach",
+        headers: authH(token),
         payload: {
           totalMonthlyMinor: 4599,
           subscriptions: [{ name: "Netflix", category: "entertainment", monthlyMinor: 1549, billingCycle: "monthly" }]
@@ -408,9 +469,11 @@ describe("api app", () => {
 
   it("rejects a malformed AI coach request", async () => {
     const app = await buildApp();
+    const { token } = await tokenFor(app, "coach2@zeno.test");
     const response = await app.inject({
       method: "POST",
       url: "/api/v1/coach",
+      headers: authH(token),
       payload: { totalMonthlyMinor: -5, subscriptions: [] }
     });
     expect(response.statusCode).toBe(400);

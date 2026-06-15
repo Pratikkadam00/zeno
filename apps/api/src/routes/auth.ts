@@ -381,6 +381,46 @@ function issueSession(accountId: string, email: string, provider: AuthProvider):
   };
 }
 
+export type VerifiedAccessToken = { sub: string; email: string | null };
+
+// Verifies a Zeno-issued RS256 access token with the SAME key pair that signed it
+// (see signAccessToken / loadSigningKeys). Checks signature, alg, issuer,
+// audience, and expiry. Returns null on any failure — never throws. This is the
+// single verifier the API's auth guard reuses for all protected routes.
+export function verifyAccessToken(token: string): VerifiedAccessToken | null {
+  try {
+    const [encodedHeader, encodedPayload, encodedSignature] = token.split(".");
+    if (!encodedHeader || !encodedPayload || !encodedSignature) {
+      return null;
+    }
+    const header = decodeJwtPart<JwtHeader>(encodedHeader);
+    if (header.alg !== "RS256") {
+      return null;
+    }
+    const verifier = createVerify("RSA-SHA256");
+    verifier.update(`${encodedHeader}.${encodedPayload}`);
+    verifier.end();
+    if (!verifier.verify(keyPair.publicKey, Buffer.from(encodedSignature, "base64url"))) {
+      return null;
+    }
+    const payload = decodeJwtPart<JwtPayload>(encodedPayload);
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    if (!payload.sub || !payload.exp || payload.exp <= nowSeconds) {
+      return null;
+    }
+    if (payload.iss !== issuer) {
+      return null;
+    }
+    const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+    if (!audiences.includes(audience)) {
+      return null;
+    }
+    return { sub: payload.sub, email: payload.email ?? null };
+  } catch {
+    return null;
+  }
+}
+
 function signAccessToken(payload: Record<string, unknown>): string {
   const header = {
     alg: "RS256",

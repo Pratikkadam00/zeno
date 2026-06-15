@@ -10,8 +10,9 @@ import { authRoutes } from "./routes/auth";
 import { createLinkToken, exchangePublicToken, getRecentTransactions, plaidConfigured, sandboxPublicToken } from "./plaid";
 import { applyWebhookEvent, billingConfigured, fetchEntitlement, getCachedEntitlement, verifyWebhookAuth, webhookConfigured } from "./billing";
 import { pullChanges, pushChanges, type EncryptedChange } from "./sync";
-import { createHousehold, getHousehold, joinHousehold, setMemberSpend } from "./family";
+import { createHousehold, getHousehold, joinHousehold, setMemberSpend, type Household } from "./family";
 import { coachConfigured, coachModel, generateCoaching } from "./coach";
+import { registerAuthGuard } from "./auth-guard";
 
 export type BuildAppOptions = {
   logger?: boolean;
@@ -24,20 +25,17 @@ const MAX_SERVICES_LIMIT = 100;
 // that are expensive (call paid upstreams like Groq/Plaid) or abuse-prone.
 const limit = (max: number) => ({ config: { rateLimit: { max, timeWindow: "1 minute" } } });
 
-const entitlementQuerySchema = z.object({ appUserId: z.string().min(1).max(256) });
+// Identity (ownerId / memberId) is taken from the verified token, NOT the body.
 const familyCreateSchema = z.object({
-  ownerId: z.string().min(1).max(128),
   ownerName: z.string().min(1).max(80),
   monthlySpendMinor: z.number().int().min(0).optional()
 });
 const familyJoinSchema = z.object({
   shareCode: z.string().min(4).max(12),
-  memberId: z.string().min(1).max(128),
   memberName: z.string().min(1).max(80),
   monthlySpendMinor: z.number().int().min(0).optional()
 });
 const familySpendSchema = z.object({
-  memberId: z.string().min(1).max(128),
   monthlySpendMinor: z.number().int().min(0)
 });
 const coachRequestSchema = z.object({
@@ -103,14 +101,16 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       return error;
     }
   });
+  // Fail-closed identity guard: protects every route except the public/webhook
+  // allowlist. Registered before routes so it covers all of them.
+  registerAuthGuard(app);
   await app.register(authRoutes, { prefix: "/api/v1" });
 
   app.get("/health", async (request) => ok({ status: "ok", service: "subradar-api" }, request.id));
   app.get("/api/v1/health", async (request) => ok({ status: "ok", service: "subradar-api" }, request.id));
 
   app.get("/api/v1/account", async (request) => ok({
-    accountId: "acct_dev",
-    emailHash: "dev-only",
+    accountId: request.userId,
     plan: "free",
     serverStoresFinancialData: false
   }, request.id));
@@ -216,7 +216,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     const adapter = createMockOpenBankingAdapter(provider);
     const intent = await adapter.createConnectionIntent({
       provider,
-      accountId: "acct_dev",
+      accountId: request.userId!,
       redirectUri: "subradar://bank-connected"
     });
 
@@ -230,7 +230,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       reply.code(400);
       return parsed.error;
     }
-    const household = createHousehold(parsed.data.ownerId, parsed.data.ownerName, parsed.data.monthlySpendMinor ?? 0);
+    // Owner is the authenticated caller — never a client-supplied id.
+    const household = createHousehold(request.userId!, parsed.data.ownerName, parsed.data.monthlySpendMinor ?? 0);
     return ok({ household }, request.id);
   });
 
@@ -240,7 +241,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       reply.code(400);
       return parsed.error;
     }
-    const household = joinHousehold(parsed.data.shareCode, parsed.data.memberId, parsed.data.memberName, parsed.data.monthlySpendMinor ?? 0);
+    // The joining member is the authenticated caller.
+    const household = joinHousehold(parsed.data.shareCode, request.userId!, parsed.data.memberName, parsed.data.monthlySpendMinor ?? 0);
     if (!household) {
       reply.code(404);
       return fail("NOT_FOUND", "No household found for that code.", request.id);
@@ -255,6 +257,12 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       reply.code(404);
       return fail("NOT_FOUND", "Household not found.", request.id);
     }
+    // AUTHORIZATION: a valid token is not enough — the caller must belong to this
+    // household. Otherwise a logged-in user could read any household by id.
+    if (!isHouseholdMember(household, request.userId)) {
+      reply.code(403);
+      return fail("FORBIDDEN", "You are not a member of this household.", request.id);
+    }
     return ok({ household }, request.id);
   });
 
@@ -265,11 +273,17 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       reply.code(400);
       return parsed.error;
     }
-    const household = setMemberSpend(householdId, parsed.data.memberId, parsed.data.monthlySpendMinor);
-    if (!household) {
+    const existing = getHousehold(householdId);
+    if (!existing) {
       reply.code(404);
       return fail("NOT_FOUND", "Household not found.", request.id);
     }
+    // Must be a member, and may only set OWN spend (member id = the caller).
+    if (!isHouseholdMember(existing, request.userId)) {
+      reply.code(403);
+      return fail("FORBIDDEN", "You are not a member of this household.", request.id);
+    }
+    const household = setMemberSpend(householdId, request.userId!, parsed.data.monthlySpendMinor);
     return ok({ household }, request.id);
   });
 
@@ -294,12 +308,10 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 
   // ── Billing entitlement (server is the source of truth for Pro/Family). ──
   app.get("/api/v1/billing/entitlement", limit(30), async (request, reply) => {
-    const parsed = parseBody(entitlementQuerySchema, request.query, request.id);
-    if (!parsed.ok) {
-      reply.code(400);
-      return parsed.error;
-    }
-    const cached = getCachedEntitlement(parsed.data.appUserId);
+    // The RevenueCat app_user_id is the authenticated account — never a client
+    // query param (which previously let anyone probe any user's plan).
+    const appUserId = request.userId!;
+    const cached = getCachedEntitlement(appUserId);
     if (cached) {
       return ok(cached, request.id);
     }
@@ -307,7 +319,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       return ok({ plan: "free", active: false, expiresAt: null, source: "unconfigured" }, request.id);
     }
     try {
-      return ok(await fetchEntitlement(parsed.data.appUserId), request.id);
+      return ok(await fetchEntitlement(appUserId), request.id);
     } catch (error) {
       reply.code(502);
       return fail("UPSTREAM_ERROR", error instanceof Error ? error.message : "Entitlement lookup failed.", request.id);
@@ -400,11 +412,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   });
 
   app.get("/api/v1/sync/pull", limit(60), async (request, reply) => {
-    const userId = readSyncUser(request.headers);
-    if (!userId) {
-      reply.code(401);
-      return fail("UNAUTHORIZED", "Missing x-zeno-user-id header.", request.id);
-    }
+    const userId = request.userId!;
     const parsed = parseBody(syncPullSchema, request.query, request.id);
     if (!parsed.ok) {
       reply.code(400);
@@ -420,11 +428,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   });
 
   app.post("/api/v1/sync/push", limit(60), async (request, reply) => {
-    const userId = readSyncUser(request.headers);
-    if (!userId) {
-      reply.code(401);
-      return fail("UNAUTHORIZED", "Missing x-zeno-user-id header.", request.id);
-    }
+    const userId = request.userId!;
     const parsed = parseBody(syncPushSchema, request.body, request.id);
     if (!parsed.ok) {
       reply.code(400);
@@ -488,13 +492,11 @@ function clampInt(value: unknown, fallback: number, min: number, max: number): n
   return Math.min(max, Math.max(min, Math.trunc(parsed)));
 }
 
-// Identifies the sync owner. Bound to a client-provided id here (payloads are
-// end-to-end encrypted, so the server only ever holds undecryptable ciphertext);
-// in production derive this from the verified JWT subject instead.
-function readSyncUser(headers: Record<string, string | string[] | undefined>): string | null {
-  const raw = headers["x-zeno-user-id"];
-  const value = Array.isArray(raw) ? raw[0] : raw;
-  return value && value.trim() ? value.trim() : null;
+// A caller belongs to a household if they own it or are listed as a member.
+// Used to authorize household reads/writes against the verified token's user id.
+function isHouseholdMember(household: Household, userId: string | undefined): boolean {
+  if (!userId) return false;
+  return household.ownerId === userId || household.members.some((member) => member.id === userId);
 }
 
 function readAllowedOrigins(): string[] {

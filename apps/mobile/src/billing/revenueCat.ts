@@ -45,6 +45,35 @@ export async function initRevenueCat(): Promise<boolean> {
   return configured;
 }
 
+// Bind the RevenueCat subscriber to the Zeno account id. This is REQUIRED for
+// server-side entitlement verification to work: the server looks up RevenueCat by
+// the auth token's account id, so the SDK must have logged in as that same id —
+// otherwise a real purchase would never unlock Pro (RevenueCat wouldn't recognize
+// the id the server asks about). Best-effort + idempotent; no-op when unconfigured.
+export async function identifyRevenueCatUser(accountId: string): Promise<void> {
+  if (!accountId || !(await initRevenueCat())) {
+    return;
+  }
+  try {
+    await Purchases.logIn(accountId);
+  } catch {
+    // Best-effort — never block app startup on billing identity.
+  }
+}
+
+// Reset to an anonymous RevenueCat user on sign-out so the next account doesn't
+// inherit this one's purchases on a shared device.
+export async function resetRevenueCatUser(): Promise<void> {
+  if (!configured) {
+    return;
+  }
+  try {
+    await Purchases.logOut();
+  } catch {
+    // Best-effort.
+  }
+}
+
 export async function getOfferings(): Promise<ZenoOfferings> {
   if (!(await initRevenueCat())) {
     return emptyOfferings();
@@ -80,8 +109,9 @@ export async function checkStatus(): Promise<BillingPlan> {
   // client can't grant itself Pro. Fall back to the client result only when the
   // server is unreachable or billing isn't configured server-side.
   try {
-    const appUserId = await Purchases.getAppUserID();
-    const server = await getServerEntitlement(appUserId);
+    // Server identifies the user from the auth token (its RevenueCat app_user_id
+    // must equal the Zeno account id — ensure Purchases.logIn(accountId) at sign-in).
+    const server = await getServerEntitlement();
     if (server && server.source !== "unconfigured") {
       return server.plan;
     }
