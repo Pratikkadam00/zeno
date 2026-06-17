@@ -11,7 +11,7 @@ const config: ExpoConfig = {
   icon: "./assets/icon.png",
   ios: {
     supportsTablet: true,
-    bundleIdentifier: "app.subradar.mobile",
+    bundleIdentifier: "app.zeno.mobile",
     config: {
       usesNonExemptEncryption: false
     },
@@ -20,7 +20,7 @@ const config: ExpoConfig = {
     }
   },
   android: {
-    package: "app.subradar.mobile",
+    package: "app.zeno.mobile",
     adaptiveIcon: {
       foregroundImage: "./assets/adaptive-icon.png",
       backgroundColor: "#0A0F2C"
