@@ -1,0 +1,64 @@
+# Render Blueprint for the Zeno API (apps/api — Fastify).
+# Deploy: on render.com → New → Blueprint → connect this repo. Render reads this
+# file, creates the service, and you fill the `sync: false` secrets in the dashboard.
+#
+# Monorepo note: build runs from the repo root so npm workspaces install, then the
+# two workspace packages the API imports (@subradar/shared, @subradar/service-catalog)
+# are built to dist/, then the API starts via tsx.
+services:
+  - type: web
+    name: zeno-api
+    runtime: node
+    plan: free
+    rootDir: .
+    autoDeploy: true
+    healthCheckPath: /health
+    buildCommand: npm install && npm run build --workspace @subradar/shared && npm run build --workspace @subradar/service-catalog
+    startCommand: npm run start --workspace @subradar/api
+    envVars:
+      # ── Non-secret config (safe to keep here) ──
+      - key: NODE_ENV
+        value: production
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: JWT_ISSUER
+        value: zeno-api
+      - key: JWT_AUDIENCE
+        value: zeno-mobile
+      - key: PLAID_ENV
+        value: sandbox
+      - key: CORS_ALLOWED_ORIGINS
+        value: ""
+
+      # ── Secrets — set these in the Render dashboard (never committed) ──
+      # Recommended so tokens survive restarts (else an ephemeral key is generated
+      # and everyone is logged out on each redeploy/wake):
+      - key: JWT_PRIVATE_KEY
+        sync: false
+      - key: JWT_PUBLIC_KEY
+        sync: false
+      # Required to actually log in via magic link (Resend free tier works):
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      # Optional features:
+      - key: GROQ_API_KEY          # AI coach
+        sync: false
+      - key: PLAID_CLIENT_ID       # bank connect (sandbox)
+        sync: false
+      - key: PLAID_SECRET
+        sync: false
+      - key: REVENUECAT_SECRET_KEY # server-side entitlement verification
+        sync: false
+      - key: REVENUECAT_WEBHOOK_AUTH
+        sync: false
+      # Social login audiences (server verifies tokens against these):
+      - key: GOOGLE_WEB_CLIENT_ID
+        sync: false
+      - key: GOOGLE_IOS_CLIENT_ID
+        sync: false
+      - key: GOOGLE_ANDROID_CLIENT_ID
+        sync: false
+      - key: APPLE_CLIENT_ID
+        sync: false
