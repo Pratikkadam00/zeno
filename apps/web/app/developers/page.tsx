@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { createPublicApiKeyPreview, type PublicApiKey } from "@subradar/shared";
+import { createPublicApiKeyPreview, type PublicApiKey } from "@zeno/shared";
 import { ContentShell } from "@/components/site/ContentShell";
 import styles from "@/components/site/content.module.css";
 

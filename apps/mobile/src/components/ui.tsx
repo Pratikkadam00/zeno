@@ -1,4 +1,4 @@
-import type { ThemePreference } from "@subradar/shared";
+import type { ThemePreference } from "@zeno/shared";
 import { Link } from "expo-router";
 import { useEffect, useRef } from "react";
 import { Animated, Pressable, StyleSheet, Text, View, type PressableProps, type StyleProp, type ViewProps, type ViewStyle } from "react-native";

@@ -1,8 +1,8 @@
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
-import { findServiceBySlug, searchServices, services } from "@subradar/service-catalog";
-import { createBusinessSummary, createMockOpenBankingAdapter, createPublicApiKeyPreview, demoBusinessWorkspace, fail, listPartnerIntegrations, ok, syncPullSchema, syncPushSchema, type OpenBankingProvider, type PublicApiKey } from "@subradar/shared";
+import { findServiceBySlug, searchServices, services } from "@zeno/service-catalog";
+import { createBusinessSummary, createMockOpenBankingAdapter, createPublicApiKeyPreview, demoBusinessWorkspace, fail, listPartnerIntegrations, ok, syncPullSchema, syncPushSchema, type OpenBankingProvider, type PublicApiKey } from "@zeno/shared";
 import Fastify, { type FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
 import { z, ZodError } from "zod";
@@ -105,8 +105,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   registerAuthGuard(app);
   await app.register(authRoutes, { prefix: "/api/v1" });
 
-  app.get("/health", async (request) => ok({ status: "ok", service: "subradar-api" }, request.id));
-  app.get("/api/v1/health", async (request) => ok({ status: "ok", service: "subradar-api" }, request.id));
+  app.get("/health", async (request) => ok({ status: "ok", service: "zeno-api" }, request.id));
+  app.get("/api/v1/health", async (request) => ok({ status: "ok", service: "zeno-api" }, request.id));
 
   app.get("/api/v1/account", async (request) => ok({
     accountId: request.userId,
@@ -216,7 +216,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     const intent = await adapter.createConnectionIntent({
       provider,
       accountId: request.userId!,
-      redirectUri: "subradar://bank-connected"
+      redirectUri: "zeno://bank-connected"
     });
 
     return ok({ intent }, request.id);

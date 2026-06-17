@@ -1,4 +1,4 @@
-import { searchServices, type Service } from "@subradar/service-catalog";
+import { searchServices, type Service } from "@zeno/service-catalog";
 import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { ThemeTokens } from "../../src/theme/tokens";

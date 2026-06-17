@@ -1,5 +1,5 @@
-import { findServiceBySlug, getServiceBySlug, toSubscriptionCategory, type ServiceCategory } from "@subradar/service-catalog";
-import type { BillingCycle } from "@subradar/shared";
+import { findServiceBySlug, getServiceBySlug, toSubscriptionCategory, type ServiceCategory } from "@zeno/service-catalog";
+import type { BillingCycle } from "@zeno/shared";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { ActionSheetIOS, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";

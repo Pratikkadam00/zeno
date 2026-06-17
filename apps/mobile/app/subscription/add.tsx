@@ -1,5 +1,5 @@
-import { getPopularServices, type Service } from "@subradar/service-catalog";
-import type { BillingCycle, SubscriptionCategory } from "@subradar/shared";
+import { getPopularServices, type Service } from "@zeno/service-catalog";
+import type { BillingCycle, SubscriptionCategory } from "@zeno/shared";
 import { router, Stack } from "expo-router";
 import { useMemo, useState } from "react";
 import {

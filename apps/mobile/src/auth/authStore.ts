@@ -1,4 +1,4 @@
-import type { ApiEnvelope } from "@subradar/shared";
+import type { ApiEnvelope } from "@zeno/shared";
 import * as AppleAuthentication from "expo-apple-authentication";
 import * as AuthSession from "expo-auth-session";
 import { ResponseType } from "expo-auth-session";
@@ -203,7 +203,7 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
       }
 
       const redirectUri = AuthSession.makeRedirectUri({
-        scheme: "subradar",
+        scheme: "zeno",
         path: "auth/google"
       });
       const request = await AuthSession.loadAsync({

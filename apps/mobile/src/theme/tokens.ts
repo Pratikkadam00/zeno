@@ -1,4 +1,4 @@
-import type { ThemePreference } from "@subradar/shared";
+import type { ThemePreference } from "@zeno/shared";
 
 export type ThemeTokens = {
   id: ThemePreference;

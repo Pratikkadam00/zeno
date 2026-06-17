@@ -1,4 +1,4 @@
-import { findServiceBySlug } from "@subradar/service-catalog";
+import { findServiceBySlug } from "@zeno/service-catalog";
 import { Link, router, Stack } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";

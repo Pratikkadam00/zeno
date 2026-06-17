@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { services } from "@subradar/service-catalog";
+import { services } from "@zeno/service-catalog";
 
 const BASE = "https://zeno.app";
 

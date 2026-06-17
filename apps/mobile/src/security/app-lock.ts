@@ -107,7 +107,7 @@ export async function loadLockState(): Promise<LockState> {
 }
 
 async function derivePinHash(pin: string, salt: string, iterations: number): Promise<string> {
-  let digest = `subradar.pin.${pinHashVersion}.${salt}.${pin}`;
+  let digest = `zeno.pin.${pinHashVersion}.${salt}.${pin}`;
   for (let round = 0; round < iterations; round += 1) {
     digest = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, `${digest}.${salt}.${round}`);
   }
@@ -117,7 +117,7 @@ async function derivePinHash(pin: string, salt: string, iterations: number): Pro
 async function legacyHashPin(pin: string): Promise<string> {
   return Crypto.digestStringAsync(
     Crypto.CryptoDigestAlgorithm.SHA256,
-    `subradar.pin.v1.${pin}`
+    `zeno.pin.v1.${pin}`
   );
 }
 

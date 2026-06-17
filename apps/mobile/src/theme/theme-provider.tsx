@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { ThemePreference } from "@subradar/shared";
+import type { ThemePreference } from "@zeno/shared";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Animated, StyleSheet } from "react-native";
 import { themes, type ThemeTokens } from "./tokens";
@@ -28,7 +28,7 @@ function normalizeThemePreference(value: string | null): ThemePreference | null 
   return value ? legacyThemeMap[value] ?? null : null;
 }
 
-export function SubRadarThemeProvider({ children }: { children: ReactNode }) {
+export function ZenoThemeProvider({ children }: { children: ReactNode }) {
   const [themeId, setThemeIdState] = useState<ThemePreference>("millennial");
   const fade = useRef(new Animated.Value(1)).current;
 
@@ -78,7 +78,7 @@ export function SubRadarThemeProvider({ children }: { children: ReactNode }) {
 export function useZenoTheme(): ThemeContextValue {
   const value = useContext(ThemeContext);
   if (!value) {
-    throw new Error("useZenoTheme must be used inside SubRadarThemeProvider");
+    throw new Error("useZenoTheme must be used inside ZenoThemeProvider");
   }
   return value;
 }

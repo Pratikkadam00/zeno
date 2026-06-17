@@ -3,7 +3,7 @@
 # file, creates the service, and you fill the `sync: false` secrets in the dashboard.
 #
 # Monorepo note: build runs from the repo root so npm workspaces install, then the
-# two workspace packages the API imports (@subradar/shared, @subradar/service-catalog)
+# two workspace packages the API imports (@zeno/shared, @zeno/service-catalog)
 # are built to dist/, then the API starts via tsx.
 services:
   - type: web
@@ -13,8 +13,8 @@ services:
     rootDir: .
     autoDeploy: true
     healthCheckPath: /health
-    buildCommand: npm install && npm run build --workspace @subradar/shared && npm run build --workspace @subradar/service-catalog
-    startCommand: npm run start --workspace @subradar/api
+    buildCommand: npm install && npm run build --workspace @zeno/shared && npm run build --workspace @zeno/service-catalog
+    startCommand: npm run start --workspace @zeno/api
     envVars:
       # ── Non-secret config (safe to keep here) ──
       - key: NODE_ENV

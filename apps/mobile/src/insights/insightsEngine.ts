@@ -1,5 +1,5 @@
-import { getServiceById, getServiceBySlug } from "@subradar/service-catalog";
-import { monthlyAmount, type Subscription } from "@subradar/shared";
+import { getServiceById, getServiceBySlug } from "@zeno/service-catalog";
+import { monthlyAmount, type Subscription } from "@zeno/shared";
 
 export interface Insight {
   id: string;

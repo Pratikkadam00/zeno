@@ -1,4 +1,4 @@
-import { fail } from "@subradar/shared";
+import { fail } from "@zeno/shared";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { verifyAccessToken } from "./routes/auth";
 

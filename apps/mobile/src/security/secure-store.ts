@@ -1,13 +1,13 @@
-import type { ThemePreference } from "@subradar/shared";
+import type { ThemePreference } from "@zeno/shared";
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
 const keys = {
-  databaseKey: "subradar.database.key.v1",
-  themePreference: "subradar.theme.preference.v1",
-  pinHash: "subradar.pin.hash.v1",
-  lockState: "subradar.lock.state.v1"
+  databaseKey: "zeno.database.key.v1",
+  themePreference: "zeno.theme.preference.v1",
+  pinHash: "zeno.pin.hash.v1",
+  lockState: "zeno.lock.state.v1"
 };
 
 // On web there is no secure storage. Secrets are kept in memory only so an
@@ -80,8 +80,8 @@ export async function clearLockStateValue(): Promise<void> {
 // Each connected inbox stores its token under a per-address key, with an index
 // of addresses so the user can connect several inboxes (personal + work).
 
-const gmailIndexKey = "subradar.oauth.gmail.index.v1";
-const gmailAccountPrefix = "subradar.oauth.gmail.acct.";
+const gmailIndexKey = "zeno.oauth.gmail.index.v1";
+const gmailAccountPrefix = "zeno.oauth.gmail.acct.";
 
 export async function saveGmailAccount(address: string, token: string): Promise<void> {
   const normalized = address.trim().toLowerCase();

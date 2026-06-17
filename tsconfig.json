@@ -8,8 +8,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@subradar/shared": ["packages/shared/src/index.ts"],
-      "@subradar/service-catalog": ["packages/service-catalog/src/index.ts"]
+      "@zeno/shared": ["packages/shared/src/index.ts"],
+      "@zeno/service-catalog": ["packages/service-catalog/src/index.ts"]
     },
     "target": "ES2022",
     "lib": ["ES2022", "DOM"],

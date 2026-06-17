@@ -1,4 +1,4 @@
-import { fail, ok } from "@subradar/shared";
+import { fail, ok } from "@zeno/shared";
 import type { FastifyPluginAsync } from "fastify";
 import { createHash, createPublicKey, createSign, createVerify, generateKeyPairSync, randomBytes, randomInt, randomUUID, timingSafeEqual, type JsonWebKey } from "node:crypto";
 import { z, ZodError } from "zod";
@@ -8,7 +8,7 @@ const magicLinkTtlSeconds = 10 * 60;
 const refreshTokenTtlSeconds = 30 * 24 * 60 * 60;
 const issuer = process.env.JWT_ISSUER ?? "zeno-api";
 const audience = process.env.JWT_AUDIENCE ?? "zeno-mobile";
-const defaultMagicLinkRedirect = process.env.MAGIC_LINK_REDIRECT_URL ?? "subradar://auth/verify";
+const defaultMagicLinkRedirect = process.env.MAGIC_LINK_REDIRECT_URL ?? "zeno://auth/verify";
 
 const magicLinkRequestSchema = z.object({
   email: z.string().email()

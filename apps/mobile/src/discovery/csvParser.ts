@@ -1,5 +1,5 @@
-import { searchServices } from "@subradar/service-catalog";
-import { parseAmountMinor, parseCsvRows } from "@subradar/shared";
+import { searchServices } from "@zeno/service-catalog";
+import { parseAmountMinor, parseCsvRows } from "@zeno/shared";
 import { calculateNextRenewal, confidenceRank, isWithin, slugify, titleCase } from "./discovery-helpers";
 import type { ParsedSubscription } from "./emailScanner";
 

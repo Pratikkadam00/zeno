@@ -1,22 +1,22 @@
 import * as SQLite from "expo-sqlite";
 import { getOrCreateDatabaseKey } from "../security/secure-store";
 
-export type SubRadarDatabase = SQLite.SQLiteDatabase;
+export type ZenoDatabase = SQLite.SQLiteDatabase;
 
-export async function openSubRadarDatabase(): Promise<SubRadarDatabase> {
-  const db = await SQLite.openDatabaseAsync("subradar.db");
+export async function openZenoDatabase(): Promise<ZenoDatabase> {
+  const db = await SQLite.openDatabaseAsync("zeno.db");
   const key = await getOrCreateDatabaseKey();
   await db.execAsync(`PRAGMA key = '${key.replace(/'/g, "''")}';`);
   await runMigrations(db);
   return db;
 }
 
-export async function readAppMeta(db: SubRadarDatabase, key: string): Promise<string | null> {
+export async function readAppMeta(db: ZenoDatabase, key: string): Promise<string | null> {
   const row = await db.getFirstAsync<{ value: string }>("SELECT value FROM app_meta WHERE key = ?", key);
   return row?.value ?? null;
 }
 
-export async function writeAppMeta(db: SubRadarDatabase, key: string, value: string): Promise<void> {
+export async function writeAppMeta(db: ZenoDatabase, key: string, value: string): Promise<void> {
   await db.runAsync(
     "INSERT INTO app_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
     key,
@@ -24,7 +24,7 @@ export async function writeAppMeta(db: SubRadarDatabase, key: string, value: str
   );
 }
 
-export async function runMigrations(db: SubRadarDatabase): Promise<void> {
+export async function runMigrations(db: ZenoDatabase): Promise<void> {
   await db.execAsync(`
     PRAGMA journal_mode = WAL;
 

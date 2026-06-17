@@ -1,4 +1,4 @@
-import { getServiceBySlug, searchServices, services, type Service } from "@subradar/service-catalog";
+import { getServiceBySlug, searchServices, services, type Service } from "@zeno/service-catalog";
 import { exchangeCodeAsync, type AuthRequest, type AuthSessionResult } from "expo-auth-session";
 import { discovery as googleDiscovery } from "expo-auth-session/providers/google";
 import { getGmailAccountToken, listGmailAddresses, removeGmailAccount, saveGmailAccount } from "../security/secure-store";

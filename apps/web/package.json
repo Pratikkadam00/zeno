@@ -1,5 +1,5 @@
 {
-  "name": "@subradar/web",
+  "name": "@zeno/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,8 +12,8 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
-    "@subradar/service-catalog": "*",
-    "@subradar/shared": "*",
+    "@zeno/service-catalog": "*",
+    "@zeno/shared": "*",
     "@tailwindcss/postcss": "^4.3.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

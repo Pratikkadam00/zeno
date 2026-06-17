@@ -1,5 +1,5 @@
 {
-  "name": "@subradar/service-catalog",
+  "name": "@zeno/service-catalog",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -17,6 +17,6 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@subradar/shared": "*"
+    "@zeno/shared": "*"
   }
 }

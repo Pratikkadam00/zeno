@@ -3,7 +3,7 @@
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 
-const storageKey = "subradar.web.theme";
+const storageKey = "zeno.web.theme";
 
 function applyTheme(isDark: boolean) {
   document.documentElement.classList.toggle("dark", isDark);

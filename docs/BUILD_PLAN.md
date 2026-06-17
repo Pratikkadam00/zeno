@@ -1,8 +1,8 @@
-# SubRadar Build Plan
+# Zeno Build Plan
 
 ## Build Strategy
 
-SubRadar is implemented as a full monorepo from day one, with security and local data ownership built before the richer product intelligence layers.
+Zeno is implemented as a full monorepo from day one, with security and local data ownership built before the richer product intelligence layers.
 
 The first working app is mobile-first and uses Expo SDK 56 development builds. Expo Go is not the primary target because SQLCipher, secure native configuration, biometrics, and production notifications require native config plugins and development builds.
 

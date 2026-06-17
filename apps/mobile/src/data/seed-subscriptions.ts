@@ -1,4 +1,4 @@
-import type { Subscription } from "@subradar/shared";
+import type { Subscription } from "@zeno/shared";
 
 // Seed dates are relative to first launch so the demo always shows a believable
 // mix of imminent renewals (and never stale "TODAY" badges from fixed dates).

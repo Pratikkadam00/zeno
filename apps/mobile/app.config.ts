@@ -4,7 +4,7 @@ const config: ExpoConfig = {
   name: "Zeno",
   slug: "zeno",
   owner: "pratikk_expo",
-  scheme: "subradar",
+  scheme: "zeno",
   version: "0.1.0",
   orientation: "portrait",
   userInterfaceStyle: "automatic",

@@ -10,15 +10,15 @@ import { SubscriptionStoreProvider, useSubscriptionStore } from "../src/data/sub
 import { cleanupNotificationHandlers, setupNotificationHandlers } from "../src/notifications/notificationHandlers";
 import { registerForPushNotifications, rescheduleAllNotifications } from "../src/notifications/notificationService";
 import { refreshWidgetSnapshot } from "../src/widgets/widgetBridge";
-import { SubRadarThemeProvider, useZenoTheme } from "../src/theme/theme-provider";
+import { ZenoThemeProvider, useZenoTheme } from "../src/theme/theme-provider";
 
 export default function RootLayout() {
   return (
-    <SubRadarThemeProvider>
+    <ZenoThemeProvider>
       <SubscriptionStoreProvider>
         <RootStack />
       </SubscriptionStoreProvider>
-    </SubRadarThemeProvider>
+    </ZenoThemeProvider>
   );
 }
 

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { listPartnerIntegrations } from "@subradar/shared";
+import { listPartnerIntegrations } from "@zeno/shared";
 import { ContentShell } from "@/components/site/ContentShell";
 import styles from "@/components/site/content.module.css";
 

@@ -1,4 +1,4 @@
-import type { CancellationDifficulty, Money, ServiceRecord, SubscriptionCategory } from "@subradar/shared";
+import type { CancellationDifficulty, Money, ServiceRecord, SubscriptionCategory } from "@zeno/shared";
 
 export type ServiceCategory =
   | "streaming"

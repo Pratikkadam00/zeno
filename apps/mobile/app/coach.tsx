@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, Text, View } from "react-native";
-import { monthlyAmount } from "@subradar/shared";
+import { monthlyAmount } from "@zeno/shared";
 import { Screen, Surface } from "../src/components/ui";
 import { getAiCoaching, type AiCoaching } from "../src/api/client";
 import { useSubscriptionStore } from "../src/data/subscription-store";

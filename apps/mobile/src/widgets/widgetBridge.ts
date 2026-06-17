@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { WidgetSnapshot } from "@subradar/shared";
+import type { WidgetSnapshot } from "@zeno/shared";
 
 // Flat payload the native home-screen widget / watch complication renders.
 // Persisted under this key on every change; the native extension reads it from

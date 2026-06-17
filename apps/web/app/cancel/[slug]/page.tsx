@@ -1,4 +1,4 @@
-import { findServiceBySlug, services } from "@subradar/service-catalog";
+import { findServiceBySlug, services } from "@zeno/service-catalog";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ContentShell } from "@/components/site/ContentShell";

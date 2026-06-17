@@ -53,8 +53,8 @@ export function createBusinessSummary(
 }
 
 export const demoBusinessWorkspace: BusinessWorkspace = {
-  id: "biz_subradar_demo",
-  name: "SubRadar Labs",
+  id: "biz_zeno_demo",
+  name: "Zeno Labs",
   plan: "business",
   monthlySeatLimit: 25,
   seats: [

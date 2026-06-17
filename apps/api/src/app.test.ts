@@ -40,7 +40,7 @@ describe("api app", () => {
     const request = await app.inject({
       method: "POST",
       url: "/api/v1/auth/magic-link/request",
-      payload: { email: "dev@subradar.local" }
+      payload: { email: "dev@zeno.local" }
     });
     expect(request.statusCode).toBe(200);
     const requestBody = request.json();
@@ -49,7 +49,7 @@ describe("api app", () => {
     const verify = await app.inject({
       method: "POST",
       url: "/api/v1/auth/magic-link/verify",
-      payload: { email: "dev@subradar.local", code: requestBody.data.devCode }
+      payload: { email: "dev@zeno.local", code: requestBody.data.devCode }
     });
     const body = verify.json();
 
@@ -209,12 +209,12 @@ describe("api app", () => {
     const request = await app.inject({
       method: "POST",
       url: "/api/v1/auth/magic-link/request",
-      payload: { email: "refresh@subradar.local" }
+      payload: { email: "refresh@zeno.local" }
     });
     const verify = await app.inject({
       method: "POST",
       url: "/api/v1/auth/magic-link/verify",
-      payload: { email: "refresh@subradar.local", code: request.json().data.devCode }
+      payload: { email: "refresh@zeno.local", code: request.json().data.devCode }
     });
     const session = verify.json().data;
     expect(session.refreshToken).toBeTruthy();

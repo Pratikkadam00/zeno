@@ -1,4 +1,4 @@
-import { buildMonthlySpendHistory, monthlyAmount } from "@subradar/shared";
+import { buildMonthlySpendHistory, monthlyAmount } from "@zeno/shared";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";

@@ -1,4 +1,4 @@
-import type { Subscription, BillingCycle } from "@subradar/shared";
+import type { Subscription, BillingCycle } from "@zeno/shared";
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { getMarkedDates, getMonthlyTotal, getProjectedAnnual, getSubscriptionsForDate, getWeeklyGroups } from "./calendarUtils";
 

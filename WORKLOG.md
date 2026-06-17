@@ -1,4 +1,4 @@
-# SubRadar Worklog
+# Zeno Worklog
 
 Every implementation chunk must add a timestamped entry before and after the work.
 
@@ -223,14 +223,14 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: confirm the SecureStore web fallback is active in the running Expo preview.
 - Files changed: `WORKLOG.md`.
-- Tests run: in-app browser loaded `http://127.0.0.1:8081/`, confirmed `SubRadar` rendered with no framework overlay, clicked `Start tracking`, and reached `/dashboard`; stale SecureStore console history remains timestamped before this validation run.
+- Tests run: in-app browser loaded `http://127.0.0.1:8081/`, confirmed `Zeno` rendered with no framework overlay, clicked `Start tracking`, and reached `/dashboard`; stale SecureStore console history remains timestamped before this validation run.
 - Blockers: Expo notifications still warns that push token listeners are limited on web; this is expected for Expo web preview.
 - Next step: install Android SDK/emulator packages and run the app as a native Android build.
 
 ## 2026-05-24 20:30 IST - Android Emulator Setup Start
 
 - Status: in progress
-- Goal: install the missing Android SDK/emulator pieces, create a SubRadar AVD, and run the Expo mobile app as a native Android app.
+- Goal: install the missing Android SDK/emulator pieces, create a Zeno AVD, and run the Expo mobile app as a native Android app.
 - Files changed: `WORKLOG.md`.
 - Tests run: pending.
 - Blockers: Android SDK package licenses still need to be accepted; emulator images may require large downloads.
@@ -239,16 +239,16 @@ Every implementation chunk must add a timestamped entry before and after the wor
 ## 2026-05-24 20:34 IST - Android SDK and AVD Ready
 
 - Status: completed
-- Goal: make this Windows machine capable of launching an Android emulator for SubRadar.
+- Goal: make this Windows machine capable of launching an Android emulator for Zeno.
 - Files changed: `WORKLOG.md`; local Android SDK files under the user profile; Android AVD profile under the user profile.
-- Tests run: accepted Android SDK licenses; installed `platform-tools`, `emulator`, `platforms;android-36`, `build-tools;36.0.0`, and `system-images;android-36;google_apis;x86_64`; created `SubRadar_API_36`; `adb devices` shows `emulator-5554`; `sys.boot_completed` returned `1`.
+- Tests run: accepted Android SDK licenses; installed `platform-tools`, `emulator`, `platforms;android-36`, `build-tools;36.0.0`, and `system-images;android-36;google_apis;x86_64`; created `Zeno_API_36`; `adb devices` shows `emulator-5554`; `sys.boot_completed` returned `1`.
 - Blockers: Android command-line tools report an SDK XML version warning, but the packages installed and the emulator boots.
 - Next step: run `expo run:android` with `PUBLIC_API_BASE_URL=http://10.0.2.2:8787/api/v1`.
 
 ## 2026-05-24 20:51 IST - Native Android Run Complete
 
 - Status: completed
-- Goal: run SubRadar as a native Android app and verify the frontend/backend connection on-device.
+- Goal: run Zeno as a native Android app and verify the frontend/backend connection on-device.
 - Files changed: `apps/mobile/package.json`, `package-lock.json`, generated native Android project under `apps/mobile/android`, `apps/mobile/android/gradle/wrapper/gradle-wrapper.properties`, `WORKLOG.md`.
 - Tests run: `expo-system-ui` installed with Expo-managed version; Android wrapper aligned from Gradle 9.3.1 to Gradle 8.13 to match AGP 8.12 compatibility; `gradlew app:assembleDebug` passed; APK installed with `adb install -r`; app launched as `app.subradar.mobile/.MainActivity`; `adb reverse tcp:8081 tcp:8081` and `adb reverse tcp:8787 tcp:8787` enabled emulator access to Metro and Fastify; native Backend screen showed `Connected`; logcat check found no fatal Android or React Native JS errors.
 - Blockers: emulator backend connectivity currently depends on `adb reverse tcp:8787 tcp:8787` because the debug app displays the local API as `127.0.0.1:8787`; rerun that reverse command after emulator restarts.
@@ -306,7 +306,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: deliver the requested Apple Wallet / Google Pay quality dashboard redesign without changing the subscription data source, store logic, routes, or existing dashboard feature links.
 - Files changed: `apps/mobile/app/dashboard.tsx`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/mobile run typecheck` passed; `npm.cmd test` passed with 14 files and 23 tests; Android emulator refreshed from Metro, dashboard screenshot captured at `C:\Users\Pratik\Documents\Codex\2026-05-24\files-mentioned-by-the-user-subradar\subradar-dashboard-redesign.png`; spend coach card/button screenshot captured at `C:\Users\Pratik\Documents\Codex\2026-05-24\files-mentioned-by-the-user-subradar\subradar-dashboard-redesign-coach.png`; cleared logcat and found no current fatal, render, or React Native JS errors.
+- Tests run: `npm.cmd --workspace @zeno/mobile run typecheck` passed; `npm.cmd test` passed with 14 files and 23 tests; Android emulator refreshed from Metro, dashboard screenshot captured at `C:\Users\Pratik\Documents\Codex\2026-05-24\files-mentioned-by-the-user-subradar\subradar-dashboard-redesign.png`; spend coach card/button screenshot captured at `C:\Users\Pratik\Documents\Codex\2026-05-24\files-mentioned-by-the-user-subradar\subradar-dashboard-redesign-coach.png`; cleared logcat and found no current fatal, render, or React Native JS errors.
 - Blockers: none.
 - Next step: continue with the next mobile surface redesign or package the emulator launch/reload flow into a dev script.
 
@@ -315,7 +315,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: remove leftover unused dashboard styles after fixing the Expo Router `Link asChild` style-array issue.
 - Files changed: `apps/mobile/app/dashboard.tsx`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/mobile run typecheck` passed.
+- Tests run: `npm.cmd --workspace @zeno/mobile run typecheck` passed.
 - Blockers: none.
 - Next step: continue with the next mobile surface redesign or package the emulator launch/reload flow into a dev script.
 
@@ -333,16 +333,16 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: deliver the requested Zeno onboarding visual redesign with open Linear/Notion-style spacing while preserving theme selection and `Start tracking` navigation.
 - Files changed: `apps/mobile/app/index.tsx`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/mobile run typecheck` passed; `npm.cmd test` passed with 14 files and 23 tests; Android emulator opened `subradar://` onboarding route and screenshot captured at `C:\Users\Pratik\Documents\Codex\2026-05-24\files-mentioned-by-the-user-subradar\subradar-onboarding-zeno.png`; cleared logcat and found no current fatal, render, or React Native JS errors.
+- Tests run: `npm.cmd --workspace @zeno/mobile run typecheck` passed; `npm.cmd test` passed with 14 files and 23 tests; Android emulator opened `zeno://` onboarding route and screenshot captured at `C:\Users\Pratik\Documents\Codex\2026-05-24\files-mentioned-by-the-user-subradar\subradar-onboarding-zeno.png`; cleared logcat and found no current fatal, render, or React Native JS errors.
 - Blockers: none.
 - Next step: continue with the next mobile screen polish pass or package the emulator launch/reload flow into a dev script.
 
 ## 2026-05-24 21:42 IST - Onboarding Zeno Naming Cleanup Start
 
 - Status: completed
-- Goal: remove remaining `SubRadar` identifier text from `apps/mobile/app/index.tsx` by aliasing the shared theme hook locally.
+- Goal: remove remaining `Zeno` identifier text from `apps/mobile/app/index.tsx` by aliasing the shared theme hook locally.
 - Files changed: `apps/mobile/app/index.tsx`, `apps/mobile/src/theme/theme-provider.tsx`, `WORKLOG.md`.
-- Tests run: `Select-String` confirmed no `SubRadar` text remains in `apps/mobile/app/index.tsx`; `npm.cmd --workspace @subradar/mobile run typecheck` passed; `npm.cmd test` passed with 14 files and 23 tests.
+- Tests run: `Select-String` confirmed no `Zeno` text remains in `apps/mobile/app/index.tsx`; `npm.cmd --workspace @zeno/mobile run typecheck` passed; `npm.cmd test` passed with 14 files and 23 tests.
 - Blockers: none.
 - Next step: continue with the next mobile screen polish pass or package the emulator launch/reload flow into a dev script.
 
@@ -351,7 +351,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed in the 22:08 completion entry.
 - Goal: replace the dark/light toggle with the full `genz`, `millennial`, and `genx` theme system, persist changes with AsyncStorage, animate theme transitions, and move onboarding/dashboard colors onto active theme tokens.
 - Files changed: `apps/mobile/package.json`, `package-lock.json`, `WORKLOG.md`.
-- Tests run: `npm.cmd install --workspace @subradar/mobile @react-native-async-storage/async-storage` completed.
+- Tests run: `npm.cmd install --workspace @zeno/mobile @react-native-async-storage/async-storage` completed.
 - Blockers: none.
 - Next step: update shared theme IDs, tokens, provider persistence, UI toggle, onboarding, and dashboard.
 
@@ -378,7 +378,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: deliver the requested Zeno marketing website in exact section order, with Inter font import, exact CSS variables in `globals.css`, SEO/Open Graph metadata, and SoftwareApplication plus FAQPage JSON-LD.
 - Files changed: `apps/web/app/page.tsx`, `apps/web/app/layout.tsx`, `apps/web/app/globals.css`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/web run typecheck` passed; `npm.cmd run build` passed with 66 generated pages; `npm.cmd test` passed with 14 files and 23 tests; HTML smoke check found `zeno.`, hero copy, SoftwareApplication schema, FAQPage schema, logos band text, and `Get Zeno`; desktop screenshot captured at `C:\Users\Pratik\Documents\Codex\2026-05-24\files-mentioned-by-the-user-subradar\zeno-web-home.png`; full-page screenshot captured at `C:\Users\Pratik\Documents\Codex\2026-05-24\files-mentioned-by-the-user-subradar\zeno-web-full.png`; mobile-width checks captured at `C:\Users\Pratik\Documents\Codex\2026-05-24\files-mentioned-by-the-user-subradar\zeno-web-mobile.png` and `C:\Users\Pratik\Documents\Codex\2026-05-24\files-mentioned-by-the-user-subradar\zeno-web-mobile-500.png`.
+- Tests run: `npm.cmd --workspace @zeno/web run typecheck` passed; `npm.cmd run build` passed with 66 generated pages; `npm.cmd test` passed with 14 files and 23 tests; HTML smoke check found `zeno.`, hero copy, SoftwareApplication schema, FAQPage schema, logos band text, and `Get Zeno`; desktop screenshot captured at `C:\Users\Pratik\Documents\Codex\2026-05-24\files-mentioned-by-the-user-subradar\zeno-web-home.png`; full-page screenshot captured at `C:\Users\Pratik\Documents\Codex\2026-05-24\files-mentioned-by-the-user-subradar\zeno-web-full.png`; mobile-width checks captured at `C:\Users\Pratik\Documents\Codex\2026-05-24\files-mentioned-by-the-user-subradar\zeno-web-mobile.png` and `C:\Users\Pratik\Documents\Codex\2026-05-24\files-mentioned-by-the-user-subradar\zeno-web-mobile-500.png`.
 - Blockers: none. Edge/Chrome headless at 390px appears to crop to the left side because of its minimum layout width; the 500px mobile-width capture shows the intended stacked layout without clipping.
 - Next step: continue applying the Zeno brand rename across remaining web routes, or add a real Open Graph image at `/og.png`.
 
@@ -387,7 +387,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: create a real static `/og.png` asset for the Open Graph metadata URL added in `apps/web/app/layout.tsx`.
 - Files changed: `apps/web/public/og.png`, `WORKLOG.md`.
-- Tests run: generated and visually inspected `apps/web/public/og.png`; `npm.cmd --workspace @subradar/web run typecheck` passed; `npm.cmd test` passed with 14 files and 23 tests; `npm.cmd run build` passed with 66 generated pages.
+- Tests run: generated and visually inspected `apps/web/public/og.png`; `npm.cmd --workspace @zeno/web run typecheck` passed; `npm.cmd test` passed with 14 files and 23 tests; `npm.cmd run build` passed with 66 generated pages.
 - Blockers: none.
 - Next step: continue applying the Zeno brand rename across remaining web routes, or add richer launch imagery when final App Store and Play Store assets are available.
 
@@ -396,7 +396,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: add the mobile auth dependencies required for the Zeno authentication system before creating `authStore.ts`.
 - Files changed: `apps/mobile/package.json`, `package-lock.json`, `WORKLOG.md`.
-- Tests run: `npm.cmd install --workspace @subradar/mobile zustand expo-apple-authentication@~56.0.4 expo-auth-session@~56.0.11 expo-web-browser@~56.0.5` completed.
+- Tests run: `npm.cmd install --workspace @zeno/mobile zustand expo-apple-authentication@~56.0.4 expo-auth-session@~56.0.11 expo-web-browser@~56.0.5` completed.
 - Blockers: none. npm reports existing moderate audit findings; no audit fix was run because it may introduce unrelated dependency changes.
 - Next step: create `apps/api/src/routes/auth.ts` and typecheck the API.
 
@@ -405,7 +405,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: implement magic link, Apple OAuth, Google OAuth, refresh rotation, and logout routes in `apps/api/src/routes/auth.ts`, then register them under `/api/v1`.
 - Files changed: `apps/api/src/routes/auth.ts`, `apps/api/src/app.ts`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/api run typecheck` passed after replacing an unsafe legacy `app.inject` bridge with direct validated handler logic.
+- Tests run: `npm.cmd --workspace @zeno/api run typecheck` passed after replacing an unsafe legacy `app.inject` bridge with direct validated handler logic.
 - Blockers: none.
 - Next step: create `apps/mobile/src/auth/authStore.ts` with SecureStore-backed token storage and 14-minute refresh cadence.
 
@@ -414,7 +414,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: create `apps/mobile/src/auth/authStore.ts` with Zustand actions for magic link, Apple, Google, refresh rotation every 14 minutes, logout, and SecureStore-only native token persistence.
 - Files changed: `apps/mobile/src/auth/authStore.ts`, `apps/mobile/package.json`, `package-lock.json`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/mobile run typecheck` passed.
+- Tests run: `npm.cmd --workspace @zeno/mobile run typecheck` passed.
 - Blockers: none.
 - Next step: create `apps/mobile/app/login.tsx` and run the mobile typecheck before updating the root layout.
 
@@ -423,7 +423,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: add a clean Zeno login screen with logo, tagline, email magic-link form, Apple/Google buttons, divider, and privacy note.
 - Files changed: `apps/mobile/app/login.tsx`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/mobile run typecheck` passed after replacing an unavailable Lucide `Chrome` icon with a dependency-free Google text mark.
+- Tests run: `npm.cmd --workspace @zeno/mobile run typecheck` passed after replacing an unavailable Lucide `Chrome` icon with a dependency-free Google text mark.
 - Blockers: none.
 - Next step: update `apps/mobile/app/_layout.tsx` to hydrate auth, redirect anonymous users to `/login`, and require biometric unlock on foreground.
 
@@ -432,7 +432,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: update the mobile root layout to check auth on mount, redirect unauthenticated users to `/login`, include the login route, and require biometric authentication whenever the app returns to the foreground.
 - Files changed: `apps/mobile/app/_layout.tsx`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/mobile run typecheck` passed.
+- Tests run: `npm.cmd --workspace @zeno/mobile run typecheck` passed.
 - Blockers: none.
 - Next step: run full repo typecheck and test suite to verify API/mobile integration and legacy auth route compatibility.
 
@@ -450,7 +450,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: align `.env.example` and Expo config with the new auth code paths for Resend, JWT PEM keys, magic-link redirects, and Google OAuth client IDs.
 - Files changed: `.env.example`, `apps/mobile/app.config.ts`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/mobile run typecheck` passed; `npm.cmd run typecheck` passed; `npm.cmd test` passed with 14 files and 23 tests.
+- Tests run: `npm.cmd --workspace @zeno/mobile run typecheck` passed; `npm.cmd run typecheck` passed; `npm.cmd test` passed with 14 files and 23 tests.
 - Blockers: none.
 - Next step: provide real Resend sender/domain, persistent RS256 keypair, Apple credential verification, and Google OAuth client IDs for production sign-in.
 
@@ -459,7 +459,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: add Apple and Google JWT identity-token verification when production OAuth audiences are configured, while preserving local dev behavior before credentials exist.
 - Files changed: `apps/api/src/routes/auth.ts`, `.env.example`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/api run typecheck` passed; `npm.cmd run typecheck` passed; `npm.cmd test` passed with 14 files and 23 tests; API smoke check passed for magic link, verify, refresh, Apple, Google, and logout routes.
+- Tests run: `npm.cmd --workspace @zeno/api run typecheck` passed; `npm.cmd run typecheck` passed; `npm.cmd test` passed with 14 files and 23 tests; API smoke check passed for magic link, verify, refresh, Apple, Google, and logout routes.
 - Blockers: none.
 - Next step: provide real Resend sender/domain, persistent RS256 keypair, Apple client ID/bundle ID, and Google OAuth client IDs for production sign-in.
 
@@ -468,8 +468,8 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: install the RevenueCat mobile SDK for the current mobile workspace and inspect its local TypeScript API before implementing billing.
 - Files changed: `apps/mobile/package.json`, `package-lock.json`, `WORKLOG.md`.
-- Tests run: `npm.cmd install react-native-purchases --workspace @subradar/mobile` completed.
-- Blockers: the requested workspace name `@zeno/mobile` does not exist in this repo; using the actual workspace `@subradar/mobile`.
+- Tests run: `npm.cmd install react-native-purchases --workspace @zeno/mobile` completed.
+- Blockers: the requested workspace name `@zeno/mobile` does not exist in this repo; using the actual workspace `@zeno/mobile`.
 - Next step: create `apps/mobile/src/billing/revenueCat.ts` using the installed SDK typings.
 
 ## 2026-05-24 23:35 IST - RevenueCat Billing Module Start
@@ -477,7 +477,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: create the RevenueCat wrapper with init, offerings, Pro/Family purchase helpers, status checks, and restore support.
 - Files changed: `apps/mobile/src/billing/revenueCat.ts`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/mobile run typecheck` passed.
+- Tests run: `npm.cmd --workspace @zeno/mobile run typecheck` passed.
 - Blockers: none.
 - Next step: expose billing plan state in the auth store and initialize RevenueCat on app start.
 
@@ -486,7 +486,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: add plan state to the auth store and initialize RevenueCat/status checks from the mobile root layout.
 - Files changed: `apps/mobile/src/auth/authStore.ts`, `apps/mobile/app/_layout.tsx`, `apps/mobile/app.config.ts`, `.env.example`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/mobile run typecheck` passed.
+- Tests run: `npm.cmd --workspace @zeno/mobile run typecheck` passed.
 - Blockers: none.
 - Next step: replace `apps/mobile/app/paywall.tsx` with the RevenueCat paywall UI and run mobile typecheck.
 
@@ -495,7 +495,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: build the Zeno paywall with annual/monthly toggle, value props, dynamic prices, trial CTA, restore link, legal links, and success handling.
 - Files changed: `apps/mobile/app/paywall.tsx`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/mobile run typecheck` passed.
+- Tests run: `npm.cmd --workspace @zeno/mobile run typecheck` passed.
 - Blockers: none.
 - Next step: update the dashboard with free-tier usage, RevenueCat status sync, and locked-feature navigation to `/paywall`.
 
@@ -504,7 +504,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: update the actual dashboard route `apps/mobile/app/dashboard.tsx` with RevenueCat status checks, free-tier `X/8 subscriptions` counter, and locked feature navigation to `/paywall`.
 - Files changed: `apps/mobile/app/dashboard.tsx`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/mobile run typecheck` passed.
+- Tests run: `npm.cmd --workspace @zeno/mobile run typecheck` passed.
 - Blockers: the requested `apps/mobile/app/(tabs)/index.tsx` route does not exist in the current Expo Router tree, so the existing dashboard file is being updated.
 - Next step: run full repo typecheck and tests for the completed RevenueCat paywall integration.
 
@@ -522,7 +522,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: install the Expo notification/device packages requested for the Zeno push notification system.
 - Files changed: `apps/mobile/package.json`, `package-lock.json`, `WORKLOG.md`.
-- Tests run: `npm.cmd install expo-notifications expo-device --workspace @subradar/mobile` completed.
+- Tests run: `npm.cmd install expo-notifications expo-device --workspace @zeno/mobile` completed.
 - Blockers: none.
 - Next step: create `apps/mobile/src/notifications/notificationService.ts` and run the mobile typecheck.
 
@@ -531,7 +531,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: implement push-token registration, per-subscription renewal scheduling, per-subscription cancellation, and full rescheduling.
 - Files changed: `apps/mobile/src/notifications/notificationService.ts`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/mobile run typecheck` passed after aligning scheduled notification cancellation with Expo's `NotificationRequest` type.
+- Tests run: `npm.cmd --workspace @zeno/mobile run typecheck` passed after aligning scheduled notification cancellation with Expo's `NotificationRequest` type.
 - Blockers: none.
 - Next step: create `apps/mobile/src/notifications/notificationHandlers.ts` and run the mobile typecheck.
 
@@ -540,7 +540,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: implement foreground notification behavior and response navigation handlers with cleanup support.
 - Files changed: `apps/mobile/src/notifications/notificationHandlers.ts`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/mobile run typecheck` passed.
+- Tests run: `npm.cmd --workspace @zeno/mobile run typecheck` passed.
 - Blockers: none.
 - Next step: update `apps/mobile/app/_layout.tsx` to register push notifications after auth, install handlers on mount, and reschedule notifications on app foreground.
 
@@ -549,7 +549,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: wire push registration, notification handler cleanup, and foreground rescheduling into the mobile root layout.
 - Files changed: `apps/mobile/app/_layout.tsx`, `apps/mobile/src/notifications/notificationHandlers.ts`, `apps/mobile/src/notifications/notificationService.ts`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/mobile run typecheck` passed.
+- Tests run: `npm.cmd --workspace @zeno/mobile run typecheck` passed.
 - Blockers: none.
 - Next step: add the notification cancel-action target route so `/subscription/cancel/:id` opens a usable cancellation flow.
 
@@ -558,7 +558,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: add the route targeted by cancellation notification taps so the handler does not navigate to an unmatched screen.
 - Files changed: `apps/mobile/app/subscription/cancel/[id].tsx`, `apps/mobile/app/_layout.tsx`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/mobile run typecheck` passed.
+- Tests run: `npm.cmd --workspace @zeno/mobile run typecheck` passed.
 - Blockers: none.
 - Next step: run full repo typecheck and tests for the completed push notification system.
 
@@ -576,7 +576,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: add the store update/delete/pause and notification preference methods required by the requested subscription detail and cancel screens.
 - Files changed: `apps/mobile/src/data/subscription-store.tsx`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/mobile run typecheck` passed.
+- Tests run: `npm.cmd --workspace @zeno/mobile run typecheck` passed.
 - Blockers: none.
 - Next step: replace `apps/mobile/app/subscription/[id].tsx` and run mobile typecheck before updating the cancellation screen.
 
@@ -585,7 +585,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: replace the subscription detail route with the requested Zeno detail view, edit mode, notification toggles, notes modal, menu actions, and cancellation entry point.
 - Files changed: `apps/mobile/app/subscription/[id].tsx`, `apps/mobile/src/notifications/notificationService.ts`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/mobile run typecheck` passed after narrowing the subscription value for nested callbacks.
+- Tests run: `npm.cmd --workspace @zeno/mobile run typecheck` passed after narrowing the subscription value for nested callbacks.
 - Blockers: none.
 - Next step: replace `apps/mobile/app/subscription/cancel/[id].tsx` with the requested Cancellation Co-Pilot screen and run mobile typecheck.
 
@@ -594,7 +594,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: replace the cancellation route with the requested co-pilot flow, difficulty badge, annual savings callout, service guide, post-cancel confirmation, support section, and theme-specific CTA copy.
 - Files changed: `apps/mobile/app/subscription/cancel/[id].tsx`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/mobile run typecheck` passed.
+- Tests run: `npm.cmd --workspace @zeno/mobile run typecheck` passed.
 - Blockers: none.
 - Next step: run full repo typecheck and tests for the completed subscription detail/cancel flow.
 
@@ -621,7 +621,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: in progress
 - Goal: verify the new catalog package API before running whole-repo checks.
 - Files changed: `packages/service-catalog/src/services.ts`, `packages/service-catalog/src/index.ts`, `apps/mobile/app/add.tsx`, `apps/mobile/app/subscription/[id].tsx`.
-- Tests run: `npm.cmd --workspace @subradar/service-catalog run typecheck` passed.
+- Tests run: `npm.cmd --workspace @zeno/service-catalog run typecheck` passed.
 - Blockers: none.
 - Next step: run full repository typecheck and fix any cross-workspace type errors.
 
@@ -637,7 +637,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 ## 2026-05-25 01:15 IST - Emulator Catalog Resolver Fix Start
 
 - Status: in progress
-- Goal: fix the Android emulator Metro error resolving `@subradar/service-catalog` after the catalog package switched to a compiled-safe `.js` re-export.
+- Goal: fix the Android emulator Metro error resolving `@zeno/service-catalog` after the catalog package switched to a compiled-safe `.js` re-export.
 - Files changed: pending.
 - Tests run: Metro log inspection found `Unable to resolve "./services.js" from "packages/service-catalog/src/index.ts"`.
 - Blockers: none.
@@ -666,7 +666,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: in progress
 - Goal: verify the new dev-only direct-login path before broad QA.
 - Files changed: `apps/api/src/routes/auth.ts`, `apps/api/src/app.test.ts`, `apps/mobile/src/auth/authStore.ts`, `apps/mobile/app/login.tsx`, `.env.example`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/api run typecheck` passed; `npm.cmd --workspace @subradar/mobile run typecheck` passed.
+- Tests run: `npm.cmd --workspace @zeno/api run typecheck` passed; `npm.cmd --workspace @zeno/mobile run typecheck` passed.
 - Blockers: none.
 - Next step: run full typecheck, tests, audit, and auth smoke checks.
 
@@ -693,7 +693,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: provide a local demo account, verify native UI responsiveness, run repo checks, and harden/document security-sensitive auth behavior.
 - Files changed: `apps/api/src/routes/auth.ts`, `apps/api/src/app.test.ts`, `apps/mobile/src/auth/authStore.ts`, `apps/mobile/app/login.tsx`, `apps/web/app/page.tsx`, `.env.example`, `docs/SECURITY_ARCHITECTURE.md`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/api run typecheck` passed; `npm.cmd --workspace @subradar/mobile run typecheck` passed; `npm.cmd run typecheck` passed; `npm.cmd test` passed with 14 files and 24 tests; `npm.cmd run build` passed with 519 static pages; API demo-login smoke test passed; wrong-password smoke test returned HTTP 401; production-disabled demo-login test passed; Android emulator compact/standard/large viewport screenshots captured; emulator logcat check showed app start with no React Native JS fatal errors.
+- Tests run: `npm.cmd --workspace @zeno/api run typecheck` passed; `npm.cmd --workspace @zeno/mobile run typecheck` passed; `npm.cmd run typecheck` passed; `npm.cmd test` passed with 14 files and 24 tests; `npm.cmd run build` passed with 519 static pages; API demo-login smoke test passed; wrong-password smoke test returned HTTP 401; production-disabled demo-login test passed; Android emulator compact/standard/large viewport screenshots captured; emulator logcat check showed app start with no React Native JS fatal errors.
 - Blockers: cannot certify the app as unhackable; dependency audit still reports moderate upstream transitive findings in Next/PostCSS and Expo/xcode/uuid with no non-breaking fix available today.
 - Next step: collect Google and Apple developer credentials/config values to enable real social login.
 
@@ -702,7 +702,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: remove modulo bias from six-digit magic-link code generation.
 - Files changed: `apps/api/src/routes/auth.ts`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/api run typecheck` passed; `npm.cmd test` passed with 14 files and 24 tests; `npm.cmd run typecheck` passed; security `rg` scan found no fixed magic code, eval/new Function/document.write, or committed secret values, with only escaped JSON-LD script injection points remaining.
+- Tests run: `npm.cmd --workspace @zeno/api run typecheck` passed; `npm.cmd test` passed with 14 files and 24 tests; `npm.cmd run typecheck` passed; security `rg` scan found no fixed magic code, eval/new Function/document.write, or committed secret values, with only escaped JSON-LD script injection points remaining.
 - Blockers: none.
 - Next step: collect Google and Apple developer credentials/config values to enable real social login.
 
@@ -720,7 +720,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: in progress
 - Goal: prepare mobile dependencies for Gmail OAuth and CSV file picking.
 - Files changed: `apps/mobile/package.json`, `package-lock.json`, `WORKLOG.md`.
-- Tests run: `npm.cmd install expo-auth-session expo-crypto expo-web-browser --workspace @subradar/mobile` completed with packages already up to date; `npm.cmd install expo-document-picker --workspace @subradar/mobile` added the CSV picker dependency.
+- Tests run: `npm.cmd install expo-auth-session expo-crypto expo-web-browser --workspace @zeno/mobile` completed with packages already up to date; `npm.cmd install expo-document-picker --workspace @zeno/mobile` added the CSV picker dependency.
 - Blockers: `npm audit` still reports existing moderate upstream dependency findings.
 - Next step: implement `emailScanner.ts` and `csvParser.ts`.
 
@@ -729,7 +729,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: in progress
 - Goal: complete Gmail receipt scanning and CSV recurring-charge parsing modules before UI integration.
 - Files changed: `apps/mobile/src/discovery/emailScanner.ts`, `apps/mobile/src/discovery/csvParser.ts`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/mobile run typecheck` passed after fixing the AuthSession result narrowing.
+- Tests run: `npm.cmd --workspace @zeno/mobile run typecheck` passed after fixing the AuthSession result narrowing.
 - Blockers: Gmail runtime scan still requires a valid OAuth client and Gmail API permission grant.
 - Next step: build the themed discovery screen and wire add/schedule behavior.
 
@@ -738,7 +738,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: finish the Gmail OAuth scanner, CSV import parser, themed discovery UI, env documentation, and verification.
 - Files changed: `apps/mobile/src/discovery/emailScanner.ts`, `apps/mobile/src/discovery/csvParser.ts`, `apps/mobile/src/discovery/csvParser.test.ts`, `apps/mobile/app/(tabs)/discover.tsx`, `apps/mobile/app/discovery.tsx`, `apps/mobile/src/data/subscription-store.tsx`, `apps/mobile/package.json`, `package-lock.json`, `.env.example`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/mobile run typecheck` passed; `npm.cmd run typecheck` passed; `npm.cmd test` passed with 15 files and 26 tests; `npm.cmd audit --omit=dev` still reports existing moderate upstream transitive findings in Next/PostCSS and Expo/xcode/uuid.
+- Tests run: `npm.cmd --workspace @zeno/mobile run typecheck` passed; `npm.cmd run typecheck` passed; `npm.cmd test` passed with 15 files and 26 tests; `npm.cmd audit --omit=dev` still reports existing moderate upstream transitive findings in Next/PostCSS and Expo/xcode/uuid.
 - Blockers: real Gmail scanning cannot be runtime-tested without a configured Google OAuth client, Gmail API enabled, and a user granting Gmail read-only scope.
 - Next step: add valid Google OAuth values to `.env`, restart Expo, then test the Gmail connect flow on a device/emulator.
 
@@ -756,7 +756,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: in progress
 - Goal: prepare chart rendering dependency and route plan for analytics.
 - Files changed: `apps/mobile/package.json`, `package-lock.json`, `WORKLOG.md`.
-- Tests run: `npm.cmd install react-native-svg --workspace @subradar/mobile` completed.
+- Tests run: `npm.cmd install react-native-svg --workspace @zeno/mobile` completed.
 - Blockers: existing app uses root `dashboard.tsx` and `analytics.tsx`; `(tabs)` files will be added with root route re-exports so current navigation keeps working.
 - Next step: implement `insightsEngine.ts` with focused tests.
 
@@ -765,7 +765,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: in progress
 - Goal: verify pure rule logic before adding React Native presentation components.
 - Files changed: `apps/mobile/src/insights/insightsEngine.ts`, `apps/mobile/src/insights/insightsEngine.test.ts`, `WORKLOG.md`.
-- Tests run: `npm.cmd --workspace @subradar/mobile run typecheck` passed; `npm.cmd test` passed with 16 files and 28 tests.
+- Tests run: `npm.cmd --workspace @zeno/mobile run typecheck` passed; `npm.cmd test` passed with 16 files and 28 tests.
 - Blockers: none.
 - Next step: create `InsightCard` and `SpendChart` components.
 
@@ -792,7 +792,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Status: completed
 - Goal: rebuild the Android dev app because the installed binary predates the new `expo-document-picker` native module.
 - Files changed: generated Android build artifacts under `apps/mobile/android`, `WORKLOG.md`.
-- Tests run: API is listening on `127.0.0.1:8787`; Metro is listening on `0.0.0.0:8081`; emulator `emulator-5554` is booted; `npm.cmd --workspace @subradar/mobile run android -- --no-bundler` built and installed successfully; app relaunched and screenshot confirmed Zeno login screen renders; API health returned HTTP 200.
+- Tests run: API is listening on `127.0.0.1:8787`; Metro is listening on `0.0.0.0:8081`; emulator `emulator-5554` is booted; `npm.cmd --workspace @zeno/mobile run android -- --no-bundler` built and installed successfully; app relaunched and screenshot confirmed Zeno login screen renders; API health returned HTTP 200.
 - Blockers: none. The first build attempt required setting `ANDROID_HOME` / `ANDROID_SDK_ROOT` to `C:\Users\Pratik\AppData\Local\Android\Sdk`.
 - Next step: user can test the app in the emulator using the visible login screen.
 ## 2026-05-29 17:02 IST - Login Screen Visual Redesign
@@ -845,7 +845,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Files changed:
   - `apps/mobile/app/settings.tsx`
 - Tests run:
-  - `npm.cmd --workspace @subradar/mobile run typecheck` (pass)
+  - `npm.cmd --workspace @zeno/mobile run typecheck` (pass)
 - Blockers: full validation commands and native launch pending.
 
 ## 2026-05-29 18:05 IST - Settings Final Validation and Android Build
@@ -858,7 +858,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
   - `npm.cmd run typecheck` (pass)
   - `npm.cmd test` (pass, 17 files, 34 tests)
   - `npm.cmd run build` (pass)
-  - `npm.cmd run --workspace @subradar/mobile android`
+  - `npm.cmd run --workspace @zeno/mobile android`
     - first two attempts failed due missing SDK path / gradle download socket restrictions
     - after setting `sdk.dir=C:\\Users\\Pratik\\AppData\\Local\\Android\\Sdk`, build succeeds and assembles APK
 - Current launch state:
@@ -910,7 +910,7 @@ Every implementation chunk must add a timestamped entry before and after the wor
 - Goal: apply Apple HIG visual spec to all onboarding-related screens. No logic, navigation, or store calls changed.
 - Files changed:
   - `apps/mobile/app/index.tsx` — upgraded theme section heading from `sectionHeader` (11px) to `title1`-level (28px/700) to match spec; all other elements already matched spec exactly
-  - `apps/mobile/app/(tabs)/discover.tsx` — full visual layer rewrite: replaced `useSubRadarTheme` / `ThemeTokens` / `createStyles(theme)` with flat `colors`/`type`/`spacing` imports; rebuilt connect prompt to spec (hero icon, title, privacy rows as grouped card with 📱/👁/🔒 icons, Connect Gmail primary button, Skip for now link); results view uses Apple grouped card pattern with row separators; modal uses `colors.surface` + standard input styling; all logic functions unchanged
+  - `apps/mobile/app/(tabs)/discover.tsx` — full visual layer rewrite: replaced `useZenoTheme` / `ThemeTokens` / `createStyles(theme)` with flat `colors`/`type`/`spacing` imports; rebuilt connect prompt to spec (hero icon, title, privacy rows as grouped card with 📱/👁/🔒 icons, Connect Gmail primary button, Skip for now link); results view uses Apple grouped card pattern with row separators; modal uses `colors.surface` + standard input styling; all logic functions unchanged
 - Screen 3 note: no standalone email-connect onboarding file exists — the Gmail connect flow lives in `(tabs)/discover.tsx` which was redesigned accordingly
 - Tests run: `npm.cmd run typecheck` passed.
 - Blockers: none.

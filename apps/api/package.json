@@ -1,5 +1,5 @@
 {
-  "name": "@subradar/api",
+  "name": "@zeno/api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -16,8 +16,8 @@
     "@fastify/cors": "^11.1.0",
     "@fastify/helmet": "^13.0.2",
     "@fastify/rate-limit": "^10.3.0",
-    "@subradar/service-catalog": "*",
-    "@subradar/shared": "*",
+    "@zeno/service-catalog": "*",
+    "@zeno/shared": "*",
     "dotenv": "^16.4.7",
     "fastify": "^5.8.5",
     "tsx": "^4.19.2",

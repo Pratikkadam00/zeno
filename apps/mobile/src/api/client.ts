@@ -1,5 +1,5 @@
 import Constants from "expo-constants";
-import type { ApiEnvelope, OpenBankingConnectionIntent } from "@subradar/shared";
+import type { ApiEnvelope, OpenBankingConnectionIntent } from "@zeno/shared";
 import { useAuthStore } from "../auth/authStore";
 
 const fallbackApiBaseUrl = "http://127.0.0.1:8787/api/v1";

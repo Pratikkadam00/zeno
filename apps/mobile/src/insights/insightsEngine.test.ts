@@ -1,4 +1,4 @@
-import type { Subscription } from "@subradar/shared";
+import type { Subscription } from "@zeno/shared";
 import { describe, expect, it } from "vitest";
 import { detectDuplicates, generateInsights, getTotalSavingOpportunity } from "./insightsEngine";
 

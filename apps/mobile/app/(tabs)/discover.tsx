@@ -1,5 +1,5 @@
-import { services } from "@subradar/service-catalog";
-import type { BillingCycle, SubscriptionCategory } from "@subradar/shared";
+import { services } from "@zeno/service-catalog";
+import type { BillingCycle, SubscriptionCategory } from "@zeno/shared";
 import { ResponseType } from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import * as DocumentPicker from "expo-document-picker";

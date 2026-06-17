@@ -1,19 +1,19 @@
 {
-  "name": "subradar",
+  "name": "zeno",
   "version": "0.1.0",
   "private": true,
-  "description": "SubRadar subscription intelligence monorepo.",
+  "description": "Zeno subscription intelligence monorepo.",
   "packageManager": "npm@11.12.1",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "dev:mobile": "npm --workspace @subradar/mobile run start",
-    "dev:api": "npm --workspace @subradar/api run dev",
-    "dev:web": "npm --workspace @subradar/web run dev",
-    "build": "npm run typecheck:refs && npm --workspace @subradar/web run build",
-    "typecheck": "npm run typecheck:refs && npm --workspace @subradar/mobile run typecheck && npm --workspace @subradar/web run typecheck",
+    "dev:mobile": "npm --workspace @zeno/mobile run start",
+    "dev:api": "npm --workspace @zeno/api run dev",
+    "dev:web": "npm --workspace @zeno/web run dev",
+    "build": "npm run typecheck:refs && npm --workspace @zeno/web run build",
+    "typecheck": "npm run typecheck:refs && npm --workspace @zeno/mobile run typecheck && npm --workspace @zeno/web run typecheck",
     "typecheck:refs": "tsc -b --pretty false",
     "lint": "npm run typecheck",
     "test": "vitest run",

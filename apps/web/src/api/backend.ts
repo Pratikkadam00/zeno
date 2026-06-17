@@ -1,4 +1,4 @@
-import type { ApiEnvelope } from "@subradar/shared";
+import type { ApiEnvelope } from "@zeno/shared";
 
 const defaultApiBaseUrl = "http://127.0.0.1:8787/api/v1";
 

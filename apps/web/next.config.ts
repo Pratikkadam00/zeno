@@ -18,7 +18,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1"],
-  transpilePackages: ["@subradar/shared", "@subradar/service-catalog"],
+  transpilePackages: ["@zeno/shared", "@zeno/service-catalog"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   }

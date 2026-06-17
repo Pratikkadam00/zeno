@@ -1,5 +1,5 @@
 {
-  "name": "@subradar/mobile",
+  "name": "@zeno/mobile",
   "version": "0.1.0",
   "private": true,
   "main": "expo-router/entry",
@@ -13,8 +13,8 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
-    "@subradar/service-catalog": "*",
-    "@subradar/shared": "*",
+    "@zeno/service-catalog": "*",
+    "@zeno/shared": "*",
     "expo": "~56.0.11",
     "expo-apple-authentication": "~56.0.4",
     "expo-auth-session": "~56.0.14",

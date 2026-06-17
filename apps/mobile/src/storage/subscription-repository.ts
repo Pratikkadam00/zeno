@@ -1,5 +1,5 @@
-import type { Subscription } from "@subradar/shared";
-import type { SubRadarDatabase } from "./database";
+import type { Subscription } from "@zeno/shared";
+import type { ZenoDatabase } from "./database";
 
 type SubscriptionRow = {
   id: string;
@@ -24,12 +24,12 @@ type SubscriptionRow = {
   version: number;
 };
 
-export async function listSubscriptions(db: SubRadarDatabase): Promise<Subscription[]> {
+export async function listSubscriptions(db: ZenoDatabase): Promise<Subscription[]> {
   const rows = await db.getAllAsync<SubscriptionRow>("SELECT * FROM subscriptions WHERE deleted_at IS NULL ORDER BY next_renewal_date ASC, name ASC");
   return rows.map(mapRow);
 }
 
-export async function upsertSubscription(db: SubRadarDatabase, subscription: Subscription): Promise<void> {
+export async function upsertSubscription(db: ZenoDatabase, subscription: Subscription): Promise<void> {
   await db.runAsync(
     `INSERT INTO subscriptions (
       id, service_slug, name, category, amount_minor, currency, billing_cycle, next_renewal_date,
@@ -77,7 +77,7 @@ export async function upsertSubscription(db: SubRadarDatabase, subscription: Sub
   );
 }
 
-export async function softDeleteSubscription(db: SubRadarDatabase, id: string): Promise<void> {
+export async function softDeleteSubscription(db: ZenoDatabase, id: string): Promise<void> {
   await db.runAsync(
     "UPDATE subscriptions SET deleted_at = ?, updated_at = ?, version = version + 1 WHERE id = ?",
     new Date().toISOString(),
@@ -89,7 +89,7 @@ export async function softDeleteSubscription(db: SubRadarDatabase, id: string): 
 // Hard-delete every subscription row. Used by "Delete all data", which permanently
 // removes records from the device rather than soft-deleting (which would leave
 // rows behind that listSubscriptions already filters out).
-export async function clearAllSubscriptions(db: SubRadarDatabase): Promise<void> {
+export async function clearAllSubscriptions(db: ZenoDatabase): Promise<void> {
   await db.runAsync("DELETE FROM subscriptions");
 }
 

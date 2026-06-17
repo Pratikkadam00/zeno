@@ -7,7 +7,7 @@ import { getMarkedDates, getProjectedAnnual, getSubscriptionsForDate, getWeeklyG
 import { formatMoney } from "../../src/utils/format";
 import { formatShortDate, getAvatarStyle, getDaysRemaining, getUrgencyBadge } from "../../src/utils/subscription-ui";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
-import type { Subscription } from "@subradar/shared";
+import type { Subscription } from "@zeno/shared";
 import { useZenoTheme } from "../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";

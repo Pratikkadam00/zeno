@@ -5,8 +5,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@subradar/shared": ["../../packages/shared/src/index.ts"],
-      "@subradar/service-catalog": ["../../packages/service-catalog/src/index.ts"]
+      "@zeno/shared": ["../../packages/shared/src/index.ts"],
+      "@zeno/service-catalog": ["../../packages/service-catalog/src/index.ts"]
     }
   },
   "include": [

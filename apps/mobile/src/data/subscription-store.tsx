@@ -1,10 +1,10 @@
-import { searchServices } from "@subradar/service-catalog";
-import { createAnalyticsSnapshot, createBusinessSummary, createFamilyVaultSummary, createRenewalReminderPlan, createSpendSummary, createSpendTwin, createWidgetSnapshot, demoBusinessWorkspace, demoFamilyMembers, detectPriceHikes, getEndingTrials, monthlyAmount, partnerIntegrationManifests, type AnalyticsSnapshot, type BillingCycle, type BusinessSubscriptionSummary, type EndingTrial, type FamilyVaultSummary, type PartnerIntegrationManifest, type PriceHike, type PriceHistoryEntry, type RenewalReminderPlan, type SpendSummary, type SpendTwinComparison, type Subscription, type SubscriptionCategory, type SubscriptionStatus, type WidgetSnapshot } from "@subradar/shared";
+import { searchServices } from "@zeno/service-catalog";
+import { createAnalyticsSnapshot, createBusinessSummary, createFamilyVaultSummary, createRenewalReminderPlan, createSpendSummary, createSpendTwin, createWidgetSnapshot, demoBusinessWorkspace, demoFamilyMembers, detectPriceHikes, getEndingTrials, monthlyAmount, partnerIntegrationManifests, type AnalyticsSnapshot, type BillingCycle, type BusinessSubscriptionSummary, type EndingTrial, type FamilyVaultSummary, type PartnerIntegrationManifest, type PriceHike, type PriceHistoryEntry, type RenewalReminderPlan, type SpendSummary, type SpendTwinComparison, type Subscription, type SubscriptionCategory, type SubscriptionStatus, type WidgetSnapshot } from "@zeno/shared";
 import * as Crypto from "expo-crypto";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform } from "react-native";
 import { cancelAllNotifications, type QuietHours } from "../notifications/notificationService";
-import { openSubRadarDatabase, readAppMeta, writeAppMeta, type SubRadarDatabase } from "../storage/database";
+import { openZenoDatabase, readAppMeta, writeAppMeta, type ZenoDatabase } from "../storage/database";
 import { clearAllSubscriptions, listSubscriptions, softDeleteSubscription, upsertSubscription } from "../storage/subscription-repository";
 import { rollRenewalForward } from "../utils/subscription-ui";
 import { seedSubscriptions } from "./seed-subscriptions";
@@ -92,7 +92,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
   const [priceHistory, setPriceHistory] = useState<Record<string, PriceHistoryEntry[]>>(() => Object.fromEntries(
     seedSubscriptions.map((subscription) => [subscription.id, [{ at: subscription.createdAt, amountMinor: subscription.price.amountMinor }]])
   ));
-  const dbRef = useRef<SubRadarDatabase | null>(null);
+  const dbRef = useRef<ZenoDatabase | null>(null);
 
   useEffect(() => {
     if (!persistenceEnabled) {
@@ -102,7 +102,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
     let cancelled = false;
     void (async () => {
       try {
-        const db = await openSubRadarDatabase();
+        const db = await openZenoDatabase();
         if (cancelled) {
           return;
         }

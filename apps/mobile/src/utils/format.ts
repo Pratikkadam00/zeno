@@ -1,4 +1,4 @@
-import { formatMoneyMinor, type RenewalReminderKind } from "@subradar/shared";
+import { formatMoneyMinor, type RenewalReminderKind } from "@zeno/shared";
 
 export function formatMoney(amountMinor: number, currency = "USD"): string {
   return formatMoneyMinor(amountMinor, currency);

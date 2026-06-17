@@ -1,4 +1,4 @@
-import type { BillingCycle } from "@subradar/shared";
+import type { BillingCycle } from "@zeno/shared";
 import type { ThemeTokens } from "../theme/tokens";
 
 const DAY_MS = 24 * 60 * 60 * 1000;

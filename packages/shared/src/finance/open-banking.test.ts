@@ -7,7 +7,7 @@ describe("open banking adapter", () => {
     const intent = await adapter.createConnectionIntent({
       provider: "plaid",
       accountId: "acct_dev",
-      redirectUri: "subradar://bank-connected"
+      redirectUri: "zeno://bank-connected"
     });
 
     expect(intent.scopes).toEqual(["transactions_read"]);

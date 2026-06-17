@@ -1,4 +1,4 @@
-import type { Subscription, SubscriptionCategory } from "@subradar/shared";
+import type { Subscription, SubscriptionCategory } from "@zeno/shared";
 
 export interface CalendarDot {
   key: string;

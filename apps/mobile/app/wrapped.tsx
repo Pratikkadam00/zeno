@@ -1,4 +1,4 @@
-import { buildYearInReview } from "@subradar/shared";
+import { buildYearInReview } from "@zeno/shared";
 import { useMemo } from "react";
 import { ScrollView, Share, Text, View } from "react-native";
 import { Kpi, PrimaryButton, Screen, Surface } from "../src/components/ui";
