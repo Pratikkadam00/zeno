@@ -23,6 +23,9 @@ import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
 import { spacing } from "../../src/theme/spacing";
 import { withAlpha } from "../../src/utils/subscription-ui";
+import { Check, ChevronDown, ChevronUp, FileSpreadsheet, MailSearch, Plus, Search, Upload } from "lucide-react-native";
+import { ServiceAvatar } from "../../src/components/zeno";
+import { fonts } from "../../src/theme/zeno";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -245,13 +248,11 @@ export default function DiscoverScreen() {
                       onPress={() => toggleSelected(result.localId)}
                       style={[styles.checkbox, result.selected && styles.checkboxSelected]}
                     >
-                      {result.selected ? <Text style={styles.checkmark}>✓</Text> : null}
+                      {result.selected ? <Check size={14} color={theme.onPrimary} strokeWidth={3} /> : null}
                     </Pressable>
 
                     {/* Avatar */}
-                    <View style={styles.avatar}>
-                      <Text style={styles.avatarText}>{result.name.charAt(0).toUpperCase()}</Text>
-                    </View>
+                    <ServiceAvatar name={result.name} size={34} />
 
                     {/* Middle */}
                     <View style={styles.resultMiddle}>
@@ -333,7 +334,7 @@ export default function DiscoverScreen() {
           {/* Icon + title */}
           <View style={styles.cardTop}>
             <View style={[styles.cardIconWrap, styles.cardIconWrapBank]} accessible={false} importantForAccessibility="no-hide-descendants">
-              <Text style={[styles.cardIconText, { color: theme.success }]}>🏦</Text>
+              <FileSpreadsheet size={24} color={theme.success} strokeWidth={2} />
             </View>
             <View style={styles.cardTitleWrap}>
               <View style={styles.titleWithBadge}>
@@ -354,7 +355,7 @@ export default function DiscoverScreen() {
             onPress={() => setGuidesOpen((o) => !o)}
           >
             <Text style={styles.guideToggleText}>How to export from your bank</Text>
-            <Text style={styles.guideToggleChevron} accessible={false}>{guidesOpen ? "∧" : "∨"}</Text>
+            {guidesOpen ? <ChevronUp size={16} color={theme.quietText} strokeWidth={2} /> : <ChevronDown size={16} color={theme.quietText} strokeWidth={2} />}
           </Pressable>
 
           {guidesOpen ? (
@@ -383,7 +384,7 @@ export default function DiscoverScreen() {
               onPress={() => void handleImportCSV()}
               style={[styles.importCsvBtn, isBusy && styles.dimmed]}
             >
-              <Text style={styles.importCsvIcon} accessible={false}>📎</Text>
+              <Upload size={18} color={theme.text} strokeWidth={2} />
               <Text style={styles.importCsvText}>Import CSV File</Text>
             </Pressable>
           )}
@@ -400,7 +401,7 @@ export default function DiscoverScreen() {
           {/* Icon + title */}
           <View style={styles.cardTop}>
             <View style={[styles.cardIconWrap, styles.cardIconWrapMail]} accessible={false} importantForAccessibility="no-hide-descendants">
-              <Text style={[styles.cardIconText, { color: theme.primary }]}>✉</Text>
+              <MailSearch size={24} color={theme.primary} strokeWidth={2} />
             </View>
             <View style={styles.cardTitleWrap}>
               <Text style={styles.cardTitle}>Scan Gmail receipts</Text>
@@ -466,9 +467,10 @@ export default function DiscoverScreen() {
                 accessibilityState={{ disabled: !request || isBusy }}
                 disabled={!request || isBusy}
                 onPress={() => void handleConnectGmail()}
-                style={styles.addInboxBtn}
+                style={[styles.addInboxBtn, { flexDirection: "row", alignItems: "center", gap: 6 }]}
               >
-                <Text style={[styles.addInboxText, (!request || isBusy) && styles.dimmed]}>＋ Add another inbox</Text>
+                <Plus size={16} color={theme.primary} strokeWidth={2} style={(!request || isBusy) ? styles.dimmed : undefined} />
+                <Text style={[styles.addInboxText, (!request || isBusy) && styles.dimmed]}>Add another inbox</Text>
               </Pressable>
 
               {isScanning ? (
@@ -514,7 +516,7 @@ export default function DiscoverScreen() {
         {!isBusy && accounts.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyIconWrap} accessible={false} importantForAccessibility="no-hide-descendants">
-              <Text style={styles.emptyIconText}>🔍</Text>
+              <Search size={32} color={theme.mutedText} strokeWidth={2} />
             </View>
             <Text style={styles.emptyTitle}>Find your subscriptions</Text>
             <Text style={styles.emptyBody}>
@@ -615,7 +617,7 @@ function createStyles(theme: ThemeTokens) {
 
     // Page header
     pageHeaderWrap: { paddingHorizontal: spacing.screenH, paddingTop: 16, paddingBottom: 4 },
-    pageTitle:      { fontSize: 28, fontWeight: "800", color: theme.text, letterSpacing: -1.5 },
+    pageTitle:      { fontSize: 28, fontFamily: fonts.display.bold, color: theme.text, letterSpacing: -1.0 },
     pageSubtitle:   { ...typography.callout, color: theme.mutedText, marginTop: 4 },
     pageSubtitleSmall: { fontSize: 15, color: theme.mutedText, letterSpacing: -0.2, marginTop: 4 },
 
