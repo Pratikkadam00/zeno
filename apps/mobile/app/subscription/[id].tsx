@@ -1,5 +1,5 @@
 import { findServiceBySlug, getServiceBySlug, toSubscriptionCategory, type ServiceCategory } from "@zeno/service-catalog";
-import type { BillingCycle } from "@zeno/shared";
+import type { BillingCycle, Subscription } from "@zeno/shared";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { ActionSheetIOS, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -7,7 +7,7 @@ import { useMemo, useState } from "react";
 import { useSubscriptionStore, type SubscriptionNotificationSettings } from "../../src/data/subscription-store";
 import { cancelNotificationsForSubscription, scheduleRenewalNotificationsWithPreferences } from "../../src/notifications/notificationService";
 import { formatMoney } from "../../src/utils/format";
-import { formatDaysLabel, formatMonthYear, formatShortDate, getDaysRemaining } from "../../src/utils/subscription-ui";
+import { formatDaysLabel, formatShortDate, getDaysRemaining } from "../../src/utils/subscription-ui";
 import { AlertTriangle, Bell, BellOff, ChevronLeft, CircleCheck, Clock, MoreHorizontal } from "lucide-react-native";
 import { ServiceAvatar } from "../../src/components/zeno";
 import { useZenoTheme } from "../../src/theme/theme-provider";
@@ -33,16 +33,39 @@ function formatAnnualEquivalent(amountMinor: number, cycle: BillingCycle): numbe
   return amountMinor * 12;
 }
 
-function createMockChargeHistory(amountMinor: number, dateValue?: string) {
-  if (!dateValue || amountMinor <= 0) return [];
-  const anchor = new Date(dateValue);
-  if (Number.isNaN(anchor.getTime())) return [];
-  return [1, 2, 3].map((monthsBack) => {
-    // Build each month from its own index (day 15, UTC) so month-end anchors
-    // like May 31 don't overflow (−2mo and −3mo would both land in March).
-    const date = new Date(Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth() - monthsBack, 15));
-    return { date: formatMonthYear(date.toISOString()), amountMinor };
-  });
+// CHANGE 6: real charge history derived from the subscription's actual billing
+// cadence, stepping back from its most recent past charge to when Zeno started
+// tracking it (createdAt). Not random mock data — and honestly empty when there
+// is no basis (brand-new sub, trial, or unknown cycle).
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function stepBack(date: Date, cycle: BillingCycle): Date {
+  if (cycle === "weekly") return new Date(date.getTime() - 7 * DAY_MS);
+  const months = cycle === "annual" ? 12 : cycle === "quarterly" ? 3 : 1;
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() - months, date.getUTCDate()));
+}
+
+function buildChargeHistory(sub: Subscription): { date: string; amountMinor: number }[] {
+  if (sub.price.amountMinor <= 0 || sub.billingCycle === "trial" || sub.billingCycle === "unknown") return [];
+  const ref = sub.lastChargedDate ?? sub.nextRenewalDate;
+  if (!ref) return [];
+  const refDate = new Date(ref);
+  if (Number.isNaN(refDate.getTime())) return [];
+  const createdMs = Date.parse(sub.createdAt);
+  const nowMs = Date.now();
+
+  // Walk back to the most recent charge on or before today.
+  let cursor = new Date(refDate);
+  let guard = 0;
+  while (cursor.getTime() > nowMs && guard++ < 120) cursor = stepBack(cursor, sub.billingCycle);
+
+  const entries: { date: string; amountMinor: number }[] = [];
+  guard = 0;
+  while (cursor.getTime() >= createdMs && entries.length < 12 && guard++ < 120) {
+    entries.push({ date: formatShortDate(cursor.toISOString()), amountMinor: sub.price.amountMinor });
+    cursor = stepBack(cursor, sub.billingCycle);
+  }
+  return entries;
 }
 
 function formatServiceCategory(category: ServiceCategory): string {
@@ -114,7 +137,7 @@ export default function SubscriptionDetailScreen() {
   const service = sub.serviceSlug ? findServiceBySlug(sub.serviceSlug) : undefined;
   const daysRemaining = getDaysRemaining(sub.nextRenewalDate);
   const settings = notificationSettings[sub.id] ?? { sevenDay: true, threeDay: true, dayOf: true };
-  const chargeHistory = createMockChargeHistory(sub.price.amountMinor, sub.nextRenewalDate);
+  const chargeHistory = buildChargeHistory(sub);
   const annualMinor = formatAnnualEquivalent(sub.price.amountMinor, sub.billingCycle);
   const annualSaving = service?.defaultAnnualPrice && sub.billingCycle === "monthly"
     ? annualMinor - service.defaultAnnualPrice.amountMinor
