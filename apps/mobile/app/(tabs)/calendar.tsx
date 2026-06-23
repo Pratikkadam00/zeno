@@ -5,12 +5,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Calendar, type DateData } from "react-native-calendars";
 import { getMarkedDates, getProjectedAnnual, getSubscriptionsForDate, getWeeklyGroups, getMonthlyTotal } from "../../src/utils/calendarUtils";
 import { formatMoney } from "../../src/utils/format";
-import { formatShortDate, getAvatarStyle, getDaysRemaining, getUrgencyBadge } from "../../src/utils/subscription-ui";
+import { formatShortDate, getDaysRemaining, getUrgencyBadge } from "../../src/utils/subscription-ui";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
 import type { Subscription } from "@zeno/shared";
+import { ServiceAvatar } from "../../src/components/zeno";
 import { useZenoTheme } from "../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
+import { fonts } from "../../src/theme/zeno";
 import { spacing } from "../../src/theme/spacing";
 
 // ─── Helpers (logic unchanged) ────────────────────────────────────────────────
@@ -104,7 +106,6 @@ function DayPanel({
       </View>
       <View style={styles.panelSep} />
       {subscriptions.map((sub, index) => {
-        const avatar = getAvatarStyle(sub.category, theme);
         const isLast = index === subscriptions.length - 1;
         return (
           <Pressable
@@ -114,11 +115,7 @@ function DayPanel({
             onPress={() => router.push(`/subscription/${sub.id}`)}
           >
             <View style={styles.panelRow}>
-              <View style={[styles.avatar, { backgroundColor: avatar.bg }]}>
-                <Text style={[styles.avatarText, { color: avatar.text }]}>
-                  {sub.name.charAt(0).toUpperCase()}
-                </Text>
-              </View>
+              <ServiceAvatar name={sub.name} size={spacing.avatarMd} />
               <View style={styles.panelMiddle}>
                 <Text style={styles.panelName} numberOfLines={1}>{sub.name}</Text>
                 <Text style={styles.panelCycle}>{cycleBadge(sub)}</Text>
@@ -165,7 +162,6 @@ function RenewalGroup({
       </View>
       <View style={styles.groupCard}>
         {subscriptions.map((sub, index) => {
-          const avatar = getAvatarStyle(sub.category, theme);
           const days = getDaysRemaining(sub.nextRenewalDate);
           const badge = getUrgencyBadge(days, theme);
           const isLast = index === subscriptions.length - 1;
@@ -177,11 +173,7 @@ function RenewalGroup({
               onPress={() => router.push(`/subscription/${sub.id}`)}
             >
               <View style={styles.renewalRow}>
-                <View style={[styles.avatar, { backgroundColor: avatar.bg }]}>
-                  <Text style={[styles.avatarText, { color: avatar.text }]}>
-                    {sub.name.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
+                <ServiceAvatar name={sub.name} size={spacing.avatarMd} />
                 <View style={styles.renewalMiddle}>
                   <Text style={styles.renewalName} numberOfLines={1}>{sub.name}</Text>
                   <Text style={styles.renewalMeta}>{formatShortDate(sub.nextRenewalDate, "TBD")}</Text>
@@ -377,7 +369,7 @@ function createStyles(theme: ThemeTokens) {
     scrollContent: { paddingBottom: 100, backgroundColor: theme.background },
 
     pageTitle: {
-      fontSize: 28, fontWeight: "800", color: theme.text, letterSpacing: -1.5,
+      fontSize: 30, fontFamily: fonts.display.bold, color: theme.text, letterSpacing: -0.6,
       paddingHorizontal: spacing.screenH, paddingTop: 16, paddingBottom: 4
     },
 
@@ -385,7 +377,7 @@ function createStyles(theme: ThemeTokens) {
     statsRow: { flexDirection: "row", gap: 8, marginHorizontal: 16, marginTop: 12, marginBottom: 8 },
     statCard: { flex: 1, backgroundColor: theme.card, borderRadius: 14, padding: 14 },
     statLabel: { ...typography.sectionHeader, color: theme.mutedText, marginBottom: 6 },
-    statValue: { fontSize: 20, fontWeight: "700", color: theme.text, letterSpacing: -0.5 },
+    statValue: { fontSize: 20, fontFamily: fonts.mono.bold, color: theme.text, letterSpacing: -0.5 },
     statSub: { ...typography.caption1, color: theme.mutedText, marginTop: 3 },
 
     // Calendar
@@ -403,14 +395,14 @@ function createStyles(theme: ThemeTokens) {
     panelName: { ...typography.subheadline, color: theme.text },
     panelCycle: { ...typography.caption1, color: theme.mutedText, marginTop: 1 },
     panelRight: { alignItems: "flex-end" },
-    panelAmount: { ...typography.subheadline, color: theme.text, fontVariant: ["tabular-nums"] },
+    panelAmount: { fontSize: 15, fontFamily: fonts.mono.semibold, color: theme.text, fontVariant: ["tabular-nums"] },
     cancelLink: { fontSize: 12, fontWeight: "600", color: theme.danger, marginTop: 3 },
     panelFooter: {
       paddingHorizontal: 16, padding: 10, borderTopWidth: 0.5, borderTopColor: theme.border,
       flexDirection: "row", justifyContent: "space-between"
     },
     panelFooterLabel: { fontSize: 13, color: theme.mutedText },
-    panelFooterAmount: { fontSize: 13, fontWeight: "600", color: theme.text, fontVariant: ["tabular-nums"] },
+    panelFooterAmount: { fontSize: 13, fontFamily: fonts.mono.semibold, color: theme.text, fontVariant: ["tabular-nums"] },
 
     // Section label
     sectionLabel: { ...typography.sectionHeader, color: theme.mutedText, paddingHorizontal: spacing.screenH, paddingBottom: 8, paddingTop: 20 },
@@ -418,7 +410,7 @@ function createStyles(theme: ThemeTokens) {
     // Group
     groupHeaderRow: { paddingHorizontal: spacing.screenH, paddingBottom: 6, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
     groupTitle: { fontSize: 13, fontWeight: "600", color: theme.mutedText, letterSpacing: -0.1 },
-    groupTotal: { fontSize: 13, color: theme.mutedText, fontVariant: ["tabular-nums"] },
+    groupTotal: { fontSize: 13, fontFamily: fonts.mono.regular, color: theme.mutedText, fontVariant: ["tabular-nums"] },
     groupCard: { marginHorizontal: 16, marginBottom: 12, backgroundColor: theme.card, borderRadius: 16, overflow: "hidden" },
 
     // Renewal rows
@@ -427,7 +419,7 @@ function createStyles(theme: ThemeTokens) {
     renewalName: { ...typography.subheadline, color: theme.text },
     renewalMeta: { ...typography.caption1, color: theme.mutedText, marginTop: 1 },
     renewalRight: { alignItems: "flex-end" },
-    renewalAmount: { ...typography.subheadline, fontWeight: "500", color: theme.text, fontVariant: ["tabular-nums"] },
+    renewalAmount: { fontSize: 15, fontFamily: fonts.mono.semibold, color: theme.text, fontVariant: ["tabular-nums"] },
     badge: { borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3, marginTop: 3 },
     badgeText: { ...typography.caption1 },
     rowSep: { position: "absolute", left: 64, right: 0, bottom: 0, height: 0.5, backgroundColor: theme.border },
