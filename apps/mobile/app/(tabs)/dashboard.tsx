@@ -1,12 +1,14 @@
 import type { BillingCycle, SubscriptionCategory } from "@zeno/shared";
 import { router, Stack } from "expo-router";
-import { AlarmClock, AlertTriangle, Bell, ChevronRight, Plus, Radar, Search, TrendingUp, User } from "lucide-react-native";
+import { AlarmClock, AlertTriangle, Bell, ChevronRight, CircleCheck, Plus, Radar, Search, Target, TrendingUp, User } from "lucide-react-native";
 import { useEffect, useState, type ReactNode } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthStore } from "../../src/auth/authStore";
 import { checkStatus } from "../../src/billing/revenueCat";
 import { AmountDisplay, Button, Card, ListRow, ServiceAvatar } from "../../src/components/zeno";
+import { useBudgetStore } from "../../src/data/budget-store";
+import { budgetStatus, computeBudgetForecast } from "../../src/finance/budget";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
 import { generateInsights, getTotalSavingOpportunity } from "../../src/insights/insightsEngine";
 import { useZenoTokens } from "../../src/theme/useZenoTokens";
@@ -46,6 +48,8 @@ export default function DashboardScreen() {
     .filter((i) => !dismissed.includes(i.id))
     .slice(0, 2);
 
+  const { config: budgetConfig } = useBudgetStore();
+  const budgetForecast = computeBudgetForecast(subscriptions);
   const attentionSubs = subscriptions.filter((s) => s.status === "attention");
   const trackedCount = subscriptions.filter((s) => s.status !== "cancelled").length;
   const renewingThisWeek = upcoming.filter((s) => {
@@ -149,6 +153,29 @@ export default function DashboardScreen() {
               </Text>
             )}
           </View>
+        </View>
+
+        {/* Budget status (Phase 2) */}
+        <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+          {budgetConfig.capMinor == null ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Set a monthly budget"
+              onPress={() => router.push("/budget" as never)}
+              style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: c.surfaceCard, borderWidth: 1, borderColor: c.borderSubtle, borderRadius: t.radius.lg, paddingHorizontal: 16, paddingVertical: 14, opacity: pressed ? 0.9 : 1 }, t.shadow.xs]}
+            >
+              <View style={{ width: 38, height: 38, borderRadius: t.radius.md, backgroundColor: c.accentSoft, alignItems: "center", justifyContent: "center" }}>
+                <Target size={19} color={c.accentText} strokeWidth={2} />
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: t.fontSize.body, color: c.textPrimary }}>Set a monthly budget</Text>
+                <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: t.fontSize.bodySm, color: c.textTertiary }}>Forecast {formatMoney(budgetForecast.projectedMinor)} this month from your renewals</Text>
+              </View>
+              <ChevronRight size={18} color={c.textTertiary} strokeWidth={2} />
+            </Pressable>
+          ) : (
+            <BudgetStatusCard t={t} projectedMinor={budgetForecast.projectedMinor} capMinor={budgetConfig.capMinor} />
+          )}
         </View>
 
         {/* Needs attention — still-charging + trials ending + price hikes */}
@@ -314,6 +341,40 @@ function AttentionRow({
         <Text numberOfLines={1} style={{ fontFamily: t.fonts.sans.regular, fontSize: t.fontSize.bodySm, color: c.textTertiary, marginTop: 1 }}>{body}</Text>
       </View>
       <ChevronRight size={17} color={c.textTertiary} strokeWidth={2} />
+    </Pressable>
+  );
+}
+
+function BudgetStatusCard({ t, projectedMinor, capMinor }: { t: ReturnType<typeof useZenoTokens>; projectedMinor: number; capMinor: number }) {
+  const c = t.color;
+  const status = budgetStatus(projectedMinor, capMinor);
+  const main = status === "over" ? c.danger : status === "approaching" ? c.warning : c.success;
+  const soft = status === "over" ? c.dangerSoft : status === "approaching" ? c.warningSoft : c.successSoft;
+  const SIcon = status === "over" ? AlertTriangle : status === "approaching" ? TrendingUp : CircleCheck;
+  const label = status === "over" ? "Over budget" : status === "approaching" ? "Approaching" : "On pace";
+  const pct = Math.min(100, capMinor > 0 ? (projectedMinor / capMinor) * 100 : 0);
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Monthly budget"
+      onPress={() => router.push("/budget" as never)}
+      style={({ pressed }) => [{ backgroundColor: c.surfaceCard, borderWidth: 1, borderColor: c.borderSubtle, borderRadius: t.radius.lg, paddingHorizontal: 16, paddingVertical: 14, opacity: pressed ? 0.9 : 1 }, t.shadow.xs]}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <Target size={18} color={c.textSecondary} strokeWidth={2} />
+        <Text style={{ flex: 1, fontFamily: t.fonts.sans.semibold, fontSize: t.fontSize.body, color: c.textPrimary }}>Monthly budget</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, paddingVertical: 3, borderRadius: t.radius.pill, backgroundColor: soft }}>
+          <SIcon size={13} color={main} strokeWidth={2} />
+          <Text style={{ fontFamily: t.fonts.sans.bold, fontSize: 12, color: main }}>{label}</Text>
+        </View>
+      </View>
+      <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginTop: 10 }}>
+        <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: 17, color: c.textPrimary }}>{formatMoney(projectedMinor)}</Text>
+        <Text style={{ fontFamily: t.fonts.mono.regular, fontSize: 13, color: c.textTertiary }}>projected / ${Math.round(capMinor / 100)}</Text>
+      </View>
+      <View style={{ height: 7, backgroundColor: c.surfaceSunken, borderRadius: 4, overflow: "hidden", marginTop: 8 }}>
+        <View style={{ width: `${pct}%`, height: "100%", backgroundColor: main, borderRadius: 4 }} />
+      </View>
     </Pressable>
   );
 }

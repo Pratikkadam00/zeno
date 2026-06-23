@@ -1,0 +1,68 @@
+import type { Subscription } from "@zeno/shared";
+import { describe, expect, it } from "vitest";
+import { budgetStatus, computeBudgetForecast, suggestedCapMinor } from "./budget";
+
+function sub(partial: Partial<Subscription> & { id: string }): Subscription {
+  return {
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z",
+    version: 1,
+    name: "Test",
+    category: "other",
+    price: { amountMinor: 1000, currency: "USD" },
+    billingCycle: "monthly",
+    status: "active",
+    ownerProfileId: "profile_local",
+    source: "manual",
+    ...partial
+  };
+}
+
+describe("computeBudgetForecast", () => {
+  const now = new Date("2026-06-15T12:00:00.000Z");
+
+  it("splits committed (past) vs projected (future) charges this month", () => {
+    const subs = [
+      // renews Jun 20 — future this month → projected only
+      sub({ id: "a", nextRenewalDate: "2026-06-20T00:00:00.000Z", price: { amountMinor: 1599, currency: "USD" } }),
+      // renews Jul 2 — so its June charge (Jun 2) already happened → committed
+      sub({ id: "b", nextRenewalDate: "2026-07-02T00:00:00.000Z", price: { amountMinor: 1099, currency: "USD" } })
+    ];
+    const forecast = computeBudgetForecast(subs, now);
+    expect(forecast.projectedMinor).toBe(1599 + 1099);
+    expect(forecast.committedMinor).toBe(1099);
+    expect(forecast.remaining.map((r) => r.id)).toEqual(["a"]);
+  });
+
+  it("ignores cancelled, paused, and zero-price subscriptions", () => {
+    const subs = [
+      sub({ id: "c", status: "cancelled", nextRenewalDate: "2026-06-20T00:00:00.000Z" }),
+      sub({ id: "p", status: "paused", nextRenewalDate: "2026-06-20T00:00:00.000Z" }),
+      sub({ id: "z", price: { amountMinor: 0, currency: "USD" }, nextRenewalDate: "2026-06-20T00:00:00.000Z" })
+    ];
+    expect(computeBudgetForecast(subs, now).projectedMinor).toBe(0);
+  });
+
+  it("counts an annual subscription only in its renewal month", () => {
+    const renewsThisMonth = sub({ id: "ann1", billingCycle: "annual", nextRenewalDate: "2026-06-20T00:00:00.000Z", price: { amountMinor: 12000, currency: "USD" } });
+    const renewsOtherMonth = sub({ id: "ann2", billingCycle: "annual", nextRenewalDate: "2026-11-10T00:00:00.000Z", price: { amountMinor: 12000, currency: "USD" } });
+    expect(computeBudgetForecast([renewsThisMonth], now).projectedMinor).toBe(12000);
+    expect(computeBudgetForecast([renewsOtherMonth], now).projectedMinor).toBe(0);
+  });
+});
+
+describe("suggestedCapMinor", () => {
+  it("rounds projected up to the nearest $5", () => {
+    expect(suggestedCapMinor(7596)).toBe(8000); // $75.96 → $80
+    expect(suggestedCapMinor(8000)).toBe(8000); // exact → unchanged
+    expect(suggestedCapMinor(0)).toBe(500); // floor at $5
+  });
+});
+
+describe("budgetStatus", () => {
+  it("classifies under / approaching / over", () => {
+    expect(budgetStatus(5000, 8000)).toBe("under"); // 5000 < 6800
+    expect(budgetStatus(7000, 8000)).toBe("approaching"); // 7000 > 6800, <= cap
+    expect(budgetStatus(8001, 8000)).toBe("over");
+  });
+});

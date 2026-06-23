@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { AppState, Platform, Text, View, type AppStateStatus } from "react-native";
 import { useAuthStore } from "../src/auth/authStore";
 import { checkStatus, identifyRevenueCatUser, initRevenueCat, resetRevenueCatUser } from "../src/billing/revenueCat";
+import { BudgetStoreProvider } from "../src/data/budget-store";
 import { SubscriptionStoreProvider, useSubscriptionStore } from "../src/data/subscription-store";
 import { cleanupNotificationHandlers, setupNotificationHandlers } from "../src/notifications/notificationHandlers";
 import { registerForPushNotifications, rescheduleAllNotifications } from "../src/notifications/notificationService";
@@ -35,7 +36,9 @@ export default function RootLayout() {
   return (
     <ZenoThemeProvider>
       <SubscriptionStoreProvider>
-        <RootStack />
+        <BudgetStoreProvider>
+          <RootStack />
+        </BudgetStoreProvider>
       </SubscriptionStoreProvider>
     </ZenoThemeProvider>
   );
@@ -242,6 +245,8 @@ function RootStack() {
         <Stack.Screen name="backend" options={{ title: "Backend" }} />
         <Stack.Screen name="settings" options={{ title: "Settings" }} />
         <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
+        <Stack.Screen name="budget" options={{ title: "Budget" }} />
+        <Stack.Screen name="budget-recap" options={{ title: "Recap", presentation: "modal" }} />
         <Stack.Screen name="paywall" options={{ title: "Upgrade" }} />
         <Stack.Screen name="subscription/add" options={{ title: "Add Subscription" }} />
         <Stack.Screen name="subscription/[id]" options={{ title: "Subscription" }} />

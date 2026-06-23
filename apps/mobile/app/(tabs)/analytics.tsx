@@ -3,7 +3,9 @@ import { router } from "expo-router";
 import { useMemo, useState, type ComponentType } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { AlarmClock, ArrowDown, ArrowUp, BarChart3, CircleCheck, ClipboardList, Copy, Moon, PiggyBank, TrendingUp, X } from "lucide-react-native";
+import { AlarmClock, AlertTriangle, ArrowDown, ArrowUp, BarChart3, ChevronRight, CircleCheck, ClipboardList, Copy, Moon, PiggyBank, Target, TrendingUp, X } from "lucide-react-native";
+import { useBudgetStore } from "../../src/data/budget-store";
+import { budgetStatus, computeBudgetForecast } from "../../src/finance/budget";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
 import { generateInsights, getTotalSavingOpportunity } from "../../src/insights/insightsEngine";
 import type { Insight } from "../../src/insights/insightsEngine";
@@ -56,6 +58,8 @@ export default function AnalyticsScreen() {
   const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { subscriptions, spendSummary } = useSubscriptionStore();
+  const { config: budgetConfig } = useBudgetStore();
+  const budgetForecast = computeBudgetForecast(subscriptions);
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [sortDirection, setSortDirection] = useState<"desc" | "asc">("desc");
 
@@ -109,6 +113,41 @@ export default function AnalyticsScreen() {
             </View>
           ) : null}
         </View>
+
+        {/* ── Budget entry ── */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Budget"
+          onPress={() => router.push("/budget" as never)}
+          style={styles.budgetEntry}
+        >
+          <View style={styles.budgetEntryIcon}>
+            <Target size={20} color={theme.primary} strokeWidth={2} />
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.budgetEntryTitle}>Budget</Text>
+            <Text style={styles.budgetEntrySub}>
+              {budgetConfig.capMinor == null
+                ? `Set a cap — forecast $${(budgetForecast.projectedMinor / 100).toFixed(0)} this month`
+                : `Forecast $${(budgetForecast.projectedMinor / 100).toFixed(2)} / $${Math.round(budgetConfig.capMinor / 100)} this month`}
+            </Text>
+          </View>
+          {budgetConfig.capMinor == null ? (
+            <ChevronRight size={18} color={theme.quietText} strokeWidth={2} />
+          ) : (() => {
+            const status = budgetStatus(budgetForecast.projectedMinor, budgetConfig.capMinor);
+            const main = status === "over" ? theme.danger : status === "approaching" ? theme.warning : theme.success;
+            const soft = status === "over" ? theme.dangerSurface : status === "approaching" ? theme.warningSurface : theme.successSurface;
+            const SIcon = status === "over" ? AlertTriangle : status === "approaching" ? TrendingUp : CircleCheck;
+            const label = status === "over" ? "Over" : status === "approaching" ? "Close" : "On pace";
+            return (
+              <View style={[styles.budgetPill, { backgroundColor: soft }]}>
+                <SIcon size={13} color={main} strokeWidth={2} />
+                <Text style={[styles.budgetPillText, { color: main }]}>{label}</Text>
+              </View>
+            );
+          })()}
+        </Pressable>
 
         {/* ── Monthly spend chart ── */}
         <Text style={styles.sectionLabel}>MONTHLY SPEND</Text>
@@ -302,6 +341,14 @@ function createStyles(theme: ThemeTokens) {
       borderColor: withAlpha(theme.success, 0.2), borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5
     },
     savingsPillText: { fontSize: 12, fontFamily: fonts.sans.semibold, color: theme.success },
+
+    // Budget entry
+    budgetEntry: { marginHorizontal: 16, marginTop: 4, flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: theme.card, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 14 },
+    budgetEntryIcon: { width: 38, height: 38, borderRadius: 11, backgroundColor: theme.primarySurface, alignItems: "center", justifyContent: "center" },
+    budgetEntryTitle: { fontSize: 16, fontFamily: fonts.display.bold, color: theme.text },
+    budgetEntrySub: { fontSize: 12.5, fontFamily: fonts.sans.regular, color: theme.mutedText, marginTop: 1 },
+    budgetPill: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 },
+    budgetPillText: { fontSize: 12, fontFamily: fonts.sans.bold },
 
     sectionLabel: {
       ...typography.sectionHeader, color: theme.mutedText,
