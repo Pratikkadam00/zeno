@@ -8,7 +8,7 @@ import { useSubscriptionStore, type SubscriptionNotificationSettings } from "../
 import { cancelNotificationsForSubscription, scheduleRenewalNotificationsWithPreferences } from "../../src/notifications/notificationService";
 import { formatMoney } from "../../src/utils/format";
 import { formatDaysLabel, formatMonthYear, formatShortDate, getDaysRemaining } from "../../src/utils/subscription-ui";
-import { AlertTriangle, Bell, BellOff, ChevronLeft, MoreHorizontal } from "lucide-react-native";
+import { AlertTriangle, Bell, BellOff, ChevronLeft, CircleCheck, Clock, MoreHorizontal } from "lucide-react-native";
 import { ServiceAvatar } from "../../src/components/zeno";
 import { useZenoTheme } from "../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../src/theme/tokens";
@@ -68,6 +68,8 @@ export default function SubscriptionDetailScreen() {
     updateSubscription,
     deleteSubscription,
     pauseSubscription,
+    markVerifiedCancelled,
+    markStillCharging,
     suggestions
   } = useSubscriptionStore();
 
@@ -329,8 +331,54 @@ export default function SubscriptionDetailScreen() {
                 <Text style={styles.amountPeriod}>{getBillingLabel(sub.billingCycle)}</Text>
               </View>
 
+              {/* Cancellation verification lifecycle (CHANGE 4) */}
+              {sub.status === "pending" ? (
+                <View style={[styles.verifyBanner, { backgroundColor: theme.surfaceAlt }]}>
+                  <View style={styles.verifyTop}>
+                    <Clock size={20} color={theme.secondary} strokeWidth={2} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.verifyTitle}>Cancellation pending verification</Text>
+                      <Text style={styles.verifyBody}>We'll confirm there's no charge around {formatShortDate(sub.cancellationVerifyBy ?? sub.nextRenewalDate)}.</Text>
+                    </View>
+                  </View>
+                  <View style={styles.verifyActions}>
+                    <Pressable accessibilityRole="button" style={[styles.verifyBtn, { backgroundColor: theme.success }]} onPress={() => markVerifiedCancelled(sub.id)}>
+                      <Text style={[styles.verifyBtnText, { color: theme.onPrimary }]}>Confirm it stopped</Text>
+                    </Pressable>
+                    <Pressable accessibilityRole="button" style={[styles.verifyBtn, { backgroundColor: theme.dangerSurface }]} onPress={() => markStillCharging(sub.id)}>
+                      <Text style={[styles.verifyBtnText, { color: theme.danger }]}>I was charged again</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : sub.status === "attention" ? (
+                <View style={[styles.verifyBanner, { backgroundColor: theme.dangerSurface }]}>
+                  <View style={styles.verifyTop}>
+                    <AlertTriangle size={20} color={theme.danger} strokeWidth={2} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.verifyTitle}>Still being charged</Text>
+                      <Text style={styles.verifyBody}>A charge appeared after you cancelled. Let&apos;s stop it.</Text>
+                    </View>
+                  </View>
+                  <View style={styles.verifyActions}>
+                    <Pressable accessibilityRole="button" style={[styles.verifyBtn, { backgroundColor: theme.danger }]} onPress={() => router.push(`/subscription/cancel/${sub.id}` as never)}>
+                      <Text style={[styles.verifyBtnText, { color: theme.onPrimary }]}>Re-open cancellation help</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : sub.status === "cancelled" ? (
+                <View style={[styles.verifyBanner, { backgroundColor: theme.successSurface }]}>
+                  <View style={styles.verifyTop}>
+                    <CircleCheck size={20} color={theme.success} strokeWidth={2} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.verifyTitle}>Verified cancelled</Text>
+                      <Text style={styles.verifyBody}>No charge found. You&apos;re saving {formatMoney(annualMinor, sub.price.currency)}/yr.</Text>
+                    </View>
+                  </View>
+                </View>
+              ) : null}
+
               {/* Urgency banner */}
-              {daysRemaining !== null && daysRemaining <= 7 ? (
+              {(sub.status === "active" || sub.status === "trial") && daysRemaining !== null && daysRemaining <= 7 ? (
                 <View style={styles.urgencyCard}>
                   <View style={[styles.urgencyTopBar, { backgroundColor: urgencyColor }]} />
                   <View style={styles.urgencyBody}>
@@ -484,9 +532,13 @@ export default function SubscriptionDetailScreen() {
         </ScrollView>
 
         {/* Fixed bottom button */}
-        {!isEditing ? (
+        {!isEditing && (sub.status === "active" || sub.status === "trial" || sub.status === "paused") ? (
           <View style={styles.bottomBar}>
-            {sub.status === "active" ? (
+            {sub.status === "paused" ? (
+              <View style={styles.pausedBtn}>
+                <Text style={styles.pausedBtnText}>Subscription Paused</Text>
+              </View>
+            ) : (
               <Pressable
                 accessibilityRole="button"
                 style={styles.dangerBtn}
@@ -494,14 +546,6 @@ export default function SubscriptionDetailScreen() {
               >
                 <Text style={styles.dangerBtnText}>Cancel Subscription</Text>
               </Pressable>
-            ) : sub.status === "cancelled" ? (
-              <View style={styles.cancelledBtn}>
-                <Text style={styles.cancelledBtnText}>Subscription Cancelled</Text>
-              </View>
-            ) : (
-              <View style={styles.pausedBtn}>
-                <Text style={styles.pausedBtnText}>Subscription Paused</Text>
-              </View>
             )}
           </View>
         ) : null}
@@ -621,6 +665,15 @@ function createStyles(theme: ThemeTokens) {
     urgencySub: { ...typography.caption1, color: theme.mutedText, marginTop: 2 },
     urgencyCancelBtn: { backgroundColor: theme.danger, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
     urgencyCancelText: { fontSize: 12, fontWeight: "600", color: theme.onPrimary },
+
+    // Verification lifecycle banner (CHANGE 4)
+    verifyBanner: { marginHorizontal: 16, marginBottom: 8, borderRadius: 16, padding: 16, gap: 12 },
+    verifyTop: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+    verifyTitle: { ...typography.subheadline, fontFamily: fonts.sans.bold, color: theme.text },
+    verifyBody: { ...typography.caption1, color: theme.mutedText, marginTop: 2, lineHeight: 18 },
+    verifyActions: { flexDirection: "row", gap: 8 },
+    verifyBtn: { flex: 1, borderRadius: 12, paddingVertical: 11, alignItems: "center", justifyContent: "center" },
+    verifyBtnText: { fontSize: 14, fontFamily: fonts.sans.semibold },
 
     // Stats
     statsRow: { flexDirection: "row", gap: 8, marginHorizontal: 16, marginBottom: 8 },

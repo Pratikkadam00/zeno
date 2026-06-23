@@ -56,6 +56,8 @@ export async function runMigrations(db: ZenoDatabase): Promise<void> {
       value_rating TEXT,
       notes TEXT,
       muted_until TEXT,
+      cancellation_requested_at TEXT,
+      cancellation_verify_by TEXT,
       source TEXT NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
@@ -130,4 +132,16 @@ export async function runMigrations(db: ZenoDatabase): Promise<void> {
       version INTEGER NOT NULL
     );
   `);
+
+  // Idempotent column additions for databases created before the cancellation
+  // verification lifecycle (CHANGE 4). CREATE TABLE IF NOT EXISTS won't add
+  // columns to an existing table, so add them here if missing.
+  const subscriptionColumns = await db.getAllAsync<{ name: string }>("PRAGMA table_info(subscriptions)");
+  const columnNames = new Set(subscriptionColumns.map((column) => column.name));
+  if (!columnNames.has("cancellation_requested_at")) {
+    await db.execAsync("ALTER TABLE subscriptions ADD COLUMN cancellation_requested_at TEXT");
+  }
+  if (!columnNames.has("cancellation_verify_by")) {
+    await db.execAsync("ALTER TABLE subscriptions ADD COLUMN cancellation_verify_by TEXT");
+  }
 }

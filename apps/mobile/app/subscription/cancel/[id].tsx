@@ -7,37 +7,40 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSubscriptionStore } from "../../../src/data/subscription-store";
 import { cancelNotificationsForSubscription } from "../../../src/notifications/notificationService";
 import { formatMoney } from "../../../src/utils/format";
-import { formatShortDate, getAvatarStyle, getDaysRemaining, withAlpha } from "../../../src/utils/subscription-ui";
+import { formatShortDate, getDaysRemaining, withAlpha } from "../../../src/utils/subscription-ui";
+import { AlertTriangle, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronUp, CircleCheck, ExternalLink, Mail, Phone, PiggyBank, Search, XCircle, type LucideIcon } from "lucide-react-native";
+import { ServiceAvatar } from "../../../src/components/zeno";
 import { useZenoTheme } from "../../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../../src/theme/tokens";
 import { type as typography } from "../../../src/theme/typography";
+import { fonts } from "../../../src/theme/zeno";
 import { spacing } from "../../../src/theme/spacing";
 
 // ─── Pure helpers (logic unchanged) ──────────────────────────────────────────
 
-function getDifficultyMeta(difficulty: CancellationDifficulty, theme: ThemeTokens) {
+function getDifficultyMeta(difficulty: CancellationDifficulty, theme: ThemeTokens): { label: string; note: string; bg: string; border: string; color: string; Icon: LucideIcon } {
   if (difficulty === "easy")
     return {
-      label: "✓ Easy to cancel",
+      label: "Easy to cancel",
       note: "A couple of taps and you're done.",
-      bg: theme.successSurface, border: withAlpha(theme.success, 0.2), color: theme.success
+      bg: theme.successSurface, border: withAlpha(theme.success, 0.2), color: theme.success, Icon: CheckCircle2
     };
   if (difficulty === "medium")
     return {
-      label: "⚠ Moderate steps",
+      label: "Moderate steps",
       note: "A few steps — follow them in order below.",
-      bg: theme.warningSurface, border: withAlpha(theme.warning, 0.2), color: theme.warning
+      bg: theme.warningSurface, border: withAlpha(theme.warning, 0.2), color: theme.warning, Icon: AlertTriangle
     };
   if (difficulty === "hard")
     return {
-      label: "✕ Hard to cancel",
+      label: "Hard to cancel",
       note: "This one buries the cancel option. Follow the steps carefully.",
-      bg: theme.dangerSurface, border: withAlpha(theme.danger, 0.2), color: theme.danger
+      bg: theme.dangerSurface, border: withAlpha(theme.danger, 0.2), color: theme.danger, Icon: XCircle
     };
   return {
-    label: "⚠ Dark pattern",
+    label: "Dark pattern",
     note: "Known for hard-to-cancel flows — they'll try to stop you. Follow these steps and don't accept any \"stay\" offers.",
-    bg: theme.dangerSurface, border: withAlpha(theme.danger, 0.25), color: theme.danger
+    bg: theme.dangerSurface, border: withAlpha(theme.danger, 0.25), color: theme.danger, Icon: AlertTriangle
   };
 }
 
@@ -65,23 +68,13 @@ function getAnnualAmountMinor(amountMinor: number, cycle: BillingCycle): number 
   return amountMinor * 12;
 }
 
-function getInitial(name: string): string {
-  return name.trim().charAt(0).toUpperCase() || "?";
-}
-
-function getThemeCta(themeId: string): string {
-  if (themeId === "genz")  return "🔥 Kill This Sub";
-  if (themeId === "genx")  return "> PROCEED TO CANCELLATION";
-  return "Cancel Subscription";
-}
-
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function SubscriptionCancelScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { subscriptions, markCancelled } = useSubscriptionStore();
+  const { subscriptions, requestCancellation } = useSubscriptionStore();
   const subscription = subscriptions.find((item) => item.id === id);
 
   const [currentStep, setCurrentStep]     = useState(0);
@@ -109,7 +102,7 @@ export default function SubscriptionCancelScreen() {
         <SafeAreaView style={styles.safeArea} edges={["top"]}>
           <View style={styles.navBar}>
             <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.backBtn} onPress={() => router.back()}>
-              <Text style={styles.backChevron} accessible={false}>‹</Text>
+              <ChevronLeft size={22} color={theme.primary} strokeWidth={2} />
               <Text style={styles.backText}>Back</Text>
             </Pressable>
           </View>
@@ -126,7 +119,6 @@ export default function SubscriptionCancelScreen() {
 
   const sub = subscription;
   const service = sub.serviceSlug ? findServiceBySlug(sub.serviceSlug) : undefined;
-  const avatar = getAvatarStyle(sub.category, theme);
   const difficulty = service?.cancellationDifficulty ? getDifficultyMeta(service.cancellationDifficulty, theme) : null;
   const annualMinor = getAnnualAmountMinor(sub.price.amountMinor, sub.billingCycle);
   const daysRemaining = getDaysRemaining(sub.nextRenewalDate);
@@ -153,15 +145,17 @@ export default function SubscriptionCancelScreen() {
   }
 
   async function handleConfirmedCancel() {
-    markCancelled(sub.id);
+    // CHANGE 4: self-report moves the sub to "pending verification", not
+    // straight to "cancelled". Zeno re-checks around the next renewal date.
+    requestCancellation(sub.id);
     await cancelNotificationsForSubscription(sub.id);
     setCancelSuccess(true);
-    const message = `${sub.name} marked as cancelled. Reminders cleared.`;
+    const message = `${sub.name} marked cancelled — we'll verify it stopped.`;
     if (Platform.OS === "android") {
       ToastAndroid.show(message, ToastAndroid.LONG);
       router.replace("/dashboard");
     } else {
-      Alert.alert("Subscription cancelled", message, [
+      Alert.alert("Pending verification", message, [
         { text: "OK", onPress: () => router.replace("/dashboard") }
       ]);
     }
@@ -179,7 +173,7 @@ export default function SubscriptionCancelScreen() {
           {/* Nav bar */}
           <View style={styles.navBar}>
             <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.backBtn} onPress={() => router.back()}>
-              <Text style={styles.backChevron} accessible={false}>‹</Text>
+              <ChevronLeft size={22} color={theme.primary} strokeWidth={2} />
               <Text style={styles.backText}>Back</Text>
             </Pressable>
             <Text style={styles.navTitle}>Cancel subscription</Text>
@@ -187,8 +181,8 @@ export default function SubscriptionCancelScreen() {
 
           {/* Service hero */}
           <View style={styles.hero}>
-            <View style={[styles.heroAvatar, { backgroundColor: avatar.bg }]} accessible={false} importantForAccessibility="no-hide-descendants">
-              <Text style={[styles.heroAvatarText, { color: avatar.text }]}>{getInitial(sub.name)}</Text>
+            <View style={{ marginBottom: 16 }}>
+              <ServiceAvatar name={sub.name} size={72} />
             </View>
             <Text style={styles.heroName}>{sub.name}</Text>
             <Text style={styles.heroMeta}>
@@ -208,7 +202,7 @@ export default function SubscriptionCancelScreen() {
           {annualMinor > 0 ? (
             <View style={styles.savingsCard}>
               <View style={styles.savingsIcon} accessible={false} importantForAccessibility="no-hide-descendants">
-                <Text style={styles.savingsIconText}>🐷</Text>
+                <PiggyBank size={18} color={theme.success} strokeWidth={2} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.savingsLabel}>Cancelling saves you</Text>
@@ -225,7 +219,10 @@ export default function SubscriptionCancelScreen() {
               style={[styles.difficultyCard, { backgroundColor: difficulty.bg, borderColor: difficulty.border }]}
               accessibilityLabel={`${difficulty.label}. ${difficulty.note}`}
             >
-              <Text style={[styles.difficultyText, { color: difficulty.color }]}>{difficulty.label}</Text>
+              <View style={styles.difficultyHeader}>
+                <difficulty.Icon size={15} color={difficulty.color} strokeWidth={2} />
+                <Text style={[styles.difficultyText, { color: difficulty.color }]}>{difficulty.label}</Text>
+              </View>
               <Text style={styles.difficultyNote}>{difficulty.note}</Text>
             </View>
           ) : null}
@@ -244,7 +241,7 @@ export default function SubscriptionCancelScreen() {
                     state === "upcoming"&& styles.stepCircleUpcoming
                   ]}>
                     {state === "done" ? (
-                      <Text style={styles.stepCheckText}>✓</Text>
+                      <Check size={12} color={theme.onPrimary} strokeWidth={3} />
                     ) : (
                       <Text style={[styles.stepNumText, state === "current" ? styles.stepNumCurrent : styles.stepNumUpcoming]}>
                         {index + 1}
@@ -270,8 +267,8 @@ export default function SubscriptionCancelScreen() {
             style={styles.ctaButton}
             onPress={() => void handleOpenCancelPage()}
           >
-            {cancelUrl ? <Text style={styles.ctaArrow} accessible={false}>↗</Text> : null}
-            <Text style={styles.ctaText}>{cancelUrl ? "Open cancellation page" : getThemeCta(theme.id)}</Text>
+            {cancelUrl ? <ExternalLink size={16} color={theme.background} strokeWidth={2} /> : null}
+            <Text style={styles.ctaText}>{cancelUrl ? "Open cancellation page" : "Cancel subscription"}</Text>
           </Pressable>
 
           {/* Direct "already cancelled" path — always reachable */}
@@ -291,10 +288,10 @@ export default function SubscriptionCancelScreen() {
           {showConfirm ? (
             cancelSuccess ? (
               <View style={styles.successCard}>
-                <Text style={styles.successCheck} accessible={false}>✓</Text>
-                <Text style={styles.successTitle}>Subscription cancelled</Text>
+                <CircleCheck size={32} color={theme.success} strokeWidth={2} />
+                <Text style={[styles.successTitle, { marginTop: 8 }]}>Pending verification</Text>
                 <Text style={styles.successBody}>
-                  You'll save {formatMoney(annualMinor, sub.price.currency)}/year from now on.
+                  We'll confirm there's no charge around {formatShortDate(sub.nextRenewalDate)}. If it stops, you save {formatMoney(annualMinor, sub.price.currency)}/year.
                 </Text>
               </View>
             ) : (
@@ -302,7 +299,7 @@ export default function SubscriptionCancelScreen() {
                 <Text style={styles.confirmTitle}>Did you cancel it?</Text>
                 <View style={styles.confirmButtons}>
                   <Pressable accessibilityRole="button" style={styles.yesBtn} onPress={() => void handleConfirmedCancel()}>
-                    <Text style={styles.yesBtnText}>Yes, cancelled ✓</Text>
+                    <Text style={styles.yesBtnText}>Yes, I cancelled</Text>
                   </Pressable>
                   <Pressable accessibilityRole="button" style={styles.notYetBtn} onPress={() => setShowConfirm(false)}>
                     <Text style={styles.notYetBtnText}>Not yet</Text>
@@ -321,7 +318,7 @@ export default function SubscriptionCancelScreen() {
               onPress={() => setSupportOpen((o) => !o)}
             >
               <Text style={styles.supportToggleText}>Having trouble?</Text>
-              <Text style={styles.supportToggleChevron} accessible={false}>{supportOpen ? "∧" : "∨"}</Text>
+              {supportOpen ? <ChevronUp size={16} color={theme.quietText} strokeWidth={2} /> : <ChevronDown size={16} color={theme.quietText} strokeWidth={2} />}
             </Pressable>
 
             {supportOpen ? (
@@ -329,14 +326,20 @@ export default function SubscriptionCancelScreen() {
                 <View style={styles.supportSep} />
                 {service?.supportContact?.email ? (
                   <Pressable accessibilityRole="button" style={styles.supportRow} onPress={() => void Linking.openURL(`mailto:${service.supportContact?.email}`)}>
-                    <Text style={styles.supportRowText}>✉ Email support</Text>
+                    <View style={styles.supportRowInner}>
+                      <Mail size={16} color={theme.primary} strokeWidth={2} />
+                      <Text style={styles.supportRowText}>Email support</Text>
+                    </View>
                   </Pressable>
                 ) : null}
                 {service?.supportContact?.phone ? (
                   <>
                     {service.supportContact.email ? <View style={styles.supportSep} /> : null}
                     <Pressable accessibilityRole="button" style={styles.supportRow} onPress={() => void Linking.openURL(`tel:${service.supportContact?.phone}`)}>
-                      <Text style={styles.supportRowText}>📞 Call support</Text>
+                      <View style={styles.supportRowInner}>
+                        <Phone size={16} color={theme.primary} strokeWidth={2} />
+                        <Text style={styles.supportRowText}>Call support</Text>
+                      </View>
                     </Pressable>
                   </>
                 ) : null}
@@ -346,7 +349,10 @@ export default function SubscriptionCancelScreen() {
                   style={styles.supportRow}
                   onPress={() => void Linking.openURL(`https://www.google.com/search?q=${encodeURIComponent(`how to cancel ${sub.name}`)}`)}
                 >
-                  <Text style={styles.supportRowText}>🔍 Search how to cancel {sub.name}</Text>
+                  <View style={styles.supportRowInner}>
+                    <Search size={16} color={theme.primary} strokeWidth={2} />
+                    <Text style={styles.supportRowText}>Search how to cancel {sub.name}</Text>
+                  </View>
                 </Pressable>
               </View>
             ) : null}
@@ -429,7 +435,8 @@ function createStyles(theme: ThemeTokens) {
       borderWidth: 0.5,
       gap: 4
     },
-    difficultyText: { fontSize: 13, fontWeight: "700", letterSpacing: -0.1 },
+    difficultyHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
+    difficultyText: { fontSize: 13, fontFamily: fonts.sans.bold, letterSpacing: -0.1 },
     difficultyNote: { fontSize: 13, lineHeight: 18, color: theme.mutedText },
 
     // Steps
@@ -528,6 +535,7 @@ function createStyles(theme: ThemeTokens) {
     supportToggleChevron: { fontSize: 14, color: theme.quietText },
     supportSep: { height: 0.5, backgroundColor: theme.border },
     supportRow: { paddingHorizontal: 16, paddingVertical: 14 },
+    supportRowInner: { flexDirection: "row", alignItems: "center", gap: 8 },
     supportRowText: { fontSize: 14, color: theme.primary }
   });
 }

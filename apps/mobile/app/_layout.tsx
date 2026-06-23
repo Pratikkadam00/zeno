@@ -44,7 +44,7 @@ export default function RootLayout() {
 function RootStack() {
   const { theme, scheme } = useZenoTheme();
   const statusBarStyle = scheme === "dark" ? "light" : "dark";
-  const { subscriptions, notificationSettings, quietHours, widgetSnapshot, hydrated } = useSubscriptionStore();
+  const { subscriptions, notificationSettings, quietHours, widgetSnapshot, hydrated, runCancellationVerification } = useSubscriptionStore();
   const segments = useSegments();
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const biometricInFlight = useRef(false);
@@ -102,6 +102,14 @@ function RootStack() {
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
+
+  // CHANGE 4: once data is loaded, resolve any pending cancellations whose
+  // verify-by date has passed (no charge detected → verified cancelled).
+  useEffect(() => {
+    if (hydrated) {
+      runCancellationVerification();
+    }
+  }, [hydrated, runCancellationVerification]);
 
   useEffect(() => {
     setupNotificationHandlers();

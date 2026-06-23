@@ -22,7 +22,10 @@ export type ThemePreference = "genz" | "millennial" | "genx";
 
 export type CancellationDifficulty = "easy" | "medium" | "hard" | "dark_pattern";
 
-export type SubscriptionStatus = "active" | "cancelled" | "paused" | "trial" | "unknown";
+// "pending"   — user self-reported a cancellation; awaiting verification.
+// "attention" — a charge was detected after cancelling; still being charged.
+// "cancelled" — verified cancelled (no further charge detected).
+export type SubscriptionStatus = "active" | "cancelled" | "paused" | "trial" | "unknown" | "pending" | "attention";
 
 export type EntityMeta = {
   id: string;
@@ -66,6 +69,9 @@ export type Subscription = EntityMeta & {
   valueRating?: "low" | "medium" | "high";
   notes?: string;
   mutedUntil?: string;
+  // Cancellation verification lifecycle (CHANGE 4).
+  cancellationRequestedAt?: string; // when the user self-reported cancelling
+  cancellationVerifyBy?: string;    // date Zeno re-checks for a charge (the prior renewal date)
   source: "manual" | "csv" | "email" | "open_banking" | "seed";
 };
 

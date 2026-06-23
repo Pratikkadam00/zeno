@@ -1,6 +1,6 @@
 import type { BillingCycle, SubscriptionCategory } from "@zeno/shared";
 import { router, Stack } from "expo-router";
-import { AlarmClock, Bell, ChevronRight, Plus, Radar, Search, TrendingUp, User } from "lucide-react-native";
+import { AlarmClock, AlertTriangle, Bell, ChevronRight, Plus, Radar, Search, TrendingUp, User } from "lucide-react-native";
 import { useEffect, useState, type ReactNode } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -46,6 +46,7 @@ export default function DashboardScreen() {
     .filter((i) => !dismissed.includes(i.id))
     .slice(0, 2);
 
+  const attentionSubs = subscriptions.filter((s) => s.status === "attention");
   const trackedCount = subscriptions.filter((s) => s.status !== "cancelled").length;
   const renewingThisWeek = upcoming.filter((s) => {
     const d = getDaysRemaining(s.nextRenewalDate);
@@ -150,11 +151,22 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Needs attention — trials ending + price hikes */}
-        {endingTrials.length > 0 || priceHikes.length > 0 ? (
+        {/* Needs attention — still-charging + trials ending + price hikes */}
+        {attentionSubs.length > 0 || endingTrials.length > 0 || priceHikes.length > 0 ? (
           <>
             <SectionTitle t={t}>Needs attention</SectionTitle>
             <View style={{ paddingHorizontal: 16, rowGap: 8 }}>
+              {attentionSubs.slice(0, 3).map((sub) => (
+                <AttentionRow
+                  key={`attn-${sub.id}`}
+                  t={t}
+                  tone="danger"
+                  icon={<AlertTriangle size={19} color={c.danger} strokeWidth={2} />}
+                  title={`${sub.name} is still charging you`}
+                  body="Cancelled, but a charge appeared — needs attention"
+                  onPress={() => router.push(`/subscription/${sub.id}` as never)}
+                />
+              ))}
               {endingTrials.slice(0, 3).map((trial) => {
                 const sub = trial.subscription;
                 const label = trial.daysUntilEnd === 0 ? "today" : `in ${trial.daysUntilEnd} day${trial.daysUntilEnd === 1 ? "" : "s"}`;

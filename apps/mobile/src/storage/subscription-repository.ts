@@ -16,6 +16,8 @@ type SubscriptionRow = {
   value_rating: Subscription["valueRating"] | null;
   notes: string | null;
   muted_until: string | null;
+  cancellation_requested_at: string | null;
+  cancellation_verify_by: string | null;
   source: Subscription["source"];
   created_at: string;
   updated_at: string;
@@ -33,9 +35,10 @@ export async function upsertSubscription(db: ZenoDatabase, subscription: Subscri
   await db.runAsync(
     `INSERT INTO subscriptions (
       id, service_slug, name, category, amount_minor, currency, billing_cycle, next_renewal_date,
-      last_charged_date, status, owner_profile_id, value_rating, notes, muted_until, source,
+      last_charged_date, status, owner_profile_id, value_rating, notes, muted_until,
+      cancellation_requested_at, cancellation_verify_by, source,
       created_at, updated_at, deleted_at, device_id, version
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       service_slug = excluded.service_slug,
       name = excluded.name,
@@ -50,6 +53,8 @@ export async function upsertSubscription(db: ZenoDatabase, subscription: Subscri
       value_rating = excluded.value_rating,
       notes = excluded.notes,
       muted_until = excluded.muted_until,
+      cancellation_requested_at = excluded.cancellation_requested_at,
+      cancellation_verify_by = excluded.cancellation_verify_by,
       source = excluded.source,
       updated_at = excluded.updated_at,
       deleted_at = excluded.deleted_at,
@@ -68,6 +73,8 @@ export async function upsertSubscription(db: ZenoDatabase, subscription: Subscri
     subscription.valueRating ?? null,
     subscription.notes ?? null,
     subscription.mutedUntil ?? null,
+    subscription.cancellationRequestedAt ?? null,
+    subscription.cancellationVerifyBy ?? null,
     subscription.source,
     subscription.createdAt,
     subscription.updatedAt,
@@ -116,6 +123,8 @@ function mapRow(row: SubscriptionRow): Subscription {
     valueRating: row.value_rating ?? undefined,
     notes: row.notes ?? undefined,
     mutedUntil: row.muted_until ?? undefined,
+    cancellationRequestedAt: row.cancellation_requested_at ?? undefined,
+    cancellationVerifyBy: row.cancellation_verify_by ?? undefined,
     source: row.source
   };
 }

@@ -20,13 +20,13 @@ import { formatShortDate } from "../../src/utils/subscription-ui";
 
 const money = (minor: number) => `$${(minor / 100).toFixed(2)}`;
 
-// Pending/attention (cancel-verification lifecycle) arrive in Phase 2; until the
-// statuses exist we expose the filters that map to real SubscriptionStatus values.
-type FilterKey = "All" | "Active" | "Paused" | "Cancelled";
+type FilterKey = "All" | "Active" | "Paused" | "Pending" | "Cancelled";
 const FILTERS: { key: FilterKey; match: (s: Subscription) => boolean }[] = [
   { key: "All", match: () => true },
   { key: "Active", match: (s) => s.status === "active" || s.status === "trial" },
   { key: "Paused", match: (s) => s.status === "paused" },
+  // Pending verification + "still being charged" (the cancellation lifecycle).
+  { key: "Pending", match: (s) => s.status === "pending" || s.status === "attention" },
   { key: "Cancelled", match: (s) => s.status === "cancelled" }
 ];
 
@@ -34,7 +34,8 @@ const EMPTY_COPY: Record<FilterKey, [string, string]> = {
   All: ["Nothing tracked yet", "Run a scan or add a subscription to get started."],
   Active: ["No active subscriptions", "Anything currently billing will show here."],
   Paused: ["Nothing paused", "Pause a subscription to keep it without tracking renewals."],
-  Cancelled: ["Nothing cancelled yet", "Subscriptions you've cancelled live here."]
+  Pending: ["Nothing pending", "Cancellations waiting to be verified appear here."],
+  Cancelled: ["Nothing cancelled yet", "Subscriptions you've verified-cancelled live here."]
 };
 
 function statusBadge(status: SubscriptionStatus): { tone: BadgeTone; label: string; dot: boolean } {
@@ -45,8 +46,12 @@ function statusBadge(status: SubscriptionStatus): { tone: BadgeTone; label: stri
       return { tone: "warning", label: "Free trial", dot: true };
     case "paused":
       return { tone: "neutral", label: "Paused", dot: true };
+    case "pending":
+      return { tone: "info", label: "Pending verification", dot: false };
+    case "attention":
+      return { tone: "danger", label: "Still charging", dot: false };
     case "cancelled":
-      return { tone: "neutral", label: "Cancelled", dot: false };
+      return { tone: "neutral", label: "Verified cancelled", dot: false };
     default:
       return { tone: "neutral", label: "Unknown", dot: false };
   }

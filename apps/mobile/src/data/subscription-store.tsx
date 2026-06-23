@@ -57,6 +57,11 @@ type SubscriptionStore = {
   deleteSubscription: (id: string) => void;
   pauseSubscription: (id: string) => void;
   markCancelled: (id: string) => void;
+  // Cancellation verification lifecycle (CHANGE 4).
+  requestCancellation: (id: string) => void;
+  markVerifiedCancelled: (id: string) => void;
+  markStillCharging: (id: string) => void;
+  runCancellationVerification: () => void;
   updateNotificationSettings: (id: string, changes: Partial<SubscriptionNotificationSettings>) => void;
   quietHours: QuietHours;
   setQuietHours: (changes: Partial<QuietHours>) => void;
@@ -342,6 +347,53 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
           updatedAt: new Date().toISOString(),
           version: subscription.version + 1
         }));
+      },
+      requestCancellation(id) {
+        // Guided → Pending verification. We record when, and the date we'll
+        // re-check for a charge (the subscription's own next renewal date).
+        const current = subscriptions.find((s) => s.id === id);
+        const now = new Date();
+        const verifyBy = current?.nextRenewalDate ?? new Date(now.getTime() + 34 * 24 * 60 * 60 * 1000).toISOString();
+        applyChange(id, (subscription) => ({
+          ...subscription,
+          status: "pending",
+          cancellationRequestedAt: now.toISOString(),
+          cancellationVerifyBy: verifyBy,
+          updatedAt: now.toISOString(),
+          version: subscription.version + 1
+        }));
+      },
+      markVerifiedCancelled(id) {
+        applyChange(id, (subscription) => ({
+          ...subscription,
+          status: "cancelled",
+          updatedAt: new Date().toISOString(),
+          version: subscription.version + 1
+        }));
+      },
+      markStillCharging(id) {
+        applyChange(id, (subscription) => ({
+          ...subscription,
+          status: "attention",
+          updatedAt: new Date().toISOString(),
+          version: subscription.version + 1
+        }));
+      },
+      runCancellationVerification() {
+        // Resolve pending cancellations whose verify-by date has passed without a
+        // re-detected charge → Verified cancelled. A charge re-detected by a scan/
+        // import, or reported via the detail control, flips a sub to "attention".
+        const nowMs = Date.now();
+        for (const subscription of subscriptions) {
+          if (subscription.status === "pending" && subscription.cancellationVerifyBy && Date.parse(subscription.cancellationVerifyBy) < nowMs) {
+            applyChange(subscription.id, (current) => ({
+              ...current,
+              status: "cancelled",
+              updatedAt: new Date().toISOString(),
+              version: current.version + 1
+            }));
+          }
+        }
       },
       updateNotificationSettings(id, changes) {
         let nextSettings: Record<string, SubscriptionNotificationSettings> = {};
