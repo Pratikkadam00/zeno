@@ -15,11 +15,13 @@ import {
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Bell, BellOff, ChevronLeft, Minus, Plus, Search } from "lucide-react-native";
 import { ServiceAutocomplete, servicePriceLabel } from "../../components/subscriptions/ServiceAutocomplete";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
 import { useZenoTheme } from "../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
+import { fonts } from "../../src/theme/zeno";
 import { spacing } from "../../src/theme/spacing";
 import { getAvatarStyle, withAlpha } from "../../src/utils/subscription-ui";
 
@@ -95,11 +97,13 @@ export default function AddSubscriptionScreen() {
   const [notify3days, setNotify3]   = useState(true);
   const [notifyOnDay, setNotifyDay] = useState(true);
 
+  // Editable next-renewal date (CHANGE 5: no longer locked to +30 days).
+  const [renewalDays, setRenewalDays] = useState(30);
   const renewalDate = useMemo(() => {
     const d = new Date();
-    d.setDate(d.getDate() + 30);
+    d.setDate(d.getDate() + renewalDays);
     return d;
-  }, []);
+  }, [renewalDays]);
 
   const matches = useMemo(() => suggestions(query), [query, suggestions]);
   const popularServices = useMemo(() => getPopularServices().slice(0, 8), []);
@@ -190,7 +194,7 @@ export default function AddSubscriptionScreen() {
     >
       {/* Search input */}
       <View style={styles.searchInputWrap}>
-        <Text style={styles.searchIcon} accessible={false}>🔍</Text>
+        <Search size={18} color={theme.quietText} strokeWidth={2} />
         <TextInput
           value={query}
           onChangeText={setQuery}
@@ -393,10 +397,28 @@ export default function AddSubscriptionScreen() {
         </View>
         <View style={styles.fullSeparator} />
 
-        {/* Renewal date */}
-        <View style={styles.formRow}>
-          <Text style={styles.formLabel}>Renews</Text>
-          <Text style={styles.renewalDate}>{formatDate(renewalDate)}</Text>
+        {/* Renewal date — editable (CHANGE 5) */}
+        <View style={styles.renewBlock}>
+          <Text style={styles.formLabel}>Next renews</Text>
+          <View style={styles.renewStepperRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.renewDateText}>{formatDate(renewalDate)}</Text>
+              <Text style={styles.renewSubText}>in {renewalDays} day{renewalDays === 1 ? "" : "s"}</Text>
+            </View>
+            <Pressable accessibilityRole="button" accessibilityLabel="Renew earlier" hitSlop={6} onPress={() => setRenewalDays((d) => Math.max(0, d - 1))} style={styles.stepperBtn}>
+              <Minus size={16} color={theme.text} strokeWidth={2} />
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Renew later" hitSlop={6} onPress={() => setRenewalDays((d) => d + 1)} style={styles.stepperBtn}>
+              <Plus size={16} color={theme.text} strokeWidth={2} />
+            </Pressable>
+          </View>
+          <View style={styles.presetRow}>
+            {([["Tomorrow", 1], ["1 week", 7], ["2 weeks", 14], ["1 month", 30]] as const).map(([label, d]) => (
+              <Pressable key={label} accessibilityRole="button" accessibilityState={{ selected: renewalDays === d }} onPress={() => setRenewalDays(d)} style={[styles.presetChip, renewalDays === d && styles.presetChipActive]}>
+                <Text style={[styles.presetChipText, renewalDays === d && styles.presetChipTextActive]}>{label}</Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
       </View>
 
@@ -475,7 +497,7 @@ export default function AddSubscriptionScreen() {
           <View key={row.label}>
             <View style={styles.notifRow}>
               <View style={styles.notifIconWrap} accessible={false} importantForAccessibility="no-hide-descendants">
-                <Text style={styles.notifIcon}>{row.value ? "🔔" : "🔕"}</Text>
+                {row.value ? <Bell size={18} color={theme.warning} strokeWidth={2} /> : <BellOff size={18} color={theme.mutedText} strokeWidth={2} />}
               </View>
               <View style={styles.notifTextWrap}>
                 <Text style={styles.formLabel}>{row.label}</Text>
@@ -505,7 +527,7 @@ export default function AddSubscriptionScreen() {
       {/* Nav bar */}
       <View style={styles.navBar}>
         <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.backBtn} onPress={() => router.back()}>
-          <Text style={styles.backChevron} accessible={false}>‹</Text>
+          <ChevronLeft size={22} color={theme.primary} strokeWidth={2} />
           <Text style={styles.backText}>Back</Text>
         </Pressable>
         <Text style={styles.navTitle}>Add subscription</Text>
@@ -699,6 +721,18 @@ function createStyles(theme: ThemeTokens) {
     amountInput: { ...typography.subheadline, color: theme.text, width: 80, textAlign: "right" },
 
     renewalDate: { ...typography.subheadline, color: theme.primary },
+
+    // Editable renewal date (CHANGE 5)
+    renewBlock: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16 },
+    renewStepperRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10, backgroundColor: theme.surfaceAlt, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
+    renewDateText: { ...typography.subheadline, fontFamily: fonts.sans.semibold, color: theme.text },
+    renewSubText: { fontSize: 12, fontFamily: fonts.sans.regular, color: theme.mutedText, marginTop: 1 },
+    stepperBtn: { width: 34, height: 34, borderRadius: 8, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.card, alignItems: "center", justifyContent: "center" },
+    presetRow: { flexDirection: "row", gap: 6, marginTop: 8 },
+    presetChip: { flex: 1, height: 30, borderRadius: 999, borderWidth: 1, borderColor: theme.border, alignItems: "center", justifyContent: "center" },
+    presetChipActive: { borderColor: "transparent", backgroundColor: theme.text },
+    presetChipText: { fontSize: 11.5, fontFamily: fonts.sans.semibold, color: theme.mutedText },
+    presetChipTextActive: { color: theme.background },
 
     segmented: {
       flexDirection: "row",

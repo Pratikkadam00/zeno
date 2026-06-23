@@ -1,40 +1,36 @@
 import { router } from "expo-router";
+import { Bell, Check, Lightbulb, Link2, Search, ShieldCheck, Sparkles, Users, X } from "lucide-react-native";
 import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, ToastAndroid, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { useAuthStore } from "../src/auth/authStore";
 import { getOfferings, getPackagePrice, purchaseFamily, purchasePro, restorePurchases, type BillingPlan, type ProBillingPeriod, type ZenoOfferings } from "../src/billing/revenueCat";
 import { useZenoTheme } from "../src/theme/theme-provider";
 import type { ThemeTokens } from "../src/theme/tokens";
 import { type as typography } from "../src/theme/typography";
-import { spacing } from "../src/theme/spacing";
+import { fonts } from "../src/theme/zeno";
 import { withAlpha } from "../src/utils/subscription-ui";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
+// Pricing per the locked D2 decision (Pro $3.99/mo or $29.99/yr ≈ 37% off,
+// Family $6.99/mo). These display strings must match the configured RevenueCat
+// products before launch — the live price still comes from `getPackagePrice`.
 
 const fallbackPrices = {
-  proMonthly: "$4.99",
-  proAnnual:  "$39.99",
-  familyMonthly: "$8.99"
+  proMonthly: "$3.99",
+  proAnnual:  "$29.99",
+  familyMonthly: "$6.99"
 };
 
-type ValueTone = "primary" | "danger" | "success" | "secondary" | "warning";
+type IconCmp = ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
 
-const VALUE_PROPS: ReadonlyArray<{ icon: string; tone: ValueTone; title: string; sub: string }> = [
-  { icon: "🔍", tone: "primary",   title: "Email auto-discovery",        sub: "Finds every subscription automatically" },
-  { icon: "⚡", tone: "danger",    title: "7 and 3-day renewal alerts",  sub: "Never get surprised by a charge again" },
-  { icon: "🔗", tone: "success",   title: "Direct cancel deep-links",    sub: "400+ services with step-by-step guides" },
-  { icon: "💡", tone: "secondary", title: "Spend insights engine",       sub: "Finds savings and unused subscriptions" },
-  { icon: "🎨", tone: "warning",   title: "All 3 generational themes",   sub: "Pulse, Clarity, and Command" }
+const VALUE_PROPS: ReadonlyArray<{ Icon: IconCmp; title: string; sub: string }> = [
+  { Icon: Search,      title: "Ongoing auto-discovery",     sub: "Repeat email & statement scans, automatically" },
+  { Icon: Bell,        title: "7 and 3-day renewal alerts", sub: "Never get surprised by a charge again" },
+  { Icon: Link2,       title: "Direct cancel deep-links",   sub: "400+ services with step-by-step guides" },
+  { Icon: Lightbulb,   title: "Full insights & AI coach",   sub: "Finds savings and unused subscriptions" },
+  { Icon: ShieldCheck, title: "No bank login, ever",        sub: "On-device & encrypted — your data stays yours" }
 ];
-
-function toneSurface(tone: ValueTone, theme: ThemeTokens): string {
-  if (tone === "primary")   return theme.primarySurface;
-  if (tone === "danger")    return theme.dangerSurface;
-  if (tone === "success")   return theme.successSurface;
-  if (tone === "warning")   return theme.warningSurface;
-  return withAlpha(theme.secondary, 0.15);
-}
 
 // ─── Helpers (logic unchanged) ────────────────────────────────────────────────
 
@@ -82,16 +78,12 @@ export default function PaywallScreen() {
     return () => { mounted = false; };
   }, []);
 
-  const proPrice    = useMemo(() => period === "annual"
-    ? getPackagePrice(offerings?.proAnnual ?? null, fallbackPrices.proAnnual)
-    : getPackagePrice(offerings?.proMonthly ?? null, fallbackPrices.proMonthly),
-    [offerings, period]
-  );
   const familyPrice = getPackagePrice(offerings?.familyMonthly ?? null, fallbackPrices.familyMonthly);
 
-  const displayPrice = period === "annual" ? "$3.50" : "$4.99";
+  // Annual is billed yearly; show the monthly-equivalent in the big number.
+  const displayPrice = period === "annual" ? "$2.50" : "$3.99";
   const { dollars: priceDollars, cents: priceCents } = splitPrice(displayPrice);
-  const pricePeriodDesc = period === "annual" ? "billed as $41.99/year" : "billed monthly · cancel anytime";
+  const pricePeriodDesc = period === "annual" ? "billed as $29.99/year" : "billed monthly · cancel anytime";
 
   async function handlePurchasePro() {
     setIsPurchasing(true);
@@ -148,7 +140,7 @@ export default function PaywallScreen() {
   if (isPurchaseSuccess) {
     return (
       <SafeAreaView style={[styles.safeArea, styles.successScreen]} edges={["top", "bottom"]}>
-        <Text style={styles.successIcon} accessible={false}>✦</Text>
+        <Sparkles size={48} color={theme.primary} strokeWidth={2} />
         <Text style={styles.successTitle}>Welcome to Pro</Text>
         <Text style={styles.successBody}>
           You now have access to everything.{"\n"}Time to find what you can cancel.
@@ -165,7 +157,7 @@ export default function PaywallScreen() {
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
       {/* Close button */}
       <Pressable accessibilityRole="button" accessibilityLabel="Close paywall" hitSlop={10} style={styles.closeBtn} onPress={closePaywall}>
-        <Text style={styles.closeBtnText}>✕</Text>
+        <X size={16} color={theme.mutedText} strokeWidth={2} />
       </Pressable>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -173,14 +165,14 @@ export default function PaywallScreen() {
         {/* Hero */}
         <View style={styles.hero}>
           <View style={styles.proBadge}>
-            <Text style={styles.proBadgeStar} accessible={false}>✦</Text>
+            <Sparkles size={13} color={theme.primary} strokeWidth={2} />
             <Text style={styles.proBadgeText}>Zeno Pro</Text>
           </View>
 
           <Text style={styles.headline}>Unlock everything.</Text>
           <Text style={styles.headlineMuted}>Save more.</Text>
           <Text style={styles.heroBody}>
-            Auto-discovery, 3-day alerts, cancel guides for 400+ services, and all 3 themes.
+            Ongoing auto-discovery, 7 and 3-day alerts, cancel guides for 400+ services — and we never see your bank.
           </Text>
         </View>
 
@@ -189,28 +181,28 @@ export default function PaywallScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ selected: period === "monthly" }}
-            accessibilityLabel="Monthly plan, $4.99 per month"
+            accessibilityLabel="Monthly plan, $3.99 per month"
             onPress={() => setPeriod("monthly")}
             style={[styles.toggleOption, period === "monthly" && styles.toggleOptionActive]}
           >
             <Text style={[styles.toggleTitle, period === "monthly" ? styles.toggleTitleActive : styles.toggleTitleInactive]}>Monthly</Text>
-            <Text style={[styles.togglePrice, period === "monthly" ? styles.togglePriceActive : styles.togglePriceInactive]}>$4.99/mo</Text>
+            <Text style={[styles.togglePrice, period === "monthly" ? styles.togglePriceActive : styles.togglePriceInactive]}>$3.99/mo</Text>
           </Pressable>
 
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ selected: period === "annual" }}
-            accessibilityLabel="Annual plan, $41.99 per year, save 30 percent"
+            accessibilityLabel="Annual plan, $29.99 per year, save 37 percent"
             onPress={() => setPeriod("annual")}
             style={[styles.toggleOption, period === "annual" && styles.toggleOptionActive]}
           >
             <View style={styles.toggleTitleRow}>
               <Text style={[styles.toggleTitle, period === "annual" ? styles.toggleTitleActive : styles.toggleTitleInactive]}>Annual</Text>
               <View style={styles.saveBadge}>
-                <Text style={styles.saveBadgeText}>Save 30%</Text>
+                <Text style={styles.saveBadgeText}>Save 37%</Text>
               </View>
             </View>
-            <Text style={[styles.togglePrice, period === "annual" ? styles.togglePriceActive : styles.togglePriceInactive]}>$41.99/yr</Text>
+            <Text style={[styles.togglePrice, period === "annual" ? styles.togglePriceActive : styles.togglePriceInactive]}>$29.99/yr</Text>
           </Pressable>
         </View>
 
@@ -240,14 +232,14 @@ export default function PaywallScreen() {
             return (
               <View key={prop.title}>
                 <View style={styles.propRow}>
-                  <View style={[styles.propIcon, { backgroundColor: toneSurface(prop.tone, theme) }]} accessible={false} importantForAccessibility="no-hide-descendants">
-                    <Text style={styles.propIconText}>{prop.icon}</Text>
+                  <View style={styles.propIcon} accessible={false} importantForAccessibility="no-hide-descendants">
+                    <prop.Icon size={18} color={theme.primary} strokeWidth={2} />
                   </View>
                   <View style={styles.propText}>
                     <Text style={styles.propTitle}>{prop.title}</Text>
                     <Text style={styles.propSub}>{prop.sub}</Text>
                   </View>
-                  <Text style={styles.propCheck} accessible={false}>✓</Text>
+                  <Check size={16} color={theme.success} strokeWidth={2.5} />
                 </View>
                 {!isLast ? <View style={styles.propSep} /> : null}
               </View>
@@ -283,7 +275,7 @@ export default function PaywallScreen() {
             : <Text style={styles.ctaBtnText}>Start 7-day free trial</Text>
           }
         </Pressable>
-        <Text style={styles.ctaSubText}>No charge until trial ends · Cancel anytime</Text>
+        <Text style={styles.ctaSubText}>No charge until trial ends · we'll remind you before it does</Text>
 
         {/* Family plan row */}
         <Pressable
@@ -294,7 +286,9 @@ export default function PaywallScreen() {
           onPress={() => void handlePurchaseFamily()}
           style={styles.familyRow}
         >
-          <Text style={styles.familyIcon} accessible={false}>👨‍👩‍👧</Text>
+          <View style={styles.familyIcon}>
+            <Users size={20} color={theme.primary} strokeWidth={2} />
+          </View>
           <View style={styles.familyText}>
             <Text style={styles.familyTitle}>Family plan</Text>
             <Text style={styles.familySub}>Up to 5 members · {familyPrice}/mo</Text>
@@ -308,11 +302,11 @@ export default function PaywallScreen() {
             <Text style={styles.footerLink}>Restore purchases</Text>
           </Pressable>
           <Text style={styles.footerDot} accessible={false}>·</Text>
-          <Pressable accessibilityRole="link" hitSlop={8} onPress={() => openLegalUrl("https://zeno.app/terms")}>
+          <Pressable accessibilityRole="link" hitSlop={8} onPress={() => openLegalUrl("https://zeno.app/legal/terms")}>
             <Text style={styles.footerLink}>Terms of Service</Text>
           </Pressable>
           <Text style={styles.footerDot} accessible={false}>·</Text>
-          <Pressable accessibilityRole="link" hitSlop={8} onPress={() => openLegalUrl("https://zeno.app/privacy")}>
+          <Pressable accessibilityRole="link" hitSlop={8} onPress={() => openLegalUrl("https://zeno.app/legal/privacy")}>
             <Text style={styles.footerLink}>Privacy Policy</Text>
           </Pressable>
         </View>
@@ -341,91 +335,86 @@ function createStyles(theme: ThemeTokens) {
 
     // Close button
     closeBtn:     { position: "absolute", top: 52, right: 20, zIndex: 10, width: 30, height: 30, borderRadius: 15, backgroundColor: theme.surfaceAlt, alignItems: "center", justifyContent: "center" },
-    closeBtnText: { fontSize: 14, fontWeight: "500", color: theme.mutedText },
 
     // Hero
     hero:         { alignItems: "center", paddingHorizontal: 24, paddingTop: 60, paddingBottom: 28 },
     proBadge:     { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: theme.primarySurface, borderWidth: 0.5, borderColor: withAlpha(theme.primary, 0.25), borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6, marginBottom: 24 },
-    proBadgeStar: { fontSize: 12, color: theme.primary },
-    proBadgeText: { fontSize: 13, fontWeight: "600", color: theme.primary, letterSpacing: 0.02 },
-    headline:     { fontSize: 30, fontWeight: "800", color: theme.text, letterSpacing: -1.2, lineHeight: 34, textAlign: "center" },
-    headlineMuted:{ fontSize: 30, fontWeight: "800", color: theme.mutedText, letterSpacing: -1.2, lineHeight: 34, textAlign: "center", marginBottom: 12 },
-    heroBody:     { fontSize: 16, color: theme.mutedText, lineHeight: 24, letterSpacing: -0.2, textAlign: "center" },
+    proBadgeText: { fontSize: 13, fontFamily: fonts.sans.semibold, color: theme.primary },
+    headline:     { fontSize: 30, fontFamily: fonts.display.bold, color: theme.text, letterSpacing: -1.0, lineHeight: 34, textAlign: "center" },
+    headlineMuted:{ fontSize: 30, fontFamily: fonts.display.bold, color: theme.mutedText, letterSpacing: -1.0, lineHeight: 34, textAlign: "center", marginBottom: 12 },
+    heroBody:     { fontSize: 16, fontFamily: fonts.sans.regular, color: theme.mutedText, lineHeight: 24, textAlign: "center" },
 
     // Toggle
     toggle:           { marginHorizontal: 16, marginBottom: 8, backgroundColor: theme.card, borderRadius: 14, padding: 3, flexDirection: "row", gap: 3 },
     toggleOption:     { flex: 1, borderRadius: 11, paddingVertical: 10, alignItems: "center" },
     toggleOptionActive:{ backgroundColor: theme.surfaceAlt },
     toggleTitleRow:   { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
-    toggleTitle:      { fontSize: 14, fontWeight: "600", textAlign: "center" },
+    toggleTitle:      { fontSize: 14, fontFamily: fonts.sans.semibold, textAlign: "center" },
     toggleTitleActive: { color: theme.text },
     toggleTitleInactive:{ color: theme.mutedText },
-    togglePrice:      { fontSize: 12, textAlign: "center", marginTop: 2 },
+    togglePrice:      { fontSize: 12, fontFamily: fonts.mono.regular, textAlign: "center", marginTop: 2 },
     togglePriceActive:{ color: theme.mutedText },
     togglePriceInactive:{ color: theme.quietText },
     saveBadge:        { backgroundColor: theme.successSurface, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2 },
-    saveBadgeText:    { fontSize: 10, fontWeight: "700", color: theme.success },
+    saveBadgeText:    { fontSize: 10, fontFamily: fonts.sans.bold, color: theme.success },
 
     // Price display
     priceBlock:    { alignItems: "center", paddingVertical: 24, paddingHorizontal: 20 },
     priceRow:      { flexDirection: "row", alignItems: "baseline", gap: 4 },
-    priceDollarSign:{ fontSize: 24, fontWeight: "300", color: theme.mutedText, marginBottom: 8 },
-    priceDollars:  { fontSize: 56, fontWeight: "700", color: theme.text, letterSpacing: -3, fontVariant: ["tabular-nums"] },
+    priceDollarSign:{ fontSize: 24, fontFamily: fonts.mono.regular, color: theme.mutedText, marginBottom: 8 },
+    priceDollars:  { fontSize: 56, fontFamily: fonts.mono.bold, color: theme.text, letterSpacing: -3, fontVariant: ["tabular-nums"] },
     priceRight:    { flexDirection: "column", alignItems: "flex-start", marginBottom: 8, gap: 2 },
-    priceCents:    { fontSize: 24, fontWeight: "300", color: theme.mutedText },
-    pricePer:      { fontSize: 14, color: theme.quietText, marginTop: 2 },
-    priceDesc:     { marginTop: 8, fontSize: 14, color: theme.quietText, textAlign: "center" },
+    priceCents:    { fontSize: 24, fontFamily: fonts.mono.regular, color: theme.mutedText },
+    pricePer:      { fontSize: 14, fontFamily: fonts.sans.regular, color: theme.quietText, marginTop: 2 },
+    priceDesc:     { marginTop: 8, fontSize: 14, fontFamily: fonts.sans.regular, color: theme.quietText, textAlign: "center" },
 
     // Value props
     groupCard:     { marginHorizontal: 16, marginBottom: 8, backgroundColor: theme.card, borderRadius: 16, overflow: "hidden" },
     propRow:       { flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 16, paddingVertical: 13 },
-    propIcon:      { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-    propIconText:  { fontSize: 16, textAlign: "center", lineHeight: 36 },
+    propIcon:      { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: theme.primarySurface },
     propText:      { flex: 1 },
     propTitle:     { ...typography.subheadline, color: theme.text },
     propSub:       { ...typography.caption1, color: theme.mutedText, marginTop: 2 },
-    propCheck:     { fontSize: 14, fontWeight: "600", color: theme.success },
     propSep:       { position: "absolute", left: 66, right: 0, bottom: 0, height: 0.5, backgroundColor: theme.border },
 
     // Social proof
     socialRow:     { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 16 },
     avatarStack:   { flexDirection: "row" },
     socialAvatar:  { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: theme.background, alignItems: "center", justifyContent: "center" },
-    socialAvatarText: { color: theme.onPrimary, fontSize: 11, fontWeight: "700" },
-    socialProofText:{ fontSize: 13, color: theme.mutedText, marginLeft: 4 },
+    socialAvatarText: { color: theme.onPrimary, fontSize: 11, fontFamily: fonts.sans.bold },
+    socialProofText:{ fontSize: 13, fontFamily: fonts.sans.regular, color: theme.mutedText, marginLeft: 4 },
 
     // Error
     errorText:     { ...typography.footnote, color: theme.danger, textAlign: "center", marginHorizontal: 16 },
 
     // CTA
     ctaBtn:        { marginHorizontal: 16, marginBottom: 12, backgroundColor: theme.primary, borderRadius: 16, paddingVertical: 18, flexDirection: "row", alignItems: "center", justifyContent: "center" },
-    ctaBtnText:    { fontSize: 17, fontWeight: "700", color: theme.onPrimary, letterSpacing: -0.3 },
-    ctaSubText:    { textAlign: "center", fontSize: 12, color: theme.quietText, marginTop: 8, marginBottom: 20 },
+    ctaBtnText:    { fontSize: 17, fontFamily: fonts.sans.bold, color: theme.onPrimary, letterSpacing: -0.3 },
+    ctaSubText:    { textAlign: "center", fontSize: 12, fontFamily: fonts.sans.regular, color: theme.quietText, marginTop: 8, marginBottom: 20 },
 
     // Family row
     familyRow:     { marginHorizontal: 16, marginBottom: 16, backgroundColor: theme.card, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, flexDirection: "row", alignItems: "center", gap: 12 },
-    familyIcon:    { fontSize: 22 },
+    familyIcon:    { width: 36, height: 36, borderRadius: 10, backgroundColor: theme.primarySurface, alignItems: "center", justifyContent: "center" },
     familyText:    { flex: 1 },
     familyTitle:   { ...typography.subheadline, color: theme.text },
     familySub:     { ...typography.caption1, color: theme.mutedText },
-    familyViewLink:{ fontSize: 14, fontWeight: "600", color: theme.primary },
+    familyViewLink:{ fontSize: 14, fontFamily: fonts.sans.semibold, color: theme.primary },
 
     // Footer
     footer:        { paddingHorizontal: 20, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 20, marginBottom: 16 },
-    footerLink:    { fontSize: 12, color: theme.quietText, letterSpacing: -0.1 },
+    footerLink:    { fontSize: 12, fontFamily: fonts.sans.regular, color: theme.quietText },
     footerDot:     { fontSize: 12, color: theme.quietText },
 
     // Loading overlay
     overlay:       { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.overlay, alignItems: "center", justifyContent: "center", zIndex: 100 },
     overlayCard:   { backgroundColor: theme.card, borderRadius: 20, padding: 28, alignItems: "center", gap: 16 },
-    overlayText:   { fontSize: 16, fontWeight: "500", color: theme.text, marginTop: 8 },
+    overlayText:   { fontSize: 16, fontFamily: fonts.sans.medium, color: theme.text, marginTop: 8 },
 
     // Success screen
     successScreen: { alignItems: "center", justifyContent: "center", paddingHorizontal: 32 },
-    successIcon:   { fontSize: 56, color: theme.primary, marginBottom: 24 },
-    successTitle:  { fontSize: 28, fontWeight: "800", color: theme.text, letterSpacing: -1.2, marginBottom: 12, textAlign: "center" },
-    successBody:   { fontSize: 16, color: theme.mutedText, textAlign: "center", lineHeight: 24, marginBottom: 36 },
+    successTitle:  { fontSize: 28, fontFamily: fonts.display.bold, color: theme.text, letterSpacing: -1.0, marginBottom: 12, marginTop: 24, textAlign: "center" },
+    successBody:   { fontSize: 16, fontFamily: fonts.sans.regular, color: theme.mutedText, textAlign: "center", lineHeight: 24, marginBottom: 36 },
     successBtn:    { backgroundColor: theme.primary, borderRadius: 14, paddingVertical: 17, paddingHorizontal: 32 },
-    successBtnText:{ fontSize: 17, fontWeight: "600", color: theme.onPrimary }
+    successBtnText:{ fontSize: 17, fontFamily: fonts.sans.semibold, color: theme.onPrimary }
   });
 }
