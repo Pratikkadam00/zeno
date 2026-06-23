@@ -263,6 +263,13 @@ export default function DiscoverScreen() {
                             {result.source}
                           </Text>
                         </View>
+                        {result.billedThrough ? (
+                          <View style={[styles.sourcePill, { backgroundColor: theme.warningSurface }]}>
+                            <Text style={[styles.sourcePillText, { color: theme.warning }]}>
+                              {result.billedThrough === "app_store" ? "App Store" : "Play Store"}
+                            </Text>
+                          </View>
+                        ) : null}
                         <Text style={styles.resultCycle}>{result.billingCycle}</Text>
                       </View>
                     </View>

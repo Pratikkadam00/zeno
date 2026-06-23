@@ -1,8 +1,11 @@
 import { getServiceBySlug, searchServices, services, type Service } from "@zeno/service-catalog";
+import { extractStoreAppName } from "@zeno/shared";
 import { exchangeCodeAsync, type AuthRequest, type AuthSessionResult } from "expo-auth-session";
 import { discovery as googleDiscovery } from "expo-auth-session/providers/google";
 import { getGmailAccountToken, listGmailAddresses, removeGmailAccount, saveGmailAccount } from "../security/secure-store";
 import { calculateNextRenewal, confidenceRank, inferRecurringCycle, isWithin, slugify, titleCase } from "./discovery-helpers";
+
+export type BilledThrough = "app_store" | "play_store";
 
 export type ParsedSubscription = {
   name: string;
@@ -15,6 +18,9 @@ export type ParsedSubscription = {
   serviceId?: string;
   rawMerchant: string;
   cancelUrl?: string;
+  // Set when billed via the App Store / Play Store — the subscriptions Rocket
+  // Money can't see (the charge is from Apple/Google, not the app).
+  billedThrough?: BilledThrough;
 };
 
 export type GmailMessage = {
@@ -234,6 +240,30 @@ export function parseEmailBody(emailBody: string, senderDomain: string): ParsedS
   const amount = extractAmount(emailBody);
   if (amount === null) {
     return null;
+  }
+
+  // App Store / Play Store receipts: the biller is Apple/Google, but the real
+  // subscription is the underlying app — resolve it instead of labelling "Apple".
+  const billedThrough = detectStoreBiller(normalizedDomain, emailBody);
+  if (billedThrough) {
+    const appName = extractStoreAppName(emailBody);
+    const appService = appName ? searchServices(appName, 1)[0] : undefined;
+    const resolvedName = appService?.name ?? appName ?? (billedThrough === "app_store" ? "App Store subscription" : "Play Store subscription");
+    const storeBillingCycle = detectBillingCycle(emailBody, amount, appService);
+    const storeDate = extractDate(emailBody) ?? new Date();
+    return {
+      name: resolvedName,
+      amount,
+      currency: detectCurrency(emailBody),
+      billingCycle: storeBillingCycle,
+      lastCharged: storeDate.toISOString(),
+      nextRenewal: calculateNextRenewal(storeDate, storeBillingCycle).toISOString(),
+      confidence: appService ? "high" : appName ? "medium" : "low",
+      serviceId: appService?.id,
+      rawMerchant: appName ?? resolvedName,
+      cancelUrl: appService?.cancelUrl,
+      billedThrough
+    };
   }
 
   const service = matchService(normalizedDomain, emailBody);
@@ -522,6 +552,17 @@ function extractSenderDomain(sender: string): string {
 function getKnownBillingDomain(domain: string): string | null {
   const normalized = domain.toLowerCase();
   return knownBillingDomains.find((knownDomain) => normalized === knownDomain || normalized.endsWith(`.${knownDomain}`)) ?? null;
+}
+
+function detectStoreBiller(senderDomain: string, body: string): BilledThrough | null {
+  const looksApple = senderDomain === "apple.com" || /\bapp\s?store\b/i.test(body);
+  if (looksApple && /subscription|renew|receipt|auto-?renew|membership/i.test(body)) {
+    return "app_store";
+  }
+  if (/\bgoogle\s?play\b/i.test(body)) {
+    return "play_store";
+  }
+  return null;
 }
 
 function extractAmount(body: string): number | null {
