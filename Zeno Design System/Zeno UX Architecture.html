@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zeno — UX Architecture &amp; Flow Redesign</title>
+<style>
+  :root {
+    --ink: #16181d;
+    --ink-2: #3c4250;
+    --ink-3: #6a7180;
+    --ink-4: #9197a4;
+    --line: #d9dce2;
+    --line-2: #e8eaee;
+    --paper: #ffffff;
+    --sunken: #f4f5f7;
+    --sunken-2: #eceef1;
+    --slate: #2f3b4d;
+    --accent: #34404f;       /* neutral slate — structural only, not a brand color */
+    --tag-bg: #eceef1;
+    --mono: "SFMono-Regular", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--sunken); color: var(--ink);
+    font-family: var(--sans); font-size: 15px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- Layout ---- */
+  .wrap { display: grid; grid-template-columns: 256px minmax(0,1fr); max-width: 1240px; margin: 0 auto; gap: 0; }
+  nav.toc {
+    position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto;
+    padding: 30px 22px 40px; border-right: 1px solid var(--line);
+    background: var(--paper);
+  }
+  nav.toc .brand { display: flex; align-items: center; gap: 9px; margin-bottom: 4px; }
+  nav.toc .brand .z { width: 26px; height: 26px; border-radius: 7px; background: var(--ink); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 15px; font-family: var(--mono); }
+  nav.toc .brand b { font-size: 16px; letter-spacing: -0.01em; }
+  nav.toc .doctype { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-4); margin: 0 0 26px 35px; }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; counter-reset: s; }
+  nav.toc > ol > li { counter-increment: s; margin-bottom: 3px; }
+  nav.toc a { display: block; text-decoration: none; color: var(--ink-2); padding: 6px 10px; border-radius: 6px; font-size: 13.5px; }
+  nav.toc > ol > li > a::before { content: counter(s) "  "; font-family: var(--mono); color: var(--ink-4); font-size: 11px; }
+  nav.toc a:hover { background: var(--sunken); color: var(--ink); }
+  nav.toc ul { list-style: none; margin: 2px 0 8px; padding: 0 0 0 26px; }
+  nav.toc ul a { font-size: 12.5px; color: var(--ink-3); padding: 3px 10px; }
+
+  main { background: var(--paper); padding: 0; min-width: 0; }
+  .pad { padding: 48px 60px; }
+
+  /* ---- Cover ---- */
+  header.cover { padding: 56px 60px 40px; border-bottom: 1px solid var(--line); }
+  header.cover .ey { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-4); }
+  header.cover h1 { font-size: 38px; line-height: 1.1; letter-spacing: -0.025em; margin: 14px 0 0; max-width: 20ch; }
+  header.cover p.lede { font-size: 17px; color: var(--ink-2); max-width: 64ch; margin: 16px 0 0; }
+  .meta { display: flex; flex-wrap: wrap; gap: 26px; margin-top: 28px; font-size: 13px; }
+  .meta div span { display: block; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-4); margin-bottom: 2px; }
+  .meta div b { font-weight: 600; color: var(--ink); }
+
+  .scope { margin: 26px 0 0; padding: 14px 18px; border: 1px solid var(--line); border-left: 3px solid var(--ink); background: var(--sunken); border-radius: 0 8px 8px 0; font-size: 13.5px; color: var(--ink-2); }
+  .scope b { color: var(--ink); }
+
+  /* ---- Sections ---- */
+  section { padding: 46px 60px; border-bottom: 1px solid var(--line-2); scroll-margin-top: 10px; }
+  .sec-h { display: flex; align-items: baseline; gap: 14px; margin: 0 0 6px; }
+  .sec-h .n { font-family: var(--mono); font-size: 13px; color: var(--ink-4); font-weight: 600; }
+  h2 { font-size: 25px; letter-spacing: -0.02em; margin: 0; }
+  .sec-sub { color: var(--ink-3); font-size: 14.5px; margin: 0 0 30px; max-width: 70ch; }
+  h3 { font-size: 16px; letter-spacing: -0.01em; margin: 34px 0 12px; padding-bottom: 7px; border-bottom: 1px solid var(--line-2); }
+  h4 { font-size: 13.5px; margin: 20px 0 8px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3); font-family: var(--mono); font-weight: 600; }
+
+  p { margin: 0 0 12px; }
+  .muted { color: var(--ink-3); }
+
+  /* ---- Tags ---- */
+  .tag { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: var(--tag-bg); color: var(--ink-2); font-weight: 600; white-space: nowrap; vertical-align: middle; }
+  .tag.free { background: #e7eee9; color: #2f5e44; }
+  .tag.pro { background: #e9e9f2; color: #43417a; }
+  .tag.family { background: #efe9e4; color: #6e5333; }
+  .tag.new { background: #1c1e23; color: #fff; }
+  .tag.moved { background: #e6edf2; color: #2e5573; }
+  .tag.removed { background: #f1e6e8; color: #8a3a48; text-decoration: line-through; }
+  .tag.dev { background: #e5e7ea; color: #555b66; }
+  .tag.changed { background: #f3ecdd; color: #735e23; }
+
+  /* ---- Decision list ---- */
+  .decisions { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .decision { display: grid; grid-template-columns: 92px 1fr; gap: 0; border-bottom: 1px solid var(--line-2); }
+  .decision:last-child { border-bottom: none; }
+  .decision .lbl { background: var(--sunken); padding: 16px 14px; font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--ink-2); letter-spacing: 0.04em; border-right: 1px solid var(--line-2); }
+  .decision .lbl span { display: block; color: var(--ink-4); font-weight: 500; margin-top: 3px; font-size: 10px; }
+  .decision .body { padding: 15px 18px; }
+  .decision .body b { font-weight: 650; }
+  .decision .body .was { color: var(--ink-3); font-size: 13px; }
+
+  /* ---- Nav map diagram ---- */
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 0 0 26px; padding: 12px 16px; background: var(--sunken); border-radius: 8px; font-size: 12px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
+
+  .tabbar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 0 0 14px; }
+  .tabbox { border: 1px solid var(--line); border-radius: 10px; padding: 14px 12px; text-align: center; background: var(--paper); position: relative; }
+  .tabbox.center { border-color: var(--ink); border-width: 1.5px; background: var(--sunken); }
+  .tabbox .ic { width: 34px; height: 34px; margin: 0 auto 8px; border-radius: 9px; background: var(--sunken-2); display: grid; place-items: center; font-family: var(--mono); font-weight: 700; color: var(--ink-2); font-size: 15px; }
+  .tabbox.center .ic { background: var(--ink); color: #fff; }
+  .tabbox b { font-size: 13.5px; display: block; }
+  .tabbox .role { font-size: 11.5px; color: var(--ink-3); margin-top: 3px; line-height: 1.4; }
+
+  .stacks { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .stack { border: 1px solid var(--line-2); border-radius: 10px; padding: 4px; background: var(--sunken); }
+  .stack .head { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-4); padding: 8px 8px 6px; }
+  .stack ul { list-style: none; margin: 0; padding: 0; }
+  .stack li { background: var(--paper); border: 1px solid var(--line-2); border-radius: 7px; padding: 7px 9px; margin: 4px; font-size: 12px; line-height: 1.35; }
+  .stack li .s { display: block; color: var(--ink-4); font-size: 10.5px; }
+
+  .offnav { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; }
+  .panel { border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+  .panel.dev { border-style: dashed; }
+  .panel h4 { margin-top: 0; }
+  .panel ul { margin: 0; padding-left: 18px; }
+  .panel li { margin-bottom: 6px; font-size: 13px; }
+
+  /* ---- Screen inventory ---- */
+  .area-label { display: flex; align-items: center; gap: 10px; margin: 34px 0 4px; }
+  .area-label .bar { width: 4px; height: 18px; border-radius: 2px; background: var(--ink); }
+  .area-label h3 { border: none; margin: 0; padding: 0; font-size: 17px; }
+  .screens { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+  .screen { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .screen .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+  .screen .nm { font-weight: 650; font-size: 14.5px; }
+  .screen .nm .id { font-family: var(--mono); font-size: 10.5px; color: var(--ink-4); margin-right: 7px; font-weight: 600; }
+  .screen .job { font-size: 12.5px; color: var(--ink-2); font-style: italic; margin-bottom: 9px; }
+  .screen .kc { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-4); margin-bottom: 4px; }
+  .screen ul { margin: 0; padding-left: 16px; }
+  .screen li { font-size: 12.5px; line-height: 1.45; color: var(--ink-2); margin-bottom: 2px; }
+  .screen .tags { margin-top: 9px; display: flex; flex-wrap: wrap; gap: 4px; }
+  .screen.wide { grid-column: 1 / -1; }
+
+  /* ---- Flows ---- */
+  .flow { border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; margin-bottom: 20px; }
+  .flow > .fh { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+  .flow > .fh .fid { font-family: var(--mono); font-weight: 700; font-size: 13px; color: var(--ink); background: var(--sunken-2); padding: 2px 8px; border-radius: 5px; }
+  .flow > .fh h4 { margin: 0; text-transform: none; font-family: var(--sans); font-size: 16px; letter-spacing: -0.01em; color: var(--ink); font-weight: 650; }
+  .flow .goal { font-size: 13px; color: var(--ink-3); margin: 0 0 16px; }
+  .steps { list-style: none; counter-reset: f; margin: 0; padding: 0; }
+  .steps > li { counter-increment: f; position: relative; padding: 0 0 16px 40px; }
+  .steps > li::before { content: counter(f); position: absolute; left: 0; top: 0; width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: #fff; font-family: var(--mono); font-size: 12px; font-weight: 700; display: grid; place-items: center; }
+  .steps > li::after { content: ""; position: absolute; left: 13px; top: 28px; bottom: 2px; width: 1.5px; background: var(--line); }
+  .steps > li:last-child::after { display: none; }
+  .steps .st { font-weight: 600; font-size: 13.5px; }
+  .steps .sd { font-size: 13px; color: var(--ink-2); }
+  .steps .note { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+  .steps .note .tag { margin-right: 4px; }
+  .branch { margin: 6px 0 2px; padding: 10px 14px; border: 1px solid var(--line-2); border-left: 3px solid var(--ink-3); border-radius: 0 8px 8px 0; background: var(--sunken); font-size: 12.5px; }
+  .branch .bt { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; }
+  .branch b { font-weight: 650; }
+  .gate { display: inline-block; font-family: var(--mono); font-size: 11px; background: #1c1e23; color: #fff; padding: 1px 7px; border-radius: 4px; }
+
+  /* ---- State matrix ---- */
+  table.matrix { width: 100%; border-collapse: collapse; margin: 10px 0 30px; font-size: 12.5px; }
+  table.matrix caption { text-align: left; font-weight: 650; font-size: 14.5px; padding: 0 0 8px; color: var(--ink); }
+  table.matrix th { text-align: left; font-family: var(--mono); font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; padding: 8px 12px; border-bottom: 1.5px solid var(--line); vertical-align: bottom; }
+  table.matrix td { padding: 10px 12px; border-bottom: 1px solid var(--line-2); vertical-align: top; color: var(--ink-2); line-height: 1.45; }
+  table.matrix td:first-child, table.matrix th:first-child { width: 130px; }
+  table.matrix tr td:first-child { font-weight: 600; color: var(--ink); }
+  table.matrix .col-empty { background: #fcfcfd; }
+
+  .endnote { padding: 40px 60px 60px; color: var(--ink-3); font-size: 13px; }
+  .endnote b { color: var(--ink-2); }
+
+  @media print {
+    body { background: #fff; font-size: 11px; }
+    .wrap { display: block; max-width: none; }
+    nav.toc { display: none; }
+    section, header.cover, .pad { padding: 22px 0; }
+    .screens, .stacks, .tabbar { break-inside: avoid; }
+    .flow, .screen, table.matrix { break-inside: avoid; }
+  }
+  @media (max-width: 900px) {
+    .wrap { grid-template-columns: 1fr; }
+    nav.toc { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--line); }
+    .screens, .offnav { grid-template-columns: 1fr; }
+    section, header.cover { padding: 32px 22px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <nav class="toc">
+    <div class="brand"><span class="z">Z</span><b>Zeno</b></div>
+    <p class="doctype">UX Architecture Spec</p>
+    <ol>
+      <li><a href="#principles">Principles &amp; Decisions</a></li>
+      <li><a href="#ia">Information Architecture</a>
+        <ul>
+          <li><a href="#ia-tabs">Tab bar</a></li>
+          <li><a href="#ia-stacks">Stacks</a></li>
+          <li><a href="#ia-offnav">Off-nav &amp; removed</a></li>
+        </ul>
+      </li>
+      <li><a href="#inventory">Screen Inventory</a>
+        <ul>
+          <li><a href="#inv-onboard">Onboarding &amp; Auth</a></li>
+          <li><a href="#inv-core">Core tabs</a></li>
+          <li><a href="#inv-discover">Discovery</a></li>
+          <li><a href="#inv-sub">Subscription &amp; Cancel</a></li>
+          <li><a href="#inv-insights">Insights</a></li>
+          <li><a href="#inv-account">Account &amp; Household</a></li>
+        </ul>
+      </li>
+      <li><a href="#flows">User Flows</a>
+        <ul>
+          <li><a href="#flow-a">A · New user → tracked</a></li>
+          <li><a href="#flow-b">B · Email scan</a></li>
+          <li><a href="#flow-c">C · CSV import</a></li>
+          <li><a href="#flow-d">D · Cancel + verify</a></li>
+          <li><a href="#flow-e">E · Upgrade to Pro</a></li>
+          <li><a href="#flow-f">F · Household</a></li>
+        </ul>
+      </li>
+      <li><a href="#states">State Matrix</a></li>
+      <li><a href="#budgeting">Budgeting Add-on</a>
+        <ul>
+          <li><a href="#bud-ia">Where it lives</a></li>
+          <li><a href="#bud-screens">Screens</a></li>
+          <li><a href="#bud-flows">Flows</a></li>
+          <li><a href="#bud-states">States</a></li>
+          <li><a href="#bud-integrations">Integrations</a></li>
+        </ul>
+      </li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="cover">
+      <div class="ey">Zeno · Product UX</div>
+      <h1>Information Architecture &amp; Flow Redesign</h1>
+      <p class="lede">A restructure of Zeno's navigation, screen hierarchy, flows, and interaction logic — built around one promise: track every recurring charge and warn you before it hits, <b>without ever handing over a bank login</b>.</p>
+      <div class="meta">
+        <div><span>Scope</span><b>Structure · Flows · States</b></div>
+        <div><span>Platform</span><b>iOS mobile app</b></div>
+        <div><span>Tab model</span><b>5 tabs · center action</b></div>
+        <div><span>Status</span><b>Proposed redesign</b></div>
+      </div>
+      <div class="scope"><b>Scope guardrail —</b> this document defines information architecture, screen purpose, content blocks, user flows, and interaction states only. <b>Color, typography, branding, and visual style are intentionally excluded</b> and decided in a later phase. The neutral grayscale here is a blueprint, not a design direction.</div>
+    </header>
+
+    <!-- ============ 1 · PRINCIPLES & DECISIONS ============ -->
+    <section id="principles">
+      <div class="sec-h"><span class="n">01</span><h2>Principles &amp; Key Decisions</h2></div>
+      <p class="sec-sub">Every structural choice below traces back to the product's reason to exist: <b>trust over automation</b>. The eight requested flow changes, and the decisions taken for each.</p>
+
+      <h4>Experience principles carried into the structure</h4>
+      <div class="screens">
+        <div class="screen"><div class="nm">Trust is the product</div><div class="job" style="font-style:normal">The "no bank login · on-device · we never see your data" narrative is repeated at every point of friction — onboarding, connecting an inbox, importing a statement — never buried in settings.</div></div>
+        <div class="screen"><div class="nm">Fast time-to-value</div><div class="job" style="font-style:normal">A brand-new user discovers at least one real subscription in the first session, free, before any paywall appears.</div></div>
+        <div class="screen"><div class="nm">"What's about to charge me, what can I kill"</div><div class="job" style="font-style:normal">Home leads with upcoming charges and savings opportunities; the full list and cancellation are always one tap away.</div></div>
+        <div class="screen"><div class="nm">Honesty &amp; easy exit</div><div class="job" style="font-style:normal">Nothing is claimed as "done" without confirmation. Exporting data, deleting data, and leaving Zeno are deliberately easy to find.</div></div>
+      </div>
+
+      <h3>The eight flow changes → decisions</h3>
+      <div class="decisions">
+        <div class="decision">
+          <div class="lbl">CHANGE 1<span>Free first scan</span></div>
+          <div class="body"><b>First discovery is the onboarding destination, not a feature behind a wall.</b> After sign-up the user is routed straight into a discovery method and sees real results before any paywall. The privacy promise is the backdrop of this moment. <span class="tag free">Free</span></div>
+        </div>
+        <div class="decision">
+          <div class="lbl">CHANGE 2<span>Subs get a home</span></div>
+          <div class="body"><b>New dedicated <i>Subscriptions</i> tab</b> holds the complete, searchable, filterable list. <span class="was">Was: only at the bottom of Analytics.</span> Home becomes a triage surface ("what's coming / what to cut"); the full list is one tap away. <span class="tag new">New tab</span></div>
+        </div>
+        <div class="decision">
+          <div class="lbl">CHANGE 3<span>De-clutter Home</span></div>
+          <div class="body">The 9-item feature grid is <b>removed</b>. Genuinely useful tools (Analytics, Coach, Spend Twin, Wrapped, Family, Widgets) live inside the <b>Insights</b> tab and Settings. Dev/diagnostic screens move to a hidden area; unbuilt placeholders are pulled from the app. <span class="tag removed">Grid</span> <span class="tag dev">Dev hidden</span></div>
+        </div>
+        <div class="decision">
+          <div class="lbl">CHANGE 4<span>Verified cancel</span></div>
+          <div class="body"><b>Cancellation gains a verification lifecycle:</b> Guided → <i>Pending verification</i> → re-checks next receipt/statement → <i>Verified cancelled</i> or <i>Still being charged — needs attention</i>. Self-reported "done" is never the end state. <span class="tag changed">Reworked</span></div>
+        </div>
+        <div class="decision">
+          <div class="lbl">CHANGE 5<span>Editable date</span></div>
+          <div class="body">Manual add gets a <b>user-editable next-renewal date</b> (and optional last-charged date to seed history). <span class="was">Was: locked to +30 days.</span> <span class="tag changed">Fixed</span></div>
+        </div>
+        <div class="decision">
+          <div class="lbl">CHANGE 6<span>Real history</span></div>
+          <div class="body">Subscription detail shows <b>actual tracked charges</b> with states for none / a few months / long history. <span class="was">Was: mock sample data.</span> <span class="tag changed">Fixed</span></div>
+        </div>
+        <div class="decision">
+          <div class="lbl">CHANGE 7<span>Onboarding</span></div>
+          <div class="body">Re-sequenced so <b>value comes before configuration</b>. The mode/theme choice is removed from the critical path and offered later as an optional, skippable prompt. Privacy/trust is a multi-beat narrative, not one bullet. <span class="tag changed">Resequenced</span></div>
+        </div>
+        <div class="decision">
+          <div class="lbl">CHANGE 8<span>Visible trust</span></div>
+          <div class="body">Privacy reassurance is surfaced inline at inbox-connect and CSV-import. <b>Export data, delete all data, and cancel Zeno are top-level in Settings → Data &amp; Privacy</b>, never hidden. <span class="tag changed">Reinforced</span></div>
+        </div>
+      </div>
+
+      <h4>Free / Pro / Family — where limits sit</h4>
+      <div class="screens">
+        <div class="screen"><div class="top"><div class="nm">Free</div><span class="tag free">Hook</span></div><div class="job" style="font-style:normal">Track up to <b>8 subscriptions</b>, the <b>first discovery scan</b>, manual add, calendar, reminders, cancellation guidance + verification, Free-Trial Guardian, Price-Hike Radar.</div></div>
+        <div class="screen"><div class="top"><div class="nm">Pro</div><span class="tag pro">Upgrade</span></div><div class="job" style="font-style:normal">Unlimited subscriptions, <b>ongoing repeat auto-discovery</b>, full analytics + insights engine, AI Spend Coach, Wrapped, Spend Twin, widgets &amp; watch.</div></div>
+        <div class="screen"><div class="top"><div class="nm">Family</div><span class="tag family">Household</span></div><div class="job" style="font-style:normal">Up to <b>5 members</b> sharing a combined monthly-spend view; each member shares only their total, never line items.</div></div>
+      </div>
+      <p class="muted" style="font-size:13px; margin-top:14px;">Upgrade prompts appear only <b>after</b> the first discovery "aha": when crossing the 8-sub limit, opening a Pro tool, or requesting a repeat scan.</p>
+    </section>
+
+    <!-- ============ 2 · INFORMATION ARCHITECTURE ============ -->
+    <section id="ia">
+      <div class="sec-h"><span class="n">02</span><h2>Information Architecture</h2></div>
+      <p class="sec-sub">Five-item tab bar with a center discovery action. Everything reachable in two taps; tools grouped by intent rather than scattered.</p>
+
+      <div class="legend">
+        <span><span class="tag new">New</span> didn't exist before</span>
+        <span><span class="tag moved">Moved</span> relocated from elsewhere</span>
+        <span><span class="tag changed">Changed</span> reworked behavior</span>
+        <span><span class="tag removed">Removed</span> pulled from app</span>
+        <span><span class="tag dev">Dev</span> hidden developer area</span>
+        <span><span class="gate">●</span> upgrade gate</span>
+      </div>
+
+      <h3 id="ia-tabs">Primary navigation — the tab bar</h3>
+      <div class="tabbar">
+        <div class="tabbox"><div class="ic">⌂</div><b>Home</b><div class="role">Triage: what's about to charge me &amp; what to cut</div></div>
+        <div class="tabbox"><div class="ic">≣</div><b>Subscriptions</b><div class="role">The full list — search, filter, manage <span class="tag new" style="margin-top:4px;">New</span></div></div>
+        <div class="tabbox center"><div class="ic">+</div><b>Discover</b><div class="role">Center action — scan, import, add</div></div>
+        <div class="tabbox"><div class="ic">▦</div><b>Calendar</b><div class="role">Month view of upcoming renewals</div></div>
+        <div class="tabbox"><div class="ic">◉</div><b>Insights</b><div class="role">Analytics + all intelligence tools</div></div>
+      </div>
+      <p class="muted" style="font-size:12.5px;">The center <b>Discover</b> action is elevated because repeat discovery is the habit that keeps data fresh. Settings is reached from a gear/profile control in the Home header — it is account chrome, not a primary destination.</p>
+
+      <h3 id="ia-stacks">What lives in each stack</h3>
+      <div class="stacks">
+        <div class="stack">
+          <div class="head">Home ▸</div>
+          <ul>
+            <li>Dashboard / triage</li>
+            <li>Urgent alerts feed<span class="s">trials, hikes, renewals</span></li>
+            <li class="">Notifications inbox</li>
+            <li>Settings entry<span class="s">gear in header</span></li>
+          </ul>
+        </div>
+        <div class="stack">
+          <div class="head">Subscriptions ▸</div>
+          <ul>
+            <li>All subscriptions list<span class="s">search · sort · filter</span></li>
+            <li>Status filters<span class="s">active / paused / pending / cancelled</span></li>
+            <li>Subscription detail</li>
+            <li>Edit subscription</li>
+            <li>Cancel + verify flow</li>
+          </ul>
+        </div>
+        <div class="stack">
+          <div class="head">Discover ▸</div>
+          <ul>
+            <li>Discovery hub</li>
+            <li>Email-receipt scan</li>
+            <li>CSV import</li>
+            <li>Manual add (catalog)</li>
+            <li>Results review &amp; select</li>
+          </ul>
+        </div>
+        <div class="stack">
+          <div class="head">Calendar ▸</div>
+          <ul>
+            <li>Month calendar</li>
+            <li>Day detail sheet</li>
+            <li>Upcoming grouped list<span class="s">this week / next / later</span></li>
+          </ul>
+        </div>
+        <div class="stack">
+          <div class="head">Insights ▸</div>
+          <ul>
+            <li>Spend analytics</li>
+            <li>Insights engine</li>
+            <li>AI Spend Coach <span class="tag pro">Pro</span></li>
+            <li>Spend Twin <span class="tag pro">Pro</span></li>
+            <li>Year in Review <span class="tag pro">Pro</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <h3 id="ia-offnav">Off the tab bar</h3>
+      <div class="offnav">
+        <div class="panel">
+          <h4>Settings stack <span class="tag moved">From grid</span></h4>
+          <ul>
+            <li>Profile &amp; account</li>
+            <li>Plan &amp; billing → <b>Paywall / Plans</b></li>
+            <li><b>Family / Household</b> (create · join · combined view) <span class="tag family">Family</span></li>
+            <li>Appearance — app mode/theme &amp; icon <span class="tag changed">Now optional</span></li>
+            <li>Notifications &amp; quiet hours</li>
+            <li>Connected inboxes &amp; sources</li>
+            <li>Widgets &amp; Watch setup <span class="tag pro">Pro</span></li>
+            <li><b>Data &amp; Privacy</b> — export, delete all, how-we-protect-you <span class="tag changed">Top-level</span></li>
+            <li>Help, legal, rate/share, <b>sign out &amp; cancel Zeno</b></li>
+          </ul>
+        </div>
+        <div class="panel dev">
+          <h4>Hidden developer area <span class="tag dev">Dev</span></h4>
+          <ul>
+            <li>Backend connectivity test</li>
+            <li>Open Banking / Plaid sandbox</li>
+          </ul>
+          <p class="muted" style="font-size:12px; margin:8px 0 0;">Reachable only via Settings → About → tap version 7×. Never in the consumer path.</p>
+          <h4 style="margin-top:16px;">Removed from the app <span class="tag removed">Cut</span></h4>
+          <ul>
+            <li>Business · Public API · Partners — unbuilt placeholders; moved to backlog / marketing site, out of app nav.</li>
+            <li>The 9-item Home feature grid.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 3 · SCREEN INVENTORY ============ -->
+    <section id="inventory">
+      <div class="sec-h"><span class="n">03</span><h2>Screen Inventory</h2></div>
+      <p class="sec-sub">Every screen, its single job, and its key content blocks. Tags mark tier and change status. IDs are referenced by the flows in §04.</p>
+
+      <div class="area-label"><span class="bar"></span><h3 id="inv-onboard">Onboarding &amp; Auth</h3></div>
+      <div class="screens">
+        <div class="screen"><div class="top"><div class="nm"><span class="id">OB-1</span>Welcome / Trust intro</div></div><div class="job">Earn trust in 15 seconds and frame why Zeno is different.</div><div class="kc">Key content</div><ul><li>2–3 value beats: no bank login · on-device · warned before charges</li><li>"How we find subscriptions without your bank" primer</li><li>Continue → sign up</li></ul><div class="tags"><span class="tag changed">Resequenced</span></div></div>
+        <div class="screen"><div class="top"><div class="nm"><span class="id">OB-2</span>Sign up / Sign in</div></div><div class="job">Authenticate with the least friction, honestly gated.</div><div class="kc">Key content</div><ul><li>Email magic-link · Apple · Google</li><li><b>16+ age confirmation</b> required before any method</li><li>Link to privacy explainer</li></ul></div>
+        <div class="screen"><div class="top"><div class="nm"><span class="id">OB-3</span>Magic-link / verify</div></div><div class="job">Bridge the email round-trip without dead-ending.</div><div class="kc">Key content</div><ul><li>"Check your inbox" + resend / change email</li><li>Deep-link return handling</li></ul></div>
+        <div class="screen"><div class="top"><div class="nm"><span class="id">OB-4</span>First-discovery launchpad</div><span class="tag free">Free</span></div><div class="job">Send the new user straight to value — pick a discovery method.</div><div class="kc">Key content</div><ul><li>Three methods ranked: CSV "most complete," email scan, manual</li><li>Inline privacy reassurance per method</li><li>"Skip for now" → Home empty state (not a paywall)</li></ul><div class="tags"><span class="tag new">New step</span><span class="tag changed">No mode choice</span></div></div>
+      </div>
+      <p class="muted" style="font-size:12.5px; margin-top:10px;">The old forced "experience-mode" selection is removed from onboarding. Mode/theme is offered later as a dismissible Home prompt and always lives in Settings → Appearance.</p>
+
+      <div class="area-label"><span class="bar"></span><h3 id="inv-core">Core tabs</h3></div>
+      <div class="screens">
+        <div class="screen wide"><div class="top"><div class="nm"><span class="id">HOME</span>Home / Triage</div></div><div class="job">Answer "what's about to charge me, and what can I cut?" at a glance.</div><div class="kc">Key content blocks</div><ul><li><b>Spend summary</b> — this month's total + free-tier counter (X/8) when on Free</li><li><b>Needs attention</b> — urgent renewals, trials ending (Guardian), price hikes (Radar), cancellations needing attention</li><li><b>Upcoming renewals</b> — next ~5, with "See all" → Subscriptions / Calendar</li><li><b>Savings opportunities</b> — 1–2 top insight previews (e.g. unused, annual-switch) → Insights</li><li>Primary actions: <b>Discover</b> &amp; <b>Add manually</b>; gear → Settings; bell → Notifications</li></ul><div class="tags"><span class="tag changed">Grid removed</span><span class="tag changed">De-cluttered</span></div></div>
+        <div class="screen"><div class="top"><div class="nm"><span class="id">SUBS</span>Subscriptions (list)</div><span class="tag new">New</span></div><div class="job">The single, authoritative home for every subscription.</div><div class="kc">Key content</div><ul><li>Search + sort (amount, renewal, name, recently added)</li><li>Filter tabs: <b>Active · Paused · Pending cancel · Cancelled</b></li><li>Row: name, amount, cycle, next renewal, status</li><li>Total + count header; add button</li></ul><div class="tags"><span class="tag moved">From Analytics</span></div></div>
+        <div class="screen"><div class="top"><div class="nm"><span class="id">CAL</span>Calendar</div></div><div class="job">See when money leaves across the month.</div><div class="kc">Key content</div><ul><li>Month grid with renewal dots; tap day → sheet</li><li>Stat cards: this month · next 7 days · projected year</li><li>Upcoming list grouped this week / next / later</li></ul></div>
+        <div class="screen"><div class="top"><div class="nm"><span class="id">INS</span>Insights (hub)</div></div><div class="job">Home for spend intelligence and the optional power tools.</div><div class="kc">Key content</div><ul><li>Spend total + 6-month trend chart</li><li>Category breakdown</li><li>Insights engine list (unused, duplicates, annual savings)</li><li>Entries to Coach · Spend Twin · Wrapped <span class="tag pro">Pro</span></li></ul><div class="tags"><span class="tag changed">Was Analytics</span></div></div>
+      </div>
+
+      <div class="area-label"><span class="bar"></span><h3 id="inv-discover">Discovery</h3></div>
+      <div class="screens">
+        <div class="screen"><div class="top"><div class="nm"><span class="id">DSC-0</span>Discovery hub</div></div><div class="job">Offer the three privacy-safe ways to find subscriptions.</div><div class="kc">Key content</div><ul><li>CSV import (badged "most complete")</li><li>Email-receipt scan</li><li>Manual add from catalog</li><li>Persistent privacy line across all three</li></ul></div>
+        <div class="screen"><div class="top"><div class="nm"><span class="id">DSC-E</span>Email-receipt scan</div></div><div class="job">Find subscriptions from receipts, read-only and on-device.</div><div class="kc">Key content</div><ul><li>Connect inbox(es); 12-month read-only scope</li><li><b>Inline trust panel</b>: on-device, never stored, revocable</li><li>Scan progress → results handoff</li></ul><div class="tags"><span class="tag changed">Trust inline</span></div></div>
+        <div class="screen"><div class="top"><div class="nm"><span class="id">DSC-C</span>CSV import</div></div><div class="job">Detect recurring charges from a statement the user exports themselves.</div><div class="kc">Key content</div><ul><li>How-to-export helper per bank</li><li>File picker → parse → recurring detection</li><li>Trust note: file processed on-device, not uploaded raw</li></ul></div>
+        <div class="screen"><div class="top"><div class="nm"><span class="id">DSC-M</span>Manual add</div><span class="tag changed">Fixed</span></div><div class="job">Add a known or custom subscription precisely.</div><div class="kc">Key content</div><ul><li>Catalog search (600+) with autocomplete, or custom</li><li>Form: name, amount, cycle, category, notes, trial toggle, per-sub reminders</li><li><b>Editable next-renewal date</b> + optional last-charged date</li></ul></div>
+        <div class="screen wide"><div class="top"><div class="nm"><span class="id">DSC-R</span>Results review &amp; select</div><span class="tag free">First scan free</span></div><div class="job">Let the user confirm what's real before anything is tracked.</div><div class="kc">Key content</div><ul><li>Found list with <b>confidence indicators</b>; select which to add</li><li>Edit any item inline before adding (amount, cycle, date, category)</li><li>De-dupe against already-tracked subs; running "X selected" + add CTA</li></ul></div>
+      </div>
+
+      <div class="area-label"><span class="bar"></span><h3 id="inv-sub">Subscription &amp; Cancellation</h3></div>
+      <div class="screens">
+        <div class="screen"><div class="top"><div class="nm"><span class="id">SUB-D</span>Subscription detail</div></div><div class="job">Everything about one subscription, and the levers to act.</div><div class="kc">Key content</div><ul><li>Hero: name, amount, cycle, status</li><li>Urgency banner if renewing soon</li><li>Stat cards: next charge · per-year · annual-switch savings</li><li><b>Real charge history</b> (see §05 states)</li><li>Reminders toggles · notes · ··· menu (Edit / Pause / Delete)</li><li>Primary: <b>Cancel</b></li></ul><div class="tags"><span class="tag changed">Real history</span></div></div>
+        <div class="screen"><div class="top"><div class="nm"><span class="id">SUB-E</span>Edit subscription</div></div><div class="job">Correct any field, including the renewal date.</div><div class="kc">Key content</div><ul><li>Same fields as manual add, pre-filled</li><li>Editable renewal date &amp; cycle; category; reminders</li></ul></div>
+        <div class="screen wide"><div class="top"><div class="nm"><span class="id">CXL</span>Cancel + verification flow</div><span class="tag changed">Reworked</span></div><div class="job">Guide a real cancellation and prove it actually stopped.</div><div class="kc">Key content / sequence</div><ul><li><b>Difficulty rating</b> + step-by-step instructions + deep link to the service's cancel page</li><li>"Did you cancel it?" self-report → moves sub to <b>Pending verification</b></li><li>Verification engine re-checks the next receipt / next statement around the renewal date</li><li>Resolves to <b>Verified cancelled</b> (show annual savings) or <b>Still being charged — needs attention</b> (re-guide / escalate)</li></ul><div class="tags"><span class="tag new">Verification states</span></div></div>
+      </div>
+
+      <div class="area-label"><span class="bar"></span><h3 id="inv-insights">Insights &amp; tools</h3></div>
+      <div class="screens">
+        <div class="screen"><div class="top"><div class="nm"><span class="id">INS-A</span>Spend analytics</div></div><div class="job">Show how spend moves over time and where it goes.</div><div class="kc">Key content</div><ul><li>Monthly spend + 6-month bar trend</li><li>Category breakdown; active vs paused</li></ul></div>
+        <div class="screen"><div class="top"><div class="nm"><span class="id">INS-E</span>Insights engine</div></div><div class="job">Surface concrete, deterministic savings flags.</div><div class="kc">Key content</div><ul><li>Unused subs, duplicates, annual-billing savings</li><li>Each flag → the relevant subscription / action</li></ul></div>
+        <div class="screen"><div class="top"><div class="nm"><span class="id">INS-C</span>AI Spend Coach</div><span class="tag pro">Pro</span></div><div class="job">Personalized "what to cut and what it saves," safely.</div><div class="kc">Key content</div><ul><li>Recommendations with $ saved</li><li><b>Falls back to on-device deterministic insights</b> if no AI configured</li></ul></div>
+        <div class="screen"><div class="top"><div class="nm"><span class="id">INS-T</span>Spend Twin</div><span class="tag pro">Pro</span></div><div class="job">Make spend relatable via real-world tradeoffs.</div><div class="kc">Key content</div><ul><li>Monthly spend translated into tangible comparisons</li></ul></div>
+        <div class="screen"><div class="top"><div class="nm"><span class="id">INS-W</span>Year in Review (Wrapped)</div><span class="tag pro">Pro</span></div><div class="job">A shareable annual spending recap.</div><div class="kc">Key content</div><ul><li>Story cards; totals, top categories, wins</li><li>Share / export</li></ul></div>
+      </div>
+
+      <div class="area-label"><span class="bar"></span><h3 id="inv-account">Account, Billing &amp; Household</h3></div>
+      <div class="screens">
+        <div class="screen"><div class="top"><div class="nm"><span class="id">SET</span>Settings</div></div><div class="job">Account chrome and all controls, with privacy &amp; exit up front.</div><div class="kc">Key content</div><ul><li>Profile · Plan &amp; billing · Notifications &amp; quiet hours</li><li>Connected inboxes/sources · Appearance (mode/icon) · Widgets</li><li><b>Data &amp; Privacy</b>: export, delete all, protection explainer</li><li>Help · legal · sign out · <b>cancel Zeno</b></li></ul></div>
+        <div class="screen"><div class="top"><div class="nm"><span class="id">PAY</span>Paywall / Plans</div><span class="tag pro">Pro</span></div><div class="job">Convert after value, honestly priced.</div><div class="kc">Key content</div><ul><li>Monthly / annual Pro with 7-day trial; value list; social proof</li><li>Family plan option; restore purchases; legal</li></ul></div>
+        <div class="screen"><div class="top"><div class="nm"><span class="id">FAM</span>Family / Household</div><span class="tag family">Family</span></div><div class="job">Share a combined spend total without exposing line items.</div><div class="kc">Key content</div><ul><li>Create or join via <b>share code</b></li><li>Combined monthly total; member list (totals only)</li><li>Privacy note on what is &amp; isn't shared</li></ul></div>
+        <div class="screen"><div class="top"><div class="nm"><span class="id">WID</span>Widgets &amp; Watch</div><span class="tag pro">Pro</span></div><div class="job">Glanceable next-renewal / monthly-spend setup.</div><div class="kc">Key content</div><ul><li>Widget previews + add instructions; watch complication</li></ul></div>
+        <div class="screen"><div class="top"><div class="nm"><span class="id">NOTE</span>Notifications inbox</div></div><div class="job">A persistent record of every alert Zeno sent.</div><div class="kc">Key content</div><ul><li>Renewal (7/3/day-of), trial-ending, price-hike, verification results</li><li>Each → its subscription</li></ul></div>
+      </div>
+    </section>
+
+    <!-- ============ 4 · FLOWS ============ -->
+    <section id="flows">
+      <div class="sec-h"><span class="n">04</span><h2>Primary User Flows</h2></div>
+      <p class="sec-sub">Step-by-step journeys for the six critical paths. <span class="gate">●</span> marks where an upgrade gate can appear — always after value.</p>
+
+      <div class="flow" id="flow-a">
+        <div class="fh"><span class="fid">A</span><h4>Brand-new user → first subscription tracked</h4></div>
+        <p class="goal">The make-or-break first session. Value before configuration, value before paywall.</p>
+        <ol class="steps">
+          <li><div class="st">Launch → Welcome <span class="muted">(OB-1)</span></div><div class="sd">2–3 trust beats: no bank login, on-device, warned before charges.</div></li>
+          <li><div class="st">Sign up with age gate <span class="muted">(OB-2/3)</span></div><div class="sd">Tick 16+, choose magic-link / Apple / Google; verify if magic-link.</div></li>
+          <li><div class="st">First-discovery launchpad <span class="muted">(OB-4)</span></div><div class="sd">Pick a method. Privacy reassurance shown inline. No mode choice, no paywall.</div><div class="note"><span class="tag free">Free</span>First scan is always free.</div></li>
+          <li><div class="st">Run discovery → review results <span class="muted">(DSC-R)</span></div><div class="sd">See real subscriptions with confidence indicators; select &amp; edit.</div>
+            <div class="branch"><span class="bt">If user skipped</span> Land on <b>Home empty state</b> that drives back to Discover — never a dead end, never a wall.</div>
+          </li>
+          <li><div class="st">Add selected → Home populated</div><div class="sd">The "aha": their real subscriptions, next renewals, and this-month total are now visible.</div></li>
+          <li><div class="st">Optional nudges</div><div class="sd">Dismissible prompts to enable notifications and (optionally) pick an app mode. Skippable.</div></li>
+        </ol>
+      </div>
+
+      <div class="flow" id="flow-b">
+        <div class="fh"><span class="fid">B</span><h4>Discover &amp; add — email-receipt scan</h4></div>
+        <p class="goal">Lowest-effort discovery; trust is the gating concern, so it's addressed inline.</p>
+        <ol class="steps">
+          <li><div class="st">Discover hub → Email scan <span class="muted">(DSC-0 → DSC-E)</span></div></li>
+          <li><div class="st">Trust panel + connect inbox</div><div class="sd">Explain read-only, on-device, last-12-months, revocable any time — <b>before</b> the OAuth prompt.</div></li>
+          <li><div class="st">Grant read-only access</div><div class="sd">Provider consent screen; option to add more inboxes.</div></li>
+          <li><div class="st">Scanning <span class="muted">(loading state)</span></div><div class="sd">On-device progress; cancellable; partial results stream in.</div>
+            <div class="branch"><span class="bt">Error</span> No access / no receipts found → explain &amp; offer CSV or manual instead.</div>
+          </li>
+          <li><div class="st">Review &amp; select <span class="muted">(DSC-R)</span></div><div class="sd">Confidence-ranked list; edit amount/cycle/date; de-dupe; confirm selection.</div></li>
+          <li><div class="st">Added → Subscriptions + Home update</div><div class="note"><span class="gate">●</span>Repeat/auto re-scan offered here as <span class="tag pro">Pro</span>; first results already delivered free.</div></li>
+        </ol>
+      </div>
+
+      <div class="flow" id="flow-c">
+        <div class="fh"><span class="fid">C</span><h4>Discover &amp; add — CSV import</h4></div>
+        <p class="goal">The "most complete" method, for users who'd rather export a statement than connect an inbox.</p>
+        <ol class="steps">
+          <li><div class="st">Discover hub → CSV import <span class="muted">(DSC-0 → DSC-C)</span></div></li>
+          <li><div class="st">Export helper</div><div class="sd">Short per-bank "how to export your statement CSV" guidance.</div></li>
+          <li><div class="st">Pick file</div><div class="sd">System file picker; trust note that the file is parsed on-device, not uploaded raw.</div></li>
+          <li><div class="st">Parse &amp; detect recurring <span class="muted">(loading)</span></div><div class="sd">Identify recurring charges &amp; cadence.</div>
+            <div class="branch"><span class="bt">Error</span> Unreadable / wrong format → show expected columns, link helper, offer manual add.</div>
+          </li>
+          <li><div class="st">Review &amp; select <span class="muted">(DSC-R)</span></div><div class="sd">Detected recurring charges with confidence; edit &amp; de-dupe; confirm.</div></li>
+          <li><div class="st">Added → list + Home update</div></li>
+        </ol>
+      </div>
+
+      <div class="flow" id="flow-d">
+        <div class="fh"><span class="fid">D</span><h4>Cancel a subscription — with verification</h4></div>
+        <p class="goal">The core trust feature. The app never claims a cancellation it hasn't confirmed.</p>
+        <ol class="steps">
+          <li><div class="st">Subscription detail → Cancel <span class="muted">(SUB-D → CXL)</span></div></li>
+          <li><div class="st">Difficulty + guided steps</div><div class="sd">Show the service's difficulty rating and step-by-step instructions.</div></li>
+          <li><div class="st">Open cancellation page</div><div class="sd">Deep link out to the service's real cancel page; user performs the cancellation.</div></li>
+          <li><div class="st">"Did you cancel it?"</div><div class="sd">Self-report. On <b>Yes</b>, the sub moves to <b>Pending verification</b> — not "cancelled."</div>
+            <div class="branch"><span class="bt">State · pending</span> Sub shows <b>Pending verification</b> in the list; Zeno will re-check around the next renewal.</div>
+          </li>
+          <li><div class="st">Verification engine re-checks</div><div class="sd">At the next receipt scan / statement / renewal date, look for a charge from that service.</div>
+            <div class="branch"><span class="bt">Resolves → verified</span> No charge found → <b>Verified cancelled</b>; show annual savings; move to Cancelled filter.</div>
+            <div class="branch"><span class="bt">Resolves → still charged</span> Charge still present → <b>Still being charged — needs attention</b>; re-alert, re-offer guidance / escalation tips.</div>
+          </li>
+        </ol>
+      </div>
+
+      <div class="flow" id="flow-e">
+        <div class="fh"><span class="fid">E</span><h4>Upgrade to Pro</h4></div>
+        <p class="goal">Prompted only after the user has felt value — never before the first discovery.</p>
+        <ol class="steps">
+          <li><div class="st">Hit a value ceiling</div><div class="sd">Cross the 8-sub Free limit, open a Pro tool (Coach / Wrapped / Spend Twin), or request a repeat auto-scan.</div><div class="note"><span class="gate">●</span>Contextual upgrade entry, tied to the thing the user just tried to do.</div></li>
+          <li><div class="st">Paywall <span class="muted">(PAY)</span></div><div class="sd">Monthly / annual Pro with 7-day trial; value list framed around what they just hit; Family option; restore purchases.</div></li>
+          <li><div class="st">Purchase / start trial</div><div class="sd">Native purchase sheet; confirm.</div>
+            <div class="branch"><span class="bt">Error / cancel</span> Purchase fails or is dismissed → return to the gated action with Free experience intact; offer restore.</div>
+          </li>
+          <li><div class="st">Unlock &amp; return</div><div class="sd">Land back exactly where the gate was, now unlocked (e.g. the Coach screen renders).</div></li>
+        </ol>
+      </div>
+
+      <div class="flow" id="flow-f">
+        <div class="fh"><span class="fid">F</span><h4>Create or join a household</h4></div>
+        <p class="goal">Privacy-preserving sharing — combined totals only, never line items.</p>
+        <ol class="steps">
+          <li><div class="st">Settings → Family <span class="muted">(SET → FAM)</span></div></li>
+          <li><div class="st">Choose create or join</div><div class="sd"><b>Create</b> generates a share code; <b>Join</b> asks for one.</div></li>
+          <li><div class="st">Privacy confirmation</div><div class="sd">Explicit "members see your monthly total only — never what you subscribe to" before joining.</div></li>
+          <li><div class="st">Combined view</div><div class="sd">Household total + per-member totals (up to 5). Manage / leave household.</div>
+            <div class="branch"><span class="bt">Gate</span> Household is a <span class="tag family">Family</span> capability — joining/creating routes through the plan if not entitled.</div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ============ 5 · STATE MATRIX ============ -->
+    <section id="states">
+      <div class="sec-h"><span class="n">05</span><h2>State Matrix</h2></div>
+      <p class="sec-sub">Empty / loading / error / success for the key screens. Empty states matter most — a new user starts at zero, so empties drive toward discovery rather than dead-ending.</p>
+
+      <table class="matrix">
+        <caption>HOME · Triage</caption>
+        <thead><tr><th>Screen</th><th class="col-empty">Empty</th><th>Loading</th><th>Error</th><th>Populated / success</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Home</td>
+            <td class="col-empty">Zero subs: a single warm prompt — "Let's find what you're paying for" → big <b>Discover</b> CTA + manual add. No fake numbers, no empty grid.</td>
+            <td>Skeleton for spend summary &amp; upcoming rows; cached values shown first if present.</td>
+            <td>Data load fails: keep last-known cached summary + inline "couldn't refresh" with retry; never blank.</td>
+            <td>Spend total, needs-attention alerts, upcoming renewals, savings previews, free-tier counter.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table class="matrix">
+        <caption>SUBSCRIPTIONS · Full list</caption>
+        <thead><tr><th>Screen</th><th class="col-empty">Empty</th><th>Loading</th><th>Error</th><th>Populated / success</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Subscriptions</td>
+            <td class="col-empty">No subs → "Nothing tracked yet" + Discover / Add. Per-filter empties too: e.g. Cancelled = "Nothing cancelled yet."</td>
+            <td>Skeleton rows; filter chips disabled until counts known.</td>
+            <td>Load error → cached list + retry banner; search/sort still operate on cache.</td>
+            <td>Grouped by status filter; total + count header; row shows amount, cycle, next renewal, status pill.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table class="matrix">
+        <caption>DISCOVERY · Email scan &amp; CSV import</caption>
+        <thead><tr><th>Screen</th><th class="col-empty">Empty</th><th>Loading</th><th>Error</th><th>Populated / success</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Email scan</td>
+            <td class="col-empty">No inbox connected → trust panel + "Connect inbox." Scan finds nothing → "No receipts found in 12 months" + offer CSV / manual.</td>
+            <td>On-device scan progress (cancellable); results stream in as found.</td>
+            <td>Access revoked / provider error → plain-language cause + reconnect or switch method. Never lose already-found items.</td>
+            <td>Confidence-ranked results in review (DSC-R); select, edit, de-dupe, add.</td>
+          </tr>
+          <tr>
+            <td>CSV import</td>
+            <td class="col-empty">No file yet → export helper + "Choose file."</td>
+            <td>Parsing / recurring-detection progress.</td>
+            <td>Bad format / no recurring detected → show expected columns + helper + manual fallback.</td>
+            <td>Detected recurring charges in review (DSC-R); select, edit, add.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table class="matrix">
+        <caption>CALENDAR &amp; INSIGHTS</caption>
+        <thead><tr><th>Screen</th><th class="col-empty">Empty</th><th>Loading</th><th>Error</th><th>Populated / success</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Calendar</td>
+            <td class="col-empty">No renewals → clean month with "No renewals yet — add a subscription to see it here" + Discover.</td>
+            <td>Month grid skeleton; stat cards shimmer.</td>
+            <td>Load error → cached month + retry.</td>
+            <td>Dots on renewal days; day sheet; this-month / 7-day / projected-year stats; grouped upcoming list.</td>
+          </tr>
+          <tr>
+            <td>Insights</td>
+            <td class="col-empty">Too little data → "We'll have insights once we've tracked a little spend" + what unlocks them.</td>
+            <td>Chart &amp; insight skeletons.</td>
+            <td>Engine/AI error → fall back to deterministic on-device insights; note AI unavailable.</td>
+            <td>Trend chart, category breakdown, insight flags, tool entries (Coach/Twin/Wrapped).</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table class="matrix">
+        <caption>SUBSCRIPTION DETAIL · Charge history</caption>
+        <thead><tr><th>Screen</th><th class="col-empty">Empty</th><th>Loading</th><th>Error</th><th>Populated / success</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Charge history</td>
+            <td class="col-empty">No history yet → "No charges tracked yet — we'll log them as they happen" (not fake rows).</td>
+            <td>History list skeleton.</td>
+            <td>Load error → retry; keep hero &amp; stats usable.</td>
+            <td><b>Few months:</b> simple dated list. <b>Long history:</b> grouped by year with a mini trend + totals.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table class="matrix">
+        <caption>CANCELLATION · Verification lifecycle</caption>
+        <thead><tr><th>State</th><th class="col-empty">Meaning</th><th>What the user sees</th><th>System action</th><th>Resolves to</th></tr></thead>
+        <tbody>
+          <tr><td>Guided</td><td class="col-empty">User is mid-cancellation.</td><td>Difficulty, steps, deep link, "Did you cancel it?"</td><td>Awaiting self-report.</td><td>→ Pending (on "Yes").</td></tr>
+          <tr><td>Pending verification</td><td class="col-empty">Self-reported cancelled, unconfirmed.</td><td>"Pending verification" pill; "we'll confirm around your next renewal."</td><td>Schedule re-check at next receipt / statement / renewal date.</td><td>→ Verified or → Needs attention.</td></tr>
+          <tr><td>Verified cancelled</td><td class="col-empty">No further charge detected.</td><td>"Verified cancelled" + annual savings; moves to Cancelled filter.</td><td>Stop reminders; bank the savings into Insights.</td><td>Terminal (can re-add).</td></tr>
+          <tr><td>Still being charged</td><td class="col-empty">Charge persisted after cancel.</td><td>"Still being charged — needs attention" alert + re-guidance / escalation tips.</td><td>Re-alert via Notifications; reopen guided steps.</td><td>→ back to Guided / resolved.</td></tr>
+        </tbody>
+      </table>
+
+      <table class="matrix">
+        <caption>PAYWALL &amp; HOUSEHOLD</caption>
+        <thead><tr><th>Screen</th><th class="col-empty">Empty / entry</th><th>Loading</th><th>Error</th><th>Success</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Paywall</td>
+            <td class="col-empty">Entered from a specific gate; copy reflects the action just attempted.</td>
+            <td>Fetching products / prices skeleton.</td>
+            <td>Store/products error → retry + restore purchases; Free experience stays intact.</td>
+            <td>Trial/purchase confirmed → return to the unlocked action.</td>
+          </tr>
+          <tr>
+            <td>Household</td>
+            <td class="col-empty">Not in a household → Create / Join choice.</td>
+            <td>Resolving share code / member totals.</td>
+            <td>Invalid or expired code → clear message + re-enter; full household → explain 5-member cap.</td>
+            <td>Combined total + member totals; manage / leave.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ============ 6 · BUDGETING ADD-ON ============ -->
+    <section id="budgeting">
+      <div class="sec-h"><span class="n">06</span><h2>Budgeting Add-on</h2></div>
+      <p class="sec-sub">A subscription-first, forecast-led budgeting layer that never needs a bank login. It's fully useful from tracked subscriptions alone, gets richer with a CSV import, and supports manual envelopes for privacy purists. This extends the app above — it does not redesign it.</p>
+
+      <div class="scope"><b>Data honesty —</b> budgeting draws on three sources and labels which is which: <b>tracked subscriptions</b> (always available → precise forward forecast), <b>imported CSV</b> ("as of [date]", never live), and <b>manual entries</b> (envelopes you fund + log). No source implies real-time bank tracking.</div>
+
+      <h3 id="bud-ia">Where budgeting lives</h3>
+      <p>No new tab — the bar is already five items. Budget gets a <b>dedicated screen</b> reached two ways, plus a glanceable status everywhere spend already appears:</p>
+      <div class="screens">
+        <div class="screen"><div class="top"><div class="nm">Home status card</div><span class="tag new">New</span></div><div class="job" style="font-style:normal">A glanceable "on pace / approaching / over" card under the spend summary — projected vs cap + mini bar. Taps through to Budget.</div></div>
+        <div class="screen"><div class="top"><div class="nm">Insights → Budget</div><span class="tag moved">Primary entry</span></div><div class="job" style="font-style:normal">Budget is the top block of the Insights tab (Insights already owns spend trend + categories), opening the full Budget screen.</div></div>
+      </div>
+      <p class="muted" style="font-size:13px; margin-top:12px;">Rationale: Home answers "what's about to charge me," Insights owns analysis — budgeting is analysis with a forward target, so it belongs to Insights with a status echo on Home. A sixth tab would crowd the bar and bury the cancellation wedge.</p>
+
+      <h3 id="bud-screens">Screen inventory</h3>
+      <div class="screens">
+        <div class="screen wide"><div class="top"><div class="nm"><span class="id">BUD</span>Budget overview</div></div><div class="job">Show forecast recurring spend against the cap, forward-looking, with one tap to trim.</div><div class="kc">Key content blocks</div><ul><li><b>Forward status hero</b> — projected month-end (committed + remaining renewals), cap, committed-so-far marker, days left, "forecast from your renewal dates"</li><li><b>Get-back-under</b> panel (when approaching/over) — cheapest/least-used subs with savings → cancel flow</li><li><b>Spend Coach tie-in</b> — "to hit $X, cancel these two → save $Y/mo" <span class="tag pro">Pro</span></li><li><b>Forecast list</b> — upcoming renewals with running total</li><li><b>Category budgets</b> <span class="tag pro">Pro</span> · <b>Manual envelopes</b> <span class="tag pro">Pro</span> · <b>Income context</b> (optional)</li><li>Last-month recap entry</li></ul></div>
+        <div class="screen"><div class="top"><div class="nm"><span class="id">BUD-SET</span>Set / edit budget</div><span class="tag free">Free</span></div><div class="job">Set a monthly cap and see committed/forecast against it instantly — zero extra data.</div><div class="kc">Key content</div><ul><li>Live forecast preview from renewals</li><li>Cap stepper + suggested cap (forecast rounded up)</li><li>Headroom / "below your forecast" feedback</li></ul></div>
+        <div class="screen"><div class="top"><div class="nm"><span class="id">BUD-CAT</span>Category budgets</div><span class="tag pro">Pro</span></div><div class="job">Cap each category Zeno already assigns; optionally include imported spend.</div><div class="kc">Key content</div><ul><li>Per-category committed vs cap bars</li><li>Subs portion + imported portion split</li><li>Import freshness ("as of [date]") + refresh</li></ul></div>
+        <div class="screen"><div class="top"><div class="nm"><span class="id">BUD-ENV</span>Manual envelopes</div><span class="tag pro">Pro</span></div><div class="job">Fund-and-spend envelopes for the no-import user (Goodbudget-style).</div><div class="kc">Key content</div><ul><li>Funded vs spent per envelope; over-spend state</li><li>Log entry; add envelope — fully independent of any import</li></ul></div>
+        <div class="screen"><div class="top"><div class="nm"><span class="id">BUD-REC</span>Monthly recap</div></div><div class="job">Did you stay under? Tie adherence to history / Wrapped.</div><div class="kc">Key content</div><ul><li>Under/over verdict + streak</li><li>Cap vs actual vs prior month; trend bars with cap line</li><li>Rolls into Year in Review <span class="tag pro">Pro</span></li></ul></div>
+      </div>
+
+      <h3 id="bud-flows">Flows</h3>
+      <div class="flow">
+        <div class="fh"><span class="fid">a</span><h4>First budget with zero extra data</h4></div>
+        <ol class="steps">
+          <li><div class="st">Home status card / Insights → Budget → "Set a budget"</div></li>
+          <li><div class="st">See live forecast from renewals</div><div class="sd">Committed-so-far + still-to-renew, before setting anything. No import.</div></li>
+          <li><div class="st">Pick a cap (or accept suggested)</div><div class="sd">Instant headroom feedback against the forecast.</div></li>
+          <li><div class="st">Start tracking → overview with forward status</div><div class="note"><span class="tag free">Free</span>One overall budget + forecast + early alert is free.</div></li>
+        </ol>
+      </div>
+      <div class="flow">
+        <div class="fh"><span class="fid">b·c</span><h4>Per-category budgets · manual envelopes</h4></div>
+        <ol class="steps">
+          <li><div class="st">Budget → Category budgets</div><div class="sd">Set caps on existing subscription categories; committed spend auto-fills.</div><div class="note"><span class="gate">●</span><span class="tag pro">Pro</span></div></li>
+          <li><div class="st">Budget → Manual envelopes → Add</div><div class="sd">Name + fund an envelope; "Log" a spend against it. No import needed.</div></li>
+        </ol>
+      </div>
+      <div class="flow">
+        <div class="fh"><span class="fid">d</span><h4>Approaching/over → early alert → get back under → cancel</h4></div>
+        <ol class="steps">
+          <li><div class="st">Forecast crosses threshold</div><div class="sd">Early alert fires via the existing notification system + quiet hours — ideally before the charge that tips over.</div></li>
+          <li><div class="st">Tap alert → Budget overview (over state)</div><div class="sd">"Cut $X to get back under" with cheapest/least-used subs + savings.</div></li>
+          <li><div class="st">Tap Cancel on a sub → existing cancel + verification flow</div><div class="note">Reuses Guided → Pending → Verified, banking the savings back into the budget.</div></li>
+        </ol>
+      </div>
+      <div class="flow">
+        <div class="fh"><span class="fid">e·f·g</span><h4>Enrich via CSV · income context · monthly recap</h4></div>
+        <ol class="steps">
+          <li><div class="st">Category budget → Refresh import</div><div class="sd">Routes into the existing CSV import; category bars gain a non-subscription portion shown "as of [date]."</div></li>
+          <li><div class="st">Income context → enter monthly income</div><div class="sd">Shows subscriptions as % of income + what's left. Entirely optional.</div></li>
+          <li><div class="st">Month rolls over → recap</div><div class="sd">Under/over verdict, streak, trend vs cap; feeds Year in Review.</div></li>
+        </ol>
+      </div>
+
+      <h3 id="bud-states">State matrix</h3>
+      <table class="matrix">
+        <thead><tr><th>State</th><th class="col-empty">What the user sees</th><th>Behavior</th></tr></thead>
+        <tbody>
+          <tr><td>No budget set</td><td class="col-empty">Invite framed around known recurring spend + live forecast; suggested cap.</td><td>Setup needs zero extra data; never a dead end.</td></tr>
+          <tr><td>Under / on pace</td><td class="col-empty">Green status; projected under cap; headroom shown.</td><td>No nudge; calm.</td></tr>
+          <tr><td>Approaching</td><td class="col-empty">Amber; "on pace for $X — within $Y of cap"; trim panel appears.</td><td>Early, pre-charge.</td></tr>
+          <tr><td>Over</td><td class="col-empty">Red; "$X over"; "cut $Y to get back under" → cancel flow.</td><td>Action, not shame.</td></tr>
+          <tr><td>No / stale import</td><td class="col-empty">"as of [date] · N days ago" + Refresh; categories work on subs alone meanwhile.</td><td>Honest freshness; never fakes live data.</td></tr>
+          <tr><td>Manual-only user</td><td class="col-empty">Envelopes fully functional with no import ever.</td><td>Viable for privacy purists.</td></tr>
+          <tr><td>Loading / error</td><td class="col-empty">Skeletons; on failure keep last-known forecast + retry.</td><td>Forecast from subs is local, so rarely empty.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 id="bud-integrations">How it connects to the rest of the app</h3>
+      <div class="screens">
+        <div class="screen"><div class="nm">Home</div><div class="job" style="font-style:normal">Glanceable budget status card under the spend summary.</div></div>
+        <div class="screen"><div class="nm">Insights</div><div class="job" style="font-style:normal">Hosts the Budget entry as its top block; shares the spend trend + category data.</div></div>
+        <div class="screen"><div class="nm">Cancellation flow</div><div class="job" style="font-style:normal">Get-back-under hands the chosen sub straight into the existing Guided→Pending→Verified flow.</div></div>
+        <div class="screen"><div class="nm">Notifications + quiet hours</div><div class="job" style="font-style:normal">Early "projected to exceed" alerts reuse the existing system and respect quiet hours.</div></div>
+        <div class="screen"><div class="nm">AI Spend Coach</div><div class="job" style="font-style:normal">Reads the cap: "to hit $X, cancel these two → save $Y." Falls back to deterministic on-device insights.</div></div>
+        <div class="screen"><div class="nm">CSV import</div><div class="job" style="font-style:normal">Feeds the non-subscription portion of category budgets, always labeled "as of [date]."</div></div>
+        <div class="screen"><div class="nm">Calendar</div><div class="job" style="font-style:normal">The renewal schedule is the forecast's backbone — the same dates power Calendar and the budget projection.</div></div>
+        <div class="screen"><div class="nm">Year in Review</div><div class="job" style="font-style:normal">Monthly recap adherence rolls into the annual Wrapped.</div></div>
+      </div>
+      <p class="muted" style="font-size:13px; margin-top:14px;"><b>Tiering.</b> Free: one overall recurring budget + forecast + early alert (the retention hook). Pro: per-category budgets, manual envelopes, CSV-enriched categories, income context, forecast view, history/recap. Upgrade prompts appear only after the free budget has delivered value.</p>
+    </section>
+
+    <div class="endnote">
+      <p><b>Next phase.</b> This spec fixes structure, content, flows, and states. The visual layer — color, typography, component styling, motion — is applied on top using the Zeno design system, without changing any of the architecture defined here.</p>
+    </div>
+
+  </main>
+</div>
+</body>
+</html>

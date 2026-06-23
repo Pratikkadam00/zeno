@@ -1,0 +1,53 @@
+<!-- @dsCard group="Components" viewport="700x260" name="Buttons & Icon Buttons" subtitle="Primary, secondary, ghost, danger · sizes · icon-only" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--bg-app); font-family: var(--font-sans); }
+  .stack { display: flex; flex-direction: column; gap: 18px; }
+  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-tertiary); font-weight: 600; width: 100%; }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="../../_ds_bundle.js"></script>
+  <script type="text/babel">
+    const { Button, IconButton, Icon } = window.ZenoDesignSystem_12971a;
+    function Demo() {
+      return (
+        <div className="stack">
+          <div className="row">
+            <span className="lbl">Variants</span>
+            <Button variant="primary">Add subscription</Button>
+            <Button variant="secondary">Manage</Button>
+            <Button variant="ghost">Skip</Button>
+            <Button variant="danger">Cancel plan</Button>
+          </div>
+          <div className="row">
+            <span className="lbl">Sizes · with icon · disabled</span>
+            <Button size="sm">Small</Button>
+            <Button size="md">Medium</Button>
+            <Button size="lg" leftIcon={<Icon name="plus" size={18} />}>Add new</Button>
+            <Button disabled>Disabled</Button>
+          </div>
+          <div className="row">
+            <span className="lbl">Icon buttons</span>
+            <IconButton label="Search"><Icon name="search" /></IconButton>
+            <IconButton variant="secondary" label="Notifications"><Icon name="bell" /></IconButton>
+            <IconButton variant="primary" label="Add"><Icon name="plus" /></IconButton>
+            <IconButton shape="square" variant="secondary" label="More"><Icon name="more-horizontal" /></IconButton>
+          </div>
+        </div>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+  </script>
+</body>
+</html>

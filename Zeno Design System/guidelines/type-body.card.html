@@ -1,0 +1,25 @@
+<!-- @dsCard group="Type" viewport="700x250" name="UI & Body — Hanken Grotesk" subtitle="Titles, labels, body, captions" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--surface-card); font-family: var(--font-sans); }
+  .spec { display: flex; flex-direction: column; gap: 12px; }
+  .line { display: flex; align-items: baseline; gap: 16px; }
+  .meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); margin-left: auto; white-space: nowrap; }
+  .l { color: var(--text-primary); }
+  .sec { color: var(--text-secondary); }
+</style>
+</head>
+<body>
+  <div class="spec">
+    <div class="line"><span class="l" style="font-size:22px;font-weight:700;letter-spacing:-.01em">Title · 22 / 700</span><span class="meta">--fs-title-lg</span></div>
+    <div class="line"><span class="l" style="font-size:18px;font-weight:600">Section heading · 18 / 600</span><span class="meta">--fs-title</span></div>
+    <div class="line"><span class="l" style="font-size:15px;font-weight:400">Body text · 15 / 400 — the default reading size.</span><span class="meta">--fs-body</span></div>
+    <div class="line"><span class="sec" style="font-size:13px;font-weight:500">Small / meta · 13 / 500</span><span class="meta">--fs-body-sm</span></div>
+    <div class="line"><span class="sec" style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:600">Caption / overline · 12</span><span class="meta">--fs-caption</span></div>
+  </div>
+</body>
+</html>

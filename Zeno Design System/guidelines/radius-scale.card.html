@@ -1,0 +1,29 @@
+<!-- @dsCard group="Spacing" viewport="700x170" name="Corner Radii" subtitle="6 → 28px, pill for chips & toggles" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--surface-card); font-family: var(--font-sans); }
+  .row { display: flex; gap: 20px; align-items: flex-end; }
+  .item { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .box { width: 64px; height: 64px; background: var(--surface-sunken); border: 1.5px solid var(--border-default); }
+  .v { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+  .n { font-size: 10px; color: var(--text-tertiary); }
+</style>
+</head>
+<body>
+  <div class="row" id="row"></div>
+  <script>
+    const steps = [['sm',8],['md',12],['lg',16],['xl',20],['2xl',28],['pill',999]];
+    const row = document.getElementById('row');
+    steps.forEach(([n,px]) => {
+      const el = document.createElement('div'); el.className = 'item';
+      const r = px === 999 ? '999px' : px+'px';
+      el.innerHTML = `<div class="box" style="border-radius:${r}"></div><div class="v">${n}</div><div class="n">${px===999?'pill':px+'px'}</div>`;
+      row.appendChild(el);
+    });
+  </script>
+</body>
+</html>

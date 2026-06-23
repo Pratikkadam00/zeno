@@ -1,0 +1,27 @@
+<!-- @dsCard group="Slides" viewport="1280x720" name="Big Number Slide" subtitle="Hero stat with mono numerals" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  html, body { margin: 0; }
+  .slide { width: 1280px; height: 720px; background: var(--paper); position: relative; overflow: hidden; font-family: var(--font-sans); padding: 96px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; }
+  .kicker { font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-text); margin-bottom: 24px; }
+  .big { font-family: var(--font-mono); font-weight: 700; font-size: 220px; line-height: 0.9; letter-spacing: -0.04em; color: var(--ink-900); display: flex; align-items: flex-start; }
+  .big .cur { font-size: 96px; margin-top: 18px; opacity: 0.5; }
+  .big .unit { font-family: var(--font-sans); font-size: 40px; font-weight: 600; align-self: flex-end; margin: 0 0 38px 18px; color: var(--text-secondary); }
+  .desc { font-size: 26px; color: var(--text-secondary); margin-top: 30px; max-width: 34ch; line-height: 1.45; }
+  .desc b { color: var(--ink-900); font-weight: 700; }
+  .foot { position: absolute; bottom: 56px; left: 96px; right: 96px; display: flex; justify-content: space-between; font-size: 14px; color: var(--text-tertiary); font-family: var(--font-mono); }
+</style>
+</head>
+<body>
+  <div class="slide">
+    <div class="kicker">The problem</div>
+    <div class="big"><span class="cur">$</span>133<span class="unit">/ month</span></div>
+    <div class="desc">The average household spends <b>$133 a month</b> on subscriptions — and forgets about a third of them.</div>
+    <div class="foot"><span>Source: Zeno internal survey, 2025</span><span>zeno</span></div>
+  </div>
+</body>
+</html>

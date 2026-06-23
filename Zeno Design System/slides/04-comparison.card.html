@@ -1,0 +1,58 @@
+<!-- @dsCard group="Slides" viewport="1280x720" name="Comparison Slide" subtitle="Before / after columns" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  html, body { margin: 0; }
+  .slide { width: 1280px; height: 720px; background: var(--paper); position: relative; overflow: hidden; font-family: var(--font-sans); padding: 96px; box-sizing: border-box; }
+  h2 { font-family: var(--font-display); font-weight: 700; font-size: 52px; letter-spacing: -0.02em; color: var(--ink-900); margin: 0 0 48px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .col { border-radius: var(--radius-xl); padding: 40px; }
+  .before { background: var(--surface-card); border: 1px solid var(--border-subtle); }
+  .after { background: var(--ink-900); color: #fff; }
+  .label { font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 28px; }
+  .before .label { color: var(--text-tertiary); }
+  .after .label { color: var(--green-400); }
+  ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 22px; }
+  li { display: flex; gap: 14px; align-items: flex-start; font-size: 21px; line-height: 1.4; }
+  .before li { color: var(--text-secondary); }
+  .after li { color: #fff; }
+  .dot { width: 26px; height: 26px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; margin-top: 2px; }
+  .before .dot { background: var(--danger-soft); color: var(--danger); }
+  .after .dot { background: var(--green-500); color: var(--ink-900); }
+  .foot { position: absolute; bottom: 56px; left: 96px; right: 96px; display: flex; justify-content: flex-end; font-size: 14px; color: var(--text-tertiary); font-family: var(--font-mono); }
+</style>
+</head>
+<body>
+  <div class="slide">
+    <h2>Life before and after Zeno</h2>
+    <div class="cols">
+      <div class="col before">
+        <div class="label">Scattered across apps</div>
+        <ul>
+          <li><span class="dot" id="x1"></span>Charges you forgot you signed up for</li>
+          <li><span class="dot" id="x2"></span>No idea what you spend each month</li>
+          <li><span class="dot" id="x3"></span>Free trials that quietly start billing</li>
+        </ul>
+      </div>
+      <div class="col after">
+        <div class="label">All in one calm view</div>
+        <ul>
+          <li><span class="dot" id="c1"></span>Every subscription tracked together</li>
+          <li><span class="dot" id="c2"></span>Budgets that show what's left to spend</li>
+          <li><span class="dot" id="c3"></span>A heads-up before anything renews</li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot"><span>zeno · 04</span></div>
+  </div>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    ['x1','x2','x3'].forEach(id=>document.getElementById(id).innerHTML='<i data-lucide="x" style="width:16px;height:16px"></i>');
+    ['c1','c2','c3'].forEach(id=>document.getElementById(id).innerHTML='<i data-lucide="check" style="width:16px;height:16px"></i>');
+    lucide.createIcons();
+  </script>
+</body>
+</html>

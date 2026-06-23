@@ -1,0 +1,24 @@
+<!-- @dsCard group="Brand" viewport="700x230" name="Logo & Mark" subtitle="Mark, wordmark and app icon" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 26px 24px; background: var(--surface-card); font-family: var(--font-sans); }
+  .grid { display: flex; align-items: center; gap: 40px; flex-wrap: wrap; }
+  .cell { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .cap { font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono); }
+  .onink { background: var(--ink-900); border-radius: var(--radius-lg); padding: 18px 22px; }
+  .onink .cap { color: var(--ink-300); }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="cell"><img src="../assets/zeno-mark.svg" width="64" height="64" style="color:var(--ink-900)" alt="mark"><div class="cap">mark</div></div>
+    <div class="cell"><img src="../assets/zeno-wordmark.svg" height="56" alt="wordmark"><div class="cap">wordmark</div></div>
+    <div class="cell"><img src="../assets/zeno-app-icon.svg" width="74" height="74" alt="app icon"><div class="cap">app icon</div></div>
+    <div class="cell onink"><img src="../assets/zeno-app-icon.svg" width="56" height="56" alt="icon on dark"><div class="cap">on ink</div></div>
+  </div>
+</body>
+</html>

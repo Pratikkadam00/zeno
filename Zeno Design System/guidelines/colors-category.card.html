@@ -1,0 +1,28 @@
+<!-- @dsCard group="Colors" viewport="700x150" name="Category Palette" subtitle="Stable colors for subscription categories & charts" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 22px 24px; background: var(--surface-card); font-family: var(--font-sans); }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px 18px; }
+  .item { display: flex; align-items: center; gap: 10px; }
+  .dot { width: 28px; height: 28px; border-radius: var(--radius-sm); flex: none; }
+  .t b { display: block; font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .t span { font-size: 11px; font-family: var(--font-mono); color: var(--text-tertiary); }
+</style>
+</head>
+<body>
+  <div class="grid" id="grid"></div>
+  <script>
+    const cats = [['Entertainment','violet'],['Productivity','blue'],['Music','coral'],['Finance','green'],['Health','teal'],['Utilities','amber'],['Shopping','pink'],['Other','slate']];
+    const g = document.getElementById('grid');
+    cats.forEach(([name,c]) => {
+      const el = document.createElement('div'); el.className = 'item';
+      el.innerHTML = `<span class="dot" style="background:var(--cat-${c})"></span><div class="t"><b>${name}</b><span>--cat-${c}</span></div>`;
+      g.appendChild(el);
+    });
+  </script>
+</body>
+</html>

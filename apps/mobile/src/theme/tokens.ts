@@ -1,4 +1,13 @@
 import type { ThemePreference } from "@zeno/shared";
+import { darkScheme, fonts, lightScheme, palette, radius, type ColorScheme } from "./zeno";
+
+/* ============================================================
+   Single Zeno brand behind the legacy ThemeTokens interface.
+   The three generational modes (Pulse/Clarity/Command) are RETIRED — every
+   ThemePreference now resolves to the one Zeno brand so existing screens adopt
+   the design system with no edits. Light + dark are the only real variants.
+   Source of truth for values: ./zeno.ts (ported from the Zeno Design System).
+   ============================================================ */
 
 export type ThemeTokens = {
   id: ThemePreference;
@@ -33,101 +42,54 @@ export type ThemeTokens = {
   numberFontFamily?: string;
 };
 
-export const themes: Record<ThemePreference, ThemeTokens> = {
-  genz: {
-    id: "genz",
-    name: "Pulse",
-    generation: "Gen Z",
-    icon: "⚡",
-    background: "#09090B",
-    surface: "rgba(255,255,255,0.05)",
-    surfaceAlt: "rgba(124,58,237,0.18)",
-    card: "rgba(255,255,255,0.05)",
-    text: "#FAFAFA",
-    onPrimary: "#FFFFFF",
-    mutedText: "#A1A1AA",
-    quietText: "#71717A",
-    border: "rgba(255,255,255,0.12)",
-    primary: "#7C3AED",
-    secondary: "#F43F5E",
-    success: "#84CC16",
-    warning: "#F59E0B",
-    danger: "#EF4444",
-    primarySurface: "rgba(124,58,237,0.16)",
-    successSurface: "rgba(132,204,22,0.16)",
-    warningSurface: "rgba(245,158,11,0.16)",
-    dangerSurface: "rgba(239,68,68,0.16)",
-    overlay: "rgba(0,0,0,0.6)",
-    radius: 20,
-    cardRadius: 20,
-    compact: false,
-    shadows: false,
-    heavyText: true,
-    monospaceNumbers: false
-  },
-  millennial: {
-    id: "millennial",
-    name: "Clarity",
-    generation: "Millennial",
-    icon: "◈",
-    background: "#F8FAFC",
-    surface: "#FFFFFF",
-    surfaceAlt: "#EAF3FF",
-    card: "#FFFFFF",
-    text: "#0F172A",
-    onPrimary: "#FFFFFF",
-    mutedText: "#64748B",
-    quietText: "#94A3B8",
-    border: "#D9E2EC",
-    primary: "#2563EB",
-    secondary: "#0D9488",
-    success: "#15803D",
-    warning: "#F59E0B",
-    danger: "#EF4444",
-    primarySurface: "rgba(37,99,235,0.10)",
-    successSurface: "rgba(21,128,61,0.10)",
-    warningSurface: "rgba(245,158,11,0.14)",
-    dangerSurface: "rgba(239,68,68,0.10)",
-    overlay: "rgba(15,23,42,0.45)",
-    radius: 12,
-    cardRadius: 12,
+function buildZenoTheme(id: ThemePreference, c: ColorScheme): ThemeTokens {
+  return {
+    id,
+    name: "Zeno",
+    generation: "",
+    icon: "",
+    background: c.bgApp,
+    surface: c.surfaceCard,
+    surfaceAlt: c.surfaceSunken,
+    card: c.surfaceCard,
+    text: c.textPrimary,
+    onPrimary: c.textOnAccent, // dark ink on green — the Zeno look
+    mutedText: c.textSecondary,
+    quietText: c.textTertiary,
+    border: c.borderSubtle,
+    primary: c.accent,
+    secondary: palette.category.blue,
+    success: c.success,
+    warning: c.warning,
+    danger: c.danger,
+    primarySurface: c.accentSoft,
+    successSurface: c.successSoft,
+    warningSurface: c.warningSoft,
+    dangerSurface: c.dangerSoft,
+    overlay: c.overlay,
+    radius: radius.md, // 12 — buttons / inputs
+    cardRadius: radius.lg, // 16 — cards
     compact: false,
     shadows: true,
     heavyText: false,
-    monospaceNumbers: false
-  },
-  genx: {
-    id: "genx",
-    name: "Command",
-    generation: "Gen X",
-    icon: ">",
-    background: "#0F172A",
-    surface: "#1E293B",
-    surfaceAlt: "#263449",
-    card: "#1E293B",
-    text: "#F8FAFC",
-    onPrimary: "#FFFFFF",
-    mutedText: "#94A3B8",
-    quietText: "#64748B",
-    border: "#334155",
-    primary: "#15803D",
-    secondary: "#D97706",
-    success: "#22C55E",
-    warning: "#D97706",
-    danger: "#EF4444",
-    primarySurface: "rgba(21,128,61,0.15)",
-    successSurface: "rgba(34,197,94,0.15)",
-    warningSurface: "rgba(217,119,6,0.15)",
-    dangerSurface: "rgba(239,68,68,0.15)",
-    overlay: "rgba(0,0,0,0.6)",
-    radius: 4,
-    cardRadius: 4,
-    compact: true,
-    shadows: false,
-    heavyText: false,
     monospaceNumbers: true,
-    numberFontFamily: "monospace"
-  }
+    numberFontFamily: fonts.mono.medium
+  };
+}
+
+/** The one Zeno brand, in light and dark. */
+export const zenoLight: ThemeTokens = buildZenoTheme("millennial", lightScheme);
+export const zenoDark: ThemeTokens = buildZenoTheme("millennial", darkScheme);
+
+/**
+ * Legacy map: every ThemePreference collapses to the single Zeno brand (light),
+ * so any previously-persisted preference still resolves to Zeno. Dark mode is
+ * selected via color scheme, not via these keys.
+ */
+export const themes: Record<ThemePreference, ThemeTokens> = {
+  genz: buildZenoTheme("genz", lightScheme),
+  millennial: zenoLight,
+  genx: buildZenoTheme("genx", lightScheme)
 };
 
 export const themeOrder: ThemePreference[] = ["genz", "millennial", "genx"];

@@ -1,0 +1,62 @@
+<!-- @dsCard group="Components" viewport="700x280" name="Cards, Badges, Tags & Avatars" subtitle="Surfaces and metadata primitives" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--bg-app); font-family: var(--font-sans); }
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-tertiary); font-weight: 600; width: 100%; margin-bottom: 2px; }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="../../_ds_bundle.js"></script>
+  <script type="text/babel">
+    const { Card, Badge, CategoryTag, ServiceAvatar } = window.ZenoDesignSystem_12971a;
+    function Demo() {
+      return (
+        <div>
+          <div className="row"><span className="lbl">Badges</span>
+            <Badge tone="success" dot>Active</Badge>
+            <Badge tone="warning">Trial</Badge>
+            <Badge tone="danger" solid>Due today</Badge>
+            <Badge tone="accent">Saved $12</Badge>
+            <Badge tone="neutral">Paused</Badge>
+          </div>
+          <div className="row"><span className="lbl">Category tags</span>
+            <CategoryTag color="violet">Entertainment</CategoryTag>
+            <CategoryTag color="blue">Productivity</CategoryTag>
+            <CategoryTag color="coral">Music</CategoryTag>
+            <CategoryTag color="teal">Health</CategoryTag>
+          </div>
+          <div className="row"><span className="lbl">Service avatars</span>
+            <ServiceAvatar name="Netflix" color="#E50914" />
+            <ServiceAvatar name="Spotify" color="#1DB954" />
+            <ServiceAvatar name="Figma" />
+            <ServiceAvatar name="Amazon" shape="circle" />
+          </div>
+          <div className="row"><span className="lbl">Card</span>
+            <Card padding="md" interactive style={{ width: 320 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                <ServiceAvatar name="Spotify" color="#1DB954" />
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:600 }}>Spotify Premium</div>
+                  <div style={{ fontSize:13, color:'var(--text-tertiary)' }}>Renews Jun 28</div>
+                </div>
+                <div style={{ fontFamily:'var(--font-mono)', fontWeight:700 }}>$10.99</div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+  </script>
+</body>
+</html>

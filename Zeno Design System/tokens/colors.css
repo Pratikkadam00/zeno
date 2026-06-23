@@ -1,0 +1,118 @@
+/* ============================================================
+   Zeno — Color tokens
+   Base palette (raw values) + semantic aliases.
+   Signature = "Zeno Green" #00C26E. Neutrals are a slightly
+   cool ink scale on warm paper. Light-first with a dark scope.
+   ============================================================ */
+:root {
+  /* --- Brand green (primary) --- */
+  --green-50:  #E6FBF1;
+  --green-100: #C4F5DD;
+  --green-200: #93ECC2;
+  --green-300: #5FE0A6;
+  --green-400: #2BD089;
+  --green-500: #00C26E; /* primary accent */
+  --green-600: #02A85F;
+  --green-700: #057A46;
+  --green-800: #0A5634;
+  --green-900: #073A24;
+
+  /* --- Ink neutrals --- */
+  --ink-900: #12151B; /* primary text / near-black */
+  --ink-800: #1B1F27;
+  --ink-700: #2A2F3A;
+  --ink-600: #3C4250;
+  --ink-500: #5A6172; /* secondary text */
+  --ink-400: #818897; /* tertiary text / icons */
+  --ink-300: #AAB0BC;
+  --ink-200: #D3D7DF; /* strong border */
+  --ink-100: #E7E9EE; /* default border / divider */
+  --ink-75:  #EFF1F4;
+  --ink-50:  #F4F5F7; /* sunken surface */
+  --paper:   #F8F8F6; /* app background, warm white */
+  --white:   #FFFFFF;
+
+  /* --- Category palette (subscriptions / charts) --- */
+  --cat-green:  #00C26E;
+  --cat-blue:   #3B82F6;
+  --cat-violet: #7C5CFC;
+  --cat-amber:  #F5A524;
+  --cat-coral:  #FB5E78;
+  --cat-teal:   #14B8C4;
+  --cat-pink:   #EC6FD6;
+  --cat-slate:  #64748B;
+
+  /* --- Semantic raw --- */
+  --success: #02A85F;
+  --warning: #F5A524;
+  --danger:  #F43F5E;
+  --info:    #3B82F6;
+
+  /* ===== Semantic aliases (use these in components) ===== */
+  --bg-app:          var(--paper);
+  --surface-card:    var(--white);
+  --surface-sunken:  var(--ink-50);
+  --surface-raised:  var(--white);
+  --surface-inverse: var(--ink-900);
+
+  --text-primary:    var(--ink-900);
+  --text-secondary:  var(--ink-500);
+  --text-tertiary:   var(--ink-400);
+  --text-disabled:   var(--ink-300);
+  --text-on-accent:  var(--ink-900);   /* dark ink on green = the Zeno look */
+  --text-inverse:    var(--white);
+
+  --border-subtle:   var(--ink-100);
+  --border-default:  var(--ink-200);
+  --border-strong:   var(--ink-300);
+
+  --accent:          var(--green-500);
+  --accent-hover:    var(--green-600);
+  --accent-pressed:  var(--green-700);
+  --accent-soft:     var(--green-50);
+  --accent-soft-2:   var(--green-100);
+  --accent-text:     var(--green-700);
+
+  --success-soft: #E6F7EE;
+  --warning-soft: #FEF3DD;
+  --danger-soft:  #FDE6EB;
+  --info-soft:    #E6EFFE;
+
+  --focus-ring:   rgba(0, 194, 110, 0.35);
+  --overlay:      rgba(18, 21, 27, 0.55);
+}
+
+/* ===== Dark theme ===== */
+[data-theme="dark"] {
+  --bg-app:          #0B0D11;
+  --surface-card:    #15181F;
+  --surface-sunken:  #101319;
+  --surface-raised:  #1B1F27;
+  --surface-inverse: #F8F8F6;
+
+  --text-primary:    #F2F3F6;
+  --text-secondary:  #9AA1AF;
+  --text-tertiary:   #6B7280;
+  --text-disabled:   #4B515E;
+  --text-on-accent:  #0B0D11;
+  --text-inverse:    #12151B;
+
+  --border-subtle:   #232831;
+  --border-default:  #2E343F;
+  --border-strong:   #3C4350;
+
+  --accent:          #14D17E;
+  --accent-hover:    #2BD089;
+  --accent-pressed:  #5FE0A6;
+  --accent-soft:     rgba(0, 194, 110, 0.14);
+  --accent-soft-2:   rgba(0, 194, 110, 0.22);
+  --accent-text:     #5FE0A6;
+
+  --success-soft: rgba(2, 168, 95, 0.16);
+  --warning-soft: rgba(245, 165, 36, 0.16);
+  --danger-soft:  rgba(244, 63, 94, 0.16);
+  --info-soft:    rgba(59, 130, 246, 0.16);
+
+  --focus-ring:   rgba(20, 209, 126, 0.40);
+  --overlay:      rgba(0, 0, 0, 0.6);
+}

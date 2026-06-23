@@ -1,0 +1,51 @@
+<!-- @dsCard group="Components" viewport="700x300" name="Amounts, Rows & Progress" subtitle="Money display, subscription rows, budget meters" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--bg-app); font-family: var(--font-sans); }
+  .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-tertiary); font-weight: 600; margin: 0 0 8px; }
+  .cols { display: grid; grid-template-columns: 1fr 1.1fr; gap: 28px; align-items: start; }
+  .amts { display: flex; flex-direction: column; gap: 16px; }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="../../_ds_bundle.js"></script>
+  <script type="text/babel">
+    const { AmountDisplay, ListRow, ProgressBar, ServiceAvatar, Card } = window.ZenoDesignSystem_12971a;
+    function Demo() {
+      return (
+        <div className="cols">
+          <div>
+            <p className="lbl">Amounts</p>
+            <div className="amts">
+              <AmountDisplay amount={142.97} size="xl" trend="up" trendValue="8%" />
+              <AmountDisplay amount={15.99} cadence="mo" size="md" />
+            </div>
+            <p className="lbl" style={{marginTop:24}}>Budget meters</p>
+            <ProgressBar value={62} max={100} showLabel label="Entertainment" />
+            <div style={{height:12}} />
+            <ProgressBar value={94} max={100} showLabel label="Food & dining" />
+          </div>
+          <div>
+            <p className="lbl">Subscription rows</p>
+            <Card padding="none">
+              <ListRow divider leading={<ServiceAvatar name="Netflix" color="#E50914" />} title="Netflix" subtitle="Entertainment · Jun 28" amount="$15.99" cadence="mo" chevron onClick={()=>{}} />
+              <ListRow divider leading={<ServiceAvatar name="Spotify" color="#1DB954" />} title="Spotify" subtitle="Music · Jul 2" amount="$10.99" cadence="mo" chevron onClick={()=>{}} />
+              <ListRow leading={<ServiceAvatar name="iCloud" color="#3B82F6" />} title="iCloud+" subtitle="Utilities · Jul 5" amount="$2.99" cadence="mo" chevron onClick={()=>{}} />
+            </Card>
+          </div>
+        </div>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+  </script>
+</body>
+</html>

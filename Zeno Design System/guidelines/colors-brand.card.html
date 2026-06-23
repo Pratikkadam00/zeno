@@ -1,0 +1,35 @@
+<!-- @dsCard group="Colors" viewport="700x180" name="Brand — Zeno Green" subtitle="The signature accent scale" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 22px 24px; background: var(--surface-card); }
+  .row { display: flex; gap: 0; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-xs); }
+  .sw { flex: 1; height: 72px; display: flex; align-items: flex-end; }
+  .labels { display: flex; gap: 0; margin-top: 8px; }
+  .lab { flex: 1; font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); text-align: center; }
+  .lab b { display: block; color: var(--text-secondary); font-weight: 600; }
+  .note { margin-top: 14px; font-family: var(--font-sans); font-size: 12px; color: var(--text-tertiary); }
+  .note b { color: var(--accent-text); }
+</style>
+</head>
+<body>
+  <div class="row" id="row"></div>
+  <div class="labels" id="labels"></div>
+  <div class="note">Primary action color is <b>--green-500 · #00C26E</b>, always paired with dark ink text.</div>
+  <script>
+    const steps = [50,100,200,300,400,500,600,700,800,900];
+    const row = document.getElementById('row'), labels = document.getElementById('labels');
+    steps.forEach(s => {
+      const d = document.createElement('div'); d.className = 'sw';
+      d.style.background = `var(--green-${s})`;
+      row.appendChild(d);
+      const l = document.createElement('div'); l.className = 'lab';
+      l.innerHTML = `<b>${s}</b>`;
+      labels.appendChild(l);
+    });
+  </script>
+</body>
+</html>

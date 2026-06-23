@@ -1,0 +1,50 @@
+<!-- @dsCard group="Slides" viewport="1280x720" name="Content Slide" subtitle="Title + icon points" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  html, body { margin: 0; }
+  .slide { width: 1280px; height: 720px; background: var(--paper); position: relative; overflow: hidden; font-family: var(--font-sans); padding: 96px; box-sizing: border-box; }
+  .eyebrow { font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-text); }
+  h2 { font-family: var(--font-display); font-weight: 700; font-size: 52px; letter-spacing: -0.02em; color: var(--ink-900); margin: 14px 0 56px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+  .card { background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 32px; box-shadow: var(--shadow-xs); }
+  .ico { width: 56px; height: 56px; border-radius: var(--radius-md); background: var(--accent-soft); display: flex; align-items: center; justify-content: center; margin-bottom: 22px; }
+  .card h3 { font-family: var(--font-sans); font-weight: 700; font-size: 23px; color: var(--ink-900); margin: 0 0 10px; letter-spacing: -0.01em; }
+  .card p { font-size: 17px; color: var(--text-secondary); margin: 0; line-height: 1.5; }
+  .num { font-family: var(--font-mono); font-size: 14px; color: var(--text-tertiary); margin-bottom: 18px; font-weight: 600; }
+  .foot { position: absolute; bottom: 56px; left: 96px; right: 96px; display: flex; justify-content: flex-end; font-size: 14px; color: var(--text-tertiary); font-family: var(--font-mono); }
+</style>
+</head>
+<body>
+  <div class="slide">
+    <div class="eyebrow">How it works</div>
+    <h2>Three steps to a calmer wallet</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="num">01</div>
+        <div class="ico"><i data-lucide="link" style="width:26px;height:26px;color:var(--accent-text)"></i></div>
+        <h3>Connect</h3>
+        <p>Link your accounts or add subscriptions by hand. Zeno finds the rest.</p>
+      </div>
+      <div class="card">
+        <div class="num">02</div>
+        <div class="ico"><i data-lucide="eye" style="width:26px;height:26px;color:var(--accent-text)"></i></div>
+        <h3>See everything</h3>
+        <p>Every recurring charge in one view, sorted by what's coming up next.</p>
+      </div>
+      <div class="card">
+        <div class="num">03</div>
+        <div class="ico"><i data-lucide="check-check" style="width:26px;height:26px;color:var(--accent-text)"></i></div>
+        <h3>Stay ahead</h3>
+        <p>Set budgets, get a nudge before renewals, and cancel in a tap.</p>
+      </div>
+    </div>
+    <div class="foot"><span>zeno · 03</span></div>
+  </div>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

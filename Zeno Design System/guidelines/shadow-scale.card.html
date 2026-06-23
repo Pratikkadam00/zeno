@@ -1,0 +1,24 @@
+<!-- @dsCard group="Spacing" viewport="700x190" name="Elevation" subtitle="Soft, low shadows — plus the accent glow" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 30px 24px; background: var(--surface-card); font-family: var(--font-sans); }
+  .row { display: flex; gap: 26px; align-items: center; }
+  .item { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .box { width: 86px; height: 56px; background: var(--surface-card); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); }
+  .v { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="item"><div class="box" style="box-shadow:var(--shadow-xs)"></div><div class="v">xs</div></div>
+    <div class="item"><div class="box" style="box-shadow:var(--shadow-sm)"></div><div class="v">sm</div></div>
+    <div class="item"><div class="box" style="box-shadow:var(--shadow-md)"></div><div class="v">md</div></div>
+    <div class="item"><div class="box" style="box-shadow:var(--shadow-lg)"></div><div class="v">lg</div></div>
+    <div class="item"><div class="box" style="box-shadow:var(--shadow-accent);border-color:transparent;background:var(--accent)"></div><div class="v">accent</div></div>
+  </div>
+</body>
+</html>

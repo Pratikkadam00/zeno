@@ -1,0 +1,46 @@
+<!-- @dsCard group="Components" viewport="700x300" name="Inputs, Switch & Segmented" subtitle="Form primitives" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--bg-app); font-family: var(--font-sans); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 24px; max-width: 640px; }
+  .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-tertiary); font-weight: 600; grid-column: 1/-1; }
+  .switchrow { display: flex; align-items: center; gap: 14px; }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="../../_ds_bundle.js"></script>
+  <script type="text/babel">
+    const { Input, Switch, SegmentedControl, Icon } = window.ZenoDesignSystem_12971a;
+    function Demo() {
+      const [range, setRange] = React.useState("Month");
+      const [a, setA] = React.useState(true);
+      const [b, setB] = React.useState(false);
+      return (
+        <div className="grid">
+          <span className="lbl">Inputs</span>
+          <Input label="Subscription name" placeholder="e.g. Netflix" leftIcon={<Icon name="search" size={18} />} />
+          <Input label="Monthly cost" prefix="$" mono placeholder="0.00" />
+          <Input label="Email" error="That doesn't look right" defaultValue="me@" />
+          <Input label="Notes" placeholder="Optional" hint="Add a reminder note" />
+          <span className="lbl">Segmented · Switch</span>
+          <SegmentedControl options={["Month","Quarter","Year"]} value={range} onChange={setRange} />
+          <div className="switchrow">
+            <Switch checked={a} onChange={setA} /> <span style={{fontSize:14}}>Payment reminders</span>
+            <Switch checked={b} onChange={setB} size="sm" /> <span style={{fontSize:14,color:'var(--text-secondary)'}}>Weekly digest</span>
+          </div>
+        </div>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+  </script>
+</body>
+</html>

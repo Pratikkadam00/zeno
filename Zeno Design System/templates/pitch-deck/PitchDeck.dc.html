@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="Zeno Pitch Deck" description="Branded 16:9 slide deck — dark title, content, big-number and green quote slides" -->
+<helmet>
+<script src="./ds-base.js"></script>
+</helmet>
+<div style="display:flex; flex-direction:column; align-items:center; gap:32px; padding:40px; background:#E8E8E4; min-height:100vh; box-sizing:border-box; font-family:var(--font-sans);">
+
+  <!-- Title slide (dark) -->
+  <section data-screen-label="Slide 01 — Title" style="position:relative; width:1280px; height:720px; flex:none; background:var(--ink-900); color:#fff; border-radius:4px; overflow:hidden; box-shadow:0 12px 40px rgba(16,20,30,0.18); display:flex; flex-direction:column; justify-content:center; padding:0 96px; box-sizing:border-box;">
+    <div style="position:absolute; width:620px; height:620px; border-radius:50%; background:var(--green-500); opacity:0.16; filter:blur(40px); right:-160px; top:-160px;"></div>
+    <div style="position:absolute; top:56px; left:96px; display:flex; align-items:center; gap:12px;">
+      <img src="../../assets/zeno-mark.svg" width="40" height="40" style="filter:brightness(0) invert(1);" alt="Zeno">
+      <span style="font-family:var(--font-display); font-weight:700; font-size:26px; letter-spacing:-0.03em;">zeno</span>
+    </div>
+    <h1 style="position:relative; font-family:var(--font-display); font-weight:700; font-size:76px; line-height:1.04; letter-spacing:-0.03em; margin:0; max-width:16ch; text-wrap:balance;">Take control of your <span style="color:var(--green-400);">subscriptions</span>.</h1>
+    <p style="position:relative; font-size:22px; color:var(--ink-300); margin:24px 0 0; max-width:46ch; line-height:1.5;">One calm view of everything you pay for — and lightweight budgeting that keeps you ahead of every renewal.</p>
+    <div style="position:absolute; bottom:56px; left:96px; right:96px; display:flex; justify-content:space-between; font-size:15px; color:var(--ink-400); font-family:var(--font-mono);"><span>Investor Brief · 2026</span><span>zeno.app</span></div>
+  </section>
+
+  <!-- Content slide (paper) -->
+  <section data-screen-label="Slide 02 — Content" style="position:relative; width:1280px; height:720px; flex:none; background:var(--paper); border-radius:4px; overflow:hidden; box-shadow:0 12px 40px rgba(16,20,30,0.18); padding:96px; box-sizing:border-box;">
+    <div style="font-size:15px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--accent-text);">How it works</div>
+    <h2 style="font-family:var(--font-display); font-weight:700; font-size:52px; letter-spacing:-0.02em; color:var(--ink-900); margin:14px 0 56px;">Three steps to a calmer wallet</h2>
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:28px;">
+      <div style="background:var(--surface-card); border:1px solid var(--border-subtle); border-radius:var(--radius-lg); padding:32px; box-shadow:var(--shadow-xs);">
+        <div style="font-family:var(--font-mono); font-size:14px; color:var(--text-tertiary); margin-bottom:18px; font-weight:600;">01</div>
+        <h3 style="font-weight:700; font-size:23px; color:var(--ink-900); margin:0 0 10px; letter-spacing:-0.01em;">Connect</h3>
+        <p style="font-size:17px; color:var(--text-secondary); margin:0; line-height:1.5;">Add subscriptions by hand or link an account — Zeno finds the rest.</p>
+      </div>
+      <div style="background:var(--surface-card); border:1px solid var(--border-subtle); border-radius:var(--radius-lg); padding:32px; box-shadow:var(--shadow-xs);">
+        <div style="font-family:var(--font-mono); font-size:14px; color:var(--text-tertiary); margin-bottom:18px; font-weight:600;">02</div>
+        <h3 style="font-weight:700; font-size:23px; color:var(--ink-900); margin:0 0 10px; letter-spacing:-0.01em;">See everything</h3>
+        <p style="font-size:17px; color:var(--text-secondary); margin:0; line-height:1.5;">Every recurring charge in one view, sorted by what's coming up next.</p>
+      </div>
+      <div style="background:var(--surface-card); border:1px solid var(--border-subtle); border-radius:var(--radius-lg); padding:32px; box-shadow:var(--shadow-xs);">
+        <div style="font-family:var(--font-mono); font-size:14px; color:var(--text-tertiary); margin-bottom:18px; font-weight:600;">03</div>
+        <h3 style="font-weight:700; font-size:23px; color:var(--ink-900); margin:0 0 10px; letter-spacing:-0.01em;">Stay ahead</h3>
+        <p style="font-size:17px; color:var(--text-secondary); margin:0; line-height:1.5;">Set budgets, get a nudge before renewals, and cancel in a tap.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Big number slide -->
+  <section data-screen-label="Slide 03 — Big number" style="position:relative; width:1280px; height:720px; flex:none; background:var(--paper); border-radius:4px; overflow:hidden; box-shadow:0 12px 40px rgba(16,20,30,0.18); padding:96px; box-sizing:border-box; display:flex; flex-direction:column; justify-content:center;">
+    <div style="font-size:16px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--accent-text); margin-bottom:24px;">The problem</div>
+    <div style="font-family:var(--font-mono); font-weight:700; font-size:220px; line-height:0.9; letter-spacing:-0.04em; color:var(--ink-900); display:flex; align-items:flex-start;"><span style="font-size:96px; margin-top:18px; opacity:0.5;">$</span>133<span style="font-family:var(--font-sans); font-size:40px; font-weight:600; align-self:flex-end; margin:0 0 38px 18px; color:var(--text-secondary);">/ month</span></div>
+    <div style="font-size:26px; color:var(--text-secondary); margin-top:30px; max-width:34ch; line-height:1.45;">The average household spends <b style="color:var(--ink-900); font-weight:700;">$133 a month</b> on subscriptions — and forgets about a third of them.</div>
+  </section>
+
+  <!-- Quote slide (green) -->
+  <section data-screen-label="Slide 04 — Quote" style="position:relative; width:1280px; height:720px; flex:none; background:var(--green-500); color:var(--ink-900); border-radius:4px; overflow:hidden; box-shadow:0 12px 40px rgba(16,20,30,0.18); padding:110px 120px; box-sizing:border-box; display:flex; flex-direction:column; justify-content:center;">
+    <div style="font-family:var(--font-display); font-size:160px; font-weight:700; line-height:0.6; opacity:0.18; height:70px;">&ldquo;</div>
+    <blockquote style="font-family:var(--font-display); font-weight:600; font-size:54px; line-height:1.18; letter-spacing:-0.02em; margin:0; max-width:22ch; text-wrap:balance;">I cancelled four subscriptions in my first week. Zeno paid for itself instantly.</blockquote>
+    <div style="display:flex; align-items:center; gap:16px; margin-top:48px;">
+      <div style="width:52px; height:52px; border-radius:50%; background:var(--ink-900); color:var(--green-400); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:22px;">M</div>
+      <div><b style="display:block; font-size:19px; font-weight:700;">Mara Lindqvist</b><span style="font-size:16px; color:var(--green-900); opacity:0.7;">Early access user</span></div>
+    </div>
+  </section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1360,&quot;height&quot;:820}}"></script>
+</body>
+</html>

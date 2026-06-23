@@ -1,0 +1,30 @@
+<!-- @dsCard group="Type" viewport="700x180" name="Mono Numerals — JetBrains Mono" subtitle="Every money value is tabular mono" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--surface-card); font-family: var(--font-sans); }
+  .wrap { display: flex; align-items: center; gap: 36px; }
+  .big { font-family: var(--font-mono); font-feature-settings: 'tnum' 1; letter-spacing: -.02em; color: var(--text-primary); display: flex; align-items: baseline; }
+  .cur { font-size: 24px; font-weight: 600; opacity: .7; align-self: flex-start; margin-top: 6px; }
+  .int { font-size: 52px; font-weight: 700; }
+  .dec { font-size: 24px; font-weight: 600; opacity: .6; }
+  .col { font-family: var(--font-mono); font-feature-settings: 'tnum' 1; font-size: 15px; color: var(--text-secondary); line-height: 1.7; }
+  .meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); margin-top: 4px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div>
+      <div class="big"><span class="cur">$</span><span class="int">142</span><span class="dec">.97</span></div>
+      <div class="meta">monthly total</div>
+    </div>
+    <div class="col">
+      9.99<br>15.99<br>129.00<br>1,240.50
+    </div>
+    <div class="meta" style="margin-left:auto">tabular figures<br>align right, every digit equal width</div>
+  </div>
+</body>
+</html>

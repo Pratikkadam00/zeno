@@ -1,0 +1,28 @@
+<!-- @dsCard group="Spacing" viewport="700x180" name="Spacing Scale" subtitle="4px base — the rhythm of every layout" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--surface-card); font-family: var(--font-sans); }
+  .row { display: flex; align-items: flex-end; gap: 14px; }
+  .item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .bar { background: var(--accent-soft-2); border-radius: 3px; width: 22px; }
+  .v { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+  .n { font-size: 10px; color: var(--text-tertiary); }
+</style>
+</head>
+<body>
+  <div class="row" id="row"></div>
+  <script>
+    const steps = [['1',4],['2',8],['3',12],['4',16],['5',20],['6',24],['8',32],['10',40],['12',48],['16',64]];
+    const row = document.getElementById('row');
+    steps.forEach(([n,px]) => {
+      const el = document.createElement('div'); el.className = 'item';
+      el.innerHTML = `<div class="bar" style="height:${px}px"></div><div class="v">${px}</div><div class="n">${n}</div>`;
+      row.appendChild(el);
+    });
+  </script>
+</body>
+</html>

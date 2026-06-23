@@ -1,0 +1,28 @@
+<!-- @dsCard group="Slides" viewport="1280x720" name="Title Slide" subtitle="Dark cover with wordmark" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  html, body { margin: 0; }
+  .slide { width: 1280px; height: 720px; background: var(--ink-900); color: #fff; position: relative; overflow: hidden; font-family: var(--font-sans); display: flex; flex-direction: column; justify-content: center; padding: 0 96px; box-sizing: border-box; }
+  .glow { position: absolute; width: 620px; height: 620px; border-radius: 50%; background: var(--green-500); opacity: 0.16; filter: blur(40px); right: -160px; top: -160px; }
+  .brand { position: absolute; top: 56px; left: 96px; display: flex; align-items: center; gap: 12px; color: #fff; }
+  .brand .wm { font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: -0.03em; }
+  h1 { font-family: var(--font-display); font-weight: 700; font-size: 76px; line-height: 1.04; letter-spacing: -0.03em; margin: 0; max-width: 16ch; text-wrap: balance; position: relative; }
+  h1 em { color: var(--green-400); font-style: normal; }
+  p { font-size: 22px; color: var(--ink-300); margin: 24px 0 0; max-width: 46ch; line-height: 1.5; position: relative; }
+  .foot { position: absolute; bottom: 56px; left: 96px; right: 96px; display: flex; justify-content: space-between; font-size: 15px; color: var(--ink-400); font-family: var(--font-mono); }
+</style>
+</head>
+<body>
+  <div class="slide">
+    <div class="glow"></div>
+    <div class="brand"><img src="../assets/zeno-mark.svg" width="40" height="40" style="filter:brightness(0) invert(1)"><span class="wm">zeno</span></div>
+    <h1>Take control of your <em>subscriptions</em>.</h1>
+    <p>One calm view of everything you pay for — and lightweight budgeting that keeps you ahead of every renewal.</p>
+    <div class="foot"><span>Investor Brief · 2026</span><span>zeno.app</span></div>
+  </div>
+</body>
+</html>

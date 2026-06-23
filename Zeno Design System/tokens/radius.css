@@ -1,0 +1,13 @@
+/* ============================================================
+   Zeno — Corner radii (balanced, friendly-modern)
+   ============================================================ */
+:root {
+  --radius-xs:   6px;
+  --radius-sm:   8px;
+  --radius-md:   12px;  /* buttons, inputs */
+  --radius-lg:   16px;  /* cards */
+  --radius-xl:   20px;
+  --radius-2xl:  28px;  /* large surfaces / sheets */
+  --radius-pill: 999px; /* chips, toggles, avatars */
+  --radius-full: 9999px;
+}

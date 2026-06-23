@@ -1,0 +1,7 @@
+<svg width="300" height="96" viewBox="0 0 300 96" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Zeno">
+  <g transform="translate(8,18)">
+    <circle cx="30" cy="30" r="28" stroke="#00C26E" stroke-width="6" stroke-opacity="0.22"></circle>
+    <path d="M18 21 H42 L18 39 H42" stroke="#12151B" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+  </g>
+  <text x="78" y="62" font-family="&#39;Space Grotesk&#39;,&#39;Hanken Grotesk&#39;,sans-serif" font-size="52" font-weight="700" letter-spacing="-1.5" fill="#12151B">zeno</text>
+</svg>

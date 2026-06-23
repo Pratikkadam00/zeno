@@ -1,6 +1,7 @@
 import * as LocalAuthentication from "expo-local-authentication";
 import * as Linking from "expo-linking";
 import { router, Stack, useSegments } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { AppState, Platform, Text, View, type AppStateStatus } from "react-native";
@@ -10,9 +11,27 @@ import { SubscriptionStoreProvider, useSubscriptionStore } from "../src/data/sub
 import { cleanupNotificationHandlers, setupNotificationHandlers } from "../src/notifications/notificationHandlers";
 import { registerForPushNotifications, rescheduleAllNotifications } from "../src/notifications/notificationService";
 import { refreshWidgetSnapshot } from "../src/widgets/widgetBridge";
+import { useZenoFonts } from "../src/theme/fonts";
 import { ZenoThemeProvider, useZenoTheme } from "../src/theme/theme-provider";
 
+// Hold the native splash until the Zeno typefaces are ready.
+void SplashScreen.preventAutoHideAsync().catch(() => {});
+
 export default function RootLayout() {
+  const { loaded, error } = useZenoFonts();
+
+  useEffect(() => {
+    if (loaded || error) {
+      void SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [loaded, error]);
+
+  // Keep the splash up while fonts load; render once ready (or if loading failed,
+  // fall back to system fonts rather than blocking the app).
+  if (!loaded && !error) {
+    return null;
+  }
+
   return (
     <ZenoThemeProvider>
       <SubscriptionStoreProvider>
@@ -23,7 +42,8 @@ export default function RootLayout() {
 }
 
 function RootStack() {
-  const { theme } = useZenoTheme();
+  const { theme, scheme } = useZenoTheme();
+  const statusBarStyle = scheme === "dark" ? "light" : "dark";
   const { subscriptions, notificationSettings, quietHours, widgetSnapshot, hydrated } = useSubscriptionStore();
   const segments = useSegments();
   const appState = useRef<AppStateStatus>(AppState.currentState);
@@ -180,7 +200,7 @@ function RootStack() {
   if (status === "loading") {
     return (
       <>
-        <StatusBar style={theme.id === "millennial" ? "dark" : "light"} />
+        <StatusBar style={statusBarStyle} />
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: theme.background, padding: 24 }}>
           <Text style={{ color: theme.text, fontSize: 18, fontWeight: "800" }}>Unlocking Zeno</Text>
           <Text style={{ color: theme.mutedText, marginTop: 8, textAlign: "center" }}>Checking your secure session.</Text>
@@ -191,7 +211,7 @@ function RootStack() {
 
   return (
     <>
-      <StatusBar style={theme.id === "millennial" ? "dark" : "light"} />
+      <StatusBar style={statusBarStyle} />
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: theme.background },

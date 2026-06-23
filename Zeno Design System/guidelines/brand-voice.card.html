@@ -1,0 +1,29 @@
+<!-- @dsCard group="Brand" viewport="700x200" name="Voice" subtitle="How Zeno talks" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--surface-card); font-family: var(--font-sans); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 28px; }
+  .row { display: flex; gap: 12px; align-items: flex-start; }
+  .tick { color: var(--success); font-weight: 700; flex: none; }
+  .cross { color: var(--danger); font-weight: 700; flex: none; }
+  .do { font-size: 14px; color: var(--text-primary); font-weight: 500; }
+  .dont { font-size: 14px; color: var(--text-tertiary); text-decoration: line-through; text-decoration-color: var(--ink-200); }
+  h4 { margin: 0 0 4px; font-family: var(--font-display); font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-tertiary); }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div><h4>We say</h4></div><div><h4>Not</h4></div>
+    <div class="row"><span class="tick">✓</span><span class="do">You're $40 under budget this month.</span></div>
+    <div class="row"><span class="cross">✕</span><span class="dont">Budgetary surplus detected.</span></div>
+    <div class="row"><span class="tick">✓</span><span class="do">3 renewals coming up. Want a heads-up?</span></div>
+    <div class="row"><span class="cross">✕</span><span class="dont">You have 3 pending billing events.</span></div>
+    <div class="row"><span class="tick">✓</span><span class="do">Nice — that's one less subscription.</span></div>
+    <div class="row"><span class="cross">✕</span><span class="dont">Subscription successfully terminated.</span></div>
+  </div>
+</body>
+</html>
