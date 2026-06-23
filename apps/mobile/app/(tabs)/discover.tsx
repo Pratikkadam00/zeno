@@ -35,6 +35,7 @@ type DetectedSubscription = ParsedSubscription & {
   localId: string;
   source: DetectionSource;
   selected: boolean;
+  alreadyTracked?: boolean;
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -61,7 +62,24 @@ const exportGuides = [
 export default function DiscoverScreen() {
   const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { addSubscription } = useSubscriptionStore();
+  const { addSubscription, subscriptions: tracked } = useSubscriptionStore();
+
+  // Accuracy guard: flag results that match a subscription you already track
+  // (by catalog slug or name) and deselect them by default — no duplicates.
+  function annotateTracked(items: DetectedSubscription[]): DetectedSubscription[] {
+    const keys = new Set<string>();
+    for (const existing of tracked) {
+      if (existing.status === "cancelled") continue;
+      if (existing.serviceSlug) keys.add(`slug:${existing.serviceSlug.toLowerCase()}`);
+      keys.add(`name:${existing.name.trim().toLowerCase()}`);
+    }
+    return items.map((item) => {
+      const isTracked =
+        (item.serviceId ? keys.has(`slug:${item.serviceId.toLowerCase()}`) : false) ||
+        keys.has(`name:${item.name.trim().toLowerCase()}`);
+      return isTracked ? { ...item, alreadyTracked: true, selected: false } : item;
+    });
+  }
   const [accounts, setAccounts]           = useState<GmailAccount[]>([]);
   const [scanStatus, setScanStatus]       = useState<ScanStatus>("idle");
   const [scanProgress, setScanProgress]   = useState({ current: 0, total: 0 });
@@ -135,7 +153,7 @@ export default function DiscoverScreen() {
       const found = await scanAllGmailAccounts((current, total) => {
         if (!scanCancelled.current) setScanProgress({ current, total });
       });
-      if (!scanCancelled.current) setResults(toDetected(found, "Gmail"));
+      if (!scanCancelled.current) setResults(annotateTracked(toDetected(found, "Gmail")));
     } catch (scanError) {
       if (!scanCancelled.current) setError(getErrorMessage(scanError));
     } finally {
@@ -163,7 +181,7 @@ export default function DiscoverScreen() {
       const asset = picked.assets[0];
       const csvContent = await readPickedText(asset);
       const parsed = parseCSV(csvContent);
-      setResults(toDetected(parsed.subscriptions, "Bank import"));
+      setResults(annotateTracked(toDetected(parsed.subscriptions, "Bank import")));
       showToast(`Found ${parsed.subscriptions.length} subscriptions from ${parsed.detectedFormat}.`);
     } catch (importError) {
       setError(getErrorMessage(importError));
@@ -268,6 +286,11 @@ export default function DiscoverScreen() {
                             <Text style={[styles.sourcePillText, { color: theme.warning }]}>
                               {result.billedThrough === "app_store" ? "App Store" : "Play Store"}
                             </Text>
+                          </View>
+                        ) : null}
+                        {result.alreadyTracked ? (
+                          <View style={[styles.sourcePill, { backgroundColor: theme.surfaceAlt }]}>
+                            <Text style={[styles.sourcePillText, { color: theme.mutedText }]}>Already tracked</Text>
                           </View>
                         ) : null}
                         <Text style={styles.resultCycle}>{result.billingCycle}</Text>
