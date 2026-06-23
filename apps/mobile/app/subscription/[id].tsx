@@ -7,17 +7,16 @@ import { useMemo, useState } from "react";
 import { useSubscriptionStore, type SubscriptionNotificationSettings } from "../../src/data/subscription-store";
 import { cancelNotificationsForSubscription, scheduleRenewalNotificationsWithPreferences } from "../../src/notifications/notificationService";
 import { formatMoney } from "../../src/utils/format";
-import { formatDaysLabel, formatMonthYear, formatShortDate, getAvatarStyle, getDaysRemaining } from "../../src/utils/subscription-ui";
+import { formatDaysLabel, formatMonthYear, formatShortDate, getDaysRemaining } from "../../src/utils/subscription-ui";
+import { AlertTriangle, Bell, BellOff, ChevronLeft, MoreHorizontal } from "lucide-react-native";
+import { ServiceAvatar } from "../../src/components/zeno";
 import { useZenoTheme } from "../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
+import { fonts } from "../../src/theme/zeno";
 import { spacing } from "../../src/theme/spacing";
 
 // ─── Pure helpers (logic unchanged) ──────────────────────────────────────────
-
-function getInitial(name: string) {
-  return name.trim().charAt(0).toUpperCase() || "?";
-}
 
 function getBillingLabel(cycle: BillingCycle): string {
   if (cycle === "annual") return "/year";
@@ -94,7 +93,7 @@ export default function SubscriptionDetailScreen() {
         <SafeAreaView style={styles.safeArea} edges={["top"]}>
           <View style={styles.navBar}>
             <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.backBtn} onPress={() => router.back()}>
-              <Text style={styles.backChevron} accessible={false}>‹</Text>
+              <ChevronLeft size={22} color={theme.primary} strokeWidth={2} />
               <Text style={styles.backText}>Back</Text>
             </Pressable>
           </View>
@@ -111,7 +110,6 @@ export default function SubscriptionDetailScreen() {
 
   const sub = subscription;
   const service = sub.serviceSlug ? findServiceBySlug(sub.serviceSlug) : undefined;
-  const avatar = getAvatarStyle(sub.category, theme);
   const daysRemaining = getDaysRemaining(sub.nextRenewalDate);
   const settings = notificationSettings[sub.id] ?? { sevenDay: true, threeDay: true, dayOf: true };
   const chargeHistory = createMockChargeHistory(sub.price.amountMinor, sub.nextRenewalDate);
@@ -202,7 +200,7 @@ export default function SubscriptionDetailScreen() {
               style={styles.backBtn}
               onPress={() => isEditing ? setIsEditing(false) : router.back()}
             >
-              <Text style={styles.backChevron} accessible={false}>‹</Text>
+              <ChevronLeft size={22} color={theme.primary} strokeWidth={2} />
               <Text style={styles.backText}>Back</Text>
             </Pressable>
             <Text style={styles.navTitle} numberOfLines={1}>{isEditing ? "Edit subscription" : sub.name}</Text>
@@ -211,8 +209,8 @@ export default function SubscriptionDetailScreen() {
                 <Text style={styles.saveText}>Save</Text>
               </Pressable>
             ) : (
-              <Pressable accessibilityRole="button" accessibilityLabel="More options" hitSlop={8} onPress={openMenu}>
-                <Text style={styles.dotsText}>···</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="More options" hitSlop={8} onPress={openMenu} style={{ minWidth: 60, alignItems: "flex-end" }}>
+                <MoreHorizontal size={22} color={theme.primary} strokeWidth={2} />
               </Pressable>
             )}
           </View>
@@ -302,11 +300,9 @@ export default function SubscriptionDetailScreen() {
             <>
               {/* Hero */}
               <View style={styles.hero}>
-                <View style={[styles.heroAvatar, { backgroundColor: avatar.bg }]} accessible={false} importantForAccessibility="no-hide-descendants">
-                  <Text style={[styles.heroAvatarText, { color: avatar.text }]}>{getInitial(sub.name)}</Text>
-                </View>
+                <ServiceAvatar name={sub.name} size={72} />
 
-                <Text style={styles.heroName}>{sub.name}</Text>
+                <Text style={[styles.heroName, { marginTop: 16 }]}>{sub.name}</Text>
 
                 <View style={styles.chipRow}>
                   <View style={styles.categoryChip}>
@@ -314,7 +310,8 @@ export default function SubscriptionDetailScreen() {
                   </View>
                   {service?.cancellationDifficulty === "dark_pattern" ? (
                     <View style={styles.dangerChip}>
-                      <Text style={styles.dangerChipText}>⚠ Dark pattern</Text>
+                      <AlertTriangle size={12} color={theme.danger} strokeWidth={2} />
+                      <Text style={styles.dangerChipText}>Dark pattern</Text>
                     </View>
                   ) : null}
                   {sub.status === "trial" || sub.billingCycle === "trial" ? (
@@ -344,9 +341,9 @@ export default function SubscriptionDetailScreen() {
                       accessible={false}
                       importantForAccessibility="no-hide-descendants"
                     >
-                      <Text style={styles.urgencyIconText}>
-                        {daysRemaining <= 3 ? "⚠" : "🔔"}
-                      </Text>
+                      {daysRemaining <= 3
+                        ? <AlertTriangle size={18} color={theme.danger} strokeWidth={2} />
+                        : <Bell size={18} color={theme.warning} strokeWidth={2} />}
                     </View>
                     <View style={styles.urgencyTextWrap}>
                       <Text style={styles.urgencyTitle}>
@@ -448,7 +445,7 @@ export default function SubscriptionDetailScreen() {
                   <View key={row.key}>
                     <View style={styles.notifRow}>
                       <View style={styles.notifIconWrap} accessible={false} importantForAccessibility="no-hide-descendants">
-                        <Text style={styles.notifIcon}>{row.value ? "🔔" : "🔕"}</Text>
+                        {row.value ? <Bell size={18} color={theme.warning} strokeWidth={2} /> : <BellOff size={18} color={theme.mutedText} strokeWidth={2} />}
                       </View>
                       <View style={styles.notifTextWrap}>
                         <Text style={styles.notifLabel}>{row.label}</Text>
@@ -602,8 +599,8 @@ function createStyles(theme: ThemeTokens) {
     chipRow: { flexDirection: "row", gap: 8, justifyContent: "center", marginBottom: 24 },
     categoryChip: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, backgroundColor: theme.surfaceAlt },
     categoryChipText: { ...typography.caption1, fontWeight: "500", color: theme.mutedText },
-    dangerChip: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, backgroundColor: theme.dangerSurface },
-    dangerChipText: { ...typography.caption1, fontWeight: "600", color: theme.danger },
+    dangerChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, backgroundColor: theme.dangerSurface },
+    dangerChipText: { ...typography.caption1, fontFamily: fonts.sans.semibold, color: theme.danger },
     trialChip: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, backgroundColor: theme.warningSurface },
     trialChipText: { ...typography.caption1, fontWeight: "600", color: theme.warning },
 

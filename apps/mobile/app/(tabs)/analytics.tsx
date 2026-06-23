@@ -1,29 +1,34 @@
 import { buildMonthlySpendHistory, monthlyAmount } from "@zeno/shared";
 import { router } from "expo-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ComponentType } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AlarmClock, ArrowDown, ArrowUp, BarChart3, CircleCheck, ClipboardList, Copy, Moon, PiggyBank, TrendingUp, X } from "lucide-react-native";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
 import { generateInsights, getTotalSavingOpportunity } from "../../src/insights/insightsEngine";
 import type { Insight } from "../../src/insights/insightsEngine";
 import { formatMoney } from "../../src/utils/format";
-import { formatShortDate, getAvatarStyle, getCategoryColor, getDaysRemaining, getUrgencyBadge, withAlpha } from "../../src/utils/subscription-ui";
+import { formatShortDate, getCategoryColor, getDaysRemaining, getUrgencyBadge, withAlpha } from "../../src/utils/subscription-ui";
+import { ServiceAvatar } from "../../src/components/zeno";
 import { useZenoTheme } from "../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
+import { fonts } from "../../src/theme/zeno";
 import { spacing } from "../../src/theme/spacing";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function insightIconMeta(type: Insight["type"], theme: ThemeTokens): { bg: string; icon: string } {
+type IconCmp = ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+
+function insightIconMeta(type: Insight["type"], theme: ThemeTokens): { bg: string; Icon: IconCmp } {
   switch (type) {
-    case "unused":                return { bg: theme.warningSurface, icon: "🕐" };
-    case "duplicate":             return { bg: theme.primarySurface, icon: "🔄" };
-    case "annual_saving":         return { bg: theme.successSurface, icon: "💰" };
-    case "trial_ending":          return { bg: theme.dangerSurface,  icon: "⏰" };
-    case "high_spend":            return { bg: theme.surfaceAlt,     icon: "📊" };
-    case "cancellation_reminder": return { bg: theme.surfaceAlt,     icon: "✅" };
-    default:                      return { bg: theme.surfaceAlt,     icon: "📋" };
+    case "unused":                return { bg: theme.warningSurface, Icon: Moon };
+    case "duplicate":             return { bg: theme.primarySurface, Icon: Copy };
+    case "annual_saving":         return { bg: theme.successSurface, Icon: PiggyBank };
+    case "trial_ending":          return { bg: theme.dangerSurface,  Icon: AlarmClock };
+    case "high_spend":            return { bg: theme.surfaceAlt,     Icon: BarChart3 };
+    case "cancellation_reminder": return { bg: theme.surfaceAlt,     Icon: CircleCheck };
+    default:                      return { bg: theme.surfaceAlt,     Icon: ClipboardList };
   }
 }
 
@@ -99,7 +104,7 @@ export default function AnalyticsScreen() {
           <Text style={styles.pageTitle}>Insights</Text>
           {savingOpportunity > 0 ? (
             <View style={styles.savingsPill}>
-              <Text style={styles.savingsPillArrow} accessible={false}>↑</Text>
+              <TrendingUp size={13} color={theme.success} strokeWidth={2} />
               <Text style={styles.savingsPillText}>Save up to ${savingOpportunity.toFixed(0)}</Text>
             </View>
           ) : null}
@@ -135,8 +140,8 @@ export default function AnalyticsScreen() {
         <Text style={styles.sectionLabel}>INSIGHTS</Text>
         {visibleInsights.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyCheck} accessible={false}>✓</Text>
-            <Text style={styles.emptyTitle}>All caught up</Text>
+            <CircleCheck size={40} color={theme.success} strokeWidth={2} />
+            <Text style={[styles.emptyTitle, { marginTop: 16 }]}>All caught up</Text>
             <Text style={styles.emptyBody}>No insights right now. Check back later.</Text>
           </View>
         ) : (
@@ -148,7 +153,7 @@ export default function AnalyticsScreen() {
                 <View style={styles.insightContent}>
                   <View style={styles.insightTopRow}>
                     <View style={[styles.insightIconWrap, { backgroundColor: iconMeta.bg }]} accessible={false} importantForAccessibility="no-hide-descendants">
-                      <Text style={styles.insightIconText}>{iconMeta.icon}</Text>
+                      <iconMeta.Icon size={17} color={insightAccentColor(insight.type, theme)} strokeWidth={2} />
                     </View>
                     <View style={styles.insightTextWrap}>
                       <Text style={styles.insightTitle}>{insight.title}</Text>
@@ -173,7 +178,7 @@ export default function AnalyticsScreen() {
                       style={styles.dismissBtn}
                       onPress={() => setDismissed((c) => [...c, insight.id])}
                     >
-                      <Text style={styles.dismissText}>×</Text>
+                      <X size={18} color={theme.quietText} strokeWidth={2} />
                     </Pressable>
                   </View>
                 </View>
@@ -191,16 +196,11 @@ export default function AnalyticsScreen() {
             categoryRows.map((cat, index) => {
               const isLast = index === categoryRows.length - 1;
               const pct = Math.min((cat.monthlyMinor / Math.max(spendSummary.totalMonthlyMinor, 1)) * 100, 100);
-              const avatar = getAvatarStyle(cat.category, theme);
               const barColor = getCategoryColor(cat.category, theme);
               return (
                 <View key={cat.category}>
                   <View style={styles.catRow}>
-                    <View style={[styles.avatar, { backgroundColor: avatar.bg }]}>
-                      <Text style={[styles.avatarText, { color: avatar.text }]}>
-                        {labelCategory(cat.category).charAt(0)}
-                      </Text>
-                    </View>
+                    <ServiceAvatar name={labelCategory(cat.category)} size={spacing.avatarMd} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.catName}>{labelCategory(cat.category)}</Text>
                       <View style={styles.progressTrack}>
@@ -230,9 +230,10 @@ export default function AnalyticsScreen() {
             accessibilityRole="button"
             accessibilityLabel={`Sort by amount, currently ${sortDirection === "desc" ? "descending" : "ascending"}`}
             onPress={() => setSortDirection((d) => d === "desc" ? "asc" : "desc")}
-            style={styles.sortBtn}
+            style={[styles.sortBtn, { flexDirection: "row", alignItems: "center", gap: 4 }]}
           >
-            <Text style={styles.sortBtnText}>Amount {sortDirection === "desc" ? "↓" : "↑"}</Text>
+            <Text style={styles.sortBtnText}>Amount</Text>
+            {sortDirection === "desc" ? <ArrowDown size={13} color={theme.primary} strokeWidth={2} /> : <ArrowUp size={13} color={theme.primary} strokeWidth={2} />}
           </Pressable>
         </View>
         <View style={styles.groupCard}>
@@ -240,7 +241,6 @@ export default function AnalyticsScreen() {
             <View style={styles.emptyRow}><Text style={styles.emptyRowText}>No subscriptions yet</Text></View>
           ) : (
             sortedSubscriptions.map((sub, index) => {
-              const avatar = getAvatarStyle(sub.category, theme);
               const days = getDaysRemaining(sub.nextRenewalDate);
               const badge = getUrgencyBadge(days, theme);
               const isLast = index === sortedSubscriptions.length - 1;
@@ -252,11 +252,7 @@ export default function AnalyticsScreen() {
                   onPress={() => router.push(`/subscription/${sub.id}` as never)}
                 >
                   <View style={styles.subRow}>
-                    <View style={[styles.avatar, { backgroundColor: avatar.bg }]}>
-                      <Text style={[styles.avatarText, { color: avatar.text }]}>
-                        {sub.name.charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
+                    <ServiceAvatar name={sub.name} size={spacing.avatarMd} />
                     <View style={styles.subMiddle}>
                       <Text style={styles.subName} numberOfLines={1}>{sub.name}</Text>
                       <Text style={styles.subMeta}>
@@ -299,14 +295,13 @@ function createStyles(theme: ThemeTokens) {
       paddingTop: 16,
       paddingBottom: 4
     },
-    pageTitle: { fontSize: 28, fontWeight: "800", color: theme.text, letterSpacing: -1.5 },
+    pageTitle: { fontSize: 30, fontFamily: fonts.display.bold, color: theme.text, letterSpacing: -0.6 },
     savingsPill: {
       flexDirection: "row", alignItems: "center", gap: 6,
       backgroundColor: theme.successSurface, borderWidth: 0.5,
       borderColor: withAlpha(theme.success, 0.2), borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5
     },
-    savingsPillArrow: { fontSize: 12, color: theme.success },
-    savingsPillText: { fontSize: 12, fontWeight: "600", color: theme.success },
+    savingsPillText: { fontSize: 12, fontFamily: fonts.sans.semibold, color: theme.success },
 
     sectionLabel: {
       ...typography.sectionHeader, color: theme.mutedText,
@@ -315,12 +310,12 @@ function createStyles(theme: ThemeTokens) {
 
     // Chart
     chartCard: { marginHorizontal: 16, backgroundColor: theme.card, borderRadius: 16, padding: 20, marginBottom: 8 },
-    chartTotal: { fontSize: 34, fontWeight: "700", color: theme.text, letterSpacing: -1.5, fontVariant: ["tabular-nums"] },
+    chartTotal: { fontSize: 34, fontFamily: fonts.mono.bold, color: theme.text, letterSpacing: -1.0, fontVariant: ["tabular-nums"] },
     chartTotalSub: { fontSize: 13, color: theme.mutedText, marginTop: 2 },
     barRow: { flexDirection: "row", alignItems: "flex-end", gap: 6, height: 80, marginTop: 20 },
     barColumn: { flex: 1, alignItems: "center" },
     bar: { width: "100%", borderRadius: 4 },
-    barValueLabel: { fontSize: 10, fontWeight: "600", color: theme.primary, marginBottom: 4 },
+    barValueLabel: { fontSize: 10, fontFamily: fonts.mono.semibold, color: theme.primary, marginBottom: 4 },
     barLabel: { marginTop: 6, fontSize: 10, fontWeight: "500" },
 
     // Insight cards
@@ -360,7 +355,7 @@ function createStyles(theme: ThemeTokens) {
     progressTrack: { marginTop: 6, height: 3, backgroundColor: theme.surfaceAlt, borderRadius: 2 },
     progressFill: { height: 3, borderRadius: 2 },
     catRight: { alignItems: "flex-end" },
-    catAmount: { ...typography.subheadline, fontWeight: "500", color: theme.text, fontVariant: ["tabular-nums"] },
+    catAmount: { fontSize: 15, fontFamily: fonts.mono.semibold, color: theme.text, fontVariant: ["tabular-nums"] },
     catPct: { ...typography.caption1, color: theme.mutedText, marginTop: 1, textAlign: "right" },
     totalRow: {
       paddingHorizontal: 16, paddingVertical: 13,
@@ -368,7 +363,7 @@ function createStyles(theme: ThemeTokens) {
       flexDirection: "row", justifyContent: "space-between"
     },
     totalLabel: { fontSize: 14, fontWeight: "600", color: theme.text },
-    totalAmount: { fontSize: 14, fontWeight: "700", color: theme.text, fontVariant: ["tabular-nums"] },
+    totalAmount: { fontSize: 14, fontFamily: fonts.mono.bold, color: theme.text, fontVariant: ["tabular-nums"] },
 
     // Sort / table header row
     tableHeaderRow: {
@@ -391,7 +386,7 @@ function createStyles(theme: ThemeTokens) {
     subName: { ...typography.subheadline, color: theme.text },
     subMeta: { ...typography.caption1, color: theme.mutedText, marginTop: 1 },
     subRight: { alignItems: "flex-end" },
-    subAmount: { ...typography.subheadline, fontWeight: "500", color: theme.text, fontVariant: ["tabular-nums"] },
+    subAmount: { fontSize: 15, fontFamily: fonts.mono.semibold, color: theme.text, fontVariant: ["tabular-nums"] },
     badge: { borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3, marginTop: 3 },
     badgeText: { ...typography.caption1 }
   });
