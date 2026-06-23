@@ -79,7 +79,7 @@ export default function DashboardScreen() {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Notifications"
-        onPress={() => router.push("/settings")}
+        onPress={() => router.push("/notifications" as never)}
         style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
       >
         <Bell size={20} color={c.textSecondary} strokeWidth={2} />

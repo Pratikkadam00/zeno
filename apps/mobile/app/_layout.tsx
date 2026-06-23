@@ -241,6 +241,7 @@ function RootStack() {
             no longer linked from any consumer surface. */}
         <Stack.Screen name="backend" options={{ title: "Backend" }} />
         <Stack.Screen name="settings" options={{ title: "Settings" }} />
+        <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
         <Stack.Screen name="paywall" options={{ title: "Upgrade" }} />
         <Stack.Screen name="subscription/add" options={{ title: "Add Subscription" }} />
         <Stack.Screen name="subscription/[id]" options={{ title: "Subscription" }} />
