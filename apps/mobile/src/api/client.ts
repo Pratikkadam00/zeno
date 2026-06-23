@@ -159,6 +159,7 @@ export type CoachRequestInput = {
   subscriptions: CoachSubscriptionInput[];
   insights?: CoachInsightInput[];
   question?: string;
+  budgetCapMinor?: number;
 };
 
 // Ask the server-side AI coach for a coaching plan. Returns null if the server

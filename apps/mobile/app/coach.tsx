@@ -1,18 +1,45 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 import { monthlyAmount } from "@zeno/shared";
 import { Screen, Surface } from "../src/components/ui";
 import { getAiCoaching, type AiCoaching } from "../src/api/client";
+import { useBudgetStore } from "../src/data/budget-store";
 import { useSubscriptionStore } from "../src/data/subscription-store";
+import { budgetStatus, computeBudgetForecast } from "../src/finance/budget";
 import { formatMoney } from "../src/utils/format";
 import { useZenoTheme } from "../src/theme/theme-provider";
 
 export default function CoachScreen() {
   const { theme } = useZenoTheme();
   const { spendSummary, subscriptions, totalMonthlyMinor } = useSubscriptionStore();
+  const { config: budgetConfig } = useBudgetStore();
 
   const [ai, setAi] = useState<AiCoaching | null>(null);
   const [loadingAi, setLoadingAi] = useState(true);
+
+  // Deterministic, budget-aware coaching that needs no AI key: forecast vs cap,
+  // and the cheapest cuts that get the user back under.
+  const budgetAdvice = useMemo(() => {
+    const capMinor = budgetConfig.capMinor;
+    if (capMinor == null) return null;
+    const forecast = computeBudgetForecast(subscriptions);
+    const status = budgetStatus(forecast.projectedMinor, capMinor);
+    const overByMinor = Math.max(0, forecast.projectedMinor - capMinor);
+    const cuts: { name: string; monthlyMinor: number }[] = [];
+    if (overByMinor > 0) {
+      const cheapest = subscriptions
+        .filter((s) => s.status === "active")
+        .map((s) => ({ name: s.name, monthlyMinor: monthlyAmount(s) }))
+        .sort((a, b) => a.monthlyMinor - b.monthlyMinor);
+      let accumulated = 0;
+      for (const candidate of cheapest) {
+        if (accumulated >= overByMinor) break;
+        cuts.push(candidate);
+        accumulated += candidate.monthlyMinor;
+      }
+    }
+    return { capMinor, projectedMinor: forecast.projectedMinor, status, overByMinor, cuts };
+  }, [budgetConfig.capMinor, subscriptions]);
 
   useEffect(() => {
     let active = true;
@@ -28,13 +55,14 @@ export default function CoachScreen() {
           monthlyMinor: monthlyAmount(subscription),
           billingCycle: subscription.billingCycle
         })),
-      insights: spendSummary.insights.map((insight) => ({ title: insight.title, body: insight.body }))
+      insights: spendSummary.insights.map((insight) => ({ title: insight.title, body: insight.body })),
+      ...(budgetConfig.capMinor != null ? { budgetCapMinor: budgetConfig.capMinor } : {})
     };
     void getAiCoaching(payload)
       .then((result) => { if (active) setAi(result); })
       .finally(() => { if (active) setLoadingAi(false); });
     return () => { active = false; };
-  }, [subscriptions, totalMonthlyMinor, spendSummary.insights]);
+  }, [subscriptions, totalMonthlyMinor, spendSummary.insights, budgetConfig.capMinor]);
 
   const aiActive = ai?.source === "ai";
 
@@ -54,6 +82,28 @@ export default function CoachScreen() {
           <Text style={{ color: theme.text, fontSize: 24, fontWeight: "900" }}>{formatMoney(totalMonthlyMinor)}</Text>
           <Text style={{ color: theme.mutedText, marginTop: 4 }}>Estimated monthly subscription spend</Text>
         </Surface>
+
+        {budgetAdvice ? (
+          <Surface>
+            <Text style={{ color: theme.mutedText, fontSize: 12, fontWeight: "800", letterSpacing: 1 }}>YOUR BUDGET</Text>
+            {budgetAdvice.overByMinor > 0 ? (
+              <>
+                <Text style={{ color: theme.text, marginTop: 8, fontSize: 16, lineHeight: 22 }}>
+                  You&apos;re {formatMoney(budgetAdvice.overByMinor)} over your {formatMoney(budgetAdvice.capMinor)} budget (forecast {formatMoney(budgetAdvice.projectedMinor)}).
+                </Text>
+                {budgetAdvice.cuts.length > 0 ? (
+                  <Text style={{ color: theme.secondary, marginTop: 8, fontWeight: "800" }}>
+                    Cancel {budgetAdvice.cuts.map((cut) => cut.name).join(" + ")} → save {formatMoney(budgetAdvice.cuts.reduce((sum, cut) => sum + cut.monthlyMinor, 0))}/mo and get under.
+                  </Text>
+                ) : null}
+              </>
+            ) : (
+              <Text style={{ color: theme.text, marginTop: 8, fontSize: 16, lineHeight: 22 }}>
+                On pace — forecast {formatMoney(budgetAdvice.projectedMinor)} of your {formatMoney(budgetAdvice.capMinor)} budget.
+              </Text>
+            )}
+          </Surface>
+        ) : null}
 
         {loadingAi ? (
           <Surface>

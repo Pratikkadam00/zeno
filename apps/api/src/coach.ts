@@ -39,6 +39,7 @@ export type CoachRequest = {
   subscriptions: CoachSubscription[];
   insights?: CoachInsight[] | undefined;
   question?: string | undefined;
+  budgetCapMinor?: number | undefined;
 };
 
 export type CoachRecommendation = {
@@ -131,6 +132,9 @@ function buildUserPrompt(input: CoachRequest): string {
   const currency = input.currency ?? "USD";
   const data: string[] = [];
   data.push(`Total estimated monthly subscription spend: ${formatMoney(input.totalMonthlyMinor, currency)}.`);
+  if (typeof input.budgetCapMinor === "number" && input.budgetCapMinor > 0) {
+    data.push(`The user's monthly recurring budget cap is ${formatMoney(input.budgetCapMinor, currency)}. If their forecast spend is at or above this cap, prioritize specific subscriptions to cancel that bring them under it, and state how much each one saves per month.`);
+  }
   data.push("");
   data.push("Active subscriptions:");
   for (const sub of input.subscriptions) {

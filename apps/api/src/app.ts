@@ -51,7 +51,8 @@ const coachRequestSchema = z.object({
     title: z.string().min(1).max(200),
     body: z.string().min(1).max(600)
   })).max(20).optional(),
-  question: z.string().max(500).optional()
+  question: z.string().max(500).optional(),
+  budgetCapMinor: z.number().int().min(0).optional()
 });
 const plaidLinkTokenSchema = z.object({ userId: z.string().min(1).max(128).optional() });
 const plaidExchangeSchema = z.object({ publicToken: z.string().min(1) });
