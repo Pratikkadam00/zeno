@@ -451,6 +451,13 @@ function loadSigningKeys(): { kid: string; privateKey: string; publicKey: string
     };
   }
 
+  // Mirror the RESEND guard: an ephemeral key in production would log every user
+  // out on each restart (Render free tier sleeps/restarts) and break token
+  // verification across multiple instances. Fail loudly instead of failing open.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("JWT_PRIVATE_KEY and JWT_PUBLIC_KEY are required in production.");
+  }
+
   const generated = generateKeyPairSync("rsa", {
     modulusLength: 2048,
     publicKeyEncoding: { type: "spki", format: "pem" },

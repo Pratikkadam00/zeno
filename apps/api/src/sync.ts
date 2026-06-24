@@ -20,6 +20,10 @@ type StoredRecord = EncryptedChange & { version: number; seq: number };
 const store = new Map<string, Map<string, StoredRecord>>();
 let globalSeq = 0;
 
+// Bound per-user storage so a client can't grow the in-memory store without limit
+// by pushing endless distinct entities (each capped at 8 KB by the schema).
+const MAX_ENTITIES_PER_USER = 1000;
+
 function keyOf(change: { entityType: string; entityId: string }): string {
   return `${change.entityType}:${change.entityId}`;
 }
@@ -47,6 +51,12 @@ export function pushChanges(userId: string, changes: EncryptedChange[]): { accep
     const key = keyOf(change);
     const existing = records.get(key);
     const incomingVersion = versionOf(change.vectorClock);
+    // Reject a brand-new entity once the per-user cap is reached (updates to
+    // existing entities still apply, LWW).
+    if (!existing && records.size >= MAX_ENTITIES_PER_USER) {
+      rejected += 1;
+      continue;
+    }
     // Accept new entities and any change at or beyond the stored version (LWW).
     if (!existing || incomingVersion >= existing.version) {
       globalSeq += 1;

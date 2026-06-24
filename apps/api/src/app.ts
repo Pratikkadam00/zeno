@@ -54,6 +54,14 @@ const coachRequestSchema = z.object({
   question: z.string().max(500).optional(),
   budgetCapMinor: z.number().int().min(0).optional()
 });
+const revenueCatWebhookSchema = z.object({
+  event: z.object({
+    app_user_id: z.string().min(1).max(256),
+    type: z.string().max(64).optional(),
+    entitlement_ids: z.array(z.string().max(128)).max(50).optional(),
+    expiration_at_ms: z.number().int().nonnegative().optional()
+  }).passthrough()
+}).passthrough();
 const plaidLinkTokenSchema = z.object({ userId: z.string().min(1).max(128).optional() });
 const plaidExchangeSchema = z.object({ publicToken: z.string().min(1) });
 
@@ -326,7 +334,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     }
   });
 
-  app.post("/api/v1/billing/webhook", async (request, reply) => {
+  app.post("/api/v1/billing/webhook", limit(30), async (request, reply) => {
     if (!webhookConfigured()) {
       reply.code(503);
       return fail("SERVICE_UNAVAILABLE", "Billing webhook is not configured.", request.id);
@@ -335,7 +343,12 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       reply.code(401);
       return fail("UNAUTHORIZED", "Invalid webhook authorization.", request.id);
     }
-    applyWebhookEvent(request.body);
+    const parsed = parseBody(revenueCatWebhookSchema, request.body, request.id);
+    if (!parsed.ok) {
+      reply.code(400);
+      return parsed.error;
+    }
+    applyWebhookEvent(parsed.data);
     return ok({ received: true }, request.id);
   });
 

@@ -71,16 +71,20 @@ export const magicLinkVerifySchema = z.object({
 });
 
 export const syncPullSchema = z.object({
-  cursor: z.string().optional(),
-  limit: z.number().int().min(1).max(100).default(50)
+  cursor: z.string().max(64).optional(),
+  // coerce: query-string values arrive as strings, so z.number() would reject any
+  // supplied limit (the cap was effectively unreachable before).
+  limit: z.coerce.number().int().min(1).max(100).default(50)
 });
 
 export const syncPushSchema = z.object({
+  // Bounded to prevent memory-exhaustion DoS: server stores these blobs per user.
   encryptedChanges: z.array(z.object({
     entityType: z.enum(["subscription", "preference", "profile"]),
-    entityId: z.string(),
+    entityId: z.string().min(1).max(128),
     operation: z.enum(["create", "update", "delete"]),
-    encryptedPayload: z.string(),
-    vectorClock: z.record(z.string(), z.number().int())
+    encryptedPayload: z.string().max(8192),
+    vectorClock: z.record(z.string().max(64), z.number().int())
+      .refine((clock) => Object.keys(clock).length <= 64, { message: "vectorClock has too many entries" })
   })).max(100)
 });

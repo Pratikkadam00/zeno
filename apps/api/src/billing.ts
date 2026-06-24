@@ -1,3 +1,5 @@
+import { timingSafeEqual } from "node:crypto";
+
 // Server-side entitlement verification. The mobile client reports a plan from
 // the RevenueCat SDK, but a tampered client could lie — so the server is the
 // source of truth: it independently asks RevenueCat (REST) for the subscriber's
@@ -36,7 +38,10 @@ export function verifyWebhookAuth(authHeader: string | undefined): boolean {
   const expected = process.env.REVENUECAT_WEBHOOK_AUTH;
   if (!expected || !authHeader) return false;
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
-  return token === expected;
+  // Constant-time compare so the shared secret can't be brute-forced by timing.
+  const tokenBuffer = Buffer.from(token);
+  const expectedBuffer = Buffer.from(expected);
+  return tokenBuffer.length === expectedBuffer.length && timingSafeEqual(tokenBuffer, expectedBuffer);
 }
 
 export function planFromEntitlements(
