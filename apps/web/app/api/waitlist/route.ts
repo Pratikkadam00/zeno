@@ -7,10 +7,11 @@ import { dirname } from "node:path";
 // Persistence order:
 //   1. POST to WAITLIST_WEBHOOK_URL if set (Resend audience, Zapier, a Sheet, …).
 //   2. Otherwise append to a local NDJSON file (durable for self-hosted / dev).
-//   3. If both are unavailable (e.g. a read-only serverless FS with no webhook),
-//      log a *masked* record and signal that persistence isn't configured.
+//   3. If neither works (e.g. a read-only serverless FS with no webhook), the
+//      request FAILS LOUDLY (502) — never a silent {ok:true} that drops signups.
+//      Set WAITLIST_WEBHOOK_URL in production.
 //
-// Client contract is unchanged: POST { email } → 200 { ok: true }.
+// Client contract: POST { email } → 200 { ok: true } on success, else 4xx/502.
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 // Best-effort in-memory rate limit (per IP). Resets on cold start; a production
@@ -54,14 +55,17 @@ async function persist(email: string): Promise<void> {
   try {
     await mkdir(dirname(file), { recursive: true });
     await appendFile(file, `${record}\n`, "utf8");
-  } catch {
-    // Last resort: never log the raw address.
+  } catch (error) {
+    // Read-only serverless FS with no webhook: log a *masked* diagnostic (never
+    // the raw address) and re-throw so the handler returns 502 instead of
+    // pretending the signup was saved.
     console.warn(JSON.stringify({
       event: "waitlist.signup.unpersisted",
       email: maskEmail(email),
       at: new Date().toISOString(),
-      note: "set WAITLIST_WEBHOOK_URL or a writable WAITLIST_FILE to capture signups"
+      note: "set WAITLIST_WEBHOOK_URL (or a writable WAITLIST_FILE) to capture signups"
     }));
+    throw error instanceof Error ? error : new Error("waitlist persistence failed");
   }
 }
 
