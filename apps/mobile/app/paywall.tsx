@@ -293,7 +293,7 @@ export default function PaywallScreen() {
             <Text style={styles.familyTitle}>Family plan</Text>
             <Text style={styles.familySub}>Up to 5 members · {familyPrice}/mo</Text>
           </View>
-          <Text style={styles.familyViewLink}>View →</Text>
+          <Text style={styles.familyViewLink}>Choose</Text>
         </Pressable>
 
         {/* Footer links */}

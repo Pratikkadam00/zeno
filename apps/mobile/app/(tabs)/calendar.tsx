@@ -199,7 +199,7 @@ function RenewalGroup({
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function CalendarScreen() {
-  const { theme } = useZenoTheme();
+  const { theme, scheme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const calendarTheme = useMemo(() => getCalendarTheme(theme), [theme]);
   const { subscriptions } = useSubscriptionStore();
@@ -318,7 +318,7 @@ export default function CalendarScreen() {
         {/* Calendar */}
         <View style={styles.calendarCard}>
           <Calendar
-            key={theme.id}
+            key={scheme}
             style={styles.calendar}
             markedDates={markedDates}
             markingType="multi-dot"

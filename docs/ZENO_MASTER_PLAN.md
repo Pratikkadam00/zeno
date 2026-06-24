@@ -47,7 +47,7 @@ Settings lives behind a gear in the Home header (chrome, not a tab).
 7. **Onboarding resequenced** — value before configuration; mode/theme choice removed from the path.
 8. **Visible trust + easy exit** — privacy inline at connect/import; export/delete/cancel-Zeno top-level in Settings.
 
-**Tiers:** Free = 8 subs + first scan + manual + calendar + reminders + cancel-with-verify +
+**Tiers:** Free = 10 subs (D2) + first scan + manual + calendar + reminders + cancel-with-verify +
 Free-Trial Guardian + Price-Hike Radar. Pro = unlimited + repeat auto-discovery + analytics +
 AI Coach + Wrapped + Spend Twin + widgets/watch + full budgeting. Family = 5 members, combined total only.
 

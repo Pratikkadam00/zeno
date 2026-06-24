@@ -2,7 +2,7 @@ import { monthlyAmount, type Subscription, type SubscriptionStatus } from "@zeno
 import { router } from "expo-router";
 import { Inbox, Plus, Search } from "lucide-react-native";
 import { useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Badge,
@@ -113,9 +113,12 @@ export default function SubscriptionsScreen() {
             const on = filter === f.key;
             const count = subscriptions.filter(f.match).length;
             return (
-              <View
+              <Pressable
                 key={f.key}
-                onTouchEnd={() => setFilter(f.key)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+                accessibilityLabel={`Filter: ${f.key}`}
+                onPress={() => setFilter(f.key)}
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
@@ -134,7 +137,7 @@ export default function SubscriptionsScreen() {
                 <Text style={{ fontFamily: t.fonts.mono.regular, fontSize: t.fontSize.micro, color: on ? c.textInverse : c.textTertiary, opacity: 0.7 }}>
                   {count}
                 </Text>
-              </View>
+              </Pressable>
             );
           })}
         </ScrollView>

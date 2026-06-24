@@ -29,6 +29,12 @@ services:
         value: sandbox
       - key: CORS_ALLOWED_ORIGINS
         value: ""
+      # Where the magic-link email points (the mobile deep link):
+      - key: MAGIC_LINK_REDIRECT_URL
+        value: zeno://auth/verify
+      # AI coach provider (anthropic | groq); auto-detects from the keys if unset:
+      - key: COACH_PROVIDER
+        value: anthropic
 
       # ── Secrets — set these in the Render dashboard (never committed) ──
       # Recommended so tokens survive restarts (else an ephemeral key is generated
@@ -43,7 +49,9 @@ services:
       - key: RESEND_FROM_EMAIL
         sync: false
       # Optional features:
-      - key: GROQ_API_KEY          # AI coach
+      - key: ANTHROPIC_API_KEY     # AI coach (Claude — default provider)
+        sync: false
+      - key: GROQ_API_KEY          # AI coach (free fallback provider)
         sync: false
       - key: PLAID_CLIENT_ID       # bank connect (sandbox)
         sync: false

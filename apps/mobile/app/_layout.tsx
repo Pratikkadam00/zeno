@@ -142,7 +142,8 @@ function RootStack() {
 
       const parsed = Linking.parse(url);
       const token = readQueryParam(parsed.queryParams?.token);
-      if (!token || !parsed.path?.includes("auth/verify")) {
+      const path = parsed.path?.replace(/^\/+/, "");
+      if (!token || path !== "auth/verify") {
         return;
       }
 
