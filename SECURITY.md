@@ -82,7 +82,7 @@ Real secrets (Groq/Anthropic, Plaid, RevenueCat *secret* key, Resend) live in th
 
 | Control | Status |
 |---|---|
-| **Security headers** (HSTS, nosniff, X-Frame-Options DENY, Referrer-Policy, Permissions-Policy, CSP `frame-ancestors/object-src/base-uri`) | ✅ `next.config.ts` |
+| **Security headers** (HSTS, nosniff, X-Frame-Options DENY, Referrer-Policy, Permissions-Policy, CSP `frame-ancestors/frame-src/object-src/base-uri/form-action` + `img/font/connect-src 'self'`) | ✅ `next.config.ts` |
 | **Waitlist API** — per-IP rate limit (5/min), strict email validation, body-parse guard, **masked** logging (never raw email) | ✅ `app/api/waitlist/route.ts` |
 | No secrets in client bundle — only `NEXT_PUBLIC_*` is exposed; server env stays server-side | ✅ |
 
@@ -112,8 +112,11 @@ instance/cold-start and isn't shared across replicas. Before real traffic:
   put a platform WAF + rate limiter (Cloudflare, Vercel, API gateway) in front.
 - [ ] **DB-back the in-memory stores** (auth sessions, sync, family) — currently
   per-instance memory; move to Postgres/Redis so limits and sessions persist.
-- [ ] **Full website CSP** — add tuned `script-src`/`style-src` (nonce-based) after
-  testing against rendered pages; currently only the non-breaking subset is set.
+- [ ] **Full website CSP** — `script-src`/`style-src` are the only directives still
+  unset. `connect-src/img-src/font-src/frame-src/form-action` are now pinned to
+  `'self'` (the site has no external scripts, iframes, or cross-origin fetches).
+  The remaining step is nonce-based `script-src`/`style-src` (Next inline hydration
+  + Motion inline styles need per-request nonces), validated against rendered pages.
 - [ ] **Rotate** any key that has ever been shared in plaintext (e.g. chat/logs).
 - [ ] **Dependency audit** in CI (`npm audit` / Dependabot) and pin/update.
 - [ ] **Secrets manager** for production (not a plaintext `.env` on the box).

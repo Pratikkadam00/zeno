@@ -1,10 +1,33 @@
 import type { NextConfig } from "next";
 
-// Security headers applied to every response. These are the safe, high-value set
-// that does not interfere with Next.js script/style loading. A full
-// script-src/style-src Content-Security-Policy needs live testing against the
-// rendered pages (Next inline scripts + Motion inline styles) — tracked in
-// SECURITY.md as a follow-up.
+// Security headers applied to every response.
+//
+// The CSP below pins every resource type the site actually uses to its real
+// origin: this app has no <iframe>, no external <script>, no client-side
+// cross-origin fetch, and self-hosts its fonts via next/font — so frame-src,
+// connect-src, img-src, font-src and form-action can all be locked to 'self'
+// (img also allows data:/blob: for inline SVG gradients). That blocks the
+// high-value injection vectors — form hijacking, exfiltration beacons, framed
+// phishing — without any live testing.
+//
+// script-src / style-src are deliberately NOT set: Next.js emits inline
+// hydration scripts and Motion emits inline style attributes, so locking them
+// down needs nonce-based CSP (middleware-generated per request) validated
+// against the live rendered pages. Note we do NOT set default-src either — a
+// default-src would fall through to script/style and break hydration. Tracked
+// in SECURITY.md as the nonce follow-up.
+const csp = [
+  "frame-ancestors 'none'",
+  "frame-src 'none'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "img-src 'self' data: blob:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "upgrade-insecure-requests"
+].join("; ");
+
 const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -12,8 +35,7 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), browsing-topics=()" },
   { key: "X-DNS-Prefetch-Control", value: "on" },
-  // Clickjacking + object/base-tag injection defenses that don't affect script/style loading.
-  { key: "Content-Security-Policy", value: "frame-ancestors 'none'; object-src 'none'; base-uri 'self'; upgrade-insecure-requests" }
+  { key: "Content-Security-Policy", value: csp }
 ];
 
 const nextConfig: NextConfig = {
