@@ -2,6 +2,7 @@ import { fail, ok } from "@zeno/shared";
 import type { FastifyPluginAsync } from "fastify";
 import { createHash, createPublicKey, createSign, createVerify, generateKeyPairSync, randomBytes, randomInt, randomUUID, timingSafeEqual, type JsonWebKey } from "node:crypto";
 import { z, ZodError } from "zod";
+import { kvDelete, kvPersist, registerHydrator, type StoredEntry } from "../storage/pg";
 
 const accessTokenTtlSeconds = 15 * 60;
 const magicLinkTtlSeconds = 10 * 60;
@@ -119,6 +120,31 @@ const refreshSessionsByHash = new Map<string, RefreshRecord>();
 const jwksCache = new Map<string, { expiresAt: number; keys: JsonWebKey[] }>();
 const keyPair = loadSigningKeys();
 
+// Replay persisted auth state on boot so a deploy/restart doesn't log everyone
+// out (refresh sessions) or invalidate a magic link mid-flight. Expired records
+// are dropped rather than resurrected. No-op without DATABASE_URL.
+registerHydrator("auth_refresh", (entries: StoredEntry[]) => {
+  const now = Date.now();
+  for (const { key, value } of entries) {
+    const record = value as RefreshRecord;
+    if (record.expiresAt > now) refreshSessionsByHash.set(key, record);
+  }
+});
+registerHydrator("auth_magic", (entries: StoredEntry[]) => {
+  const now = Date.now();
+  for (const { key, value } of entries) {
+    const record = value as MagicLinkRecord;
+    if (record.expiresAt > now) magicLinksByHash.set(key, record);
+  }
+});
+registerHydrator("auth_legacy", (entries: StoredEntry[]) => {
+  const now = Date.now();
+  for (const { key, value } of entries) {
+    const record = value as MagicLinkRecord;
+    if (record.expiresAt > now) legacyCodesByEmail.set(key, record);
+  }
+});
+
 // Auth endpoints get much stricter limits than the global bucket: magic-link
 // codes are 6 digits, so verification attempts must be expensive to repeat.
 const requestLimit = { config: { rateLimit: { max: 5, timeWindow: "1 minute" } } };
@@ -210,6 +236,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     }
 
     session.rotatedAt = Date.now();
+    kvPersist("auth_refresh", hashToken(parsed.data.refreshToken), session);
     return ok(issueSession(session.accountId, session.email, session.provider), request.id);
   });
 
@@ -238,7 +265,9 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
   app.post("/auth/logout", async (request) => {
     const parsed = logoutSchema.safeParse(request.body ?? {});
     if (parsed.success && parsed.data.refreshToken) {
-      refreshSessionsByHash.delete(hashToken(parsed.data.refreshToken));
+      const hash = hashToken(parsed.data.refreshToken);
+      refreshSessionsByHash.delete(hash);
+      kvDelete("auth_refresh", hash);
     }
 
     return ok({ loggedOut: true }, request.id);
@@ -285,6 +314,8 @@ async function requestMagicLink(emailInput: string, requestId: string) {
 
   magicLinksByHash.set(record.tokenHash, record);
   legacyCodesByEmail.set(email, record);
+  kvPersist("auth_magic", record.tokenHash, record);
+  kvPersist("auth_legacy", email, record);
 
   const link = `${defaultMagicLinkRedirect}?token=${encodeURIComponent(token)}`;
   await deliverMagicLink(email, link, code, requestId);
@@ -330,11 +361,14 @@ function consumeMagicToken(token: string): MagicLinkRecord | null {
   const record = magicLinksByHash.get(tokenHash);
   if (!record || record.expiresAt <= Date.now()) {
     magicLinksByHash.delete(tokenHash);
+    kvDelete("auth_magic", tokenHash);
     return null;
   }
 
   magicLinksByHash.delete(tokenHash);
   legacyCodesByEmail.delete(record.email);
+  kvDelete("auth_magic", tokenHash);
+  kvDelete("auth_legacy", record.email);
   return record;
 }
 
@@ -343,24 +377,30 @@ function consumeLegacyCode(email: string, code: string): MagicLinkRecord | null 
   const record = legacyCodesByEmail.get(normalized);
   if (!record || record.code !== code || record.expiresAt <= Date.now()) {
     legacyCodesByEmail.delete(normalized);
+    kvDelete("auth_legacy", normalized);
     return null;
   }
 
   legacyCodesByEmail.delete(normalized);
   magicLinksByHash.delete(record.tokenHash);
+  kvDelete("auth_legacy", normalized);
+  kvDelete("auth_magic", record.tokenHash);
   return record;
 }
 
 function issueSession(accountId: string, email: string, provider: AuthProvider): AuthSession {
   const nowSeconds = Math.floor(Date.now() / 1000);
   const refreshToken = randomToken();
-  refreshSessionsByHash.set(hashToken(refreshToken), {
+  const refreshHash = hashToken(refreshToken);
+  const refreshRecord: RefreshRecord = {
     accountId,
     email,
     provider,
     expiresAt: Date.now() + refreshTokenTtlSeconds * 1000,
     rotatedAt: null
-  });
+  };
+  refreshSessionsByHash.set(refreshHash, refreshRecord);
+  kvPersist("auth_refresh", refreshHash, refreshRecord);
 
   return {
     accountId,

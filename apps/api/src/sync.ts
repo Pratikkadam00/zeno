@@ -4,8 +4,11 @@
 // never sees plaintext financial data (only encryptedPayload it can't read).
 //
 // Conflict resolution is last-write-wins by the change's vector-clock total.
-// Storage is in-memory here (single node, fine for dev/demo + tests); back it
-// with a database (encrypted-blob column keyed by user + entity) in production.
+// The in-memory map is the working set; when DATABASE_URL is set every accepted
+// change is also mirrored to Postgres (the payload is already client-encrypted
+// ciphertext the server can't read) and replayed on boot. See storage/pg.ts.
+
+import { kvClear, kvPersist, registerHydrator, type StoredEntry } from "./storage/pg";
 
 export type EncryptedChange = {
   entityType: "subscription" | "preference" | "profile";
@@ -60,7 +63,9 @@ export function pushChanges(userId: string, changes: EncryptedChange[]): { accep
     // Accept new entities and any change at or beyond the stored version (LWW).
     if (!existing || incomingVersion >= existing.version) {
       globalSeq += 1;
-      records.set(key, { ...change, version: incomingVersion, seq: globalSeq });
+      const record: StoredRecord = { ...change, version: incomingVersion, seq: globalSeq };
+      records.set(key, record);
+      kvPersist("sync", `${userId}|${key}`, { userId, ...record });
       accepted += 1;
     } else {
       rejected += 1;
@@ -91,4 +96,15 @@ export function pullChanges(userId: string, cursor: string | undefined, limit: n
 export function clearSyncStore(): void {
   store.clear();
   globalSeq = 0;
+  void kvClear("sync");
 }
+
+// Rebuild the per-user maps from persisted rows, restoring the global sequence
+// so pull cursors stay monotonic across a restart.
+registerHydrator("sync", (entries: StoredEntry[]) => {
+  for (const { value } of entries) {
+    const { userId, ...stored } = value as StoredRecord & { userId: string };
+    userStore(userId).set(keyOf(stored), stored);
+    if (stored.seq > globalSeq) globalSeq = stored.seq;
+  }
+});

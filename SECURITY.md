@@ -110,8 +110,14 @@ instance/cold-start and isn't shared across replicas. Before real traffic:
 
 - [ ] **Distributed rate limiting** — back `@fastify/rate-limit` with Redis, and/or
   put a platform WAF + rate limiter (Cloudflare, Vercel, API gateway) in front.
-- [ ] **DB-back the in-memory stores** (auth sessions, sync, family) — currently
-  per-instance memory; move to Postgres/Redis so limits and sessions persist.
+- [x] **DB-back the in-memory stores** — cloud-sync blobs, entitlements,
+  households, and auth sessions (refresh + magic links) are now mirrored to
+  Postgres when `DATABASE_URL` is set (`storage/pg.ts`, wired in `render.yaml`)
+  and replayed on boot, so a restart/redeploy no longer drops them. Still open:
+  (a) **Plaid bank tokens stay in-memory on purpose** — persisting raw access
+  tokens needs an encrypted column / KMS first (see `plaid.ts`); (b) rate-limit
+  state is still per-instance (see distributed rate limiting above); (c) reads
+  are node-local, so cross-replica consistency needs async reads before scale-out.
 - [ ] **Full website CSP** — `script-src`/`style-src` are the only directives still
   unset. `connect-src/img-src/font-src/frame-src/form-action` are now pinned to
   `'self'` (the site has no external scripts, iframes, or cross-origin fetches).

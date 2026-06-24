@@ -5,6 +5,18 @@
 # Monorepo note: build runs from the repo root so npm workspaces install, then the
 # two workspace packages the API imports (@zeno/shared, @zeno/service-catalog)
 # are built to dist/, then the API starts via tsx.
+#
+# Persistence: the free Postgres below backs the in-memory stores (sync,
+# entitlements, households, auth sessions) so they survive restarts/redeploys.
+# DATABASE_URL is wired automatically from it. Remove the databases block (and
+# the DATABASE_URL env var) to run the API fully in-memory.
+databases:
+  - name: zeno-db
+    plan: free
+    databaseName: zeno
+    # Render free Postgres expires ~90 days after creation; recreate + reconnect
+    # to renew. Data here is non-PII: sync blobs are client-encrypted ciphertext;
+    # raw Plaid bank tokens are intentionally never persisted (see plaid.ts).
 services:
   - type: web
     name: zeno-api
@@ -35,6 +47,12 @@ services:
       # AI coach provider (anthropic | groq); auto-detects from the keys if unset:
       - key: COACH_PROVIDER
         value: anthropic
+      # Postgres connection string, pulled from the managed database above so the
+      # stores persist across restarts (TLS required — handled by default in code):
+      - key: DATABASE_URL
+        fromDatabase:
+          name: zeno-db
+          property: connectionString
 
       # ── Secrets — set these in the Render dashboard (never committed) ──
       # Recommended so tokens survive restarts (else an ephemeral key is generated

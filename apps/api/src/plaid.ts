@@ -15,9 +15,13 @@ export function plaidConfigured(): boolean {
 }
 
 // Plaid access tokens are bank-access CREDENTIALS and must never reach the client.
-// They are held server-side, keyed to the authenticated account id. In-memory for
-// now (matches sync/family/billing); productionize with an encrypted DB table
-// before launch — see SECURITY.md.
+// They are held server-side, keyed to the authenticated account id.
+//
+// Deliberately NOT mirrored to Postgres like the other stores: writing a raw
+// bank-access token as plaintext into the kv_store table would be a worse
+// security posture than losing it on restart (the user simply re-links). The
+// real fix is an encrypted column / KMS-wrapped token before launch — tracked in
+// SECURITY.md. So this stays in-memory on purpose.
 type StoredPlaidItem = { accessToken: string; itemId: string };
 const plaidItemsByUser = new Map<string, StoredPlaidItem>();
 

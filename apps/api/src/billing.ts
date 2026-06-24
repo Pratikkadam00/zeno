@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { kvClear, kvPersist, registerHydrator, type StoredEntry } from "./storage/pg";
 
 // Server-side entitlement verification. The mobile client reports a plan from
 // the RevenueCat SDK, but a tampered client could lie — so the server is the
@@ -23,7 +24,8 @@ const PRO_IDS = ["pro", "zeno_pro"];
 const FAMILY_IDS = ["family", "zeno_family"];
 
 // Latest known entitlement per app user, updated by webhooks (read as fast path).
-// In production back this with a database; in-memory is fine for a single node.
+// Mirrored to Postgres when DATABASE_URL is set so a restart doesn't force every
+// client to re-fetch from RevenueCat before its plan is recognized again.
 const cache = new Map<string, Entitlement>();
 
 export function billingConfigured(): boolean {
@@ -76,6 +78,7 @@ export async function fetchEntitlement(appUserId: string): Promise<Entitlement> 
   const resolved = planFromEntitlements(json.subscriber?.entitlements ?? {});
   const entitlement: Entitlement = { ...resolved, source: "revenuecat" };
   cache.set(appUserId, entitlement);
+  kvPersist("billing", appUserId, entitlement);
   return entitlement;
 }
 
@@ -100,10 +103,17 @@ export function applyWebhookEvent(body: unknown): void {
     if (ids.some((id) => FAMILY_IDS.includes(id))) { plan = "family"; active = true; }
     else if (ids.some((id) => PRO_IDS.includes(id))) { plan = "pro"; active = true; }
   }
-  cache.set(event.app_user_id, { plan, active, expiresAt, source: "cache" });
+  const entitlement: Entitlement = { plan, active, expiresAt, source: "cache" };
+  cache.set(event.app_user_id, entitlement);
+  kvPersist("billing", event.app_user_id, entitlement);
 }
 
 // Test/maintenance helper.
 export function clearEntitlementCache(): void {
   cache.clear();
+  void kvClear("billing");
 }
+
+registerHydrator("billing", (entries: StoredEntry[]) => {
+  for (const { key, value } of entries) cache.set(key, value as Entitlement);
+});

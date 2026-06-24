@@ -3,8 +3,10 @@
 // their monthly-spend total (a number they choose to share) so the household
 // sees a combined view — no raw subscription data is shared here.
 //
-// In-memory store (single node, dev/demo + tests); back with a database in prod.
+// In-memory working set; mirrored to Postgres when DATABASE_URL is set so a
+// restart doesn't drop households / share-codes (see storage/pg.ts).
 import { randomBytes } from "node:crypto";
+import { kvClear, kvPersist, registerHydrator, type StoredEntry } from "./storage/pg";
 
 export type FamilyMember = { id: string; name: string; monthlySpendMinor: number };
 export type Household = {
@@ -44,6 +46,7 @@ export function createHousehold(ownerId: string, ownerName: string, monthlySpend
   };
   households.set(household.id, household);
   codeIndex.set(shareCode, household.id);
+  kvPersist("family", household.id, household);
   return household;
 }
 
@@ -60,6 +63,7 @@ export function joinHousehold(shareCode: string, memberId: string, memberName: s
   } else {
     household.members.push({ id: memberId, name: memberName, monthlySpendMinor });
   }
+  kvPersist("family", household.id, household);
   return household;
 }
 
@@ -72,10 +76,20 @@ export function setMemberSpend(householdId: string, memberId: string, monthlySpe
   if (!household) return null;
   const member = household.members.find((candidate) => candidate.id === memberId);
   if (member) member.monthlySpendMinor = monthlySpendMinor;
+  kvPersist("family", household.id, household);
   return household;
 }
 
 export function clearFamilyStore(): void {
   households.clear();
   codeIndex.clear();
+  void kvClear("family");
 }
+
+registerHydrator("family", (entries: StoredEntry[]) => {
+  for (const { value } of entries) {
+    const household = value as Household;
+    households.set(household.id, household);
+    codeIndex.set(household.shareCode, household.id);
+  }
+});
