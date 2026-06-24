@@ -1,4 +1,4 @@
-export type DiscoveryBillingCycle = "monthly" | "annual" | "weekly" | "unknown";
+export type DiscoveryBillingCycle = "monthly" | "quarterly" | "annual" | "weekly" | "unknown";
 
 export type DiscoveryConfidence = "high" | "medium" | "low";
 
@@ -9,7 +9,7 @@ export function calculateNextRenewal(lastCharged: Date, cycle: DiscoveryBillingC
     return next;
   }
 
-  const months = cycle === "annual" ? 12 : 1;
+  const months = cycle === "annual" ? 12 : cycle === "quarterly" ? 3 : 1;
   const day = next.getDate();
   next.setDate(1);
   next.setMonth(next.getMonth() + months);
@@ -30,6 +30,7 @@ export function inferRecurringCycle(gaps: number[]): DiscoveryBillingCycle | nul
   const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
   if (median >= 5 && median <= 9) return "weekly";
   if (median >= 24 && median <= 35) return "monthly";
+  if (median >= 85 && median <= 95) return "quarterly";
   if (median >= 350 && median <= 380) return "annual";
   return null;
 }

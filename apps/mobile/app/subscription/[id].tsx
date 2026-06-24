@@ -33,10 +33,11 @@ function formatAnnualEquivalent(amountMinor: number, cycle: BillingCycle): numbe
   return amountMinor * 12;
 }
 
-// CHANGE 6: real charge history derived from the subscription's actual billing
-// cadence, stepping back from its most recent past charge to when Zeno started
-// tracking it (createdAt). Not random mock data — and honestly empty when there
-// is no basis (brand-new sub, trial, or unknown cycle).
+// CHANGE 6: charge history derived from the subscription's billing cadence,
+// stepping back from its most recent charge — lastChargedDate when known from a
+// receipt, else the renewal date — to when Zeno started tracking it (createdAt).
+// Honestly empty when there's no basis (brand-new sub, trial, unknown cycle).
+// The screen labels it "estimated" when we only have the cadence, not a receipt.
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function stepBack(date: Date, cycle: BillingCycle): Date {
@@ -479,6 +480,9 @@ export default function SubscriptionDetailScreen() {
 
               {/* Charge history */}
               <Text style={styles.sectionLabel}>CHARGE HISTORY</Text>
+              {chargeHistory.length > 0 && !sub.lastChargedDate ? (
+                <Text style={styles.historyCaption}>Estimated from your billing cycle</Text>
+              ) : null}
               <View style={styles.groupCard}>
                 {chargeHistory.length === 0 ? (
                   <View style={styles.emptyRow}>
@@ -715,6 +719,7 @@ function createStyles(theme: ThemeTokens) {
     historyRight: { alignItems: "flex-end" },
     historyAmount: { ...typography.subheadline, fontWeight: "500", color: theme.text, fontVariant: ["tabular-nums"] },
     historyLabel: { ...typography.caption1, color: theme.mutedText, marginTop: 1, textAlign: "right" },
+    historyCaption: { ...typography.caption1, color: theme.quietText, paddingHorizontal: spacing.screenH, marginTop: -4, marginBottom: 8 },
     fullSep: { height: 0.5, backgroundColor: theme.border },
     emptyRow: { padding: 20, alignItems: "center" },
     emptyText: { ...typography.subheadline, color: theme.quietText },

@@ -187,10 +187,10 @@ function detectCycle(transactions: Transaction[]): ParsedSubscription["billingCy
   if (gaps.some((gap) => gap >= 25 && gap <= 35)) {
     return "monthly";
   }
-  // Treat quarterly (~90-day) cadence as monthly for tracking, since the
-  // ParsedSubscription contract only models weekly/monthly/annual.
+  // Quarterly (~90-day) cadence — kept as quarterly so monthlyAmount divides by 3.
+  // (Mapping it to monthly was a 3× overcount of the recurring spend.)
   if (gaps.some((gap) => gap >= 85 && gap <= 95)) {
-    return "monthly";
+    return "quarterly";
   }
   if (gaps.some((gap) => gap >= 360 && gap <= 375)) {
     return "annual";

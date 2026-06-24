@@ -583,7 +583,7 @@ function EditSubscriptionModal({ candidate, onClose, onSave }: {
           <TextInput value={String(draft.amount)} onChangeText={(amount) => setDraft({ ...draft, amount: Number.parseFloat(amount) || 0 })} keyboardType="decimal-pad" placeholder="Amount" placeholderTextColor={theme.quietText} style={styles.input} accessibilityLabel="Amount" />
           <TextInput value={draft.nextRenewal.slice(0, 10)} onChangeText={(nextRenewal) => setDraft({ ...draft, nextRenewal: new Date(nextRenewal).toISOString() })} placeholder="YYYY-MM-DD" placeholderTextColor={theme.quietText} style={styles.input} accessibilityLabel="Next renewal date" />
           <View style={styles.cycleRow}>
-            {(["weekly", "monthly", "annual", "unknown"] as const).map((cycle) => (
+            {(["weekly", "monthly", "quarterly", "annual", "unknown"] as const).map((cycle) => (
               <Pressable
                 key={cycle}
                 accessibilityRole="button"

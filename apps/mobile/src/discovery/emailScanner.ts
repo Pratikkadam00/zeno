@@ -11,7 +11,7 @@ export type ParsedSubscription = {
   name: string;
   amount: number;
   currency: string;
-  billingCycle: "monthly" | "annual" | "weekly" | "unknown";
+  billingCycle: "monthly" | "quarterly" | "annual" | "weekly" | "unknown";
   lastCharged: string;
   nextRenewal: string;
   confidence: "high" | "medium" | "low";
