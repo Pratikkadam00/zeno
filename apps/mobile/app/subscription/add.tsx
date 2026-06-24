@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Bell, BellOff, ChevronLeft, Minus, Plus, Search } from "lucide-react-native";
 import { ServiceAutocomplete, servicePriceLabel } from "../../components/subscriptions/ServiceAutocomplete";
+import { useAuthStore } from "../../src/auth/authStore";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
 import { useZenoTheme } from "../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../src/theme/tokens";
@@ -54,6 +55,9 @@ function formatDate(date: Date): string {
 
 const BILLING_CYCLES = ["monthly", "annual", "weekly"] as const;
 
+// D2 (locked): free tier tracks up to 10 subscriptions; crossing it prompts Pro.
+const FREE_LIMIT = 10;
+
 /** All app categories, in tap-cycle order, with human labels. */
 const CATEGORIES: { value: SubscriptionCategory; label: string }[] = [
   { value: "entertainment",   label: "Entertainment" },
@@ -76,7 +80,9 @@ function categoryLabel(value: SubscriptionCategory): string {
 export default function AddSubscriptionScreen() {
   const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { addSubscription, suggestions } = useSubscriptionStore();
+  const { addSubscription, suggestions, subscriptions } = useSubscriptionStore();
+  const plan = useAuthStore((state) => state.plan);
+  const trackedCount = subscriptions.filter((subscription) => subscription.status !== "cancelled").length;
 
   // Step 1 (search) state.
   const [query, setQuery]           = useState("");
@@ -170,6 +176,11 @@ export default function AddSubscriptionScreen() {
 
   function handleSave() {
     if (!formValid) return;
+    // Free-tier ceiling: at the limit, send the user to Pro instead of adding.
+    if (plan === "free" && trackedCount >= FREE_LIMIT) {
+      router.push("/paywall");
+      return;
+    }
     const amountMinor = Math.round(Number.parseFloat(amount || "0") * 100);
     addSubscription({
       name: name.trim() || "New subscription",

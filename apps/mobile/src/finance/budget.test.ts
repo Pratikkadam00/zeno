@@ -49,6 +49,26 @@ describe("computeBudgetForecast", () => {
     expect(computeBudgetForecast([renewsThisMonth], now).projectedMinor).toBe(12000);
     expect(computeBudgetForecast([renewsOtherMonth], now).projectedMinor).toBe(0);
   });
+
+  it("clamps a month-end anchor instead of overflowing into the next month", () => {
+    // A monthly sub anchored on the 31st, viewed in February: the February charge
+    // must clamp to Feb 28 — not overflow to "Feb 31" → Mar 3 (and skip Feb).
+    const feb = new Date("2026-02-15T12:00:00.000Z");
+    const s = sub({ id: "me", billingCycle: "monthly", nextRenewalDate: "2026-03-31T09:00:00.000Z", price: { amountMinor: 999, currency: "USD" } });
+    const forecast = computeBudgetForecast([s], feb);
+    expect(forecast.projectedMinor).toBe(999);
+    expect(forecast.remaining).toHaveLength(1);
+    expect(forecast.remaining[0]?.date.slice(0, 10)).toBe("2026-02-28");
+  });
+
+  it("counts every weekly charge that falls in the month", () => {
+    // Weekly sub renewing Jun 18 → June charges on the 4th, 11th, 18th, 25th.
+    const s = sub({ id: "wk", billingCycle: "weekly", nextRenewalDate: "2026-06-18T00:00:00.000Z", price: { amountMinor: 500, currency: "USD" } });
+    const forecast = computeBudgetForecast([s], now); // now = Jun 15
+    expect(forecast.projectedMinor).toBe(2000); // 4 weekly charges
+    expect(forecast.committedMinor).toBe(1000); // Jun 4 + Jun 11 already passed
+    expect(forecast.remaining).toHaveLength(2); // Jun 18 + Jun 25 still to come
+  });
 });
 
 describe("suggestedCapMinor", () => {

@@ -138,10 +138,12 @@ export async function runMigrations(db: ZenoDatabase): Promise<void> {
   // columns to an existing table, so add them here if missing.
   const subscriptionColumns = await db.getAllAsync<{ name: string }>("PRAGMA table_info(subscriptions)");
   const columnNames = new Set(subscriptionColumns.map((column) => column.name));
+  // try/catch so two concurrent DB opens (subscription + budget stores) racing the
+  // same migration don't crash on a "duplicate column" error.
   if (!columnNames.has("cancellation_requested_at")) {
-    await db.execAsync("ALTER TABLE subscriptions ADD COLUMN cancellation_requested_at TEXT");
+    try { await db.execAsync("ALTER TABLE subscriptions ADD COLUMN cancellation_requested_at TEXT"); } catch { /* added concurrently */ }
   }
   if (!columnNames.has("cancellation_verify_by")) {
-    await db.execAsync("ALTER TABLE subscriptions ADD COLUMN cancellation_verify_by TEXT");
+    try { await db.execAsync("ALTER TABLE subscriptions ADD COLUMN cancellation_verify_by TEXT"); } catch { /* added concurrently */ }
   }
 }

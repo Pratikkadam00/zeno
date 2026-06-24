@@ -1,18 +1,24 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Platform } from "react-native";
+import { openZenoDatabase, readAppMeta, writeAppMeta, type ZenoDatabase } from "../storage/database";
 
 export type BudgetEnvelope = { id: string; name: string; icon: string; fundedMinor: number; spentMinor: number };
 export type BudgetCategoryCap = { category: string; capMinor: number };
 
 export type BudgetConfig = {
   capMinor: number | null; // monthly recurring cap; null = not set yet
-  incomeMinor: number | null; // optional monthly income
+  incomeMinor: number | null; // optional monthly income (sensitive PII)
   envelopes: BudgetEnvelope[];
   categoryCaps: BudgetCategoryCap[];
 };
 
-const STORAGE_KEY = "zeno.budget.config.v1";
+// Stored in the SQLCipher-encrypted app_meta table (NOT plaintext AsyncStorage) —
+// the budget config holds the user's stated monthly income, which is sensitive PII.
+const META_KEY = "budget.config.v1";
 const defaultConfig: BudgetConfig = { capMinor: null, incomeMinor: null, envelopes: [], categoryCaps: [] };
+
+// expo-sqlite is not configured for web; web sessions stay in-memory.
+const persistenceEnabled = Platform.OS !== "web";
 
 type BudgetStore = {
   config: BudgetConfig;
@@ -23,29 +29,44 @@ type BudgetStore = {
   logEnvelope: (id: string, amountMinor: number) => void;
   removeEnvelope: (id: string) => void;
   setCategoryCap: (category: string, capMinor: number) => void;
+  reset: () => void;
 };
 
 const BudgetContext = createContext<BudgetStore | null>(null);
 
 export function BudgetStoreProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<BudgetConfig>(defaultConfig);
-  const [hydrated, setHydrated] = useState(false);
+  const [hydrated, setHydrated] = useState(!persistenceEnabled);
+  const dbRef = useRef<ZenoDatabase | null>(null);
 
   useEffect(() => {
+    if (!persistenceEnabled) {
+      return;
+    }
     let cancelled = false;
-    void AsyncStorage.getItem(STORAGE_KEY)
-      .then((raw) => {
-        if (cancelled) return;
-        if (raw) {
+    void (async () => {
+      try {
+        const db = await openZenoDatabase();
+        if (cancelled) {
+          return;
+        }
+        dbRef.current = db;
+        const raw = await readAppMeta(db, META_KEY);
+        if (raw && !cancelled) {
           try {
             setConfig({ ...defaultConfig, ...(JSON.parse(raw) as Partial<BudgetConfig>) });
           } catch (error) {
             console.warn("Corrupt budget config; using defaults.", error);
           }
         }
-        setHydrated(true);
-      })
-      .catch(() => setHydrated(true));
+      } catch (error) {
+        console.warn("Budget store database unavailable; using in-memory config.", error);
+      } finally {
+        if (!cancelled) {
+          setHydrated(true);
+        }
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -54,7 +75,12 @@ export function BudgetStoreProvider({ children }: { children: ReactNode }) {
   const value = useMemo<BudgetStore>(() => {
     const persist = (next: BudgetConfig) => {
       setConfig(next);
-      void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => undefined);
+      const db = dbRef.current;
+      if (db) {
+        void writeAppMeta(db, META_KEY, JSON.stringify(next)).catch((error) => {
+          console.warn("Failed to persist budget config.", error);
+        });
+      }
     };
     return {
       config,
@@ -83,6 +109,9 @@ export function BudgetStoreProvider({ children }: { children: ReactNode }) {
       setCategoryCap(category, capMinor) {
         const others = config.categoryCaps.filter((cap) => cap.category !== category);
         persist({ ...config, categoryCaps: [...others, { category, capMinor }] });
+      },
+      reset() {
+        persist(defaultConfig);
       }
     };
   }, [config, hydrated]);

@@ -350,10 +350,15 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
       },
       requestCancellation(id) {
         // Guided → Pending verification. We record when, and the date we'll
-        // re-check for a charge (the subscription's own next renewal date).
+        // re-check for a charge: the NEXT real renewal, rolled forward so an
+        // overdue date can't put verifyBy in the past (which would auto-resolve
+        // to "verified" on the next launch with no actual verification).
         const current = subscriptions.find((s) => s.id === id);
         const now = new Date();
-        const verifyBy = current?.nextRenewalDate ?? new Date(now.getTime() + 34 * 24 * 60 * 60 * 1000).toISOString();
+        const rolled = rollRenewalForward(current?.nextRenewalDate, current?.billingCycle ?? "monthly", now);
+        const verifyBy = rolled && Date.parse(rolled) > now.getTime()
+          ? rolled
+          : new Date(now.getTime() + 34 * 24 * 60 * 60 * 1000).toISOString();
         applyChange(id, (subscription) => ({
           ...subscription,
           status: "pending",
@@ -380,19 +385,28 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         }));
       },
       runCancellationVerification() {
-        // Resolve pending cancellations whose verify-by date has passed without a
-        // re-detected charge → Verified cancelled. A charge re-detected by a scan/
-        // import, or reported via the detail control, flips a sub to "attention".
+        // Resolve pending cancellations whose verify-by date has passed. If a
+        // charge was recorded at/after the cancellation request (lastChargedDate,
+        // set by the email scanner / a re-import), the sub is still being charged
+        // → Needs attention. Otherwise no charge was detected → Verified cancelled.
+        // (The manual "I was charged again" control is the other path to attention.)
         const nowMs = Date.now();
         for (const subscription of subscriptions) {
-          if (subscription.status === "pending" && subscription.cancellationVerifyBy && Date.parse(subscription.cancellationVerifyBy) < nowMs) {
-            applyChange(subscription.id, (current) => ({
-              ...current,
-              status: "cancelled",
-              updatedAt: new Date().toISOString(),
-              version: current.version + 1
-            }));
+          if (subscription.status !== "pending" || !subscription.cancellationVerifyBy) {
+            continue;
           }
+          if (Date.parse(subscription.cancellationVerifyBy) >= nowMs) {
+            continue;
+          }
+          const requestedMs = subscription.cancellationRequestedAt ? Date.parse(subscription.cancellationRequestedAt) : 0;
+          const chargedMs = subscription.lastChargedDate ? Date.parse(subscription.lastChargedDate) : Number.NaN;
+          const stillCharged = !Number.isNaN(chargedMs) && chargedMs >= requestedMs;
+          applyChange(subscription.id, (current) => ({
+            ...current,
+            status: stillCharged ? "attention" : "cancelled",
+            updatedAt: new Date().toISOString(),
+            version: current.version + 1
+          }));
         }
       },
       updateNotificationSettings(id, changes) {

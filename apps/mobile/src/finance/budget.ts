@@ -19,16 +19,25 @@ export type BudgetForecast = {
 
 export type BudgetStatus = "under" | "approaching" | "over";
 
+// UTC throughout — the cadence stepping below is UTC, so the month window must
+// be too, or charges near a month edge land in the wrong month (and the result
+// would vary by the user's timezone).
 function monthBounds(now: Date): { start: number; end: number } {
-  const start = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
+  const start = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
+  const end = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1) - 1; // last ms of the month
   return { start, end };
 }
 
 function stepDate(date: Date, cycle: Subscription["billingCycle"], dir: 1 | -1): Date {
   if (cycle === "weekly") return new Date(date.getTime() + dir * 7 * DAY_MS);
   const months = cycle === "annual" ? 12 : cycle === "quarterly" ? 3 : 1;
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + dir * months, date.getUTCDate()));
+  // Month-end clamp: stepping from Jan 31 lands on Feb 28/29, not "Feb 31"→Mar 3.
+  const total = date.getUTCMonth() + dir * months;
+  const year = date.getUTCFullYear() + Math.floor(total / 12);
+  const month = ((total % 12) + 12) % 12;
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const day = Math.min(date.getUTCDate(), daysInMonth);
+  return new Date(Date.UTC(year, month, day, date.getUTCHours(), date.getUTCMinutes()));
 }
 
 /** Every date this subscription charges within [start, end], stepping from its

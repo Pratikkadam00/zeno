@@ -1,5 +1,6 @@
 import { useMemo, useState, type ComponentType } from "react";
 import { useAuthStore } from "../src/auth/authStore";
+import { useBudgetStore } from "../src/data/budget-store";
 import { useSubscriptionStore } from "../src/data/subscription-store";
 import { spacing } from "../src/theme/spacing";
 import { type as typography } from "../src/theme/typography";
@@ -79,6 +80,7 @@ export default function SettingsScreen() {
     logout: state.logout
   }));
   const { subscriptions, clearAllData, quietHours, setQuietHours } = useSubscriptionStore();
+  const { reset: resetBudget } = useBudgetStore();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const quietWindowLabel = `${formatHour(quietHours.startHour)} – ${formatHour(quietHours.endHour)}`;
@@ -114,7 +116,7 @@ export default function SettingsScreen() {
   function confirmDelete() {
     Alert.alert("Delete all data", "This will permanently remove all subscription records from this device.", [
       { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => void clearAllData().then(() => router.replace("/dashboard")) }
+      { text: "Delete", style: "destructive", onPress: () => { resetBudget(); void clearAllData().then(() => router.replace("/dashboard")); } }
     ]);
   }
 
@@ -124,7 +126,7 @@ export default function SettingsScreen() {
       "This erases your data from this device and signs you out. We never make this hard.",
       [
         { text: "Keep my account", style: "cancel" },
-        { text: "Cancel account", style: "destructive", onPress: () => void clearAllData().then(() => logout()) }
+        { text: "Cancel account", style: "destructive", onPress: () => { resetBudget(); void clearAllData().then(() => logout()); } }
       ]
     );
   }
