@@ -17,16 +17,27 @@ export function plaidConfigured(): boolean {
 // Plaid access tokens are bank-access CREDENTIALS and must never reach the client.
 // They are held server-side, keyed to the authenticated account id.
 //
-// Deliberately NOT mirrored to Postgres like the other stores: writing a raw
-// bank-access token as plaintext into the kv_store table would be a worse
-// security posture than losing it on restart (the user simply re-links). The
-// real fix is an encrypted column / KMS-wrapped token before launch — tracked in
-// SECURITY.md. So this stays in-memory on purpose.
+// Persistence is gated on encryption: only when STORAGE_ENCRYPTION_KEY is set are
+// tokens mirrored to Postgres, and then ONLY as an AES-256-GCM sealed envelope
+// (see storage/pg.ts) — a raw token must never sit as plaintext at rest. Without
+// the key (or without DATABASE_URL) tokens stay in-memory and are simply lost on
+// restart (the user re-links), which is the safer failure mode.
+import {
+  encryptionConfigured,
+  kvClear,
+  kvPersist,
+  openValue,
+  registerHydrator,
+  sealValue,
+  type StoredEntry
+} from "./storage/pg";
+
 type StoredPlaidItem = { accessToken: string; itemId: string };
 const plaidItemsByUser = new Map<string, StoredPlaidItem>();
 
 export function storePlaidItem(userId: string, item: StoredPlaidItem): void {
   plaidItemsByUser.set(userId, item);
+  if (encryptionConfigured()) kvPersist("plaid", userId, sealValue(item));
 }
 
 export function getStoredPlaidItem(userId: string): StoredPlaidItem | undefined {
@@ -35,7 +46,17 @@ export function getStoredPlaidItem(userId: string): StoredPlaidItem | undefined 
 
 export function clearPlaidItems(): void {
   plaidItemsByUser.clear();
+  void kvClear("plaid");
 }
+
+// Decrypt persisted tokens on boot. Rows that can't be opened (key rotated/
+// missing, tampered) are skipped — never resurrected as garbage.
+registerHydrator("plaid", (entries: StoredEntry[]) => {
+  for (const { key, value } of entries) {
+    const item = openValue(value) as StoredPlaidItem | null;
+    if (item && typeof item.accessToken === "string") plaidItemsByUser.set(key, item);
+  }
+});
 
 async function plaidPost<T>(path: string, body: Record<string, unknown>): Promise<T> {
   const response = await fetch(`${plaidBase()}${path}`, {

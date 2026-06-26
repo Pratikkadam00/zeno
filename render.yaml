@@ -79,6 +79,10 @@ services:
         sync: false
       - key: REVENUECAT_WEBHOOK_AUTH
         sync: false
+      # 32-byte hex/base64 key; encrypts Plaid bank tokens at rest so they can be
+      # persisted (without it, Plaid tokens stay in-memory and reset on restart):
+      - key: STORAGE_ENCRYPTION_KEY
+        sync: false
       # Social login audiences (server verifies tokens against these):
       - key: GOOGLE_WEB_CLIENT_ID
         sync: false

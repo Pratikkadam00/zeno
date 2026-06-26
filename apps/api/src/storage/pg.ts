@@ -17,6 +17,7 @@
 // swallowed so it can never break a request whose in-memory write already
 // succeeded.
 
+import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { Pool } from "pg";
 
 export type StoredEntry = { key: string; value: unknown };
@@ -80,6 +81,54 @@ export async function kvClear(namespace: string): Promise<void> {
     await p.query("DELETE FROM kv_store WHERE namespace = $1", [namespace]);
   } catch (err) {
     console.error(`[pg] clear ${namespace} failed:`, (err as Error).message);
+  }
+}
+
+// ── Encryption at rest (for secrets like Plaid bank-access tokens) ──────────
+// AES-256-GCM with a random 96-bit IV per value; the sealed envelope is
+// iv(12) || tag(16) || ciphertext, base64-encoded inside a { enc } object so it
+// stays valid jsonb. STORAGE_ENCRYPTION_KEY is 32 bytes as 64 hex chars or
+// base64. Without a valid key, encryption is "not configured" and callers that
+// require it (Plaid) keep their data in-memory only.
+
+function encryptionKey(): Buffer | null {
+  const raw = process.env.STORAGE_ENCRYPTION_KEY;
+  if (!raw) return null;
+  const key = /^[0-9a-fA-F]{64}$/.test(raw) ? Buffer.from(raw, "hex") : Buffer.from(raw, "base64");
+  return key.length === 32 ? key : null;
+}
+
+export function encryptionConfigured(): boolean {
+  return encryptionKey() !== null;
+}
+
+/** Seal an object into an encrypted envelope. Throws if no key is configured —
+ *  callers must gate on encryptionConfigured() first. */
+export function sealValue(value: unknown): { enc: string } {
+  const key = encryptionKey();
+  if (!key) throw new Error("sealValue requires STORAGE_ENCRYPTION_KEY");
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  const ciphertext = Buffer.concat([cipher.update(Buffer.from(JSON.stringify(value), "utf8")), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return { enc: Buffer.concat([iv, tag, ciphertext]).toString("base64") };
+}
+
+/** Open a sealed envelope. Returns null if the key is missing/rotated or the
+ *  payload was tampered with (GCM auth-tag failure) — never throws. */
+export function openValue(stored: unknown): unknown | null {
+  const key = encryptionKey();
+  if (!key) return null;
+  const enc = (stored as { enc?: unknown })?.enc;
+  if (typeof enc !== "string") return null;
+  try {
+    const buf = Buffer.from(enc, "base64");
+    const decipher = createDecipheriv("aes-256-gcm", key, buf.subarray(0, 12));
+    decipher.setAuthTag(buf.subarray(12, 28));
+    const plaintext = Buffer.concat([decipher.update(buf.subarray(28)), decipher.final()]);
+    return JSON.parse(plaintext.toString("utf8"));
+  } catch {
+    return null;
   }
 }
 

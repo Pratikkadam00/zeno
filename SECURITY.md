@@ -113,11 +113,14 @@ instance/cold-start and isn't shared across replicas. Before real traffic:
 - [x] **DB-back the in-memory stores** — cloud-sync blobs, entitlements,
   households, and auth sessions (refresh + magic links) are now mirrored to
   Postgres when `DATABASE_URL` is set (`storage/pg.ts`, wired in `render.yaml`)
-  and replayed on boot, so a restart/redeploy no longer drops them. Still open:
-  (a) **Plaid bank tokens stay in-memory on purpose** — persisting raw access
-  tokens needs an encrypted column / KMS first (see `plaid.ts`); (b) rate-limit
-  state is still per-instance (see distributed rate limiting above); (c) reads
-  are node-local, so cross-replica consistency needs async reads before scale-out.
+  and replayed on boot, so a restart/redeploy no longer drops them. **Plaid bank
+  tokens** are persisted only when `STORAGE_ENCRYPTION_KEY` is set, and then only
+  as an **AES-256-GCM sealed envelope** (`sealValue`/`openValue` in `storage/pg.ts`)
+  — never plaintext; without the key they stay in-memory. Still open: (a)
+  rate-limit state is still per-instance (see distributed rate limiting above);
+  (b) reads are node-local, so cross-replica consistency needs async reads before
+  scale-out; (c) the encryption key lives in env — graduate to a KMS/secrets
+  manager (see below) for envelope-key rotation.
 - [ ] **Full website CSP** — `script-src`/`style-src` are the only directives still
   unset. `connect-src/img-src/font-src/frame-src/form-action` are now pinned to
   `'self'` (the site has no external scripts, iframes, or cross-origin fetches).
