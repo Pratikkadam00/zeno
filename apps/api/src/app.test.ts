@@ -386,7 +386,7 @@ describe("api app", () => {
     });
     expect(create.statusCode).toBe(200);
     const household = create.json().data.household;
-    expect(household.shareCode).toMatch(/^[A-Z2-9]{6}$/);
+    expect(household.shareCode).toMatch(/^[A-Z2-9]{8}$/);
     expect(household.members).toHaveLength(1);
     // Owner id comes from the token, not the body.
     expect(household.ownerId).toBe(owner.accountId);
@@ -409,6 +409,49 @@ describe("api app", () => {
       payload: { shareCode: "ZZZZZZ", memberName: "X" }
     });
     expect(bad.statusCode).toBe(404);
+  });
+
+  it("caps households per owner (409 past the limit)", async () => {
+    const app = await buildApp();
+    const owner = await tokenFor(app, "hh-cap@zeno.test");
+    for (let i = 0; i < 5; i += 1) {
+      const ok = await app.inject({
+        method: "POST",
+        url: "/api/v1/family/create",
+        headers: authH(owner.token),
+        payload: { ownerName: `H${i}` }
+      });
+      expect(ok.statusCode).toBe(200);
+    }
+    const overflow = await app.inject({
+      method: "POST",
+      url: "/api/v1/family/create",
+      headers: authH(owner.token),
+      payload: { ownerName: "H6" }
+    });
+    expect(overflow.statusCode).toBe(409);
+    expect(overflow.json().error.code).toBe("CONFLICT");
+  });
+
+  it("rejects a sync push whose vectorClock value exceeds the magnitude cap", async () => {
+    const app = await buildApp();
+    const { token } = await tokenFor(app, "vc-cap@zeno.test");
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/sync/push",
+      headers: authH(token),
+      payload: {
+        encryptedChanges: [{
+          entityType: "subscription",
+          entityId: "s1",
+          operation: "update",
+          encryptedPayload: "cipher",
+          vectorClock: { deviceA: Number.MAX_SAFE_INTEGER }
+        }]
+      }
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.code).toBe("BAD_REQUEST");
   });
 
   it("forbids reading a household you do not belong to (403), and 401 without a token", async () => {

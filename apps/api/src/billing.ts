@@ -26,7 +26,19 @@ const FAMILY_IDS = ["family", "zeno_family"];
 // Latest known entitlement per app user, updated by webhooks (read as fast path).
 // Mirrored to Postgres when DATABASE_URL is set so a restart doesn't force every
 // client to re-fetch from RevenueCat before its plan is recognized again.
-const cache = new Map<string, Entitlement>();
+//
+// Each entry carries the time it was cached. After ENTITLEMENT_TTL_MS the entry
+// is treated as stale and getCachedEntitlement returns undefined, forcing the
+// caller to re-verify against RevenueCat's REST API. This bounds the damage of a
+// replayed/forged webhook (a forged "grant" self-heals within the TTL) and stops
+// a missed downgrade webhook from granting Pro indefinitely.
+const ENTITLEMENT_TTL_MS = 10 * 60 * 1000;
+const cache = new Map<string, { entitlement: Entitlement; cachedAtMs: number }>();
+
+function cacheEntitlement(appUserId: string, entitlement: Entitlement, cachedAtMs = Date.now()): void {
+  cache.set(appUserId, { entitlement, cachedAtMs });
+  kvPersist("billing", appUserId, entitlement);
+}
 
 export function billingConfigured(): boolean {
   return Boolean(process.env.REVENUECAT_SECRET_KEY);
@@ -77,13 +89,15 @@ export async function fetchEntitlement(appUserId: string): Promise<Entitlement> 
   };
   const resolved = planFromEntitlements(json.subscriber?.entitlements ?? {});
   const entitlement: Entitlement = { ...resolved, source: "revenuecat" };
-  cache.set(appUserId, entitlement);
-  kvPersist("billing", appUserId, entitlement);
+  cacheEntitlement(appUserId, entitlement);
   return entitlement;
 }
 
 export function getCachedEntitlement(appUserId: string): Entitlement | undefined {
-  return cache.get(appUserId);
+  const entry = cache.get(appUserId);
+  if (!entry) return undefined;
+  if (Date.now() - entry.cachedAtMs > ENTITLEMENT_TTL_MS) return undefined; // stale → re-verify
+  return entry.entitlement;
 }
 
 // Apply a RevenueCat webhook event to the cache (call only after auth check).
@@ -104,8 +118,7 @@ export function applyWebhookEvent(body: unknown): void {
     else if (ids.some((id) => PRO_IDS.includes(id))) { plan = "pro"; active = true; }
   }
   const entitlement: Entitlement = { plan, active, expiresAt, source: "cache" };
-  cache.set(event.app_user_id, entitlement);
-  kvPersist("billing", event.app_user_id, entitlement);
+  cacheEntitlement(event.app_user_id, entitlement);
 }
 
 // Test/maintenance helper.
@@ -115,5 +128,7 @@ export function clearEntitlementCache(): void {
 }
 
 registerHydrator("billing", (entries: StoredEntry[]) => {
-  for (const { key, value } of entries) cache.set(key, value as Entitlement);
+  // Hydrated entries are treated as just-cached; the TTL re-verifies them against
+  // RevenueCat shortly after boot rather than trusting a persisted grant forever.
+  for (const { key, value } of entries) cache.set(key, { entitlement: value as Entitlement, cachedAtMs: Date.now() });
 });

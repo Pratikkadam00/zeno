@@ -1,10 +1,9 @@
-import * as LocalAuthentication from "expo-local-authentication";
 import * as Linking from "expo-linking";
 import { router, Stack, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { AppState, Platform, Text, View, type AppStateStatus } from "react-native";
+import { useEffect, useMemo, useRef } from "react";
+import { AppState, Text, View, type AppStateStatus } from "react-native";
 import { useAuthStore } from "../src/auth/authStore";
 import { checkStatus, identifyRevenueCatUser, initRevenueCat, resetRevenueCatUser } from "../src/billing/revenueCat";
 import { BudgetStoreProvider } from "../src/data/budget-store";
@@ -13,6 +12,8 @@ import { cleanupNotificationHandlers, setupNotificationHandlers } from "../src/n
 import { registerForPushNotifications, rescheduleAllNotifications } from "../src/notifications/notificationService";
 import { refreshWidgetSnapshot } from "../src/widgets/widgetBridge";
 import { useZenoFonts } from "../src/theme/fonts";
+import { LockOverlay } from "../src/security/LockOverlay";
+import { useLockStore } from "../src/security/lock-store";
 import { ZenoThemeProvider, useZenoTheme } from "../src/theme/theme-provider";
 
 // Hold the native splash until the Zeno typefaces are ready.
@@ -50,16 +51,17 @@ function RootStack() {
   const { subscriptions, notificationSettings, quietHours, widgetSnapshot, hydrated, runCancellationVerification } = useSubscriptionStore();
   const segments = useSegments();
   const appState = useRef<AppStateStatus>(AppState.currentState);
-  const biometricInFlight = useRef(false);
   const {
     status,
     isAuthenticated,
     accountId,
     hydrate,
-    logout,
     setPlan,
     verifyMagicLink
   } = useAuthStore();
+  const lockEngaged = useLockStore((s) => s.locked);
+  const hydrateLock = useLockStore((s) => s.hydrate);
+  const lockNow = useLockStore((s) => s.lockNow);
   const notificationSubscriptions = useMemo(() => subscriptions
     .filter((subscription) => subscription.status === "active" && subscription.nextRenewalDate)
     .map((subscription) => ({
@@ -69,38 +71,6 @@ function RootStack() {
       nextRenewalDate: subscription.nextRenewalDate ?? "",
       isTrial: subscription.billingCycle === "trial"
     })), [subscriptions]);
-
-  const requireBiometricUnlock = useCallback(async () => {
-    if (Platform.OS === "web" || biometricInFlight.current || !useAuthStore.getState().isAuthenticated) {
-      return;
-    }
-
-    biometricInFlight.current = true;
-    try {
-      const [hasHardware, isEnrolled] = await Promise.all([
-        LocalAuthentication.hasHardwareAsync(),
-        LocalAuthentication.isEnrolledAsync()
-      ]);
-
-      if (!hasHardware || !isEnrolled) {
-        return;
-      }
-
-      const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: "Unlock Zeno",
-        cancelLabel: "Lock",
-        fallbackLabel: "Use device passcode",
-        disableDeviceFallback: false
-      });
-
-      if (!result.success) {
-        await logout();
-        router.replace("/login");
-      }
-    } finally {
-      biometricInFlight.current = false;
-    }
-  }, [logout]);
 
   useEffect(() => {
     void hydrate();
@@ -186,7 +156,8 @@ function RootStack() {
     }
 
     void registerForPushNotifications();
-    void requireBiometricUnlock();
+    // Load the app-lock config; if a PIN is set this engages the lock overlay.
+    void hydrateLock();
 
     // Wait for the store to hydrate from SQLite before (re)scheduling, otherwise
     // we'd cancel all reminders and reschedule from seed data with the wrong
@@ -201,13 +172,14 @@ function RootStack() {
       appState.current = nextState;
 
       if (wasBackgrounded && nextState === "active" && useAuthStore.getState().isAuthenticated) {
-        void requireBiometricUnlock();
+        // Re-engage the lock every time the app returns to the foreground.
+        lockNow();
         void rescheduleAllNotifications(notificationSubscriptions, notificationSettings, quietHours);
       }
     });
 
     return () => subscription.remove();
-  }, [isAuthenticated, hydrated, notificationSubscriptions, notificationSettings, quietHours, widgetSnapshot, requireBiometricUnlock]);
+  }, [isAuthenticated, hydrated, notificationSubscriptions, notificationSettings, quietHours, widgetSnapshot, hydrateLock, lockNow]);
 
   if (status === "loading") {
     return (
@@ -245,6 +217,7 @@ function RootStack() {
             no longer linked from any consumer surface. */}
         <Stack.Screen name="backend" options={{ title: "Backend" }} />
         <Stack.Screen name="settings" options={{ title: "Settings" }} />
+        <Stack.Screen name="security" options={{ title: "Security" }} />
         <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
         <Stack.Screen name="budget" options={{ title: "Budget" }} />
         <Stack.Screen name="budget-recap" options={{ title: "Recap", presentation: "modal" }} />
@@ -253,6 +226,7 @@ function RootStack() {
         <Stack.Screen name="subscription/[id]" options={{ title: "Subscription" }} />
         <Stack.Screen name="subscription/cancel/[id]" options={{ title: "Cancel Subscription" }} />
       </Stack>
+      {isAuthenticated && lockEngaged ? <LockOverlay /> : null}
     </>
   );
 }

@@ -45,8 +45,10 @@ export default function LoginScreen() {
   } = useAuthStore();
 
   const [email, setEmail] = useState("");
-  const [demoEmail, setDemoEmail] = useState("demo@zeno.local");
-  const [demoPassword, setDemoPassword] = useState("Zeno-Demo-2026!");
+  // Only pre-fill the demo credentials in development builds; in production the
+  // server disables demo login anyway, and we don't ship the values in the bundle UI.
+  const [demoEmail, setDemoEmail] = useState(__DEV__ ? "demo@zeno.local" : "");
+  const [demoPassword, setDemoPassword] = useState(__DEV__ ? "Zeno-Demo-2026!" : "");
   const [message, setMessage] = useState<string | null>(null);
   const [activeProvider, setActiveProvider] = useState<"magic" | "demo" | "apple" | "google" | null>(null);
   // Age + consent gate: must be checked before any sign-in method is enabled.

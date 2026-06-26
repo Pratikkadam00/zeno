@@ -41,6 +41,12 @@ export async function setPin(pin: string): Promise<void> {
   await savePinHash(`${pinHashVersion}$${pinHashIterations}$${salt}$${hash}`);
 }
 
+// The app lock is "on" exactly when a PIN has been set — so biometric unlock
+// always has a working fallback and never fails open.
+export async function hasPin(): Promise<boolean> {
+  return (await loadPinHash()) !== null;
+}
+
 export async function verifyPin(pin: string): Promise<boolean> {
   const stored = await loadPinHash();
   if (!stored) {

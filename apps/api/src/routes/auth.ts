@@ -145,6 +145,31 @@ registerHydrator("auth_legacy", (entries: StoredEntry[]) => {
   }
 });
 
+// Periodic GC of expired auth records so the in-memory maps (and their persisted
+// rows) don't accumulate indefinitely. Expired entries are already rejected on
+// use; this just reclaims them. Driven by an interval in server.ts.
+export function sweepExpiredAuth(): void {
+  const now = Date.now();
+  for (const [hash, record] of magicLinksByHash) {
+    if (record.expiresAt <= now) {
+      magicLinksByHash.delete(hash);
+      kvDelete("auth_magic", hash);
+    }
+  }
+  for (const [email, record] of legacyCodesByEmail) {
+    if (record.expiresAt <= now) {
+      legacyCodesByEmail.delete(email);
+      kvDelete("auth_legacy", email);
+    }
+  }
+  for (const [hash, record] of refreshSessionsByHash) {
+    if (record.expiresAt <= now) {
+      refreshSessionsByHash.delete(hash);
+      kvDelete("auth_refresh", hash);
+    }
+  }
+}
+
 // Auth endpoints get much stricter limits than the global bucket: magic-link
 // codes are 6 digits, so verification attempts must be expensive to repeat.
 const requestLimit = { config: { rateLimit: { max: 5, timeWindow: "1 minute" } } };
@@ -262,7 +287,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     return ok(issueSession(accountIdForEmail(expectedEmail), expectedEmail, "demo"), request.id);
   });
 
-  app.post("/auth/logout", async (request) => {
+  app.post("/auth/logout", requestLimit, async (request) => {
     const parsed = logoutSchema.safeParse(request.body ?? {});
     if (parsed.success && parsed.data.refreshToken) {
       const hash = hashToken(parsed.data.refreshToken);
@@ -375,7 +400,10 @@ function consumeMagicToken(token: string): MagicLinkRecord | null {
 function consumeLegacyCode(email: string, code: string): MagicLinkRecord | null {
   const normalized = normalizeEmail(email);
   const record = legacyCodesByEmail.get(normalized);
-  if (!record || record.code !== code || record.expiresAt <= Date.now()) {
+  // Constant-time code comparison (consistent with the demo-password check) so a
+  // 6-digit code can't be narrowed by timing. (Delete-on-mismatch below already
+  // limits this to one guess per code, but keep the compare uniform.)
+  if (!record || !constantTimeEqual(code, record.code) || record.expiresAt <= Date.now()) {
     legacyCodesByEmail.delete(normalized);
     kvDelete("auth_legacy", normalized);
     return null;

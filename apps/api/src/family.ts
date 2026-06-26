@@ -20,21 +20,43 @@ export type Household = {
 const households = new Map<string, Household>();
 const codeIndex = new Map<string, string>();
 
-// Unambiguous alphabet (no 0/O/1/I/L) for a friendly 6-char code.
+// Unambiguous alphabet (no 0/O/1/I/L) for a friendly share code. 8 chars over a
+// 30-symbol alphabet ≈ 6.5e11 combinations — far beyond brute-force at the join
+// route's rate limit.
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const CODE_LENGTH = 8;
+// Largest multiple of the alphabet length that fits in a byte; bytes at/above it
+// are rejected so `% length` introduces no modulo bias.
+const CODE_BYTE_CEILING = 256 - (256 % CODE_ALPHABET.length);
+
+// Cap households per owner so an authenticated client can't grow the store
+// without bound by spamming create.
+const MAX_HOUSEHOLDS_PER_OWNER = 5;
 
 function genId(prefix: string): string {
   return `${prefix}_${randomBytes(8).toString("hex")}`;
 }
 
 function genCode(): string {
-  const bytes = randomBytes(6);
   let code = "";
-  for (let i = 0; i < 6; i += 1) code += CODE_ALPHABET[bytes[i]! % CODE_ALPHABET.length];
+  while (code.length < CODE_LENGTH) {
+    for (const byte of randomBytes(CODE_LENGTH * 2)) {
+      if (byte < CODE_BYTE_CEILING) {
+        code += CODE_ALPHABET[byte % CODE_ALPHABET.length];
+        if (code.length === CODE_LENGTH) break;
+      }
+    }
+  }
   return code;
 }
 
-export function createHousehold(ownerId: string, ownerName: string, monthlySpendMinor = 0): Household {
+export function createHousehold(ownerId: string, ownerName: string, monthlySpendMinor = 0): Household | null {
+  let owned = 0;
+  for (const household of households.values()) {
+    if (household.ownerId === ownerId) owned += 1;
+  }
+  if (owned >= MAX_HOUSEHOLDS_PER_OWNER) return null;
+
   let shareCode = genCode();
   while (codeIndex.has(shareCode)) shareCode = genCode();
   const household: Household = {

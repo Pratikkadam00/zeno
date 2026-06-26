@@ -25,6 +25,18 @@ const MAX_SERVICES_LIMIT = 100;
 // that are expensive (call paid upstreams like Groq/Plaid) or abuse-prone.
 const limit = (max: number) => ({ config: { rateLimit: { max, timeWindow: "1 minute" } } });
 
+// How many proxy hops to trust for client-IP resolution (rate-limit keying).
+// A number is safe (trusts exactly N upstream hops); `true` would trust any
+// X-Forwarded-For and is intentionally avoided.
+function resolveTrustProxy(): number | boolean {
+  const raw = process.env.TRUST_PROXY_HOPS;
+  if (raw !== undefined) {
+    const hops = Number.parseInt(raw, 10);
+    if (Number.isInteger(hops) && hops >= 0) return hops;
+  }
+  return process.env.NODE_ENV === "production" ? 1 : false;
+}
+
 // Identity (ownerId / memberId) is taken from the verified token, NOT the body.
 const familyCreateSchema = z.object({
   ownerName: z.string().min(1).max(80),
@@ -68,7 +80,13 @@ const plaidExchangeSchema = z.object({ publicToken: z.string().min(1) });
 export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({
     logger: options.logger ?? false,
-    genReqId: () => randomUUID()
+    genReqId: () => randomUUID(),
+    // Behind a hosting proxy (Render) the socket peer is the load balancer, so the
+    // rate limiter must read the real client IP from X-Forwarded-For. Trust a
+    // BOUNDED hop count — never `true`, which would let a client spoof XFF and
+    // rotate its own limiter key. Default: 1 proxy hop in production, no trust
+    // locally/in tests. Override with TRUST_PROXY_HOPS.
+    trustProxy: resolveTrustProxy()
   });
   // Security headers (HSTS, nosniff, frame-deny, referrer policy, etc.). This is
   // a JSON API with no first-party HTML, so a strict default CSP is fine.
@@ -240,6 +258,10 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     }
     // Owner is the authenticated caller — never a client-supplied id.
     const household = createHousehold(request.userId!, parsed.data.ownerName, parsed.data.monthlySpendMinor ?? 0);
+    if (!household) {
+      reply.code(409);
+      return fail("CONFLICT", "Household limit reached for this account.", request.id);
+    }
     return ok({ household }, request.id);
   });
 

@@ -61,6 +61,10 @@ export async function loadPinHash(): Promise<string | null> {
   return readItem(keys.pinHash, { sensitive: true });
 }
 
+export async function clearPinHash(): Promise<void> {
+  await deleteItem(keys.pinHash, { sensitive: true });
+}
+
 export async function saveLockStateValue(serialized: string): Promise<void> {
   await writeItem(keys.lockState, serialized, {
     sensitive: true,

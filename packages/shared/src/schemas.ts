@@ -84,7 +84,10 @@ export const syncPushSchema = z.object({
     entityId: z.string().min(1).max(128),
     operation: z.enum(["create", "update", "delete"]),
     encryptedPayload: z.string().max(8192),
-    vectorClock: z.record(z.string().max(64), z.number().int())
+    // Values are bounded as well as count: an unbounded magnitude let a client
+    // pin an entity at a near-infinite version that legitimate later writes could
+    // never overtake under last-write-wins (a self-scoped data-integrity DoS).
+    vectorClock: z.record(z.string().max(64), z.number().int().min(0).max(2 ** 40))
       .refine((clock) => Object.keys(clock).length <= 64, { message: "vectorClock has too many entries" })
   })).max(100)
 });

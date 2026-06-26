@@ -2,6 +2,7 @@ import { useMemo, useState, type ComponentType } from "react";
 import { useAuthStore } from "../src/auth/authStore";
 import { useBudgetStore } from "../src/data/budget-store";
 import { useSubscriptionStore } from "../src/data/subscription-store";
+import { useLockStore } from "../src/security/lock-store";
 import { spacing } from "../src/theme/spacing";
 import { type as typography } from "../src/theme/typography";
 import { fonts, palette } from "../src/theme/zeno";
@@ -81,6 +82,7 @@ export default function SettingsScreen() {
   }));
   const { subscriptions, clearAllData, quietHours, setQuietHours } = useSubscriptionStore();
   const { reset: resetBudget } = useBudgetStore();
+  const lockEnabled = useLockStore((s) => s.enabled);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const quietWindowLabel = `${formatHour(quietHours.startHour)} – ${formatHour(quietHours.endHour)}`;
@@ -137,7 +139,7 @@ export default function SettingsScreen() {
       rows: [
         { id: "profile", Icon: User, iconBg: palette.category.blue, label: "Profile", value: userEmail.length > 22 ? `${userEmail.slice(0, 19)}...` : userEmail, chevron: true, onPress: () => {} },
         { id: "plan", Icon: CreditCard, iconBg: palette.category.violet, label: "Plan & billing", value: planLabel, chevron: true, onPress: () => router.push("/paywall") },
-        { id: "security", Icon: ShieldCheck, iconBg: palette.category.green, label: "Security", sub: "Face ID · PIN fallback", chevron: true, onPress: () => {} }
+        { id: "security", Icon: ShieldCheck, iconBg: palette.category.green, label: "Security", sub: "App lock · Face ID + PIN", value: lockEnabled ? "On" : "Off", chevron: true, onPress: () => router.push("/security" as never) }
       ]
     },
     {
