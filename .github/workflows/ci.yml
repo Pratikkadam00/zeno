@@ -28,3 +28,8 @@ jobs:
 
       - name: Test
         run: npm test
+
+      # Surface and gate on high/critical dependency advisories. Moderate/low
+      # (e.g. current Expo transitive advisories) are reported but don't fail.
+      - name: Dependency audit
+        run: npm audit --audit-level=high

@@ -20,7 +20,6 @@ import {
   Moon,
   MoonStar,
   ShieldCheck,
-  Smartphone,
   Star,
   Trash2,
   User
@@ -137,7 +136,7 @@ export default function SettingsScreen() {
     {
       title: "Account",
       rows: [
-        { id: "profile", Icon: User, iconBg: palette.category.blue, label: "Profile", value: userEmail.length > 22 ? `${userEmail.slice(0, 19)}...` : userEmail, chevron: true, onPress: () => {} },
+        { id: "profile", Icon: User, iconBg: palette.category.blue, label: "Profile", value: userEmail.length > 22 ? `${userEmail.slice(0, 19)}...` : userEmail, chevron: true, onPress: () => router.push("/profile" as never) },
         { id: "plan", Icon: CreditCard, iconBg: palette.category.violet, label: "Plan & billing", value: planLabel, chevron: true, onPress: () => router.push("/paywall") },
         { id: "security", Icon: ShieldCheck, iconBg: palette.category.green, label: "Security", sub: "App lock · Face ID + PIN", value: lockEnabled ? "On" : "Off", chevron: true, onPress: () => router.push("/security" as never) }
       ]
@@ -145,8 +144,7 @@ export default function SettingsScreen() {
     {
       title: "App",
       rows: [
-        { id: "dark", Icon: Moon, iconBg: palette.ink[700], label: "Dark mode", isSwitch: true, switchValue: scheme === "dark", onToggle: () => toggleScheme() },
-        { id: "app-icon", Icon: Smartphone, iconBg: palette.category.amber, label: "App icon", value: "Default", chevron: true, onPress: () => {} }
+        { id: "dark", Icon: Moon, iconBg: palette.ink[700], label: "Dark mode", isSwitch: true, switchValue: scheme === "dark", onToggle: () => toggleScheme() }
       ]
     },
     {
