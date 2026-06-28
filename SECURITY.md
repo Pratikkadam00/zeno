@@ -137,7 +137,10 @@ instance/cold-start and isn't shared across replicas. Before real traffic:
 - [ ] **Rotate** any key that has ever been shared in plaintext (e.g. chat/logs).
 - [ ] **Dependency audit** in CI (`npm audit` / Dependabot) and pin/update.
 - [ ] **Secrets manager** for production (not a plaintext `.env` on the box).
-- [ ] **Monitoring/alerting** on 401/429 spikes and error rates.
+- [~] **Monitoring/alerting** — baseline in place: structured request/error logging
+  (Fastify) and an optional 5xx error-alert webhook (`MONITORING_WEBHOOK_URL`,
+  route + message + request id only, no PII). Still to add at deploy time: metrics/
+  dashboards and 401/429-spike alerts (platform or a hosted APM).
 - [ ] **Pen-test / security review** before public launch.
 
 ---

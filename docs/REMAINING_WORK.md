@@ -116,7 +116,9 @@ RevenueCat** — Zeno never touches a card. ([revenueCat.ts](../apps/mobile/src/
       on 500+ SEO pages) for defense against a non-existent XSS sink. Verified header serves on
       static + SSG pages, both 200, SSG preserved.
 - [ ] **Secrets manager / KMS** for production + **encryption-key rotation**.
-- [ ] **Monitoring/alerting** on 401/429 spikes and error rates.
+- [~] **Monitoring/alerting** — baseline done: structured logs + optional 5xx error
+      webhook (`MONITORING_WEBHOOK_URL`, no PII). Metrics/dashboards + 401/429-spike alerts
+      remain (platform/APM at deploy time).
 - [ ] **Key rotation** for anything ever shared in plaintext.
 - [ ] **Mobile cert/key pinning** (optional defense-in-depth).
 - [ ] **Pen-test / external security review** before public launch.

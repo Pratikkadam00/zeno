@@ -87,6 +87,9 @@ services:
       # needed when scaling past one instance; leave unset for the single free node.
       - key: REDIS_URL
         sync: false
+      # Optional: webhook for 5xx error alerts (route + message + request id only).
+      - key: MONITORING_WEBHOOK_URL
+        sync: false
       # Social login audiences (server verifies tokens against these):
       - key: GOOGLE_WEB_CLIENT_ID
         sync: false

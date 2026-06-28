@@ -3,7 +3,7 @@ import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import { findServiceBySlug, searchServices, services } from "@zeno/service-catalog";
 import { createBusinessSummary, createMockOpenBankingAdapter, createPublicApiKeyPreview, demoBusinessWorkspace, fail, listPartnerIntegrations, ok, syncPullSchema, syncPushSchema, type OpenBankingProvider, type PublicApiKey } from "@zeno/shared";
-import Fastify, { type FastifyInstance } from "fastify";
+import Fastify, { type FastifyInstance, type FastifyRequest } from "fastify";
 import Redis from "ioredis";
 import { randomUUID } from "node:crypto";
 import { z, ZodError } from "zod";
@@ -41,6 +41,28 @@ function resolveTrustProxy(): number | boolean {
 // Build the shared rate-limit backing store from REDIS_URL, or null to use the
 // in-process default. Tuned to fail fast (short timeout, 1 retry, no offline
 // queue) so a Redis outage degrades quickly under skipOnError rather than hanging.
+// Forward 5xx server errors to an optional alerting webhook (Slack/Discord/any
+// collector). Fire-and-forget and inert without MONITORING_WEBHOOK_URL. Sends
+// only the route PATTERN + message + request id — never the body, query, or
+// headers — so no PII/secrets leak into the alert.
+function reportServerError(error: unknown, request: FastifyRequest): void {
+  const url = process.env.MONITORING_WEBHOOK_URL;
+  if (!url) return;
+  const payload = {
+    service: "zeno-api",
+    level: "error",
+    message: error instanceof Error ? error.message : String(error),
+    method: request.method,
+    route: request.routeOptions?.url ?? "unknown",
+    requestId: request.id
+  };
+  void fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  }).catch(() => {});
+}
+
 function createRateLimitRedis(): Redis | null {
   const url = process.env.REDIS_URL;
   if (!url) return null;
@@ -512,6 +534,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       return;
     }
     request.log.error(error);
+    reportServerError(error, request);
     reply.code(500).send(fail("INTERNAL", "Unexpected server error.", request.id));
   });
 
