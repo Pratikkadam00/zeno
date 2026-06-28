@@ -125,11 +125,15 @@ instance/cold-start and isn't shared across replicas. Before real traffic:
   (b) reads are node-local, so cross-replica consistency needs async reads before
   scale-out; (c) the encryption key lives in env — graduate to a KMS/secrets
   manager (see below) for envelope-key rotation.
-- [ ] **Full website CSP** — `script-src`/`style-src` are the only directives still
-  unset. `connect-src/img-src/font-src/frame-src/form-action` are now pinned to
-  `'self'` (the site has no external scripts, iframes, or cross-origin fetches).
-  The remaining step is nonce-based `script-src`/`style-src` (Next inline hydration
-  + Motion inline styles need per-request nonces), validated against rendered pages.
+- [x] **Full website CSP** — the site now ships a complete CSP (`next.config.ts`):
+  `default-src 'self'`, `script-src`/`style-src 'self' 'unsafe-inline'` (Next inline
+  hydration scripts + Motion inline style attributes), and `img/font/connect-src`,
+  `frame-src`, `object-src`, `base-uri`, `form-action`, `frame-ancestors` all locked.
+  No `'unsafe-eval'`. **Nonce + `'strict-dynamic'` was tried and rejected:** verified
+  locally it blocks the statically-prerendered pages (no per-request nonce on static
+  HTML) and making it work forces site-wide dynamic rendering — killing SSG on 500+
+  cancel-guide SEO pages — for defense against an XSS sink the audit confirmed doesn't
+  exist. Revisit only if a user-content sink is introduced.
 - [ ] **Rotate** any key that has ever been shared in plaintext (e.g. chat/logs).
 - [ ] **Dependency audit** in CI (`npm audit` / Dependabot) and pin/update.
 - [ ] **Secrets manager** for production (not a plaintext `.env` on the box).

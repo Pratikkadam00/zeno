@@ -1,30 +1,31 @@
 import type { NextConfig } from "next";
 
-// Security headers applied to every response.
+// Security headers applied to every response, including a complete Content-
+// Security-Policy. Every resource type is policed: default-src 'self' is the
+// fallback, and script/style allow 'unsafe-inline' because (a) Next emits inline
+// hydration scripts and (b) Motion sets inline style ATTRIBUTES — neither of
+// which a static header can nonce. This still blocks the high-value vectors:
+// cross-origin script/frame/connect/img loading, base-tag and form-action
+// hijacking, and framing. No 'unsafe-eval'.
 //
-// The CSP below pins every resource type the site actually uses to its real
-// origin: this app has no <iframe>, no external <script>, no client-side
-// cross-origin fetch, and self-hosts its fonts via next/font — so frame-src,
-// connect-src, img-src, font-src and form-action can all be locked to 'self'
-// (img also allows data:/blob: for inline SVG gradients). That blocks the
-// high-value injection vectors — form hijacking, exfiltration beacons, framed
-// phishing — without any live testing.
-//
-// script-src / style-src are deliberately NOT set: Next.js emits inline
-// hydration scripts and Motion emits inline style attributes, so locking them
-// down needs nonce-based CSP (middleware-generated per request) validated
-// against the live rendered pages. Note we do NOT set default-src either — a
-// default-src would fall through to script/style and break hydration. Tracked
-// in SECURITY.md as the nonce follow-up.
+// We deliberately do NOT use nonce + 'strict-dynamic': verified locally that it
+// blocks the statically-prerendered pages' scripts (no per-request nonce on
+// static HTML), and making it work would force site-wide dynamic rendering —
+// killing SSG on the 500+ cancel-guide SEO pages — for defense against an XSS
+// sink the audit confirmed does not exist (no external scripts, no iframes, no
+// user-rendered HTML). Revisit if a user-content sink is ever introduced.
 const csp = [
-  "frame-ancestors 'none'",
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self'",
+  "connect-src 'self'",
   "frame-src 'none'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
-  "img-src 'self' data: blob:",
-  "font-src 'self'",
-  "connect-src 'self'",
+  "frame-ancestors 'none'",
   "upgrade-insecure-requests"
 ].join("; ");
 

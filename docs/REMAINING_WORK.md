@@ -109,7 +109,12 @@ RevenueCat** — Zeno never touches a card. ([revenueCat.ts](../apps/mobile/src/
 - [x] **Redis-backed rate limiter** (multi-instance) — ✅ code done. Activates when `REDIS_URL` is
       set (`createRateLimitRedis` in `app.ts`, `skipOnError` fail-open); inert otherwise. Provision a
       Redis instance + set `REDIS_URL` when scaling past one node. trustProxy already fixed.
-- [ ] **Web CSP nonce** for `script-src`/`style-src` (needs live testing; no current XSS sink).
+- [x] **Web CSP** — ✅ complete static CSP shipped (`default-src 'self'` + script/style
+      `'unsafe-inline'` for Next/Motion + all other directives locked, no `'unsafe-eval'`).
+      Nonce + `'strict-dynamic'` was built and **tested locally, then rejected**: it blocks
+      statically-prerendered scripts and would force site-wide dynamic rendering (killing SSG
+      on 500+ SEO pages) for defense against a non-existent XSS sink. Verified header serves on
+      static + SSG pages, both 200, SSG preserved.
 - [ ] **Secrets manager / KMS** for production + **encryption-key rotation**.
 - [ ] **Monitoring/alerting** on 401/429 spikes and error rates.
 - [ ] **Key rotation** for anything ever shared in plaintext.
