@@ -17,7 +17,8 @@
     "typecheck:refs": "tsc -b --pretty false",
     "lint": "npm run typecheck",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "smoke": "node scripts/smoke-api.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",

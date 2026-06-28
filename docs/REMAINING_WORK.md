@@ -39,17 +39,32 @@ item is called out as such.
 
 ---
 
-## Phase 2 — Backend provisioning & deploy — Owner: 🧑 (🤖 wrote the code/config)
-**Goal:** turn on durability + secrets in production.
-- [ ] Provision **Render Postgres** (re-sync the Blueprint, or add the DB + `DATABASE_URL`).
-- [ ] Set **`STORAGE_ENCRYPTION_KEY`** (32-byte hex) so Plaid tokens persist (AES-256-GCM); else
-      they stay in-memory by design.
-- [ ] Set production secrets in Render: `JWT_PRIVATE_KEY`/`JWT_PUBLIC_KEY`, `RESEND_API_KEY` +
-      `RESEND_FROM_EMAIL`, `REVENUECAT_SECRET_KEY` + `REVENUECAT_WEBHOOK_AUTH`, Google/Apple client IDs.
-- [ ] Set **`TRUST_PROXY_HOPS`** if Render uses more than 1 proxy hop (default 1 is correct for Render).
-- [ ] Verify boot: `/api/v1/health` 200, Postgres rehydrate log line appears.
+## Phase 2 — Backend provisioning & deploy — Owner: 🧑 (🤖 code/config DONE)
+**Goal:** turn on durability + secrets in production. **Code/config side is complete** — the
+Blueprint, persistence, encryption, a boot-log readiness line, and a smoke test are all in. What
+remains is dashboard actions only you can do.
 
-**Done when:** a redeploy no longer drops sessions/sync/entitlements; secrets are out of any `.env`.
+**Runbook (do in order, in the Render dashboard):**
+1. **Provision Postgres.** New → Blueprint → this repo (creates `zeno-db` + auto-wires
+   `DATABASE_URL`). For an existing service: add a free Postgres, then set `DATABASE_URL` from its
+   *Internal* connection string.
+2. **Generate + set `STORAGE_ENCRYPTION_KEY`** (enables encrypted Plaid-token persistence):
+   `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` → paste into Render.
+   Don't paste the key into chat. Without it, Plaid tokens stay in-memory by design.
+3. **Set the remaining `sync:false` secrets** (already listed in `render.yaml`): `JWT_PRIVATE_KEY`/
+   `JWT_PUBLIC_KEY` (RS256 PEM — already generated locally), `RESEND_API_KEY` + `RESEND_FROM_EMAIL`,
+   `REVENUECAT_SECRET_KEY` + `REVENUECAT_WEBHOOK_AUTH`, Google/Apple client IDs. (Plaid/Anthropic/Groq optional.)
+4. **`TRUST_PROXY_HOPS`** — leave unset (defaults to 1 in prod, correct for Render); set only if more hops.
+5. **Deploy** (autoDeploy on push, or manual).
+
+**Verify (no secrets needed):**
+- Render boot log shows: `[zeno] persistence=postgres token-encryption=on env=production`
+  and `[pg] storage ready — rehydrated N record(s)`.
+- `npm run smoke https://<your-api>` → all 4 checks pass (health 200, auth-guard 401, catalog 200).
+- Redeploy once and confirm you stay logged in (sessions/sync survived).
+
+**Done when:** the boot log shows `persistence=postgres`, smoke passes, and a redeploy no longer
+drops sessions/sync/entitlements; all secrets live in Render, not in any `.env`.
 
 ---
 

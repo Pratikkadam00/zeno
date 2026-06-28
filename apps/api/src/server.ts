@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { buildApp } from "./app";
 import { sweepExpiredAuth } from "./routes/auth";
-import { initStorage } from "./storage/pg";
+import { encryptionConfigured, initStorage, pgEnabled } from "./storage/pg";
 
 // PORT is injected by most hosts (Render, Railway, Fly, …); fall back to API_PORT
 // for local dev. Host must be 0.0.0.0 in the cloud (set API_HOST=0.0.0.0 there).
@@ -14,6 +14,14 @@ const app = await buildApp({ logger: true });
 // DB outage (logs and continues in-memory-only). buildApp() above has already
 // imported the route/store modules, so every hydrator is registered by now.
 await initStorage();
+
+// One-line readiness summary so the Render logs unambiguously confirm whether
+// provisioning took effect. No secrets — just modes.
+console.log(
+  `[zeno] persistence=${pgEnabled() ? "postgres" : "in-memory"} ` +
+  `token-encryption=${encryptionConfigured() ? "on" : "off"} ` +
+  `env=${process.env.NODE_ENV ?? "development"}`
+);
 
 // Reclaim expired magic links / refresh sessions every 10 minutes. unref() so the
 // timer never keeps the process alive on shutdown.
