@@ -23,18 +23,19 @@ item is called out as such.
 
 ---
 
-## Phase 1 — Code completion (the clean tasks I can do now) — Owner: 🤖
+## Phase 1 — Code completion (the clean tasks I can do now) — Owner: 🤖 ✅ DONE (84a0e33)
 **Goal:** close the real in-app gaps and CI hole. No external decisions needed.
-- [ ] **Profile screen.** `Settings → Profile` is a no-op with no screen ([settings.tsx:140](../apps/mobile/app/settings.tsx#L140)).
-      Build a profile screen (email, plan, sign-out, manage-account) and wire the row.
-- [ ] **App-icon screen.** `Settings → App icon` is a no-op ([settings.tsx:149](../apps/mobile/app/settings.tsx#L149)).
-      Either build an alternate-icon picker (`expo-alternate-app-icons`) or remove the row honestly.
-- [ ] **CI dependency audit.** `.github/workflows/ci.yml` runs typecheck + tests but no `npm audit`.
-      Add a non-blocking `npm audit --audit-level=high` step (Expo transitive advisories noted).
-- [ ] **On-device verification of the new app-lock** (set PIN, background/foreground, biometric,
-      lockout, sign-out). Code is typecheck-clean but unrun on a device.
+- [x] **Profile screen.** Built `app/profile.tsx` (email, plan + manage, app-lock status, account
+      id, privacy note, sign out); wired the Settings → Profile row; registered in the stack.
+- [x] **App-icon row.** Removed honestly — no alternate-icon assets exist, so the row advertised a
+      feature that did nothing. (Revisit as a real picker only once alternate icons are designed.)
+- [x] **CI dependency audit.** Added `npm audit --audit-level=high` to `.github/workflows/ci.yml`
+      (gates on high/critical; current Expo moderate/low advisories reported, not fatal).
+- [ ] **On-device verification of the app-lock + Profile** (set PIN, background/foreground,
+      biometric, lockout, sign-out; open Profile). Code is typecheck-clean but **unrun on a device**
+      — folded into Phase 5 device QA (deploy later).
 
-**Done when:** no dead Settings rows remain, CI surfaces vulns, app-lock verified on a device.
+**Verified:** full typecheck clean, 123/123 tests, audit gate exits 0. Device QA pending.
 
 ---
 
