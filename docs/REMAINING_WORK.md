@@ -106,8 +106,9 @@ RevenueCat** — Zeno never touches a card. ([revenueCat.ts](../apps/mobile/src/
 
 ## Phase 6 — Security & scale hardening (pre-traffic) — Owner: 👥
 **Goal:** the SECURITY.md "before scale" checklist. None block a soft launch; all matter before real traffic.
-- [ ] **Redis-backed rate limiter** (multi-instance). trustProxy is fixed; the store is still in-memory.
-      🤖 can scaffold behind a `REDIS_URL` flag (inert until set).
+- [x] **Redis-backed rate limiter** (multi-instance) — ✅ code done. Activates when `REDIS_URL` is
+      set (`createRateLimitRedis` in `app.ts`, `skipOnError` fail-open); inert otherwise. Provision a
+      Redis instance + set `REDIS_URL` when scaling past one node. trustProxy already fixed.
 - [ ] **Web CSP nonce** for `script-src`/`style-src` (needs live testing; no current XSS sink).
 - [ ] **Secrets manager / KMS** for production + **encryption-key rotation**.
 - [ ] **Monitoring/alerting** on 401/429 spikes and error rates.

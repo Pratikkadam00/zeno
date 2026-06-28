@@ -4,6 +4,7 @@ import rateLimit from "@fastify/rate-limit";
 import { findServiceBySlug, searchServices, services } from "@zeno/service-catalog";
 import { createBusinessSummary, createMockOpenBankingAdapter, createPublicApiKeyPreview, demoBusinessWorkspace, fail, listPartnerIntegrations, ok, syncPullSchema, syncPushSchema, type OpenBankingProvider, type PublicApiKey } from "@zeno/shared";
 import Fastify, { type FastifyInstance } from "fastify";
+import Redis from "ioredis";
 import { randomUUID } from "node:crypto";
 import { z, ZodError } from "zod";
 import { authRoutes } from "./routes/auth";
@@ -35,6 +36,21 @@ function resolveTrustProxy(): number | boolean {
     if (Number.isInteger(hops) && hops >= 0) return hops;
   }
   return process.env.NODE_ENV === "production" ? 1 : false;
+}
+
+// Build the shared rate-limit backing store from REDIS_URL, or null to use the
+// in-process default. Tuned to fail fast (short timeout, 1 retry, no offline
+// queue) so a Redis outage degrades quickly under skipOnError rather than hanging.
+function createRateLimitRedis(): Redis | null {
+  const url = process.env.REDIS_URL;
+  if (!url) return null;
+  const client = new Redis(url, {
+    connectTimeout: 500,
+    maxRetriesPerRequest: 1,
+    enableOfflineQueue: false
+  });
+  client.on("error", (err) => console.error("[redis] rate-limit store error:", err.message));
+  return client;
 }
 
 // Identity (ownerId / memberId) is taken from the verified token, NOT the body.
@@ -112,9 +128,15 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       callback(new Error("Origin not allowed."), false);
     }
   });
+  // Optional shared rate-limit store. With REDIS_URL set, counters live in Redis
+  // so the limit holds ACROSS instances (the in-memory default is per-process and
+  // multiplies with replicas). skipOnError keeps the API up if Redis blips — it
+  // degrades to allowing requests rather than 500ing them. Inert without REDIS_URL.
+  const rateLimitRedis = createRateLimitRedis();
   await app.register(rateLimit, {
     max: 100,
     timeWindow: "1 minute",
+    ...(rateLimitRedis ? { redis: rateLimitRedis, nameSpace: "zeno-rl:", skipOnError: true } : {}),
     // The plugin throws this return value; Fastify routes it through the error
     // handler below, which serializes `envelope` as the standard fail response.
     errorResponseBuilder: (request, context) => {

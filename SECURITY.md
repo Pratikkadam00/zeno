@@ -108,11 +108,12 @@ Real secrets (Groq/Anthropic, Plaid, RevenueCat *secret* key, Resend) live in th
 The in-code limits are correct but the **state is in-memory**, so it resets per
 instance/cold-start and isn't shared across replicas. Before real traffic:
 
-- [ ] **Distributed rate limiting** — the limiter now reads the real client IP via
-  a bounded `trustProxy` hop count (default 1 in prod; `TRUST_PROXY_HOPS` to
-  override) so it keys per-client behind Render instead of lumping everyone onto
-  the proxy IP. Still in-memory per instance — back `@fastify/rate-limit` with
-  Redis and/or a platform WAF (Cloudflare, Vercel, API gateway) before multi-node.
+- [x] **Distributed rate limiting** — the limiter reads the real client IP via a
+  bounded `trustProxy` hop count (default 1 in prod; `TRUST_PROXY_HOPS` to
+  override), and a **shared Redis store activates when `REDIS_URL` is set**
+  (`createRateLimitRedis` in `app.ts`, `skipOnError` so a Redis blip fails open
+  rather than 500ing). Inert without `REDIS_URL` (per-process default). Remaining
+  for hostile-traffic scale: a platform WAF (Cloudflare, Vercel, API gateway) in front.
 - [x] **DB-back the in-memory stores** — cloud-sync blobs, entitlements,
   households, and auth sessions (refresh + magic links) are now mirrored to
   Postgres when `DATABASE_URL` is set (`storage/pg.ts`, wired in `render.yaml`)
