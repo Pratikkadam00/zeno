@@ -13,7 +13,7 @@ const PIN_MAX = 8;
 // without enrolled biometrics is still protected by the PIN — never open.
 export function LockOverlay() {
   const { theme } = useZenoTheme();
-  const { biometricAvailable, tryBiometric, tryPin } = useLockStore();
+  const { ready, biometricAvailable, tryBiometric, tryPin } = useLockStore();
   const logout = useAuthStore((s) => s.logout);
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -21,11 +21,23 @@ export function LockOverlay() {
   const attemptedBiometric = useRef(false);
 
   useEffect(() => {
-    if (biometricAvailable && !attemptedBiometric.current) {
+    if (ready && biometricAvailable && !attemptedBiometric.current) {
       attemptedBiometric.current = true;
       void tryBiometric();
     }
-  }, [biometricAvailable, tryBiometric]);
+  }, [ready, biometricAvailable, tryBiometric]);
+
+  // Before the lock store has hydrated we don't yet know whether a PIN is set, so
+  // show a neutral opaque cover (never the app content, never the PIN prompt).
+  if (!ready) {
+    return (
+      <View style={[styles.fill, styles.center, { backgroundColor: theme.background }]}>
+        <View style={[styles.badge, { backgroundColor: theme.primarySurface }]}>
+          <ShieldCheck size={28} color={theme.primary} strokeWidth={2.4} />
+        </View>
+      </View>
+    );
+  }
 
   const submit = async (value: string) => {
     if (busy || value.length < 4) return;

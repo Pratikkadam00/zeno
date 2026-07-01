@@ -36,8 +36,11 @@ const ENTITLEMENT_TTL_MS = 10 * 60 * 1000;
 const cache = new Map<string, { entitlement: Entitlement; cachedAtMs: number }>();
 
 function cacheEntitlement(appUserId: string, entitlement: Entitlement, cachedAtMs = Date.now()): void {
-  cache.set(appUserId, { entitlement, cachedAtMs });
-  kvPersist("billing", appUserId, entitlement);
+  const entry = { entitlement, cachedAtMs };
+  cache.set(appUserId, entry);
+  // Persist the cache time too, so the TTL is measured from the real write rather
+  // than reset to "fresh" on every restart.
+  kvPersist("billing", appUserId, entry);
 }
 
 export function billingConfigured(): boolean {
@@ -97,7 +100,13 @@ export function getCachedEntitlement(appUserId: string): Entitlement | undefined
   const entry = cache.get(appUserId);
   if (!entry) return undefined;
   if (Date.now() - entry.cachedAtMs > ENTITLEMENT_TTL_MS) return undefined; // stale → re-verify
-  return entry.entitlement;
+  const { entitlement } = entry;
+  // Never serve an active grant past its own expiry, even within the TTL window or
+  // just after a restart — a missed EXPIRATION webhook must not extend Pro/Family.
+  if (entitlement.active && entitlement.expiresAt !== null && Date.parse(entitlement.expiresAt) <= Date.now()) {
+    return undefined;
+  }
+  return entitlement;
 }
 
 // Apply a RevenueCat webhook event to the cache (call only after auth check).
@@ -128,7 +137,15 @@ export function clearEntitlementCache(): void {
 }
 
 registerHydrator("billing", (entries: StoredEntry[]) => {
-  // Hydrated entries are treated as just-cached; the TTL re-verifies them against
-  // RevenueCat shortly after boot rather than trusting a persisted grant forever.
-  for (const { key, value } of entries) cache.set(key, { entitlement: value as Entitlement, cachedAtMs: Date.now() });
+  for (const { key, value } of entries) {
+    // New rows are the { entitlement, cachedAtMs } wrapper; restore the real cache
+    // time so the TTL isn't reset by a restart. Tolerate an older bare-entitlement
+    // row by treating it as already stale (cachedAtMs 0) → re-verify on first read.
+    const wrapped = value as { entitlement?: Entitlement; cachedAtMs?: number };
+    if (wrapped && wrapped.entitlement) {
+      cache.set(key, { entitlement: wrapped.entitlement, cachedAtMs: typeof wrapped.cachedAtMs === "number" ? wrapped.cachedAtMs : 0 });
+    } else {
+      cache.set(key, { entitlement: value as Entitlement, cachedAtMs: 0 });
+    }
+  }
 });

@@ -635,8 +635,15 @@ async function verifyRemoteJwt(token: string, options: { audiences: string[]; is
     throw new Error("JWT must use RS256 and include a key id.");
   }
 
-  const jwks = await fetchJwks(options.jwksUrl);
-  const jwk = jwks.find((candidate) => candidate.kid === header.kid);
+  let jwks = await fetchJwks(options.jwksUrl);
+  let jwk = jwks.find((candidate) => candidate.kid === header.kid);
+  if (!jwk) {
+    // The provider may have just rotated signing keys; the cached set can be up to
+    // an hour stale. Bypass the cache once before rejecting, so freshly-rotated
+    // keys don't cause ~1h of spurious 401s on social login.
+    jwks = await fetchJwks(options.jwksUrl, true);
+    jwk = jwks.find((candidate) => candidate.kid === header.kid);
+  }
   if (!jwk) {
     throw new Error("JWT signing key was not found.");
   }
@@ -670,9 +677,9 @@ async function verifyRemoteJwt(token: string, options: { audiences: string[]; is
   };
 }
 
-async function fetchJwks(url: string): Promise<JsonWebKey[]> {
+async function fetchJwks(url: string, forceRefresh = false): Promise<JsonWebKey[]> {
   const cached = jwksCache.get(url);
-  if (cached && cached.expiresAt > Date.now()) {
+  if (!forceRefresh && cached && cached.expiresAt > Date.now()) {
     return cached.keys;
   }
 

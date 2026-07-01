@@ -14,6 +14,7 @@ import { refreshWidgetSnapshot } from "../src/widgets/widgetBridge";
 import { useZenoFonts } from "../src/theme/fonts";
 import { LockOverlay } from "../src/security/LockOverlay";
 import { useLockStore } from "../src/security/lock-store";
+import { isAuthVerifyLink } from "../src/utils/deep-link";
 import { ZenoThemeProvider, useZenoTheme } from "../src/theme/theme-provider";
 
 // Hold the native splash until the Zeno typefaces are ready.
@@ -60,6 +61,7 @@ function RootStack() {
     verifyMagicLink
   } = useAuthStore();
   const lockEngaged = useLockStore((s) => s.locked);
+  const lockReady = useLockStore((s) => s.ready);
   const hydrateLock = useLockStore((s) => s.hydrate);
   const lockNow = useLockStore((s) => s.lockNow);
   const notificationSubscriptions = useMemo(() => subscriptions
@@ -112,8 +114,10 @@ function RootStack() {
 
       const parsed = Linking.parse(url);
       const token = readQueryParam(parsed.queryParams?.token);
-      const path = parsed.path?.replace(/^\/+/, "");
-      if (!token || path !== "auth/verify") {
+      // Match host+path segments: standalone parses zeno://auth/verify as
+      // host "auth" / path "verify", so a path-only check silently fails in
+      // production (works in Expo Go dev, which masked the break).
+      if (!token || !isAuthVerifyLink(parsed.hostname, parsed.path)) {
         return;
       }
 
@@ -227,7 +231,10 @@ function RootStack() {
         <Stack.Screen name="subscription/[id]" options={{ title: "Subscription" }} />
         <Stack.Screen name="subscription/cancel/[id]" options={{ title: "Cancel Subscription" }} />
       </Stack>
-      {isAuthenticated && lockEngaged ? <LockOverlay /> : null}
+      {/* Fail-closed: cover the app whenever the lock could apply. Until the lock
+          store has hydrated (ready) we don't yet know if a PIN is set, so we treat
+          "not ready" as locked to avoid flashing financial data on cold launch. */}
+      {isAuthenticated && (!lockReady || lockEngaged) ? <LockOverlay /> : null}
     </>
   );
 }

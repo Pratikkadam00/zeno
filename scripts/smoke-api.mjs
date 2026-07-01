@@ -12,7 +12,12 @@
 // It cannot read DATABASE_URL/persistence mode from outside — confirm that from
 // the Render boot log line: "[zeno] persistence=postgres token-encryption=on".
 
-const base = (process.argv[2] ?? process.env.PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8787").replace(/\/+$/, "");
+// Accept a bare origin OR a full base that already carries the /api/v1 suffix
+// (PUBLIC_API_BASE_URL is defined with /api/v1 in eas.json/.env.example), since
+// the checks below append their own /api/v1 paths.
+const base = (process.argv[2] ?? process.env.PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8787")
+  .replace(/\/+$/, "")
+  .replace(/\/api\/v1$/, "");
 
 const checks = [
   { name: "GET /health → 200", path: "/health", expect: 200 },
