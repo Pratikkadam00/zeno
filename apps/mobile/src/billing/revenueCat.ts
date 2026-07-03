@@ -197,7 +197,7 @@ function matchesPackage(candidate: PurchasesPackage, productId: string): boolean
   return candidate.identifier === productId || candidate.product.identifier === productId;
 }
 
-function getPlanFromCustomerInfo(customerInfo: CustomerInfo): BillingPlan {
+export function getPlanFromCustomerInfo(customerInfo: CustomerInfo): BillingPlan {
   const activeEntitlements = customerInfo.entitlements.active;
   if (familyEntitlementIds.some((id) => activeEntitlements[id]?.isActive) || hasActiveProduct(customerInfo, revenueCatProductIds.familyMonthly)) {
     return "family";

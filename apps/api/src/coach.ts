@@ -124,7 +124,7 @@ function formatMoney(minor: number, currency: string): string {
 
 // Neutralize fence-breakout attempts: strip the sentinel tags if a user manages
 // to embed them in a subscription name or question.
-function sanitize(text: string): string {
+export function sanitize(text: string): string {
   return text.replace(/<\/?user_data>/gi, "");
 }
 
@@ -242,7 +242,7 @@ export async function generateCoaching(input: CoachRequest): Promise<CoachResult
 
 // The model is asked for raw JSON, but tolerate stray prose or ```json fences by
 // parsing the outermost { … } slice.
-function extractJson(text: string): { outOfScope?: boolean; summary?: string; recommendations?: CoachRecommendation[] } {
+export function extractJson(text: string): { outOfScope?: boolean; summary?: string; recommendations?: CoachRecommendation[] } {
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
   if (start === -1 || end <= start) {

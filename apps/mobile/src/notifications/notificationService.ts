@@ -223,7 +223,7 @@ export async function rescheduleAllNotifications(
   }
 }
 
-function getNineAmTriggerDate(renewalDate: Date, daysBefore: number): Date {
+export function getNineAmTriggerDate(renewalDate: Date, daysBefore: number): Date {
   // Renewal dates are stored as ISO (often date-only, i.e. UTC midnight). Read
   // the calendar day in UTC, then build 9 AM in the device's LOCAL timezone on
   // (renewal day − daysBefore) so the reminder fires at 9 AM the user's time on

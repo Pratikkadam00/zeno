@@ -1,5 +1,24 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { encryptionConfigured, initStorage, kvDelete, kvPersist, openValue, pgEnabled, registerHydrator, sealValue } from "./pg";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+// Mock the "pg" module so initStorage()'s hydration path (CREATE TABLE, SELECT,
+// group-by-namespace, per-namespace hydrator dispatch) can be exercised without
+// a real Postgres. query() is driven per-test via queryImpl.
+let queryImpl: (sql: string, params?: unknown[]) => Promise<{ rows: unknown[] }> = () => Promise.resolve({ rows: [] });
+const queryMock = vi.fn((sql: string, params?: unknown[]) => queryImpl(sql, params));
+vi.mock("pg", () => ({
+  // A plain `function`, not an arrow function: arrow functions have no
+  // [[Construct]] slot, so `new Pool(...)` would throw "not a constructor"
+  // even though this is only ever invoked with `new`.
+  Pool: vi.fn().mockImplementation(function PoolMock() {
+    return {
+      query: (sql: string, params?: unknown[]) => queryMock(sql, params),
+      on: vi.fn(),
+      end: vi.fn().mockResolvedValue(undefined)
+    };
+  })
+}));
+
+const { closeStorage, encryptionConfigured, initStorage, kvDelete, kvPersist, openValue, pgEnabled, registerHydrator, sealValue } = await import("./pg");
 
 // A throwaway 32-byte key (64 hex chars) for the encryption round-trip tests.
 const TEST_KEY = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
@@ -75,5 +94,71 @@ describe("encryption at rest", () => {
     const sealed = sealValue({ accessToken: "secret" });
     delete process.env.STORAGE_ENCRYPTION_KEY;
     expect(openValue(sealed)).toBeNull();
+  });
+});
+
+describe("initStorage hydration (DATABASE_URL set, mocked pg client)", () => {
+  afterEach(async () => {
+    // Reset the module-level pool/initialized guard so each test gets a fresh
+    // "first boot" — otherwise the second test's initStorage() call would be a
+    // silent no-op because `initialized` is already true from the first.
+    await closeStorage();
+    queryImpl = () => Promise.resolve({ rows: [] });
+    queryMock.mockClear();
+  });
+
+  it("groups persisted rows by namespace and dispatches each to only its own hydrator", async () => {
+    process.env.DATABASE_URL = "postgres://mock/db";
+    const rows = [
+      { namespace: "hydtest-sync", key: "u1|sub:1", value: { a: 1 } },
+      { namespace: "hydtest-sync", key: "u1|sub:2", value: { a: 2 } },
+      { namespace: "hydtest-billing", key: "u2", value: { plan: "pro" } }
+    ];
+    queryImpl = (sql) => Promise.resolve(sql.includes("SELECT") ? { rows } : { rows: [] });
+
+    const syncSeen: unknown[] = [];
+    const billingSeen: unknown[] = [];
+    const emptySeen: unknown[] = [];
+    registerHydrator("hydtest-sync", (entries) => syncSeen.push(...entries));
+    registerHydrator("hydtest-billing", (entries) => billingSeen.push(...entries));
+    // A namespace with zero matching rows: the empty-array guard in initStorage
+    // means this hydrator should simply never be called, not called with [].
+    registerHydrator("hydtest-empty", (entries) => emptySeen.push(...entries));
+
+    await initStorage();
+
+    expect(syncSeen).toEqual([
+      { key: "u1|sub:1", value: { a: 1 } },
+      { key: "u1|sub:2", value: { a: 2 } }
+    ]);
+    expect(billingSeen).toEqual([{ key: "u2", value: { plan: "pro" } }]);
+    expect(emptySeen).toEqual([]);
+  });
+
+  it("is idempotent: a second initStorage() call does not re-query or re-hydrate", async () => {
+    process.env.DATABASE_URL = "postgres://mock/db";
+    const rows = [{ namespace: "hydtest-once", key: "k", value: 1 }];
+    queryImpl = (sql) => Promise.resolve(sql.includes("SELECT") ? { rows } : { rows: [] });
+
+    let callCount = 0;
+    registerHydrator("hydtest-once", () => { callCount += 1; });
+
+    await initStorage();
+    expect(callCount).toBe(1);
+    const queriesAfterFirst = queryMock.mock.calls.length;
+
+    await initStorage();
+    expect(callCount).toBe(1); // not called again
+    expect(queryMock.mock.calls.length).toBe(queriesAfterFirst); // no new queries issued
+  });
+
+  it("continues in-memory-only (does not throw) when the database query fails", async () => {
+    process.env.DATABASE_URL = "postgres://mock/db";
+    queryImpl = () => Promise.reject(new Error("connection refused"));
+    let called = false;
+    registerHydrator("hydtest-unreachable", () => { called = true; });
+
+    await expect(initStorage()).resolves.toBeUndefined();
+    expect(called).toBe(false);
   });
 });
