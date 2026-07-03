@@ -18,6 +18,15 @@ export default function WidgetsScreen() {
           </Text>
         </View>
 
+        <Surface style={{ backgroundColor: theme.warningSurface }}>
+          <Text style={{ color: theme.text, fontWeight: "700" }}>Preview only, for now</Text>
+          <Text style={{ color: theme.mutedText, marginTop: 6, lineHeight: 20 }}>
+            This shows the data a home-screen widget or watch complication would
+            display. Actually adding a Zeno widget to your home screen or watch
+            face isn&apos;t available yet — we&apos;ll let you know when it ships.
+          </Text>
+        </Surface>
+
         <Surface>
           <Text style={{ color: theme.text, fontSize: 18, fontWeight: "900" }}>Next renewal</Text>
           <Text style={{ color: theme.mutedText, marginTop: 8, lineHeight: 21 }}>

@@ -1,6 +1,6 @@
 import type { Subscription } from "@zeno/shared";
 import { describe, expect, it } from "vitest";
-import { detectDuplicates, generateInsights, getTotalSavingOpportunity } from "./insightsEngine";
+import { detectDuplicates, detectTrialEnding, generateInsights, getTotalSavingOpportunity } from "./insightsEngine";
 
 const now = "2026-05-25T00:00:00.000Z";
 
@@ -48,6 +48,27 @@ describe("insightsEngine", () => {
     expect(insights.length).toBeGreaterThan(1);
     expect(insights.at(-1)?.type).toBe("spend_summary");
     expect(getTotalSavingOpportunity(insights)).toBeGreaterThan(0);
+  });
+
+  // Regression: detectTrialEnding used to check isTrial/trialEndDate fields the
+  // real Subscription model never populates, so this insight could never fire.
+  it("detects a trial ending soon via billingCycle/nextRenewalDate", () => {
+    const soon = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+    const insights = detectTrialEnding([
+      subscription({ id: "trial-soon", name: "Streamify", billingCycle: "trial", nextRenewalDate: soon })
+    ]);
+    expect(insights).toHaveLength(1);
+    expect(insights[0]).toMatchObject({ type: "trial_ending", subscriptionId: "trial-soon", priority: "high" });
+  });
+
+  it("does not flag a cancelled trial or one converting far in the future", () => {
+    const soon = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+    const farFuture = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const insights = detectTrialEnding([
+      subscription({ id: "cancelled-trial", billingCycle: "trial", nextRenewalDate: soon, status: "cancelled" }),
+      subscription({ id: "far-off-trial", billingCycle: "trial", nextRenewalDate: farFuture })
+    ]);
+    expect(insights).toHaveLength(0);
   });
 });
 

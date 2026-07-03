@@ -12,7 +12,7 @@
     "dev:mobile": "npm --workspace @zeno/mobile run start",
     "dev:api": "npm --workspace @zeno/api run dev",
     "dev:web": "npm --workspace @zeno/web run dev",
-    "build": "npm run typecheck:refs && npm --workspace @zeno/web run build",
+    "build": "npm run typecheck && npm --workspace @zeno/web run build",
     "typecheck": "npm run typecheck:refs && npm --workspace @zeno/mobile run typecheck && npm --workspace @zeno/web run typecheck",
     "typecheck:refs": "tsc -b --pretty false",
     "lint": "npm run typecheck",

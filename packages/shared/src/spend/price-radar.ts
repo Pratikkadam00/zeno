@@ -36,6 +36,9 @@ export function detectPriceHikes(
     const previous = history[history.length - 2];
     if (!latest || !previous) continue;
     if (latest.amountMinor <= previous.amountMinor) continue;
+    // A previous price of $0 (e.g. a promo, or a manually-edited placeholder)
+    // makes the percentage undefined — skip rather than report "Infinity%".
+    if (previous.amountMinor <= 0) continue;
 
     const changedTime = Date.parse(latest.at);
     if (Number.isNaN(changedTime) || changedTime < cutoff) continue;

@@ -13,6 +13,8 @@ import {
   Clock,
   Download,
   FileText,
+  Gauge,
+  Gift,
   HelpCircle,
   LogOut,
   MailSearch,
@@ -20,9 +22,11 @@ import {
   Moon,
   MoonStar,
   ShieldCheck,
+  Sparkles,
   Star,
   Trash2,
-  User
+  User,
+  Users
 } from "lucide-react-native";
 import {
   Alert,
@@ -145,6 +149,15 @@ export default function SettingsScreen() {
       title: "App",
       rows: [
         { id: "dark", Icon: Moon, iconBg: palette.ink[700], label: "Dark mode", isSwitch: true, switchValue: scheme === "dark", onToggle: () => toggleScheme() }
+      ]
+    },
+    {
+      title: "Household & tools",
+      rows: [
+        { id: "family", Icon: Users, iconBg: palette.category.coral, label: "Family Vault", sub: "Share a combined spend view", chevron: true, onPress: () => router.push("/family" as never) },
+        { id: "spend-twin", Icon: Gauge, iconBg: palette.category.blue, label: "Spend Twin", sub: "See how your spend compares", chevron: true, onPress: () => router.push("/spend-twin" as never) },
+        { id: "widgets", Icon: Sparkles, iconBg: palette.category.violet, label: "Widgets & Watch", sub: "Preview — home screen setup coming soon", chevron: true, onPress: () => router.push("/widgets" as never) },
+        { id: "wrapped", Icon: Gift, iconBg: palette.category.amber, label: "Year in Review", sub: "Your Zeno Wrapped", chevron: true, onPress: () => router.push("/wrapped" as never) }
       ]
     },
     {

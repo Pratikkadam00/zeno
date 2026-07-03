@@ -11,7 +11,7 @@ import { authRoutes } from "./routes/auth";
 import { createLinkToken, exchangePublicToken, getRecentTransactions, getStoredPlaidItem, plaidConfigured, sandboxPublicToken, storePlaidItem } from "./plaid";
 import { applyWebhookEvent, billingConfigured, fetchEntitlement, getCachedEntitlement, verifyWebhookAuth, webhookConfigured } from "./billing";
 import { pullChanges, pushChanges, type EncryptedChange } from "./sync";
-import { createHousehold, getHousehold, joinHousehold, setMemberSpend, type Household } from "./family";
+import { createHousehold, getHousehold, joinHousehold, removeMember, setMemberSpend, type Household } from "./family";
 import { coachConfigured, coachModel, generateCoaching } from "./coach";
 import { registerAuthGuard } from "./auth-guard";
 
@@ -358,6 +358,22 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       return fail("FORBIDDEN", "You are not a member of this household.", request.id);
     }
     const household = setMemberSpend(householdId, request.userId!, parsed.data.monthlySpendMinor);
+    return ok({ household }, request.id);
+  });
+
+  app.post("/api/v1/family/:householdId/leave", limit(20), async (request, reply) => {
+    const householdId = (request.params as { householdId?: string }).householdId ?? "";
+    const existing = getHousehold(householdId);
+    if (!existing) {
+      reply.code(404);
+      return fail("NOT_FOUND", "Household not found.", request.id);
+    }
+    if (!isHouseholdMember(existing, request.userId)) {
+      reply.code(403);
+      return fail("FORBIDDEN", "You are not a member of this household.", request.id);
+    }
+    // household is null when the caller was the last member (household disbanded).
+    const household = removeMember(householdId, request.userId!);
     return ok({ household }, request.id);
   });
 

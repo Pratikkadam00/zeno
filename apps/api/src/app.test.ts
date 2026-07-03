@@ -411,6 +411,60 @@ describe("api app", () => {
     expect(bad.statusCode).toBe(404);
   });
 
+  it("removes a member server-side on leave, and disbands the household when the last member leaves", async () => {
+    const app = await buildApp();
+    const owner = await tokenFor(app, "leave-owner@zeno.test");
+    const create = await app.inject({
+      method: "POST",
+      url: "/api/v1/family/create",
+      headers: authH(owner.token),
+      payload: { ownerName: "Owner" }
+    });
+    const householdId = create.json().data.household.id;
+
+    const member = await tokenFor(app, "leave-member@zeno.test");
+    const shareCode = create.json().data.household.shareCode;
+    await app.inject({
+      method: "POST",
+      url: "/api/v1/family/join",
+      headers: authH(member.token),
+      payload: { shareCode, memberName: "Member" }
+    });
+
+    // Member leaves: household survives with just the owner.
+    const memberLeaves = await app.inject({
+      method: "POST",
+      url: `/api/v1/family/${householdId}/leave`,
+      headers: authH(member.token)
+    });
+    expect(memberLeaves.statusCode).toBe(200);
+    expect(memberLeaves.json().data.household.members).toHaveLength(1);
+
+    // The member who left is no longer visible/counted server-side (this is
+    // exactly what was missing before: leaving previously only cleared local
+    // device storage and never told the server).
+    const check = await app.inject({ method: "GET", url: `/api/v1/family/${householdId}`, headers: authH(owner.token) });
+    expect(check.json().data.household.members.map((m: { name: string }) => m.name)).toEqual(["Owner"]);
+
+    // A non-member can't leave a household they're not in.
+    const stranger = await tokenFor(app, "leave-stranger@zeno.test");
+    const forbidden = await app.inject({ method: "POST", url: `/api/v1/family/${householdId}/leave`, headers: authH(stranger.token) });
+    expect(forbidden.statusCode).toBe(403);
+
+    // Owner leaves last: household is disbanded (household: null) and its
+    // share code is freed — joining it afterward 404s.
+    const ownerLeaves = await app.inject({
+      method: "POST",
+      url: `/api/v1/family/${householdId}/leave`,
+      headers: authH(owner.token)
+    });
+    expect(ownerLeaves.statusCode).toBe(200);
+    expect(ownerLeaves.json().data.household).toBeNull();
+
+    const afterDisband = await app.inject({ method: "GET", url: `/api/v1/family/${householdId}`, headers: authH(owner.token) });
+    expect(afterDisband.statusCode).toBe(404);
+  });
+
   it("caps households per owner (409 past the limit)", async () => {
     const app = await buildApp();
     const owner = await tokenFor(app, "hh-cap@zeno.test");

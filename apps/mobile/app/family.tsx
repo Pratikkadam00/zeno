@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ScrollView, Text, TextInput, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import { PrimaryButton, Screen, Surface } from "../src/components/ui";
-import { createHousehold, getHousehold, joinHousehold, type Household } from "../src/api/client";
+import { createHousehold, getHousehold, joinHousehold, leaveHousehold, type Household } from "../src/api/client";
 import { useAuthStore } from "../src/auth/authStore";
 import { useSubscriptionStore } from "../src/data/subscription-store";
 import { formatMoney } from "../src/utils/format";
@@ -50,7 +50,7 @@ export default function FamilyScreen() {
   };
 
   const onJoin = () => {
-    if (code.trim().length < 4) { setError("Enter the 6-character code."); return; }
+    if (code.trim().length < 4) { setError("Enter the 8-character code."); return; }
     setBusy(true); setError(null);
     void joinHousehold(code.trim(), memberId, memberName, totalMonthlyMinor)
       .then((next) => { if (next) void persist(next); else setError("No household found for that code."); })
@@ -58,9 +58,14 @@ export default function FamilyScreen() {
   };
 
   const onLeave = () => {
+    const householdId = household?.id;
+    // Clear local state immediately so leaving feels instant; the server call to
+    // actually remove the member (so other members stop seeing them/their spend)
+    // is fire-and-forget best-effort — a network failure shouldn't block leaving.
     void SecureStore.deleteItemAsync(HOUSEHOLD_KEY).catch(() => undefined);
     setHousehold(null);
     setCode("");
+    if (householdId) void leaveHousehold(householdId);
   };
 
   const combined = household ? household.members.reduce((sum, m) => sum + m.monthlySpendMinor, 0) : 0;
@@ -115,9 +120,9 @@ export default function FamilyScreen() {
                 value={code}
                 onChangeText={(t) => setCode(t.toUpperCase())}
                 autoCapitalize="characters"
-                placeholder="ABC123"
+                placeholder="ABC12XYZ"
                 placeholderTextColor={theme.mutedText}
-                maxLength={6}
+                maxLength={8}
                 accessibilityLabel="Household share code"
                 style={{ marginTop: 10, marginBottom: 12, borderWidth: 1, borderColor: theme.border, borderRadius: theme.radius, paddingHorizontal: 14, paddingVertical: 12, color: theme.text, fontSize: 18, letterSpacing: 3 }}
               />

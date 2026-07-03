@@ -6,7 +6,7 @@
 // In-memory working set; mirrored to Postgres when DATABASE_URL is set so a
 // restart doesn't drop households / share-codes (see storage/pg.ts).
 import { randomBytes } from "node:crypto";
-import { kvClear, kvPersist, registerHydrator, type StoredEntry } from "./storage/pg";
+import { kvClear, kvDelete, kvPersist, registerHydrator, type StoredEntry } from "./storage/pg";
 
 export type FamilyMember = { id: string; name: string; monthlySpendMinor: number };
 export type Household = {
@@ -98,6 +98,29 @@ export function setMemberSpend(householdId: string, memberId: string, monthlySpe
   if (!household) return null;
   const member = household.members.find((candidate) => candidate.id === memberId);
   if (member) member.monthlySpendMinor = monthlySpendMinor;
+  kvPersist("family", household.id, household);
+  return household;
+}
+
+// Remove a member from a household (server-side "leave"). Returns the updated
+// household, or null if that was the last member — the household is disbanded
+// (deleted, share code freed) rather than left as an empty, un-joinable shell.
+// Note: if the owner leaves a household that still has other members, the
+// household is not deleted and ownerId is left pointing at the departed
+// member — no new owner is assigned. This only affects the cosmetic "owner"
+// label; membership, spend totals, and join-by-code all keep working.
+export function removeMember(householdId: string, memberId: string): Household | null {
+  const household = households.get(householdId);
+  if (!household) return null;
+
+  household.members = household.members.filter((member) => member.id !== memberId);
+  if (household.members.length === 0) {
+    households.delete(householdId);
+    codeIndex.delete(household.shareCode);
+    kvDelete("family", householdId);
+    return null;
+  }
+
   kvPersist("family", household.id, household);
   return household;
 }

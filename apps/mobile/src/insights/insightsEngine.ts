@@ -25,8 +25,6 @@ export interface Insight {
 
 type InsightSubscription = Subscription & {
   lastUsedDate?: string;
-  isTrial?: boolean;
-  trialEndDate?: string;
 };
 
 type BenchmarkCategory =
@@ -155,16 +153,20 @@ export function detectAnnualSavings(subscriptions: Subscription[]): Insight[] {
     .slice(0, 3);
 }
 
+// A free trial is a subscription on the "trial" billing cycle whose
+// nextRenewalDate is the date it converts to a paid charge — mirroring
+// packages/shared/src/trials/trial-guardian.ts's getEndingTrials. (Earlier this
+// checked isTrial/trialEndDate fields the real Subscription model never had, so
+// this insight could never fire.)
 export function detectTrialEnding(subscriptions: Subscription[]): Insight[] {
   const today = startOfToday();
   return subscriptions
     .flatMap((subscription) => {
-      const trial = subscription as InsightSubscription;
-      if (trial.isTrial !== true || !trial.trialEndDate) {
-        return [];
-      }
+      if (subscription.billingCycle !== "trial") return [];
+      if (subscription.status === "cancelled" || subscription.status === "paused") return [];
+      if (!subscription.nextRenewalDate) return [];
 
-      const trialEnd = Date.parse(trial.trialEndDate);
+      const trialEnd = Date.parse(subscription.nextRenewalDate);
       if (Number.isNaN(trialEnd)) {
         return [];
       }
@@ -179,7 +181,7 @@ export function detectTrialEnding(subscriptions: Subscription[]): Insight[] {
         id: `trial-${subscription.id}`,
         type: "trial_ending",
         title: `Trial ends in ${daysUntilEnd} days`,
-        message: `${subscription.name} free trial ends ${formatDate(trial.trialEndDate)}. Cancel now to avoid being charged ${formatMoney(monthly)}.`,
+        message: `${subscription.name} free trial ends ${formatDate(subscription.nextRenewalDate)}. Cancel now to avoid being charged ${formatMoney(monthly)}.`,
         subscriptionId: subscription.id,
         priority: daysUntilEnd <= 2 ? "high" : "medium",
         actionLabel: "Cancel Before Charged",
@@ -356,8 +358,8 @@ function getTopCategory(subscriptions: Subscription[]): { category: string; spen
 }
 
 function getSubscriptionTrialEnd(subscriptions: Subscription[], id: string | undefined): string {
-  const subscription = subscriptions.find((candidate) => candidate.id === id) as InsightSubscription | undefined;
-  return subscription?.trialEndDate ?? "";
+  const subscription = subscriptions.find((candidate) => candidate.id === id);
+  return subscription?.nextRenewalDate ?? "";
 }
 
 function daysUntil(dateValue: string): number {

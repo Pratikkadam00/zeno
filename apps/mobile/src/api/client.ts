@@ -217,6 +217,21 @@ export async function getHousehold(householdId: string): Promise<Household | nul
   }
 }
 
+// Removes the caller from the household server-side (disbanding it if they were
+// the last member). Returns whether the request succeeded; the caller clears its
+// own local state regardless so leaving feels instant even if the network fails.
+export async function leaveHousehold(householdId: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/family/${encodeURIComponent(householdId)}/leave`, {
+      method: "POST",
+      headers: await authHeaders()
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function createOpenBankingIntentViaApi(provider: "plaid" | "mx"): Promise<OpenBankingConnectionIntent> {
   const response = await fetch(`${getApiBaseUrl()}/open-banking/${provider}/intent`, {
     method: "POST",

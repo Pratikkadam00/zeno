@@ -91,6 +91,8 @@ services:
       - key: MONITORING_WEBHOOK_URL
         sync: false
       # Social login audiences (server verifies tokens against these):
+      - key: GOOGLE_EXPO_CLIENT_ID
+        sync: false
       - key: GOOGLE_WEB_CLIENT_ID
         sync: false
       - key: GOOGLE_IOS_CLIENT_ID
@@ -98,4 +100,6 @@ services:
       - key: GOOGLE_ANDROID_CLIENT_ID
         sync: false
       - key: APPLE_CLIENT_ID
+        sync: false
+      - key: APPLE_BUNDLE_ID
         sync: false

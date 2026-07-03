@@ -40,4 +40,12 @@ describe("detectPriceHikes", () => {
     };
     expect(detectPriceHikes(subs, history, NOW)).toHaveLength(0);
   });
+
+  it("does not report a hike (or Infinity%) when the previous price was $0", () => {
+    const subs = [sub("promo")];
+    const history: Record<string, PriceHistoryEntry[]> = {
+      promo: [{ at: "2026-01-01T00:00:00.000Z", amountMinor: 0 }, { at: "2026-06-01T00:00:00.000Z", amountMinor: 1999 }]
+    };
+    expect(detectPriceHikes(subs, history, NOW)).toHaveLength(0);
+  });
 });

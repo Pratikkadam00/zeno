@@ -216,6 +216,7 @@ function RootStack() {
         <Stack.Screen name="family" options={{ title: "Family Vault" }} />
         <Stack.Screen name="open-banking" options={{ title: "Open Banking" }} />
         <Stack.Screen name="widgets" options={{ title: "Widgets" }} />
+        <Stack.Screen name="wrapped" options={{ title: "Year in Review" }} />
         {/* D3: Business / Public API / Partners are removed from consumer nav (kept
             as files for a future B2B tier). Backend / Open-Banking are dev-only and
             no longer linked from any consumer surface. */}

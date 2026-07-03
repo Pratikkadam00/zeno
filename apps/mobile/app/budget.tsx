@@ -17,12 +17,13 @@ import {
   Scissors,
   Sparkles,
   Target,
+  Trash2,
   TrendingUp,
   Wallet,
   Zap
 } from "lucide-react-native";
 import { useState, type ComponentType, type ReactNode } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthStore } from "../src/auth/authStore";
 import { AmountDisplay, Badge, Button, Card, IconButton, Input, ListRow, ServiceAvatar } from "../src/components/zeno";
@@ -46,7 +47,7 @@ export default function BudgetScreen() {
   const c = t.color;
   const insets = useSafeAreaInsets();
   const { subscriptions } = useSubscriptionStore();
-  const { config, setCap, setIncome, addEnvelope, logEnvelope, setCategoryCap } = useBudgetStore();
+  const { config, setCap, setIncome, addEnvelope, logEnvelope, removeEnvelope, setCategoryCap } = useBudgetStore();
   const { plan } = useAuthStore();
   const isPro = plan === "pro" || plan === "family";
 
@@ -320,9 +321,19 @@ export default function BudgetScreen() {
           <LockedCard t={t} onPress={() => router.push("/paywall")} body="Fund-and-spend envelopes — no import needed." />
         ) : (
           <Card padding="none">
+            {config.envelopes.length > 0 ? (
+              <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: 12, color: c.textTertiary, paddingHorizontal: 14, paddingTop: 12 }}>
+                Envelopes track total funded vs. spent — they don't reset automatically. Remove one to start it fresh.
+              </Text>
+            ) : null}
             {config.envelopes.map((e, i) => {
               const over = e.spentMinor > e.fundedMinor;
               const barPct = Math.min(100, e.fundedMinor > 0 ? (e.spentMinor / e.fundedMinor) * 100 : 0);
+              const confirmRemove = () => Alert.alert(
+                "Remove envelope",
+                `Remove "${e.name}"? This can't be undone.`,
+                [{ text: "Cancel", style: "cancel" }, { text: "Remove", style: "destructive", onPress: () => removeEnvelope(e.id) }]
+              );
               return (
                 <View key={e.id} style={{ paddingHorizontal: 14, paddingVertical: 12, borderTopWidth: i ? 1 : 0, borderTopColor: c.borderSubtle }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 11 }}>
@@ -334,6 +345,9 @@ export default function BudgetScreen() {
                       <Text style={{ fontFamily: t.fonts.mono.regular, fontSize: 12, color: over ? c.danger : c.textTertiary }}>{money(e.spentMinor)} of {money(e.fundedMinor)}{over ? " · over" : ""}</Text>
                     </View>
                     <Button variant="ghost" size="sm" onPress={() => logEnvelope(e.id, 500)} leftIcon={<Plus size={15} color={c.textPrimary} strokeWidth={2} />}>Log $5</Button>
+                    <IconButton variant="ghost" size={32} label={`Remove ${e.name}`} onPress={confirmRemove}>
+                      <Trash2 size={16} color={c.textTertiary} strokeWidth={2} />
+                    </IconButton>
                   </View>
                   <View style={{ height: 6, backgroundColor: c.surfaceSunken, borderRadius: 3, overflow: "hidden", marginTop: 8 }}>
                     <View style={{ width: `${barPct}%`, height: "100%", backgroundColor: over ? c.danger : c.accent, borderRadius: 3 }} />

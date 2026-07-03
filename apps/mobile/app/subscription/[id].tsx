@@ -185,6 +185,10 @@ export default function SubscriptionDetailScreen() {
 
   function saveEdit() {
     const amountMinorValue = Math.round(Number.parseFloat(amount || "0") * 100);
+    if (!(amountMinorValue > 0)) {
+      Alert.alert("Enter a price", "The monthly/renewal amount must be greater than $0.");
+      return;
+    }
     updateSubscription(sub.id, {
       name: selectedService?.name ?? (query.trim() || sub.name),
       serviceSlug: selectedService?.slug ?? selectedSlug,
