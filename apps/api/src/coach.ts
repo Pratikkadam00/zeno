@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync } from "node:fs";
+import { fetchWithTimeout } from "./http";
 
 // AI spend coach. Supports two providers; the active one is chosen by env:
 //
@@ -168,7 +169,9 @@ let anthropicClient: Anthropic | null = null;
 
 function getAnthropicClient(): Anthropic {
   if (!anthropicClient) {
-    anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    // Explicit timeout — the SDK default is 10 min, far too long for a
+    // user-facing coach request behind POST /coach.
+    anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 30000, maxRetries: 2 });
   }
   return anthropicClient;
 }
@@ -186,7 +189,8 @@ async function callAnthropic(model: string, userPrompt: string): Promise<string>
 // Groq (and any OpenAI-compatible endpoint) via the chat-completions shape.
 async function callOpenAiCompatible(model: string, userPrompt: string): Promise<string> {
   const baseUrl = (process.env.COACH_BASE_URL ?? GROQ_DEFAULT_BASE_URL).replace(/\/$/, "");
-  const response = await fetch(`${baseUrl}/chat/completions`, {
+  // 30s — LLM completions are legitimately slow, but must still be bounded.
+  const response = await fetchWithTimeout(`${baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -201,7 +205,7 @@ async function callOpenAiCompatible(model: string, userPrompt: string): Promise<
         { role: "user", content: userPrompt }
       ]
     })
-  });
+  }, 30000);
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
     throw new Error(`AI provider request failed (HTTP ${response.status})${detail ? `: ${detail.slice(0, 200)}` : ""}`);

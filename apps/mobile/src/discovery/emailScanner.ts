@@ -2,6 +2,7 @@ import { getServiceBySlug, searchServices, services, type Service } from "@zeno/
 import { extractStoreAppName } from "@zeno/shared";
 import { exchangeCodeAsync, type AuthRequest, type AuthSessionResult } from "expo-auth-session";
 import { discovery as googleDiscovery } from "expo-auth-session/providers/google";
+import { timedFetch } from "../api/http";
 import { getGmailAccountToken, listGmailAddresses, removeGmailAccount, saveGmailAccount } from "../security/secure-store";
 import { calculateNextRenewal, confidenceRank, inferRecurringCycle, isWithin, slugify, titleCase } from "./discovery-helpers";
 
@@ -398,7 +399,7 @@ export async function disconnectGmailAccount(address: string): Promise<void> {
   const token = await getGmailAccountToken(address);
   try {
     if (token) {
-      await fetch(`https://accounts.google.com/o/oauth2/revoke?token=${encodeURIComponent(token)}`);
+      await timedFetch(`https://accounts.google.com/o/oauth2/revoke?token=${encodeURIComponent(token)}`);
     }
   } finally {
     await removeGmailAccount(address);
@@ -449,7 +450,7 @@ async function fetchMessageFull(accessToken: string, messageId: string): Promise
 }
 
 async function gmailFetch<T>(url: string, accessToken: string): Promise<T> {
-  const response = await fetch(url, {
+  const response = await timedFetch(url, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       Accept: "application/json"

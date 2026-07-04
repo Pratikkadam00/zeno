@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { fetchWithTimeout } from "./http";
 import { kvClear, kvPersist, registerHydrator, type StoredEntry } from "./storage/pg";
 
 // Server-side entitlement verification. The mobile client reports a plan from
@@ -81,7 +82,7 @@ export async function fetchEntitlement(appUserId: string): Promise<Entitlement> 
   if (!billingConfigured()) {
     return { plan: "free", active: false, expiresAt: null, source: "unconfigured" };
   }
-  const response = await fetch(`${REVENUECAT_API}/subscribers/${encodeURIComponent(appUserId)}`, {
+  const response = await fetchWithTimeout(`${REVENUECAT_API}/subscribers/${encodeURIComponent(appUserId)}`, {
     headers: { Authorization: `Bearer ${process.env.REVENUECAT_SECRET_KEY}`, Accept: "application/json" }
   });
   if (!response.ok) {

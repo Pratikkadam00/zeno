@@ -46,7 +46,12 @@ function getPool(): Pool | null {
       // in Node's trust store, so relax verification rather than ship a CA bundle.
       // Set DATABASE_SSL=disable for a local Postgres without TLS.
       ssl: process.env.DATABASE_SSL === "disable" ? undefined : { rejectUnauthorized: false },
-      max: 5
+      max: 5,
+      // Fail fast on a degraded DB instead of hanging: give up connecting after
+      // 5s, reap idle clients after 30s, and cap any single statement at 10s.
+      connectionTimeoutMillis: 5_000,
+      idleTimeoutMillis: 30_000,
+      statement_timeout: 10_000
     });
     pool.on("error", (err) => console.error("[pg] idle client error:", err.message));
   }
@@ -170,6 +175,20 @@ export async function initStorage(): Promise<void> {
     console.log(`[pg] storage ready — rehydrated ${restored} record(s) from Postgres`);
   } catch (err) {
     console.error("[pg] initStorage failed; continuing in-memory only:", (err as Error).message);
+  }
+}
+
+/** Readiness check: "skipped" when no DB is configured (in-memory mode is a
+ *  valid ready state), "ok" when a trivial query succeeds, "error" when the DB
+ *  is configured but unreachable. Used by the /health/ready probe. */
+export async function pingStorage(): Promise<"ok" | "skipped" | "error"> {
+  const p = getPool();
+  if (!p) return "skipped";
+  try {
+    await p.query("SELECT 1");
+    return "ok";
+  } catch {
+    return "error";
   }
 }
 

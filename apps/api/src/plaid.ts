@@ -22,6 +22,7 @@ export function plaidConfigured(): boolean {
 // (see storage/pg.ts) — a raw token must never sit as plaintext at rest. Without
 // the key (or without DATABASE_URL) tokens stay in-memory and are simply lost on
 // restart (the user re-links), which is the safer failure mode.
+import { fetchWithTimeout } from "./http";
 import {
   encryptionConfigured,
   kvClear,
@@ -59,7 +60,7 @@ registerHydrator("plaid", (entries: StoredEntry[]) => {
 });
 
 async function plaidPost<T>(path: string, body: Record<string, unknown>): Promise<T> {
-  const response = await fetch(`${plaidBase()}${path}`, {
+  const response = await fetchWithTimeout(`${plaidBase()}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -67,7 +68,7 @@ async function plaidPost<T>(path: string, body: Record<string, unknown>): Promis
       secret: process.env.PLAID_SECRET,
       ...body
     })
-  });
+  }, 10000);
   const json = (await response.json()) as Record<string, unknown>;
   if (!response.ok) {
     throw new Error(`Plaid ${path} failed (${response.status}): ${String(json.error_code ?? json.error_message ?? "unknown")}`);

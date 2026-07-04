@@ -16,7 +16,9 @@ declare module "fastify" {
 // (request.routeOptions.url), never the raw URL, so path params can't be smuggled.
 const PUBLIC_ROUTES = new Set<string>([
   "/health",
+  "/health/ready",
   "/api/v1/health",
+  "/api/v1/health/ready",
   "/api/v1/services",
   "/api/v1/services/:slug",
   "/api/v1/capabilities",

@@ -3,7 +3,8 @@ import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import { findServiceBySlug, searchServices, services } from "@zeno/service-catalog";
 import { createBusinessSummary, createMockOpenBankingAdapter, createPublicApiKeyPreview, demoBusinessWorkspace, fail, listPartnerIntegrations, ok, syncPullSchema, syncPushSchema, type OpenBankingProvider, type PublicApiKey } from "@zeno/shared";
-import Fastify, { type FastifyInstance, type FastifyRequest } from "fastify";
+import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
+import { pingStorage } from "./storage/pg";
 import Redis from "ioredis";
 import { randomUUID } from "node:crypto";
 import { z, ZodError } from "zod";
@@ -124,8 +125,22 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     // BOUNDED hop count — never `true`, which would let a client spoof XFF and
     // rotate its own limiter key. Default: 1 proxy hop in production, no trust
     // locally/in tests. Override with TRUST_PROXY_HOPS.
-    trustProxy: resolveTrustProxy()
+    trustProxy: resolveTrustProxy(),
+    // Cut off slow-loris clients that hold a request open (Fastify's default
+    // requestTimeout is 0 = disabled). 30s is generous even for the coach route.
+    requestTimeout: 30_000,
+    // Explicit body cap (Fastify defaults to 1 MB; make it deliberate). The
+    // largest schema-bounded route (sync/push) is ~800 KB, so 1 MB is ample.
+    bodyLimit: 1_048_576
   });
+
+  // Expose the request id as a response header so a client (or a proxy that
+  // returns a non-JSON error) can always correlate to the server logs, not just
+  // via the JSON envelope's meta.requestId.
+  app.addHook("onRequest", async (request, reply) => {
+    reply.header("x-request-id", request.id);
+  });
+
   // Security headers (HSTS, nosniff, frame-deny, referrer policy, etc.). This is
   // a JSON API with no first-party HTML, so a strict default CSP is fine.
   await app.register(helmet, {
@@ -176,8 +191,25 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   registerAuthGuard(app);
   await app.register(authRoutes, { prefix: "/api/v1" });
 
+  // Liveness: the process is up (used by Render's healthCheckPath). Always 200.
   app.get("/health", async (request) => ok({ status: "ok", service: "zeno-api" }, request.id));
   app.get("/api/v1/health", async (request) => ok({ status: "ok", service: "zeno-api" }, request.id));
+
+  // Readiness: the process is up AND its critical stateful dependency (Postgres,
+  // when configured) is reachable. Returns 503 if the DB is configured but down,
+  // so a readiness probe can route traffic away from a degraded instance.
+  // "skipped" (no DB → in-memory mode) is a valid ready state. Redis is excluded
+  // on purpose: the rate limiter fails open, so a Redis blip doesn't make us "not ready".
+  const readiness = async (request: FastifyRequest, reply: FastifyReply) => {
+    const postgres = await pingStorage();
+    const ready = postgres !== "error";
+    if (!ready) reply.code(503);
+    return ready
+      ? ok({ status: "ready", checks: { postgres } }, request.id)
+      : fail("SERVICE_UNAVAILABLE", "A required dependency is unavailable.", request.id, { checks: { postgres } });
+  };
+  app.get("/health/ready", readiness);
+  app.get("/api/v1/health/ready", readiness);
 
   app.get("/api/v1/account", async (request) => ok({
     accountId: request.userId,

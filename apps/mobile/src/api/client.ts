@@ -1,6 +1,7 @@
 import Constants from "expo-constants";
 import type { ApiEnvelope, OpenBankingConnectionIntent } from "@zeno/shared";
 import { useAuthStore } from "../auth/authStore";
+import { timedFetch } from "./http";
 
 const fallbackApiBaseUrl = "http://127.0.0.1:8787/api/v1";
 
@@ -25,10 +26,11 @@ export function getApiBaseUrl(): string {
   return extra?.apiBaseUrl ?? fallbackApiBaseUrl;
 }
 
+
 export async function getMobileBackendStatus(): Promise<MobileBackendStatus> {
   const apiBaseUrl = getApiBaseUrl();
   try {
-    const response = await fetch(`${apiBaseUrl}/capabilities`);
+    const response = await timedFetch(`${apiBaseUrl}/capabilities`, {}, { retries: 1 });
     if (!response.ok) {
       return {
         connected: false,
@@ -61,7 +63,7 @@ export async function getMobileBackendStatus(): Promise<MobileBackendStatus> {
 }
 
 async function postJson<T>(path: string, body: unknown = {}): Promise<T> {
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
+  const response = await timedFetch(`${getApiBaseUrl()}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(await authHeaders()) },
     body: JSON.stringify(body)
@@ -96,7 +98,7 @@ export type ServerEntitlement = { plan: "free" | "pro" | "family"; active: boole
 export async function getServerEntitlement(): Promise<ServerEntitlement | null> {
   try {
     // Identity comes from the bearer token; the server ignores any client id.
-    const response = await fetch(`${getApiBaseUrl()}/billing/entitlement`, { headers: await authHeaders() });
+    const response = await timedFetch(`${getApiBaseUrl()}/billing/entitlement`, { headers: await authHeaders() }, { retries: 1 });
     if (!response.ok) return null;
     const envelope = await response.json() as ApiEnvelope<ServerEntitlement>;
     return envelope.data ?? null;
@@ -117,7 +119,7 @@ export type SyncChange = {
 // the server stores opaque blobs it can't read. Returns null if unreachable.
 export async function pushSyncChanges(changes: SyncChange[]): Promise<{ accepted: number; rejected: number; cursor: string } | null> {
   try {
-    const response = await fetch(`${getApiBaseUrl()}/sync/push`, {
+    const response = await timedFetch(`${getApiBaseUrl()}/sync/push`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...(await authHeaders()) },
       body: JSON.stringify({ encryptedChanges: changes })
@@ -134,9 +136,9 @@ export async function pushSyncChanges(changes: SyncChange[]): Promise<{ accepted
 export async function pullSyncChanges(cursor?: string): Promise<{ changes: SyncChange[]; cursor: string; hasMore: boolean } | null> {
   try {
     const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
-    const response = await fetch(`${getApiBaseUrl()}/sync/pull${query}`, {
+    const response = await timedFetch(`${getApiBaseUrl()}/sync/pull${query}`, {
       headers: await authHeaders()
-    });
+    }, { retries: 1 });
     if (!response.ok) return null;
     const envelope = await response.json() as ApiEnvelope<{ encryptedChanges: SyncChange[]; cursor: string; hasMore: boolean }>;
     if (!envelope.data) return null;
@@ -167,11 +169,11 @@ export type CoachRequestInput = {
 // server. Either way the screen falls back to local rule-based insights.
 export async function getAiCoaching(input: CoachRequestInput): Promise<AiCoaching | null> {
   try {
-    const response = await fetch(`${getApiBaseUrl()}/coach`, {
+    const response = await timedFetch(`${getApiBaseUrl()}/coach`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...(await authHeaders()) },
       body: JSON.stringify(input)
-    });
+    }, { timeoutMs: 35_000 });
     if (!response.ok) return null;
     const envelope = await response.json() as ApiEnvelope<AiCoaching>;
     return envelope.data ?? null;
@@ -185,7 +187,7 @@ export type Household = { id: string; shareCode: string; ownerId: string; member
 
 async function familyPost(path: string, body: unknown): Promise<Household | null> {
   try {
-    const response = await fetch(`${getApiBaseUrl()}${path}`, {
+    const response = await timedFetch(`${getApiBaseUrl()}${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...(await authHeaders()) },
       body: JSON.stringify(body)
@@ -208,7 +210,7 @@ export function joinHousehold(shareCode: string, memberId: string, memberName: s
 
 export async function getHousehold(householdId: string): Promise<Household | null> {
   try {
-    const response = await fetch(`${getApiBaseUrl()}/family/${encodeURIComponent(householdId)}`, { headers: await authHeaders() });
+    const response = await timedFetch(`${getApiBaseUrl()}/family/${encodeURIComponent(householdId)}`, { headers: await authHeaders() }, { retries: 1 });
     if (!response.ok) return null;
     const envelope = await response.json() as ApiEnvelope<{ household: Household }>;
     return envelope.data?.household ?? null;
@@ -222,7 +224,7 @@ export async function getHousehold(householdId: string): Promise<Household | nul
 // own local state regardless so leaving feels instant even if the network fails.
 export async function leaveHousehold(householdId: string): Promise<boolean> {
   try {
-    const response = await fetch(`${getApiBaseUrl()}/family/${encodeURIComponent(householdId)}/leave`, {
+    const response = await timedFetch(`${getApiBaseUrl()}/family/${encodeURIComponent(householdId)}/leave`, {
       method: "POST",
       headers: await authHeaders()
     });

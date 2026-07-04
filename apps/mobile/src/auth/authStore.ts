@@ -10,6 +10,7 @@ import * as WebBrowser from "expo-web-browser";
 import { Platform } from "react-native";
 import { create } from "zustand";
 import { getApiBaseUrl } from "../api/client";
+import { timedFetch } from "../api/http";
 import type { BillingPlan } from "../billing/revenueCat";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -330,12 +331,12 @@ function setAnonymous(set: (partial: Partial<AuthStoreState>) => void): void {
 }
 
 async function apiGet<T>(path: string): Promise<T> {
-  const response = await fetch(`${getApiBaseUrl()}${path}`);
+  const response = await timedFetch(`${getApiBaseUrl()}${path}`, {}, { retries: 1 });
   return readEnvelope<T>(response);
 }
 
 async function apiPost<T = unknown>(path: string, body: Record<string, unknown>): Promise<T> {
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
+  const response = await timedFetch(`${getApiBaseUrl()}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)

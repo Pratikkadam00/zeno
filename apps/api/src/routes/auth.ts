@@ -2,6 +2,7 @@ import { fail, ok } from "@zeno/shared";
 import type { FastifyPluginAsync } from "fastify";
 import { createHash, createPublicKey, createSign, createVerify, generateKeyPairSync, randomBytes, randomInt, randomUUID, timingSafeEqual, type JsonWebKey } from "node:crypto";
 import { z, ZodError } from "zod";
+import { fetchWithTimeout } from "../http";
 import { kvDelete, kvPersist, registerHydrator, type StoredEntry } from "../storage/pg";
 
 const accessTokenTtlSeconds = 15 * 60;
@@ -555,7 +556,7 @@ async function deliverMagicLink(email: string, link: string, code: string, reque
     return;
   }
 
-  const response = await fetch("https://api.resend.com/emails", {
+  const response = await fetchWithTimeout("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -683,7 +684,7 @@ async function fetchJwks(url: string, forceRefresh = false): Promise<JsonWebKey[
     return cached.keys;
   }
 
-  const response = await fetch(url);
+  const response = await fetchWithTimeout(url, {}, 5000);
   if (!response.ok) {
     throw new Error(`JWKS request failed with HTTP ${response.status}`);
   }

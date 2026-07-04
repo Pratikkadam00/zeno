@@ -34,6 +34,22 @@ describe("api app", () => {
     expect(body.meta.requestId).toBeTruthy();
   });
 
+  it("readiness probe reports ready with postgres 'skipped' when no DB is configured", async () => {
+    const app = await buildApp();
+    const response = await app.inject({ method: "GET", url: "/api/v1/health/ready" });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().data.status).toBe("ready");
+    expect(response.json().data.checks.postgres).toBe("skipped");
+  });
+
+  it("exposes the request id as an x-request-id response header", async () => {
+    const app = await buildApp();
+    const response = await app.inject({ method: "GET", url: "/health" });
+    expect(response.headers["x-request-id"]).toBeTruthy();
+    // The header matches the id echoed in the JSON envelope.
+    expect(response.headers["x-request-id"]).toBe(response.json().meta.requestId);
+  });
+
   it("uses dev magic-link auth without password storage", async () => {
     const app = await buildApp();
 
