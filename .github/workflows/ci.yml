@@ -29,6 +29,11 @@ jobs:
       - name: Test
         run: npm test
 
+      # Catch build-time breakage (server components, route types, bad imports)
+      # that typecheck + unit tests miss. Next build is the web app's real gate.
+      - name: Build web
+        run: npm run build --workspace @zeno/web
+
       # Surface and gate on high/critical dependency advisories. Moderate/low
       # (e.g. current Expo transitive advisories) are reported but don't fail.
       - name: Dependency audit

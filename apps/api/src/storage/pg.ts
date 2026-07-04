@@ -147,6 +147,15 @@ export function encryptionConfigured(): boolean {
   return encryptionKeyring().length > 0;
 }
 
+// Boot-time diagnostic for STORAGE_ENCRYPTION_KEY: distinguishes "unset" from
+// "set but malformed" so config validation can warn/fail on a typo'd key that
+// would otherwise be silently ignored (falling back to in-memory Plaid tokens).
+export function encryptionKeyStatus(): "valid" | "malformed" | "unset" {
+  const primary = process.env.STORAGE_ENCRYPTION_KEY;
+  if (!primary) return "unset";
+  return parseKey(primary) ? "valid" : "malformed";
+}
+
 /** Seal an object into an encrypted envelope with the primary key. Throws if no
  *  key is configured — callers must gate on encryptionConfigured() first. */
 export function sealValue(value: unknown): { enc: string; kid: string } {

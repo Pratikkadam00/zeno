@@ -1,7 +1,13 @@
 import "dotenv/config";
 import { buildApp } from "./app";
+import { assertConfigOrExit } from "./config";
 import { sweepExpiredAuth } from "./routes/auth";
 import { closeStorage, encryptionConfigured, initStorage, pgEnabled } from "./storage/pg";
+
+// Validate configuration before doing anything else — a fatal misconfiguration
+// (e.g. missing JWT keys or a malformed encryption key in production) exits here
+// with a clear message instead of failing lazily on the first affected request.
+assertConfigOrExit();
 
 // PORT is injected by most hosts (Render, Railway, Fly, …); fall back to API_PORT
 // for local dev. Host must be 0.0.0.0 in the cloud (set API_HOST=0.0.0.0 there).
