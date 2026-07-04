@@ -31,12 +31,18 @@ const TEST_KEY = "00112233445566778899aabbccddeeff00112233445566778899aabbccddee
 const original = process.env.DATABASE_URL;
 const originalKey = process.env.STORAGE_ENCRYPTION_KEY;
 
+const originalPrevKeys = process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS;
+
 afterEach(() => {
   if (original === undefined) delete process.env.DATABASE_URL;
   else process.env.DATABASE_URL = original;
   if (originalKey === undefined) delete process.env.STORAGE_ENCRYPTION_KEY;
   else process.env.STORAGE_ENCRYPTION_KEY = originalKey;
+  if (originalPrevKeys === undefined) delete process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS;
+  else process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS = originalPrevKeys;
 });
+
+const ROTATED_KEY = "ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100";
 
 describe("pg storage (no DATABASE_URL)", () => {
   it("reports disabled and reflects the env var", () => {
@@ -93,6 +99,46 @@ describe("encryption at rest", () => {
     process.env.STORAGE_ENCRYPTION_KEY = TEST_KEY;
     const sealed = sealValue({ accessToken: "secret" });
     delete process.env.STORAGE_ENCRYPTION_KEY;
+    expect(openValue(sealed)).toBeNull();
+  });
+
+  it("stamps the sealing key's fingerprint as kid, and it changes with the key", () => {
+    process.env.STORAGE_ENCRYPTION_KEY = TEST_KEY;
+    const a = sealValue({ x: 1 });
+    process.env.STORAGE_ENCRYPTION_KEY = ROTATED_KEY;
+    const b = sealValue({ x: 1 });
+    expect(typeof a.kid).toBe("string");
+    expect(a.kid).not.toBe(b.kid);
+  });
+
+  it("still opens a value sealed with a previous key after rotation (keyring)", () => {
+    // Seal with the old key.
+    process.env.STORAGE_ENCRYPTION_KEY = TEST_KEY;
+    delete process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS;
+    const secret = { accessToken: "old-key-token" };
+    const sealed = sealValue(secret);
+
+    // Rotate: new key becomes primary, old key retained in PREVIOUS.
+    process.env.STORAGE_ENCRYPTION_KEY = ROTATED_KEY;
+    process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS = TEST_KEY;
+
+    // Old data still opens via the previous key...
+    expect(openValue(sealed)).toEqual(secret);
+    // ...and new writes use the new key (different kid) yet still open.
+    const resealed = sealValue(secret);
+    expect(resealed.kid).not.toBe(sealed.kid);
+    expect(openValue(resealed)).toEqual(secret);
+  });
+
+  it("cannot open a value once its key is fully removed from the ring", () => {
+    process.env.STORAGE_ENCRYPTION_KEY = TEST_KEY;
+    delete process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS;
+    const sealed = sealValue({ x: 1 });
+    // Rotate WITHOUT retaining the old key → old data is unrecoverable (the
+    // failure this whole keyring mechanism exists to prevent operators from
+    // hitting silently).
+    process.env.STORAGE_ENCRYPTION_KEY = ROTATED_KEY;
+    delete process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS;
     expect(openValue(sealed)).toBeNull();
   });
 });

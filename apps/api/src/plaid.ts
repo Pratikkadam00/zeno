@@ -51,11 +51,24 @@ export function clearPlaidItems(): void {
 }
 
 // Decrypt persisted tokens on boot. Rows that can't be opened (key rotated/
-// missing, tampered) are skipped — never resurrected as garbage.
+// missing, tampered) are skipped — never resurrected as garbage — and counted so
+// a botched key rotation is operator-visible instead of silent.
 registerHydrator("plaid", (entries: StoredEntry[]) => {
+  let undecryptable = 0;
   for (const { key, value } of entries) {
     const item = openValue(value) as StoredPlaidItem | null;
-    if (item && typeof item.accessToken === "string") plaidItemsByUser.set(key, item);
+    if (item && typeof item.accessToken === "string") {
+      plaidItemsByUser.set(key, item);
+    } else if (value && typeof (value as { enc?: unknown }).enc === "string") {
+      undecryptable += 1;
+    }
+  }
+  if (undecryptable > 0) {
+    console.warn(
+      `[plaid] ${undecryptable} stored bank token(s) could not be decrypted ` +
+      "(STORAGE_ENCRYPTION_KEY rotated/lost without STORAGE_ENCRYPTION_KEYS_PREVIOUS?) " +
+      "— those users must re-link their bank."
+    );
   }
 });
 

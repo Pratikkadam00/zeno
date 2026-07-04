@@ -566,7 +566,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       reply.code(400);
       return parsed.error;
     }
-    const result = pushChanges(userId, parsed.data.encryptedChanges as EncryptedChange[]);
+    const result = await pushChanges(userId, parsed.data.encryptedChanges as EncryptedChange[]);
     return ok({ ...result, serverStoresFinancialData: false }, request.id);
   });
 

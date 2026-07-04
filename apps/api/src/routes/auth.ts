@@ -3,7 +3,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { createHash, createPublicKey, createSign, createVerify, generateKeyPairSync, randomBytes, randomInt, randomUUID, timingSafeEqual, type JsonWebKey } from "node:crypto";
 import { z, ZodError } from "zod";
 import { fetchWithTimeout } from "../http";
-import { kvDelete, kvPersist, registerHydrator, type StoredEntry } from "../storage/pg";
+import { kvDelete, kvPersistAwait, registerHydrator, type StoredEntry } from "../storage/pg";
 
 const accessTokenTtlSeconds = 15 * 60;
 const magicLinkTtlSeconds = 10 * 60;
@@ -164,7 +164,11 @@ export function sweepExpiredAuth(): void {
     }
   }
   for (const [hash, record] of refreshSessionsByHash) {
-    if (record.expiresAt <= now) {
+    // Reclaim expired sessions AND already-rotated ones: a rotated token is
+    // permanently dead (the refresh handler rejects it), so holding it for the
+    // full 30-day TTL just bloats the store. A reused rotated token after this
+    // sweep is rejected as unknown — same 401 outcome as the rotated check.
+    if (record.expiresAt <= now || record.rotatedAt !== null) {
       refreshSessionsByHash.delete(hash);
       kvDelete("auth_refresh", hash);
     }
@@ -203,7 +207,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       return fail("UNAUTHORIZED", "Invalid or expired magic link.", request.id);
     }
 
-    return ok(issueSession(record.accountId, record.email, "magic_link"), request.id);
+    return ok(await issueSession(record.accountId, record.email, "magic_link"), request.id);
   });
 
   app.post("/auth/apple", verifyLimit, async (request, reply) => {
@@ -220,7 +224,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
     const subject = verified.subject;
     const email = normalizeEmail(parsed.data.email ?? verified.email ?? `apple-${stableId(subject)}@privaterelay.appleid.com`);
-    return ok(issueSession(accountIdForSubject("apple", subject), email, "apple"), request.id);
+    return ok(await issueSession(accountIdForSubject("apple", subject), email, "apple"), request.id);
   });
 
   app.post("/auth/google", verifyLimit, async (request, reply) => {
@@ -245,7 +249,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
     const subject = verified?.subject ?? subjectToken;
     const email = normalizeEmail(parsed.data.email ?? verified?.email ?? `google-${stableId(subject)}@accounts.google.local`);
-    return ok(issueSession(accountIdForSubject("google", subject), email, "google"), request.id);
+    return ok(await issueSession(accountIdForSubject("google", subject), email, "google"), request.id);
   });
 
   app.post("/auth/refresh", verifyLimit, async (request, reply) => {
@@ -262,8 +266,10 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     }
 
     session.rotatedAt = Date.now();
-    kvPersist("auth_refresh", hashToken(parsed.data.refreshToken), session);
-    return ok(issueSession(session.accountId, session.email, session.provider), request.id);
+    // Await durability: the rotation (old token marked dead) must land before we
+    // hand out the new session, or a restart could resurrect the old token.
+    await kvPersistAwait("auth_refresh", hashToken(parsed.data.refreshToken), session);
+    return ok(await issueSession(session.accountId, session.email, session.provider), request.id);
   });
 
   app.post("/auth/demo-login", requestLimit, async (request, reply) => {
@@ -285,7 +291,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       return fail("UNAUTHORIZED", "Invalid demo account credentials.", request.id);
     }
 
-    return ok(issueSession(accountIdForEmail(expectedEmail), expectedEmail, "demo"), request.id);
+    return ok(await issueSession(accountIdForEmail(expectedEmail), expectedEmail, "demo"), request.id);
   });
 
   app.post("/auth/logout", requestLimit, async (request) => {
@@ -322,7 +328,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       return fail("UNAUTHORIZED", "Invalid or expired magic link code.", request.id);
     }
 
-    return ok(issueSession(record.accountId, record.email, "magic_link"), request.id);
+    return ok(await issueSession(record.accountId, record.email, "magic_link"), request.id);
   });
 };
 
@@ -340,8 +346,10 @@ async function requestMagicLink(emailInput: string, requestId: string) {
 
   magicLinksByHash.set(record.tokenHash, record);
   legacyCodesByEmail.set(email, record);
-  kvPersist("auth_magic", record.tokenHash, record);
-  kvPersist("auth_legacy", email, record);
+  // Await durability: the link must be persisted before we tell the user it was
+  // sent, so a restart before the row lands can't invalidate their link mid-flight.
+  await kvPersistAwait("auth_magic", record.tokenHash, record);
+  await kvPersistAwait("auth_legacy", email, record);
 
   const link = `${defaultMagicLinkRedirect}?token=${encodeURIComponent(token)}`;
   await deliverMagicLink(email, link, code, requestId);
@@ -417,7 +425,7 @@ function consumeLegacyCode(email: string, code: string): MagicLinkRecord | null 
   return record;
 }
 
-function issueSession(accountId: string, email: string, provider: AuthProvider): AuthSession {
+async function issueSession(accountId: string, email: string, provider: AuthProvider): Promise<AuthSession> {
   const nowSeconds = Math.floor(Date.now() / 1000);
   const refreshToken = randomToken();
   const refreshHash = hashToken(refreshToken);
@@ -429,7 +437,9 @@ function issueSession(accountId: string, email: string, provider: AuthProvider):
     rotatedAt: null
   };
   refreshSessionsByHash.set(refreshHash, refreshRecord);
-  kvPersist("auth_refresh", refreshHash, refreshRecord);
+  // Await durability: a client that gets this refresh token must not be logged
+  // out by a restart that happened before the row landed.
+  await kvPersistAwait("auth_refresh", refreshHash, refreshRecord);
 
   return {
     accountId,

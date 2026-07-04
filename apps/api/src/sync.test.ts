@@ -14,8 +14,8 @@ function change(entityId: string, version = 1): EncryptedChange {
 }
 
 describe("pullChanges pagination", () => {
-  it("pages through more changes than the limit with no gaps or repeats, hasMore true then false", () => {
-    pushChanges("user-a", ["e1", "e2", "e3", "e4", "e5"].map((id) => change(id)));
+  it("pages through more changes than the limit with no gaps or repeats, hasMore true then false", async () => {
+    await pushChanges("user-a", ["e1", "e2", "e3", "e4", "e5"].map((id) => change(id)));
 
     const page1 = pullChanges("user-a", undefined, 2);
     expect(page1.changes.map((c) => c.entityId)).toEqual(["e1", "e2"]);
@@ -35,15 +35,15 @@ describe("pullChanges pagination", () => {
     expect(page4.hasMore).toBe(false);
   });
 
-  it("returns everything in one page when limit >= the number of changes", () => {
-    pushChanges("user-b", ["a", "b", "c"].map((id) => change(id)));
+  it("returns everything in one page when limit >= the number of changes", async () => {
+    await pushChanges("user-b", ["a", "b", "c"].map((id) => change(id)));
     const page = pullChanges("user-b", undefined, 100);
     expect(page.changes.map((c) => c.entityId)).toEqual(["a", "b", "c"]);
     expect(page.hasMore).toBe(false);
   });
 
-  it("treats a garbage cursor as the beginning rather than throwing", () => {
-    pushChanges("user-c", [change("only")]);
+  it("treats a garbage cursor as the beginning rather than throwing", async () => {
+    await pushChanges("user-c", [change("only")]);
     const page = pullChanges("user-c", "not-a-number", 10);
     expect(page.changes.map((c) => c.entityId)).toEqual(["only"]);
   });
@@ -54,9 +54,9 @@ describe("pullChanges pagination", () => {
     expect(page.hasMore).toBe(false);
   });
 
-  it("keeps each user's changes isolated from every other user's", () => {
-    pushChanges("user-d", [change("d1")]);
-    pushChanges("user-e", [change("e1")]);
+  it("keeps each user's changes isolated from every other user's", async () => {
+    await pushChanges("user-d", [change("d1")]);
+    await pushChanges("user-e", [change("e1")]);
     expect(pullChanges("user-d", undefined, 10).changes.map((c) => c.entityId)).toEqual(["d1"]);
     expect(pullChanges("user-e", undefined, 10).changes.map((c) => c.entityId)).toEqual(["e1"]);
   });

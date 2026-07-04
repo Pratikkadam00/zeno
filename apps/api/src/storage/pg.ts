@@ -17,7 +17,7 @@
 // swallowed so it can never break a request whose in-memory write already
 // succeeded.
 
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { Pool } from "pg";
 
 export type StoredEntry = { key: string; value: unknown };
@@ -58,16 +58,31 @@ function getPool(): Pool | null {
   return pool;
 }
 
-/** Mirror a single key's latest value (upsert). Fire-and-forget. */
-export function kvPersist(namespace: string, key: string, value: unknown): void {
+/** Mirror a single key's latest value (upsert), awaiting until the row has
+ *  landed (or the attempt failed — errors are logged, never thrown, so a DB blip
+ *  degrades to in-memory rather than failing the request). Use this for writes
+ *  whose durability must be confirmed before the request is acked (auth
+ *  sessions, sync). No-op without a configured DB. */
+export async function kvPersistAwait(namespace: string, key: string, value: unknown): Promise<void> {
   const p = getPool();
   if (!p) return;
-  p.query(
-    `INSERT INTO kv_store (namespace, key, value, updated_at)
-     VALUES ($1, $2, $3::jsonb, now())
-     ON CONFLICT (namespace, key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
-    [namespace, key, JSON.stringify(value)]
-  ).catch((err) => console.error(`[pg] persist ${namespace}/${key} failed:`, err.message));
+  try {
+    await p.query(
+      `INSERT INTO kv_store (namespace, key, value, updated_at)
+       VALUES ($1, $2, $3::jsonb, now())
+       ON CONFLICT (namespace, key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+      [namespace, key, JSON.stringify(value)]
+    );
+  } catch (err) {
+    console.error(`[pg] persist ${namespace}/${key} failed:`, (err as Error).message);
+  }
+}
+
+/** Mirror a single key's latest value (upsert). Fire-and-forget — the in-memory
+ *  write already succeeded, so a persistence failure must never break the
+ *  request. Use kvPersistAwait where durability must be confirmed before acking. */
+export function kvPersist(namespace: string, key: string, value: unknown): void {
+  void kvPersistAwait(namespace, key, value);
 }
 
 /** Remove a single key. Fire-and-forget. */
@@ -91,41 +106,60 @@ export async function kvClear(namespace: string): Promise<void> {
 
 // ── Encryption at rest (for secrets like Plaid bank-access tokens) ──────────
 // AES-256-GCM with a random 96-bit IV per value; the sealed envelope is
-// iv(12) || tag(16) || ciphertext, base64-encoded inside a { enc } object so it
-// stays valid jsonb. STORAGE_ENCRYPTION_KEY is 32 bytes as 64 hex chars or
-// base64. Without a valid key, encryption is "not configured" and callers that
+// iv(12) || tag(16) || ciphertext, base64-encoded inside a { enc, kid } object
+// so it stays valid jsonb. `kid` is a short, non-secret fingerprint of the key
+// that sealed it, so rotation is NON-destructive: set STORAGE_ENCRYPTION_KEY to
+// the new key and STORAGE_ENCRYPTION_KEYS_PREVIOUS (comma-separated) to the old
+// one(s). New data is sealed with the primary key; old data still opens with a
+// previous key until it ages out. Keys are 32 bytes as 64 hex chars or base64.
+// Without a valid primary key, encryption is "not configured" and callers that
 // require it (Plaid) keep their data in-memory only.
 
-function encryptionKey(): Buffer | null {
-  const raw = process.env.STORAGE_ENCRYPTION_KEY;
-  if (!raw) return null;
+function parseKey(raw: string): Buffer | null {
   const key = /^[0-9a-fA-F]{64}$/.test(raw) ? Buffer.from(raw, "hex") : Buffer.from(raw, "base64");
   return key.length === 32 ? key : null;
 }
 
-export function encryptionConfigured(): boolean {
-  return encryptionKey() !== null;
+// A stable, non-secret 8-hex-char fingerprint identifying which key sealed a value.
+function keyFingerprint(key: Buffer): string {
+  return createHash("sha256").update(key).digest("hex").slice(0, 8);
 }
 
-/** Seal an object into an encrypted envelope. Throws if no key is configured —
- *  callers must gate on encryptionConfigured() first. */
-export function sealValue(value: unknown): { enc: string } {
-  const key = encryptionKey();
+// The primary (current) key first, then any previous keys — the decryption ring.
+function encryptionKeyring(): Buffer[] {
+  const keys: Buffer[] = [];
+  const primary = process.env.STORAGE_ENCRYPTION_KEY;
+  if (primary) {
+    const k = parseKey(primary);
+    if (k) keys.push(k);
+  }
+  const previous = process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS;
+  if (previous) {
+    for (const raw of previous.split(",").map((s) => s.trim()).filter(Boolean)) {
+      const k = parseKey(raw);
+      if (k) keys.push(k);
+    }
+  }
+  return keys;
+}
+
+export function encryptionConfigured(): boolean {
+  return encryptionKeyring().length > 0;
+}
+
+/** Seal an object into an encrypted envelope with the primary key. Throws if no
+ *  key is configured — callers must gate on encryptionConfigured() first. */
+export function sealValue(value: unknown): { enc: string; kid: string } {
+  const key = encryptionKeyring()[0];
   if (!key) throw new Error("sealValue requires STORAGE_ENCRYPTION_KEY");
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", key, iv);
   const ciphertext = Buffer.concat([cipher.update(Buffer.from(JSON.stringify(value), "utf8")), cipher.final()]);
   const tag = cipher.getAuthTag();
-  return { enc: Buffer.concat([iv, tag, ciphertext]).toString("base64") };
+  return { enc: Buffer.concat([iv, tag, ciphertext]).toString("base64"), kid: keyFingerprint(key) };
 }
 
-/** Open a sealed envelope. Returns null if the key is missing/rotated or the
- *  payload was tampered with (GCM auth-tag failure) — never throws. */
-export function openValue(stored: unknown): unknown | null {
-  const key = encryptionKey();
-  if (!key) return null;
-  const enc = (stored as { enc?: unknown })?.enc;
-  if (typeof enc !== "string") return null;
+function tryDecrypt(enc: string, key: Buffer): unknown | null {
   try {
     const buf = Buffer.from(enc, "base64");
     const decipher = createDecipheriv("aes-256-gcm", key, buf.subarray(0, 12));
@@ -135,6 +169,26 @@ export function openValue(stored: unknown): unknown | null {
   } catch {
     return null;
   }
+}
+
+/** Open a sealed envelope, trying the key named by `kid` first and then every
+ *  key in the ring (so a rotated key or a legacy kid-less row still opens).
+ *  Returns null if no key decrypts it (missing/rotated key or tamper) — never throws. */
+export function openValue(stored: unknown): unknown | null {
+  const envelope = stored as { enc?: unknown; kid?: unknown };
+  const enc = envelope?.enc;
+  if (typeof enc !== "string") return null;
+  const keyring = encryptionKeyring();
+  if (keyring.length === 0) return null;
+  const kid = typeof envelope.kid === "string" ? envelope.kid : null;
+  const ordered = kid
+    ? [...keyring].sort((a, b) => Number(keyFingerprint(b) === kid) - Number(keyFingerprint(a) === kid))
+    : keyring;
+  for (const key of ordered) {
+    const result = tryDecrypt(enc, key);
+    if (result !== null) return result;
+  }
+  return null;
 }
 
 let initialized = false;

@@ -8,7 +8,7 @@
 // change is also mirrored to Postgres (the payload is already client-encrypted
 // ciphertext the server can't read) and replayed on boot. See storage/pg.ts.
 
-import { kvClear, kvPersist, registerHydrator, type StoredEntry } from "./storage/pg";
+import { kvClear, kvPersistAwait, registerHydrator, type StoredEntry } from "./storage/pg";
 
 export type EncryptedChange = {
   entityType: "subscription" | "preference" | "profile";
@@ -46,7 +46,7 @@ function userStore(userId: string): Map<string, StoredRecord> {
   return s;
 }
 
-export function pushChanges(userId: string, changes: EncryptedChange[]): { accepted: number; rejected: number; cursor: string } {
+export async function pushChanges(userId: string, changes: EncryptedChange[]): Promise<{ accepted: number; rejected: number; cursor: string }> {
   const records = userStore(userId);
   let accepted = 0;
   let rejected = 0;
@@ -65,7 +65,10 @@ export function pushChanges(userId: string, changes: EncryptedChange[]): { accep
       globalSeq += 1;
       const record: StoredRecord = { ...change, version: incomingVersion, seq: globalSeq };
       records.set(key, record);
-      kvPersist("sync", `${userId}|${key}`, { userId, ...record });
+      // Await durability: we ack this change (accepted + cursor) to the client,
+      // so the row must land before we return or a restart would lose an
+      // "accepted" change the client believes is safely backed up.
+      await kvPersistAwait("sync", `${userId}|${key}`, { userId, ...record });
       accepted += 1;
     } else {
       rejected += 1;

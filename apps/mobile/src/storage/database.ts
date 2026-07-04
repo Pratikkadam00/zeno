@@ -24,10 +24,33 @@ export async function writeAppMeta(db: ZenoDatabase, key: string, value: string)
   );
 }
 
-export async function runMigrations(db: ZenoDatabase): Promise<void> {
-  await db.execAsync(`
-    PRAGMA journal_mode = WAL;
+// Numbered migrations run once each, in order, gated on PRAGMA user_version.
+// This replaces "run the whole CREATE-TABLE body on every open" (which silently
+// ignores changed column definitions on upgrade) and gives future destructive/
+// renaming changes a real, versioned path. v1 is the entire original body and is
+// FULLY IDEMPOTENT (CREATE TABLE IF NOT EXISTS + table_info-checked column adds),
+// so existing installs (user_version 0) re-run it once harmlessly, then advance.
+const MIGRATIONS: Array<{ version: number; up: (db: ZenoDatabase) => Promise<void> }> = [
+  { version: 1, up: migrationV1 }
+];
 
+export async function runMigrations(db: ZenoDatabase): Promise<void> {
+  // WAL is a persisted connection/journal setting; harmless to set on every open.
+  await db.execAsync("PRAGMA journal_mode = WAL;");
+  const row = await db.getFirstAsync<{ user_version: number }>("PRAGMA user_version");
+  const current = row?.user_version ?? 0;
+  for (const migration of MIGRATIONS) {
+    if (migration.version > current) {
+      await migration.up(db);
+      // user_version takes an integer literal, not a bound param; the value is a
+      // trusted constant from MIGRATIONS, never user input.
+      await db.execAsync(`PRAGMA user_version = ${migration.version}`);
+    }
+  }
+}
+
+async function migrationV1(db: ZenoDatabase): Promise<void> {
+  await db.execAsync(`
     CREATE TABLE IF NOT EXISTS user_profile (
       id TEXT PRIMARY KEY NOT NULL,
       display_name TEXT,
