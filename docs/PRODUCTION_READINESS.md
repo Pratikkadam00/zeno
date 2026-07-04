@@ -25,28 +25,56 @@ Two things are true at once:
   the mobile app has no error boundary or crash reporting, there are no metrics/readiness probes,
   and the persistence model has real durability/scale ceilings.
 
-### Scorecard (verified)
+### Scorecard — original → after remediation (2026-07-04)
 
-| Dimension | Score | One-line basis |
-|---|---:|---|
-| Security & auth | 9/10 | Fail-closed guard, RS256 pinned, prod secret guards, constant-time compares |
-| API error handling & contract | 8/10 | One envelope, global handler, no internal leakage, test-enforced |
-| Code quality / maintainability | 9/10 | 0 suppressions, 0 `any` in logic paths, 0 TODOs, minimal dupe |
-| Correctness & test coverage (API/logic) | 8/10 | 244 tests, real `inject` integration coverage |
-| **Resilience / failure modes** | **4/10** | **No fetch timeouts anywhere; no graceful shutdown; no crash handlers** |
-| **Data durability / persistence** | **5/10** | Fire-and-forget loss window; no backup; silent key-rotation loss; no migrations |
-| **Scalability** | **3/10** | Single-instance only; `globalSeq` + node-local reads silently corrupt sync if scaled |
-| Observability / operability | 6.5/10 | Structured logs + request IDs good; no metrics/readiness/tracing/mobile-crash-reporting |
-| Web app hardening | 5/10 | Live waitlist route untested; CI never `next build`s |
+| Dimension | Was | Now | What changed |
+|---|---:|---:|---|
+| Security & auth | 9/10 | 9/10 | (already strong) + boot config fail-fast on missing prod secrets |
+| API error handling & contract | 8/10 | 8/10 | unchanged |
+| Code quality / maintainability | 9/10 | 9/10 | + dead adapter removed |
+| Correctness & test coverage (API/logic) | 8/10 | 8.5/10 | 244 → **265 tests** (timeouts, key rotation, metrics, config, waitlist) |
+| **Resilience / failure modes** | **4/10** | **8/10** | fetch timeouts everywhere, graceful shutdown, crash handlers, server/DB timeouts |
+| **Data durability / persistence** | **5/10** | **7.5/10** | awaited persists on auth/sync, non-destructive key rotation, mobile `user_version` migrations, backup runbook |
+| **Scalability** | **3/10** | **4/10** | single-instance boot guard (still single-instance by design — C2 deferred) |
+| Observability / operability | 6.5/10 | **8.5/10** | `/metrics`, `/health/ready`, `x-request-id` header, mobile error boundary + crash seam |
+| Web app hardening | 5/10 | **8/10** | waitlist route fully tested; CI now `next build`s |
 
-**Bottom line:** ready for a **single-instance soft launch to a small user base after Phase A + the
-mobile crash-reporting item** (~2–4 focused days). **Not** ready to (a) scale horizontally —
-that silently corrupts sync — or (b) be operated under load without metrics. None of the fixes are
-architectural rewrites; the durability/scale items are the deepest.
+**Original bottom line:** ready for a single-instance soft launch after Phase A + mobile crash
+reporting. **Not** ready to scale horizontally or operate under load without metrics.
+
+**Updated bottom line (post-remediation):** the single-instance-soft-launch blockers are **cleared** —
+Phases A, B, D, E and the C1 guard are done (see status block below). What remains is intentionally
+deferred: true horizontal scale (C2), OpenTelemetry (D6), and infra/decision items (KMS, cert pinning,
+pen-test, real crash-SDK DSN + device build). Those are not code-fixable here without accounts/decisions.
 
 ---
 
-## Phase A — Resilience blockers (do before ANY real users) · Owner 🤖 code · ~1–2 days
+## Remediation status — 2026-07-04 (commit trail on `main`)
+
+Executed the "fix everything, 0 bugs" pass in verified batches (typecheck + full test
+suite green after each). **265/265 tests, typecheck clean across all workspaces, web `next build` green.**
+
+| Phase | Items | Status |
+|---|---|---|
+| **A — Resilience** | A1–A6 | ✅ **Done** — `fetchWithTimeout` (API) + `timedFetch` (mobile) on every external call; graceful shutdown + crash handlers; Fastify `requestTimeout`/`bodyLimit`; pg pool timeouts; `engines.node` pinned |
+| **B — Durability** | B1, B2, B5, B6 | ✅ **Done** — `kvPersistAwait` on auth/sync acks; key rotation with `kid`+keyring; mobile `PRAGMA user_version` migrations; rotated-token sweep |
+| | B3 | ✅ **Done** — backup/restore runbook in `SECURITY.md` |
+| | B4 | ⚖️ **Accepted as-is** — server has ONE append-only `kv_store` table (no DDL to migrate); shape-drift is tolerated per-hydrator (billing already does). A migration *framework* for one table is scaffolding, not safety; documented rather than built. |
+| **C — Scale guard** | C1 | ✅ **Done** — single-instance boot guard + `ALLOW_MULTI_INSTANCE` escape hatch |
+| | C2 | ⏸ **Deferred (by design)** — true multi-instance (DB sequence + async reads) is a real rearchitecture; not needed for single-instance launch |
+| **D — Observability** | D1–D5 | ✅ **Done** — mobile root error boundary + `captureError` seam; Prometheus `/metrics`; `/health/ready`; `x-request-id` header; boot-time `config.ts` validation |
+| | D6 | ⏸ **Deferred** — OpenTelemetry (pairs with C2 multi-instance) |
+| **E — Web & CI** | E1, E2 | ✅ **Done** — waitlist route tested (5 cases); CI builds web |
+| | E3 | ✅ **Done** — dead `dev-auth-adapter.ts` deleted; malformed `STORAGE_ENCRYPTION_KEY` now warns (dev) / fatal (prod) via `config.ts` |
+
+**Honestly not done (needs accounts / infra / product decisions, not code):** real
+`@sentry/react-native` wiring (needs a DSN + a device build to verify — the seam is in place),
+KMS/secrets-manager, cert pinning, external pen-test, and horizontal scale-out. The sync LWW
+conflict-drop remains by-design (server can't read ciphertext to merge).
+
+---
+
+## Phase A — Resilience blockers (do before ANY real users) · Owner 🤖 code · ~1–2 days ✅ DONE
 
 Every external `fetch` in the API is un-timed (verified: **zero** `AbortSignal` usage in `apps/api/src`),
 and there is no graceful shutdown or crash handler (verified: `closeStorage()` at `storage/pg.ts:177`
@@ -73,7 +101,7 @@ the app can't be killed by an un-awaited rejection without a logged reason.
 
 ---
 
-## Phase B — Durability & data-safety (before onboarding users whose data matters) · Owner 👥 · ~2–3 days
+## Phase B — Durability & data-safety (before onboarding users whose data matters) · Owner 👥 · ~2–3 days ✅ DONE (B4 accepted-as-is)
 
 - [ ] **B1 — Close the fire-and-forget data-loss window** for user-visible writes. `kvPersist` is
       not awaited (`storage/pg.ts:57-66`; callers `auth.ts:431`, `sync.ts:68`). Offer an awaited
@@ -101,7 +129,7 @@ the app can't be killed by an un-awaited rejection without a logged reason.
 
 ---
 
-## Phase C — Scale-safety guardrails (cheap now; prevents silent corruption later) · Owner 🤖 code
+## Phase C — Scale-safety guardrails (cheap now; prevents silent corruption later) · Owner 🤖 code ✅ C1 DONE / C2 deferred
 
 The persistence model is **node-local reads + a per-process `globalSeq` counter** (verified:
 `sync.ts:24`, no `kvGet`, only `SELECT` is boot-time `initStorage`). Running >1 instance silently
@@ -116,7 +144,7 @@ already built for multi-instance.
 
 ---
 
-## Phase D — Observability & operability (before operating under load) · Owner 👥
+## Phase D — Observability & operability (before operating under load) · Owner 👥 ✅ DONE (D6 deferred)
 
 - [ ] **D1 (HIGH) — Mobile error boundary + crash reporting.** Verified: **no** ErrorBoundary and **no**
       Sentry anywhere in `apps/mobile`. An uncaught render error blanks the whole app and you never hear
@@ -136,7 +164,7 @@ already built for multi-instance.
 
 ---
 
-## Phase E — Web & CI hardening · Owner 🤖 code · ~half day
+## Phase E — Web & CI hardening · Owner 🤖 code · ~half day ✅ DONE
 
 - [ ] **E1 (HIGH) — Test the waitlist route.** `apps/web/app/api/waitlist/route.ts` is live server logic
       (email validation, rate limit, fail-loud 502) with **zero tests** (verified: no `*.test.*` in

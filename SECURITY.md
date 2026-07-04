@@ -103,6 +103,48 @@ Real secrets (Groq/Anthropic, Plaid, RevenueCat *secret* key, Resend) live in th
 
 ---
 
+## Backup & recovery (server Postgres)
+
+**What the server stores.** The Postgres `kv_store` table holds only: encrypted
+cloud-sync blobs (client-side ciphertext the server cannot read), entitlement
+cache, households, auth sessions (refresh tokens + magic links), and
+AES-256-GCM-sealed Plaid tokens. **No plaintext financial data ever lands on the
+server.** The client device's SQLCipher DB is the source of truth for a user's
+subscriptions.
+
+**Recovery model — the server DB is *disposable*.** If `kv_store` is lost:
+- **Sync/subscription data**: no server-side loss of user financial data — each
+  client re-pushes its encrypted changes on next sync (the device holds the
+  authoritative copy).
+- **Auth sessions**: users are logged out and re-authenticate via magic link /
+  Apple / Google. Annoying, not data loss.
+- **Plaid tokens**: users re-link their bank (one tap). Entitlements re-fetch
+  from RevenueCat on next check.
+
+So the worst case of a total DB loss is re-auth + re-link, not lost user data.
+
+**Backup cadence (do before onboarding paying users).** Render's free Postgres
+plan **auto-deletes at ~90 days** (`render.yaml`), so either move to a paid plan
+with automated backups **or** run a scheduled dump:
+
+```sh
+# Nightly logical backup (cron / GitHub Action). DATABASE_URL is the Render
+# "External Database URL". Store dumps off-Render (S3/GCS) with >=30-day retention.
+pg_dump "$DATABASE_URL" --no-owner --format=custom --file "zeno-$(date +%F).dump"
+
+# Restore into a fresh database:
+pg_restore --clean --no-owner --dbname "$TARGET_DATABASE_URL" zeno-YYYY-MM-DD.dump
+```
+
+**Encryption-key handling on restore.** Restoring `kv_store` only makes sealed
+Plaid tokens readable if the matching `STORAGE_ENCRYPTION_KEY` is also restored.
+Back up the key alongside (in your secrets manager, **never** in the same store
+as the dump). Sealed envelopes carry a non-secret key fingerprint (`kid`), so a
+rotated key still opens old rows as long as the previous key is listed in
+`STORAGE_ENCRYPTION_KEYS_PREVIOUS` (see key-rotation note in `render.yaml`).
+
+---
+
 ## Before scale (production hardening checklist)
 
 The in-code limits are correct but the **state is in-memory**, so it resets per
@@ -138,9 +180,11 @@ instance/cold-start and isn't shared across replicas. Before real traffic:
 - [ ] **Dependency audit** in CI (`npm audit` / Dependabot) and pin/update.
 - [ ] **Secrets manager** for production (not a plaintext `.env` on the box).
 - [~] **Monitoring/alerting** — baseline in place: structured request/error logging
-  (Fastify) and an optional 5xx error-alert webhook (`MONITORING_WEBHOOK_URL`,
-  route + message + request id only, no PII). Still to add at deploy time: metrics/
-  dashboards and 401/429-spike alerts (platform or a hosted APM).
+  (Fastify), an optional 5xx error-alert webhook (`MONITORING_WEBHOOK_URL`, route +
+  message + request id only, no PII), a Prometheus `/metrics` endpoint (request
+  count / latency / in-flight by route pattern, gated by optional `METRICS_TOKEN`),
+  and `/health/ready` readiness probe (checks Postgres). Still to add at deploy
+  time: dashboards + 401/429-spike alerts (point a scraper/APM at `/metrics`).
 - [ ] **Pen-test / security review** before public launch.
 
 ---
