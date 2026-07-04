@@ -19,6 +19,9 @@ const PUBLIC_ROUTES = new Set<string>([
   "/health/ready",
   "/api/v1/health",
   "/api/v1/health/ready",
+  // Prometheus scrape endpoint. Gates itself with an optional METRICS_TOKEN
+  // (bearer) rather than the user JWT; exposes only aggregate counters, no PII.
+  "/metrics",
   "/api/v1/services",
   "/api/v1/services/:slug",
   "/api/v1/capabilities",

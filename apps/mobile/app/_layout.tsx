@@ -4,6 +4,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useRef } from "react";
 import { AppState, Text, View, type AppStateStatus } from "react-native";
+import { AppErrorBoundary } from "../src/components/AppErrorBoundary";
 import { useAuthStore } from "../src/auth/authStore";
 import { checkStatus, identifyRevenueCatUser, initRevenueCat, resetRevenueCatUser } from "../src/billing/revenueCat";
 import { BudgetStoreProvider } from "../src/data/budget-store";
@@ -36,13 +37,15 @@ export default function RootLayout() {
   }
 
   return (
-    <ZenoThemeProvider>
-      <SubscriptionStoreProvider>
-        <BudgetStoreProvider>
-          <RootStack />
-        </BudgetStoreProvider>
-      </SubscriptionStoreProvider>
-    </ZenoThemeProvider>
+    <AppErrorBoundary>
+      <ZenoThemeProvider>
+        <SubscriptionStoreProvider>
+          <BudgetStoreProvider>
+            <RootStack />
+          </BudgetStoreProvider>
+        </SubscriptionStoreProvider>
+      </ZenoThemeProvider>
+    </AppErrorBoundary>
   );
 }
 

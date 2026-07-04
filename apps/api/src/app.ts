@@ -15,6 +15,7 @@ import { pullChanges, pushChanges, type EncryptedChange } from "./sync";
 import { createHousehold, getHousehold, joinHousehold, removeMember, setMemberSpend, type Household } from "./family";
 import { coachConfigured, coachModel, generateCoaching } from "./coach";
 import { registerAuthGuard } from "./auth-guard";
+import { markRequestStart, recordRequest, renderMetrics } from "./metrics";
 
 export type BuildAppOptions = {
   logger?: boolean;
@@ -139,6 +140,19 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   // via the JSON envelope's meta.requestId.
   app.addHook("onRequest", async (request, reply) => {
     reply.header("x-request-id", request.id);
+    markRequestStart();
+  });
+
+  // Record count + latency + in-flight for every response (including 404s and
+  // errors). Uses the route PATTERN, never the raw URL, so path params don't
+  // explode metric cardinality or leak ids.
+  app.addHook("onResponse", async (request, reply) => {
+    recordRequest(
+      request.method,
+      request.routeOptions?.url ?? "unmatched",
+      reply.statusCode,
+      reply.elapsedTime
+    );
   });
 
   // Security headers (HSTS, nosniff, frame-deny, referrer policy, etc.). This is
@@ -210,6 +224,24 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   };
   app.get("/health/ready", readiness);
   app.get("/api/v1/health/ready", readiness);
+
+  // Prometheus metrics (request counts, latency, in-flight). Public route in the
+  // auth guard, but gated here by METRICS_TOKEN when set — so production can lock
+  // scraping to its collector while dev/local stays open. Aggregate counters only.
+  app.get("/metrics", async (request, reply) => {
+    const token = process.env.METRICS_TOKEN;
+    if (token) {
+      const provided = request.headers.authorization?.startsWith("Bearer ")
+        ? request.headers.authorization.slice(7).trim()
+        : null;
+      if (provided !== token) {
+        reply.code(401);
+        return fail("UNAUTHORIZED", "Invalid metrics token.", request.id);
+      }
+    }
+    reply.header("content-type", "text/plain; version=0.0.4; charset=utf-8");
+    return renderMetrics();
+  });
 
   app.get("/api/v1/account", async (request) => ok({
     accountId: request.userId,

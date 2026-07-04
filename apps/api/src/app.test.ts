@@ -50,6 +50,42 @@ describe("api app", () => {
     expect(response.headers["x-request-id"]).toBe(response.json().meta.requestId);
   });
 
+  it("exposes Prometheus metrics that count served requests", async () => {
+    const app = await buildApp();
+    // Serve a couple of requests so there is something to count.
+    await app.inject({ method: "GET", url: "/health" });
+    await app.inject({ method: "GET", url: "/api/v1/health" });
+
+    const response = await app.inject({ method: "GET", url: "/metrics" });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toContain("text/plain");
+    const body = response.body;
+    expect(body).toContain("# TYPE zeno_http_requests_total counter");
+    // The /health GET we just served is recorded with a 2xx status class.
+    expect(body).toMatch(/zeno_http_requests_total\{method="GET",route="\/health",status="2xx"\} \d+/);
+    expect(body).toContain("zeno_http_in_flight_requests");
+  });
+
+  it("gates /metrics behind METRICS_TOKEN when it is set", async () => {
+    const original = process.env.METRICS_TOKEN;
+    process.env.METRICS_TOKEN = "secret-scrape-token";
+    try {
+      const app = await buildApp();
+      const denied = await app.inject({ method: "GET", url: "/metrics" });
+      expect(denied.statusCode).toBe(401);
+
+      const allowed = await app.inject({
+        method: "GET",
+        url: "/metrics",
+        headers: { authorization: "Bearer secret-scrape-token" }
+      });
+      expect(allowed.statusCode).toBe(200);
+      expect(allowed.body).toContain("zeno_http_requests_total");
+    } finally {
+      restoreEnv("METRICS_TOKEN", original);
+    }
+  });
+
   it("uses dev magic-link auth without password storage", async () => {
     const app = await buildApp();
 
