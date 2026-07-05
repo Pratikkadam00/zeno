@@ -10,7 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "../../src/auth/authStore";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
 import { parseCSV } from "../../src/discovery/csvParser";
-import { applyFreeCap, toCurrencyCode } from "../../src/discovery/discovery-helpers";
+import { applyFreeCap, summarizeFoundMoney, toCurrencyCode } from "../../src/discovery/discovery-helpers";
 import {
   connectGmail,
   disconnectGmailAccount,
@@ -26,7 +26,8 @@ import { type as typography } from "../../src/theme/typography";
 import { spacing } from "../../src/theme/spacing";
 import { withAlpha } from "../../src/utils/subscription-ui";
 import { formatMoney } from "../../src/utils/format";
-import { Check, ChevronDown, ChevronUp, FileSpreadsheet, MailSearch, Plus, Search, Upload } from "lucide-react-native";
+import { shareText } from "../../src/utils/share";
+import { Check, ChevronDown, ChevronUp, FileSpreadsheet, MailSearch, Plus, Search, Share2, Upload } from "lucide-react-native";
 import { ServiceAvatar } from "../../src/components/zeno";
 import { fonts } from "../../src/theme/zeno";
 
@@ -249,6 +250,21 @@ export default function DiscoverScreen() {
 
   const allSelected = results.length > 0 && results.every((r) => r.selected);
 
+  // "Found money" — the single most shareable number the app produces, shown
+  // for everything the scan FOUND (never truncated by the free cap, and
+  // computed before the user even decides what to track). Never mixes
+  // currencies silently: sums only the batch's dominant currency and is honest
+  // about what's excluded (Phase 1.5's currency-honesty convention).
+  const foundMoney = useMemo(() => summarizeFoundMoney(results), [results]);
+
+  async function shareFoundMoney() {
+    const total = formatMoney(Math.round(foundMoney.annualTotal * 100), foundMoney.currency);
+    const excludedNote = foundMoney.excludedCount > 0
+      ? ` (plus ${foundMoney.excludedCount} more in other currencies)`
+      : "";
+    await shareText(`Zeno found ${total}/year in subscriptions I'd forgotten I was paying for${excludedNote}.`);
+  }
+
   // ── Results view ──────────────────────────────────────────────────────────
   if (results.length > 0) {
     return (
@@ -260,6 +276,27 @@ export default function DiscoverScreen() {
             <Text style={styles.pageTitle}>Found {results.length} subscriptions</Text>
             <Text style={styles.pageSubtitle}>Review and add the ones you want to track</Text>
           </View>
+
+          {/* Found-money share card — the most shareable number the app
+              produces, shown for everything found before any add decision. */}
+          {foundMoney.annualTotal > 0 ? (
+            <View style={styles.foundMoneyCard}>
+              <Text style={styles.foundMoneyLabel}>You could be saving</Text>
+              <Text style={styles.foundMoneyAmount}>
+                {formatMoney(Math.round(foundMoney.annualTotal * 100), foundMoney.currency)}/year
+              </Text>
+              <Text style={styles.foundMoneySub}>in subscriptions you'd forgotten about</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Share what Zeno found"
+                onPress={() => void shareFoundMoney()}
+                style={styles.foundMoneyShareBtn}
+              >
+                <Share2 size={15} color={theme.onPrimary} strokeWidth={2} />
+                <Text style={styles.foundMoneyShareText}>Share this</Text>
+              </Pressable>
+            </View>
+          ) : null}
 
           {/* Select all row */}
           <View style={styles.selectRow}>
@@ -692,6 +729,14 @@ function createStyles(theme: ThemeTokens) {
     pageTitle:      { fontSize: 28, fontFamily: fonts.display.bold, color: theme.text, letterSpacing: -1.0 },
     pageSubtitle:   { ...typography.callout, color: theme.mutedText, marginTop: 4 },
     pageSubtitleSmall: { fontSize: 15, color: theme.mutedText, letterSpacing: -0.2, marginTop: 4 },
+
+    // Found-money share card
+    foundMoneyCard:     { marginHorizontal: 16, marginTop: 14, marginBottom: 4, backgroundColor: theme.primarySurface, borderRadius: 18, padding: 18, alignItems: "center" },
+    foundMoneyLabel:    { fontSize: 13, fontFamily: fonts.sans.semibold, color: theme.primary, textTransform: "uppercase", letterSpacing: 0.4 },
+    foundMoneyAmount:   { fontSize: 32, fontFamily: fonts.display.bold, color: theme.text, letterSpacing: -1.0, marginTop: 6 },
+    foundMoneySub:      { fontSize: 14, color: theme.mutedText, marginTop: 2 },
+    foundMoneyShareBtn: { flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: theme.primary, borderRadius: 12, paddingHorizontal: 18, paddingVertical: 10, marginTop: 14 },
+    foundMoneyShareText:{ fontSize: 14, fontFamily: fonts.sans.semibold, color: theme.onPrimary },
 
     // Error
     errorCard:  { marginHorizontal: 16, marginTop: 12, borderRadius: 10, borderWidth: 0.5, borderColor: withAlpha(theme.danger, 0.2), backgroundColor: theme.dangerSurface, paddingHorizontal: 14, paddingVertical: 10 },

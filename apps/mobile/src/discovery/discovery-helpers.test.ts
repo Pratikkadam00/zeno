@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyFreeCap, calculateNextRenewal, confidenceRank, inferRecurringCycle, isWithin, slugify, titleCase, toCurrencyCode } from "./discovery-helpers";
+import { applyFreeCap, calculateNextRenewal, confidenceRank, inferRecurringCycle, isWithin, slugify, summarizeFoundMoney, titleCase, toCurrencyCode } from "./discovery-helpers";
 
 describe("inferRecurringCycle", () => {
   it("infers monthly / weekly / annual from the median gap", () => {
@@ -112,5 +112,49 @@ describe("toCurrencyCode", () => {
   it("falls back to USD for an unrecognized or empty currency string, never persisting an unformattable value", () => {
     expect(toCurrencyCode("XYZ")).toBe("USD");
     expect(toCurrencyCode("")).toBe("USD");
+  });
+});
+
+describe("summarizeFoundMoney", () => {
+  it("annualizes each item by its own billing cycle and sums them", () => {
+    const summary = summarizeFoundMoney([
+      { amount: 10, currency: "USD", billingCycle: "monthly" }, // -> 120/yr
+      { amount: 5, currency: "USD", billingCycle: "weekly" },   // -> 260/yr
+      { amount: 100, currency: "USD", billingCycle: "annual" }  // -> 100/yr
+    ]);
+    expect(summary).toEqual({ annualTotal: 480, currency: "USD", excludedCount: 0 });
+  });
+
+  it("does not fabricate a yearly figure for an unknown cadence", () => {
+    const summary = summarizeFoundMoney([
+      { amount: 50, currency: "USD", billingCycle: "unknown" },
+      { amount: 10, currency: "USD", billingCycle: "monthly" }
+    ]);
+    expect(summary).toEqual({ annualTotal: 120, currency: "USD", excludedCount: 0 });
+  });
+
+  it("sums only the dominant currency and reports the rest as excluded, never mixing currencies", () => {
+    const summary = summarizeFoundMoney([
+      { amount: 10, currency: "USD", billingCycle: "monthly" },
+      { amount: 12, currency: "USD", billingCycle: "monthly" },
+      { amount: 499, currency: "INR", billingCycle: "monthly" }
+    ]);
+    expect(summary.currency).toBe("USD");
+    expect(summary.annualTotal).toBe((10 + 12) * 12);
+    expect(summary.excludedCount).toBe(1);
+  });
+
+  it("picks INR as dominant when it's the majority, excluding the lone USD item", () => {
+    const summary = summarizeFoundMoney([
+      { amount: 499, currency: "INR", billingCycle: "monthly" },
+      { amount: 999, currency: "INR", billingCycle: "monthly" },
+      { amount: 10, currency: "USD", billingCycle: "monthly" }
+    ]);
+    expect(summary.currency).toBe("INR");
+    expect(summary.excludedCount).toBe(1);
+  });
+
+  it("returns a zero total for an empty batch", () => {
+    expect(summarizeFoundMoney([])).toEqual({ annualTotal: 0, currency: "USD", excludedCount: 0 });
   });
 });

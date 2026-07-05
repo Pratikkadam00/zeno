@@ -1,6 +1,6 @@
 import { buildMonthlySpendHistory } from "@zeno/shared";
 import { router, Stack } from "expo-router";
-import { AlertTriangle, Flame, Gift, PartyPopper, X } from "lucide-react-native";
+import { AlertTriangle, Flame, Gift, PartyPopper, Share2, X } from "lucide-react-native";
 import { Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Badge, Button, Card } from "../src/components/zeno";
@@ -8,6 +8,7 @@ import { useBudgetStore } from "../src/data/budget-store";
 import { useSubscriptionStore } from "../src/data/subscription-store";
 import { useZenoTokens } from "../src/theme/useZenoTokens";
 import { formatMoney } from "../src/utils/format";
+import { shareText } from "../src/utils/share";
 
 // Aggregate monthly-spend-history figures — currently USD-only, matching the
 // rest of the aggregate math app-wide (see budget.tsx for the same convention).
@@ -63,6 +64,12 @@ export default function BudgetRecapScreen() {
     if (history[i].amountMinor <= capMinor) streak++;
     else break;
   }
+
+  // Streak = retention mechanic + recurring share trigger (3.3). Only worth
+  // sharing once it's a genuine streak, matching the badge's own threshold.
+  const shareStreak = () => shareText(
+    `I've stayed under my subscription budget for ${streak} months straight.`
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp, paddingTop: insets.top }}>
@@ -120,7 +127,15 @@ export default function BudgetRecapScreen() {
         </View>
       </View>
 
-      <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16 + insets.bottom }}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16 + insets.bottom, gap: 10 }}>
+        {under && streak > 1 ? (
+          <Button variant="secondary" size="lg" fullWidth onPress={() => void shareStreak()}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Share2 size={16} color={c.textPrimary} strokeWidth={2} />
+              <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: 15, color: c.textPrimary }}>Share my {streak}-month streak</Text>
+            </View>
+          </Button>
+        ) : null}
         <Button variant="primary" size="lg" fullWidth onPress={() => router.back()}>Done</Button>
       </View>
     </View>

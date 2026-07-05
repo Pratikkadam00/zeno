@@ -81,3 +81,52 @@ export function applyFreeCap<T>(selected: T[], remainingSlots: number): FreeCapD
   const toAdd = selected.slice(0, Math.max(0, remainingSlots));
   return { toAdd, skipped: selected.length - toAdd.length };
 }
+
+// Converts a detected item's raw amount (in its own billing cycle) to a yearly
+// figure. "unknown" cadence contributes 0 — we won't fabricate a yearly
+// commitment for a cycle we couldn't determine, mirroring how
+// packages/shared's monthlyAmount treats trial/unknown cycles as non-recurring.
+function annualizeDetectedAmount(amount: number, cycle: DiscoveryBillingCycle): number {
+  if (cycle === "weekly") return amount * 52;
+  if (cycle === "quarterly") return amount * 4;
+  if (cycle === "monthly") return amount * 12;
+  if (cycle === "annual") return amount;
+  return 0;
+}
+
+export type FoundMoneyInput = { amount: number; currency: string; billingCycle: DiscoveryBillingCycle };
+export type FoundMoneySummary = { annualTotal: number; currency: CurrencyCode; excludedCount: number };
+
+// "Found money" total for a just-completed scan/import: the annualized sum in
+// the batch's DOMINANT currency (the most common among the results). Never
+// silently sums across currencies (the discovery-time analog of the Phase 1.5
+// currency-honesty fix) — anything in a different currency is counted in
+// excludedCount instead of folded into the total.
+export function summarizeFoundMoney(items: FoundMoneyInput[]): FoundMoneySummary {
+  const currencyCounts = new Map<CurrencyCode, number>();
+  for (const item of items) {
+    const code = toCurrencyCode(item.currency);
+    currencyCounts.set(code, (currencyCounts.get(code) ?? 0) + 1);
+  }
+
+  let dominant: CurrencyCode = "USD";
+  let dominantCount = 0;
+  for (const [code, count] of currencyCounts) {
+    if (count > dominantCount) {
+      dominant = code;
+      dominantCount = count;
+    }
+  }
+
+  let annualTotal = 0;
+  let excludedCount = 0;
+  for (const item of items) {
+    if (toCurrencyCode(item.currency) !== dominant) {
+      excludedCount += 1;
+      continue;
+    }
+    annualTotal += annualizeDetectedAmount(item.amount, item.billingCycle);
+  }
+
+  return { annualTotal, currency: dominant, excludedCount };
+}
