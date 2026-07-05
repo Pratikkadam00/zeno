@@ -175,6 +175,36 @@ export function sweepExpiredAuth(): void {
   }
 }
 
+// Account deletion: revoke every session/magic-link record tied to this account
+// (in-memory + persisted), across all three maps — each holds accountId on its
+// record even though the map key is a token hash/email, not the account id.
+// Synchronous and immediate: a refresh attempt right after this call is already
+// rejected (the in-memory entry is gone), regardless of when the Postgres mirror
+// delete lands. Does NOT revoke an already-issued short-lived (15 min) access
+// token — those are stateless RS256 JWTs verified by signature only, with no
+// revocation list; that tail is an existing property of the access-token design,
+// not something this function changes.
+export function revokeAllSessionsForAccount(accountId: string): void {
+  for (const [hash, record] of magicLinksByHash) {
+    if (record.accountId === accountId) {
+      magicLinksByHash.delete(hash);
+      kvDelete("auth_magic", hash);
+    }
+  }
+  for (const [email, record] of legacyCodesByEmail) {
+    if (record.accountId === accountId) {
+      legacyCodesByEmail.delete(email);
+      kvDelete("auth_legacy", email);
+    }
+  }
+  for (const [hash, record] of refreshSessionsByHash) {
+    if (record.accountId === accountId) {
+      refreshSessionsByHash.delete(hash);
+      kvDelete("auth_refresh", hash);
+    }
+  }
+}
+
 // Auth endpoints get much stricter limits than the global bucket: magic-link
 // codes are 6 digits, so verification attempts must be expensive to repeat.
 const requestLimit = { config: { rateLimit: { max: 5, timeWindow: "1 minute" } } };

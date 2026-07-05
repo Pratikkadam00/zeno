@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { fetchWithTimeout } from "./http";
-import { kvClear, kvPersist, registerHydrator, type StoredEntry } from "./storage/pg";
+import { kvClear, kvDelete, kvPersist, registerHydrator, type StoredEntry } from "./storage/pg";
 
 // Server-side entitlement verification. The mobile client reports a plan from
 // the RevenueCat SDK, but a tampered client could lie — so the server is the
@@ -135,6 +135,13 @@ export function applyWebhookEvent(body: unknown): void {
 export function clearEntitlementCache(): void {
   cache.clear();
   void kvClear("billing");
+}
+
+// Account deletion: purge one user's cached entitlement (in-memory + persisted).
+// keyed directly by appUserId, so a single delete is exact.
+export function deleteEntitlementForUser(appUserId: string): void {
+  cache.delete(appUserId);
+  kvDelete("billing", appUserId);
 }
 
 registerHydrator("billing", (entries: StoredEntry[]) => {

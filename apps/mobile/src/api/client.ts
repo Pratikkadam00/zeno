@@ -234,6 +234,26 @@ export async function leaveHousehold(householdId: string): Promise<boolean> {
   }
 }
 
+// Permanently deletes this account server-side: purges every kv_store namespace
+// (entitlement cache, Plaid item, synced entities, household membership) and
+// revokes every session. Unlike most calls in this file, failure is NOT
+// swallowed into a soft fallback — the caller must not proceed to wipe local
+// data or sign out until the server confirms deletion, since doing so on a
+// failed request would tell the user their account is gone while server data
+// still exists (violates the account-deletion promise and, for App Store
+// review, Apple's in-app-deletion requirement).
+export async function deleteAccountOnServer(): Promise<boolean> {
+  try {
+    const response = await timedFetch(`${getApiBaseUrl()}/account`, {
+      method: "DELETE",
+      headers: await authHeaders()
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function createOpenBankingIntentViaApi(provider: "plaid" | "mx"): Promise<OpenBankingConnectionIntent> {
   const response = await fetch(`${getApiBaseUrl()}/open-banking/${provider}/intent`, {
     method: "POST",

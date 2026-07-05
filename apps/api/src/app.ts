@@ -8,11 +8,11 @@ import { pingStorage } from "./storage/pg";
 import Redis from "ioredis";
 import { randomUUID } from "node:crypto";
 import { z, ZodError } from "zod";
-import { authRoutes } from "./routes/auth";
-import { createLinkToken, exchangePublicToken, getRecentTransactions, getStoredPlaidItem, plaidConfigured, sandboxPublicToken, storePlaidItem } from "./plaid";
-import { applyWebhookEvent, billingConfigured, fetchEntitlement, getCachedEntitlement, verifyWebhookAuth, webhookConfigured } from "./billing";
-import { pullChanges, pushChanges, type EncryptedChange } from "./sync";
-import { createHousehold, getHousehold, joinHousehold, removeMember, setMemberSpend, type Household } from "./family";
+import { authRoutes, revokeAllSessionsForAccount } from "./routes/auth";
+import { createLinkToken, deletePlaidItem, exchangePublicToken, getRecentTransactions, getStoredPlaidItem, plaidConfigured, sandboxPublicToken, storePlaidItem } from "./plaid";
+import { applyWebhookEvent, billingConfigured, deleteEntitlementForUser, fetchEntitlement, getCachedEntitlement, verifyWebhookAuth, webhookConfigured } from "./billing";
+import { deleteUserSyncData, pullChanges, pushChanges, type EncryptedChange } from "./sync";
+import { createHousehold, getHousehold, joinHousehold, removeMember, removeUserFromAllHouseholds, setMemberSpend, type Household } from "./family";
 import { coachConfigured, coachModel, generateCoaching } from "./coach";
 import { registerAuthGuard } from "./auth-guard";
 import { markRequestStart, recordRequest, renderMetrics } from "./metrics";
@@ -248,6 +248,22 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     plan: "free",
     serverStoresFinancialData: false
   }, request.id));
+
+  // Account deletion: purges every server-side kv_store namespace tied to this
+  // account (entitlement cache, Plaid item, synced entities, household
+  // membership) and revokes every refresh/magic-link session immediately — a
+  // refresh attempt right after this call is already rejected. The device's
+  // local SQLite data is wiped separately, client-side (settings.tsx). Rate-
+  // limited low: this is a destructive, rarely-called action, not a hot path.
+  app.delete("/api/v1/account", limit(5), async (request) => {
+    const userId = request.userId!;
+    deleteEntitlementForUser(userId);
+    deletePlaidItem(userId);
+    deleteUserSyncData(userId);
+    removeUserFromAllHouseholds(userId);
+    revokeAllSessionsForAccount(userId);
+    return ok({ deleted: true }, request.id);
+  });
 
   app.get("/api/v1/services", async (request) => {
     const rawQuery = typeof request.query === "object" && request.query ? request.query as Record<string, unknown> : {};

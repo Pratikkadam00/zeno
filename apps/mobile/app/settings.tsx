@@ -1,4 +1,5 @@
 import { useMemo, useState, type ComponentType } from "react";
+import { deleteAccountOnServer } from "../src/api/client";
 import { useAuthStore } from "../src/auth/authStore";
 import { useBudgetStore } from "../src/data/budget-store";
 import { useSubscriptionStore } from "../src/data/subscription-store";
@@ -125,13 +126,32 @@ export default function SettingsScreen() {
     ]);
   }
 
+  // Deletes the account server-side FIRST (purges cloud sync, entitlement cache,
+  // Plaid item, household membership, and revokes sessions) and only wipes local
+  // data + signs out once the server confirms it. If the server call fails, the
+  // account is NOT touched locally — proceeding anyway would tell the user their
+  // account is gone while server-side data still exists.
+  async function cancelAccount() {
+    const serverDeleted = await deleteAccountOnServer();
+    if (!serverDeleted) {
+      Alert.alert(
+        "Couldn't delete your account",
+        "We couldn't reach the server to confirm deletion. Check your connection and try again — nothing was changed."
+      );
+      return;
+    }
+    resetBudget();
+    await clearAllData();
+    logout();
+  }
+
   function confirmCancelAccount() {
     Alert.alert(
       "Cancel my Zeno account",
-      "This erases your data from this device and signs you out. We never make this hard.",
+      "This permanently deletes your account and data from our servers, erases everything from this device, and signs you out. This cannot be undone.",
       [
         { text: "Keep my account", style: "cancel" },
-        { text: "Cancel account", style: "destructive", onPress: () => { resetBudget(); void clearAllData().then(() => logout()); } }
+        { text: "Cancel account", style: "destructive", onPress: () => void cancelAccount() }
       ]
     );
   }

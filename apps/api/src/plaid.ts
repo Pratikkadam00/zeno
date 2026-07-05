@@ -26,6 +26,7 @@ import { fetchWithTimeout } from "./http";
 import {
   encryptionConfigured,
   kvClear,
+  kvDelete,
   kvPersist,
   openValue,
   registerHydrator,
@@ -48,6 +49,13 @@ export function getStoredPlaidItem(userId: string): StoredPlaidItem | undefined 
 export function clearPlaidItems(): void {
   plaidItemsByUser.clear();
   void kvClear("plaid");
+}
+
+// Account deletion: drop one user's stored bank item (in-memory + persisted).
+// Keyed directly by userId, so a single delete is exact.
+export function deletePlaidItem(userId: string): void {
+  plaidItemsByUser.delete(userId);
+  kvDelete("plaid", userId);
 }
 
 // Decrypt persisted tokens on boot. Rows that can't be opened (key rotated/

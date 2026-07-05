@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { buildApp } from "./app";
+import { applyWebhookEvent, getCachedEntitlement } from "./billing";
 import { coachSystemPrompt } from "./coach";
+import { getStoredPlaidItem, storePlaidItem } from "./plaid";
 
 function restoreEnv(key: string, value: string | undefined): void {
   if (value === undefined) delete process.env[key];
@@ -9,13 +11,13 @@ function restoreEnv(key: string, value: string | undefined): void {
 
 // Mint a real RS256 access token via the dev magic-link flow (no RESEND key →
 // the token is returned in devLink). Distinct email → distinct accountId (sub).
-async function tokenFor(app: Awaited<ReturnType<typeof buildApp>>, email: string): Promise<{ token: string; accountId: string }> {
+async function tokenFor(app: Awaited<ReturnType<typeof buildApp>>, email: string): Promise<{ token: string; accountId: string; refreshToken: string }> {
   const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email } });
   const devLink = requested.json().data.devLink as string;
   const rawToken = decodeURIComponent(devLink.split("token=")[1] ?? "");
   const verified = await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(rawToken)}` });
   const data = verified.json().data;
-  return { token: data.accessToken as string, accountId: data.accountId as string };
+  return { token: data.accessToken as string, accountId: data.accountId as string, refreshToken: data.refreshToken as string };
 }
 
 function authH(token: string): Record<string, string> {
@@ -650,6 +652,63 @@ describe("api app", () => {
     expect(tx.statusCode).toBe(503);
     const ex = await app.inject({ method: "POST", url: "/api/v1/plaid/exchange", headers: authH(token), payload: { publicToken: "x" } });
     expect(ex.statusCode).toBe(503);
+  });
+
+  it("account deletion purges every kv_store namespace and revokes sessions", async () => {
+    const app = await buildApp();
+    const { token, accountId, refreshToken } = await tokenFor(app, "delete-me@zeno.test");
+
+    // Seed billing (entitlement cache).
+    applyWebhookEvent({
+      event: { app_user_id: accountId, type: "INITIAL_PURCHASE", entitlement_ids: ["pro"], expiration_at_ms: Date.now() + 100_000 }
+    });
+    expect(getCachedEntitlement(accountId)).toBeDefined();
+
+    // Seed Plaid (in-memory item; encryption isn't configured in tests so this
+    // stays in-memory-only, which is enough to prove the in-memory purge).
+    storePlaidItem(accountId, { accessToken: "sandbox-token", itemId: "item-1" });
+    expect(getStoredPlaidItem(accountId)).toBeDefined();
+
+    // Seed sync (an encrypted change the server can't read, just opaque ciphertext).
+    await app.inject({
+      method: "POST",
+      url: "/api/v1/sync/push",
+      headers: authH(token),
+      payload: { encryptedChanges: [{ entityType: "subscription", entityId: "sub-1", operation: "create", encryptedPayload: "cipher", vectorClock: { device: 1 } }] }
+    });
+    const pullBefore = await app.inject({ method: "GET", url: "/api/v1/sync/pull", headers: authH(token) });
+    expect(pullBefore.json().data.encryptedChanges).toHaveLength(1);
+
+    // Seed family (this account is the sole member → household exists).
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/v1/family/create",
+      headers: authH(token),
+      payload: { ownerName: "Deletable Owner" }
+    });
+    const householdId = created.json().data.household.id as string;
+    expect((await app.inject({ method: "GET", url: `/api/v1/family/${householdId}`, headers: authH(token) })).statusCode).toBe(200);
+
+    // Delete the account.
+    const deleted = await app.inject({ method: "DELETE", url: "/api/v1/account", headers: authH(token) });
+    expect(deleted.statusCode).toBe(200);
+    expect(deleted.json().data.deleted).toBe(true);
+
+    // Billing + Plaid purged in-memory.
+    expect(getCachedEntitlement(accountId)).toBeUndefined();
+    expect(getStoredPlaidItem(accountId)).toBeUndefined();
+
+    // Sync data gone — even though the short-lived access token still verifies
+    // (stateless JWT, no revocation list), there is simply nothing left to pull.
+    const pullAfter = await app.inject({ method: "GET", url: "/api/v1/sync/pull", headers: authH(token) });
+    expect(pullAfter.json().data.encryptedChanges).toEqual([]);
+
+    // Household disbanded (this account was the sole member).
+    expect((await app.inject({ method: "GET", url: `/api/v1/family/${householdId}`, headers: authH(token) })).statusCode).toBe(404);
+
+    // The refresh session is revoked immediately — old refresh token rejected.
+    const refreshAttempt = await app.inject({ method: "POST", url: "/api/v1/auth/refresh", payload: { refreshToken } });
+    expect(refreshAttempt.statusCode).toBe(401);
   });
 
   it("loads the AI coach constitution into the system prompt", () => {

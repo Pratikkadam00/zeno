@@ -125,6 +125,18 @@ export function removeMember(householdId: string, memberId: string): Household |
   return household;
 }
 
+// Account deletion: remove this user from every household they belong to
+// (owner or member — there's no cap on memberships, only on owner-created
+// households, so a user can be in several). Reuses removeMember's existing
+// disband-on-last-member logic rather than duplicating it.
+export function removeUserFromAllHouseholds(userId: string): void {
+  for (const household of [...households.values()]) {
+    if (household.members.some((member) => member.id === userId)) {
+      removeMember(household.id, userId);
+    }
+  }
+}
+
 export function clearFamilyStore(): void {
   households.clear();
   codeIndex.clear();

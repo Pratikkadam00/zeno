@@ -247,18 +247,6 @@ export default function PaywallScreen() {
           })}
         </View>
 
-        {/* Social proof */}
-        <View style={styles.socialRow}>
-          <View style={styles.avatarStack} accessible={false} importantForAccessibility="no-hide-descendants">
-            {[{ color: theme.primary, letter: "M" }, { color: theme.secondary, letter: "S" }, { color: theme.success, letter: "D" }].map((a, i) => (
-              <View key={a.letter} style={[styles.socialAvatar, { backgroundColor: a.color, marginLeft: i === 0 ? 0 : -8 }]}>
-                <Text style={styles.socialAvatarText}>{a.letter}</Text>
-              </View>
-            ))}
-          </View>
-          <Text style={styles.socialProofText}>14,000+ people saving money with Zeno</Text>
-        </View>
-
         {/* Error */}
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -376,13 +364,6 @@ function createStyles(theme: ThemeTokens) {
     propTitle:     { ...typography.subheadline, color: theme.text },
     propSub:       { ...typography.caption1, color: theme.mutedText, marginTop: 2 },
     propSep:       { position: "absolute", left: 66, right: 0, bottom: 0, height: 0.5, backgroundColor: theme.border },
-
-    // Social proof
-    socialRow:     { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 16 },
-    avatarStack:   { flexDirection: "row" },
-    socialAvatar:  { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: theme.background, alignItems: "center", justifyContent: "center" },
-    socialAvatarText: { color: theme.onPrimary, fontSize: 11, fontFamily: fonts.sans.bold },
-    socialProofText:{ fontSize: 13, fontFamily: fonts.sans.regular, color: theme.mutedText, marginLeft: 4 },
 
     // Error
     errorText:     { ...typography.footnote, color: theme.danger, textAlign: "center", marginHorizontal: 16 },
