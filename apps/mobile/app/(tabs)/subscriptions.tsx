@@ -16,9 +16,13 @@ import {
 } from "../../src/components/zeno";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
 import { useZenoTokens } from "../../src/theme/useZenoTokens";
+import { formatMoney } from "../../src/utils/format";
 import { formatShortDate } from "../../src/utils/subscription-ui";
 
-const money = (minor: number) => `$${(minor / 100).toFixed(2)}`;
+// Aggregate total (summed across all billing subscriptions) — currently
+// USD-only, matching the rest of the aggregate math app-wide. The per-item row
+// below uses formatMoney with that subscription's own stored currency.
+const money = (minor: number) => formatMoney(minor);
 
 type FilterKey = "All" | "Active" | "Paused" | "Pending" | "Cancelled";
 const FILTERS: { key: FilterKey; match: (s: Subscription) => boolean }[] = [
@@ -181,7 +185,7 @@ export default function SubscriptionsScreen() {
                         {badge.label}
                       </Badge>
                       <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: t.fontSize.body, color: c.textPrimary }}>
-                        {money(s.price.amountMinor)}
+                        {formatMoney(s.price.amountMinor, s.price.currency)}
                       </Text>
                       {sub ? (
                         <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: t.fontSize.micro, color: c.textTertiary }}>{sub}</Text>

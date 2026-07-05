@@ -4,6 +4,7 @@ import * as Notifications from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { themes } from "../theme/tokens";
+import { formatMoney } from "../utils/format";
 
 const pushTokenKey = "zeno_push_token";
 const notificationChannelId = "zeno-renewals";
@@ -15,6 +16,8 @@ export type RenewalNotificationSubscription = {
   id: string;
   name: string;
   amount: number;
+  /** Money.currency code (e.g. "USD", "INR"); defaults to "USD" if omitted. */
+  currency?: string;
   nextRenewalDate: string;
   /** When true, nextRenewalDate is a free-trial conversion date → trial copy. */
   isTrial?: boolean;
@@ -109,7 +112,7 @@ export async function scheduleRenewalNotificationsWithPreferences(
     return;
   }
 
-  const amount = formatAmount(subscription.amount);
+  const amount = formatAmount(subscription.amount, subscription.currency);
   // Free trials get earlier, sharper "cancel before you're charged" copy keyed
   // to the conversion date; paid subscriptions get the standard renewal radar.
   const notificationPlan = subscription.isTrial
@@ -237,6 +240,6 @@ export function getNineAmTriggerDate(renewalDate: Date, daysBefore: number): Dat
   return triggerDate;
 }
 
-function formatAmount(amount: number): string {
-  return `$${amount.toFixed(2)}`;
+function formatAmount(amount: number, currency = "USD"): string {
+  return formatMoney(Math.round(amount * 100), currency);
 }

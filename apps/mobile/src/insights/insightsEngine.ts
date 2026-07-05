@@ -1,5 +1,6 @@
 import { getServiceById, getServiceBySlug } from "@zeno/service-catalog";
 import { monthlyAmount, type Subscription } from "@zeno/shared";
+import { currencySymbol } from "../utils/format";
 
 export interface Insight {
   id: string;
@@ -73,7 +74,7 @@ export function detectUnused(subscriptions: Subscription[]): Insight[] {
         id: `unused-${subscription.id}`,
         type: "unused",
         title: `Not used in ${daysUnused} days`,
-        message: `${subscription.name} is ${formatMoney(monthly)}/mo but you haven't opened it in ${daysUnused} days. Still worth it?`,
+        message: `${subscription.name} is ${formatMoney(monthly, subscription.price.currency)}/mo but you haven't opened it in ${daysUnused} days. Still worth it?`,
         savingAmount: monthly,
         subscriptionId: subscription.id,
         priority: daysUnused > 60 ? "high" : "medium",
@@ -107,7 +108,7 @@ export function detectDuplicates(subscriptions: Subscription[]): Insight[] {
         id: `duplicate-${category}-${first.id}-${second.id}`,
         type: "duplicate",
         title: `Two ${labelCategory(category)} tools`,
-        message: `You pay for both ${first.name} (${formatMoney(amountA)}) and ${second.name} (${formatMoney(amountB)}). Could you replace one?`,
+        message: `You pay for both ${first.name} (${formatMoney(amountA, first.price.currency)}) and ${second.name} (${formatMoney(amountB, second.price.currency)}). Could you replace one?`,
         savingAmount: Math.min(amountA, amountB),
         subscriptionIds: [first.id, second.id],
         priority: amountA > 10 && amountB > 10 ? "high" : "medium",
@@ -130,6 +131,13 @@ export function detectAnnualSavings(subscriptions: Subscription[]): Insight[] {
       if (!service?.defaultAnnualPrice) {
         return [];
       }
+      // The catalog's default prices are USD-denominated (no currency field on
+      // Service) — comparing them against a non-USD subscription's amount would
+      // produce a meaningless "saving" figure, so skip rather than show a wrong
+      // number with a currency label that makes it look more legitimate.
+      if (subscription.price.currency !== "USD") {
+        return [];
+      }
 
       const annualIfPaidMonthly = monthlyDollars(subscription) * 12;
       const saving = annualIfPaidMonthly - service.defaultAnnualPrice;
@@ -140,8 +148,8 @@ export function detectAnnualSavings(subscriptions: Subscription[]): Insight[] {
       return [createInsight({
         id: `annual-${subscription.id}`,
         type: "annual_saving",
-        title: `Save ${formatMoney(saving)}/year on ${subscription.name}`,
-        message: `Switching ${subscription.name} to annual billing saves ${formatMoney(saving)}/year (${formatMoney(saving / 12)}/month).`,
+        title: `Save ${formatMoney(saving, subscription.price.currency)}/year on ${subscription.name}`,
+        message: `Switching ${subscription.name} to annual billing saves ${formatMoney(saving, subscription.price.currency)}/year (${formatMoney(saving / 12, subscription.price.currency)}/month).`,
         savingAmount: roundMoney(saving),
         subscriptionId: subscription.id,
         priority: saving > 50 ? "high" : "medium",
@@ -181,7 +189,7 @@ export function detectTrialEnding(subscriptions: Subscription[]): Insight[] {
         id: `trial-${subscription.id}`,
         type: "trial_ending",
         title: `Trial ends in ${daysUntilEnd} days`,
-        message: `${subscription.name} free trial ends ${formatDate(subscription.nextRenewalDate)}. Cancel now to avoid being charged ${formatMoney(monthly)}.`,
+        message: `${subscription.name} free trial ends ${formatDate(subscription.nextRenewalDate)}. Cancel now to avoid being charged ${formatMoney(monthly, subscription.price.currency)}.`,
         subscriptionId: subscription.id,
         priority: daysUntilEnd <= 2 ? "high" : "medium",
         actionLabel: "Cancel Before Charged",
@@ -237,7 +245,7 @@ export function generateSpendSummary(subscriptions: Subscription[]): Insight {
   }).length;
 
   const topServiceText = mostExpensive
-    ? `${mostExpensive.name} is your biggest at ${formatMoney(monthlyDollars(mostExpensive))}/mo.`
+    ? `${mostExpensive.name} is your biggest at ${formatMoney(monthlyDollars(mostExpensive), mostExpensive.price.currency)}/mo.`
     : "No active subscriptions yet.";
   const categoryText = topCategory ? `${labelCategory(topCategory.category)} leads your category spend. ` : "";
 
@@ -261,7 +269,7 @@ export function detectCancellationReminders(subscriptions: Subscription[]): Insi
       id: `cancel-reminder-${subscription.id}`,
       type: "cancellation_reminder",
       title: `${subscription.name} cancelled - active until ${formatDate(subscription.nextRenewalDate)}`,
-      message: `Your access continues until ${formatDate(subscription.nextRenewalDate)}. After that you save ${formatMoney(monthlyDollars(subscription))}/mo.`,
+      message: `Your access continues until ${formatDate(subscription.nextRenewalDate)}. After that you save ${formatMoney(monthlyDollars(subscription), subscription.price.currency)}/mo.`,
       savingAmount: monthlyDollars(subscription),
       subscriptionId: subscription.id,
       priority: "low"
@@ -397,8 +405,14 @@ function extractDays(title: string): number {
   return Number.parseInt(title.match(/\d+/)?.[0] ?? "0", 10);
 }
 
-function formatMoney(value: number): string {
-  return `$${roundMoney(value).toFixed(value % 1 === 0 ? 0 : 2)}`;
+// Dollar-valued (not minor units), adaptive precision (whole numbers show no
+// cents) — distinct from utils/format.ts's minor-unit formatMoney, which this
+// file's insight messages predate. currency defaults to "USD" for aggregate
+// figures (summed across possibly-mixed-currency subscriptions — genuine
+// per-currency aggregation is out of scope here); per-subscription messages
+// pass that subscription's own stored currency.
+function formatMoney(value: number, currency = "USD"): string {
+  return `${currencySymbol(currency)}${roundMoney(value).toFixed(value % 1 === 0 ? 0 : 2)}`;
 }
 
 function formatDate(dateValue: string | undefined): string {

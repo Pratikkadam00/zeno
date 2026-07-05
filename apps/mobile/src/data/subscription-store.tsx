@@ -1,5 +1,5 @@
 import { searchServices } from "@zeno/service-catalog";
-import { createAnalyticsSnapshot, createBusinessSummary, createFamilyVaultSummary, createRenewalReminderPlan, createSpendSummary, createSpendTwin, createWidgetSnapshot, demoBusinessWorkspace, demoFamilyMembers, detectPriceHikes, getEndingTrials, monthlyAmount, partnerIntegrationManifests, type AnalyticsSnapshot, type BillingCycle, type BusinessSubscriptionSummary, type EndingTrial, type FamilyVaultSummary, type PartnerIntegrationManifest, type PriceHike, type PriceHistoryEntry, type RenewalReminderPlan, type SpendSummary, type SpendTwinComparison, type Subscription, type SubscriptionCategory, type SubscriptionStatus, type WidgetSnapshot } from "@zeno/shared";
+import { createAnalyticsSnapshot, createBusinessSummary, createFamilyVaultSummary, createRenewalReminderPlan, createSpendSummary, createSpendTwin, createWidgetSnapshot, demoBusinessWorkspace, demoFamilyMembers, detectPriceHikes, getEndingTrials, monthlyAmount, partnerIntegrationManifests, type AnalyticsSnapshot, type BillingCycle, type BusinessSubscriptionSummary, type CurrencyCode, type EndingTrial, type FamilyVaultSummary, type PartnerIntegrationManifest, type PriceHike, type PriceHistoryEntry, type RenewalReminderPlan, type SpendSummary, type SpendTwinComparison, type Subscription, type SubscriptionCategory, type SubscriptionStatus, type WidgetSnapshot } from "@zeno/shared";
 import * as Crypto from "expo-crypto";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform } from "react-native";
@@ -14,6 +14,9 @@ type CreateSubscriptionInput = {
   serviceSlug?: string;
   category: SubscriptionCategory;
   amountMinor: number;
+  /** Defaults to "USD" — matches manual-add (which is USD-only today, no
+   *  currency picker yet) while letting discovery pass a detected currency. */
+  currency?: CurrencyCode;
   billingCycle: BillingCycle;
   nextRenewalDate?: string;
   source?: Subscription["source"];
@@ -268,7 +271,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
           serviceSlug: input.serviceSlug,
           name: input.name,
           category: input.category,
-          price: { amountMinor: input.amountMinor, currency: "USD" },
+          price: { amountMinor: input.amountMinor, currency: input.currency ?? "USD" },
           billingCycle: input.billingCycle,
           nextRenewalDate: input.nextRenewalDate,
           status: "active",

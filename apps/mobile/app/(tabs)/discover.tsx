@@ -10,7 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "../../src/auth/authStore";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
 import { parseCSV } from "../../src/discovery/csvParser";
-import { applyFreeCap } from "../../src/discovery/discovery-helpers";
+import { applyFreeCap, toCurrencyCode } from "../../src/discovery/discovery-helpers";
 import {
   connectGmail,
   disconnectGmailAccount,
@@ -25,6 +25,7 @@ import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
 import { spacing } from "../../src/theme/spacing";
 import { withAlpha } from "../../src/utils/subscription-ui";
+import { formatMoney } from "../../src/utils/format";
 import { Check, ChevronDown, ChevronUp, FileSpreadsheet, MailSearch, Plus, Search, Upload } from "lucide-react-native";
 import { ServiceAvatar } from "../../src/components/zeno";
 import { fonts } from "../../src/theme/zeno";
@@ -218,16 +219,18 @@ export default function DiscoverScreen() {
     const { toAdd, skipped } = applyFreeCap(selected, remainingFreeSlots);
     for (const result of toAdd) {
       const service = result.serviceId ? services.find((s) => s.id === result.serviceId) : undefined;
+      const currency = toCurrencyCode(result.currency);
       const id = addSubscription({
         name: result.name,
         serviceSlug: service?.slug ?? result.serviceId,
         category: mapServiceCategory(service?.category),
         amountMinor: Math.round(Number(result.amount.toFixed(2)) * 100),
+        currency,
         billingCycle: mapBillingCycle(result.billingCycle),
         nextRenewalDate: result.nextRenewal,
         source: result.source === "Gmail" ? "email" : "csv"
       });
-      await scheduleRenewalNotifications({ id, name: result.name, amount: result.amount, nextRenewalDate: result.nextRenewal });
+      await scheduleRenewalNotifications({ id, name: result.name, amount: result.amount, currency, nextRenewalDate: result.nextRenewal });
     }
 
     if (skipped > 0) {
@@ -325,7 +328,7 @@ export default function DiscoverScreen() {
 
                     {/* Right */}
                     <View style={styles.resultRight}>
-                      <Text style={styles.resultAmount}>{formatAmount(result.amount)}</Text>
+                      <Text style={styles.resultAmount}>{formatAmount(result.amount, result.currency)}</Text>
                       <View style={styles.confidenceRow}>
                         <View style={[styles.confidenceDot, { backgroundColor: getConfidenceColor(result.confidence, theme) }]} />
                         <Text style={styles.confidenceText}>{result.confidence}</Text>
@@ -669,7 +672,7 @@ function mapServiceCategory(category: string | undefined): SubscriptionCategory 
   return "other";
 }
 
-function formatAmount(amount: number): string { return `$${amount.toFixed(2)}`; }
+function formatAmount(amount: number, currency: string): string { return formatMoney(Math.round(amount * 100), currency); }
 function getErrorMessage(error: unknown): string { return error instanceof Error ? error.message : "Discovery scan failed."; }
 
 function showToast(message: string): void {

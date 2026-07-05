@@ -1,6 +1,19 @@
+import type { CurrencyCode } from "@zeno/shared";
+
 export type DiscoveryBillingCycle = "monthly" | "quarterly" | "annual" | "weekly" | "unknown";
 
 export type DiscoveryConfidence = "high" | "medium" | "low";
+
+const SUPPORTED_CURRENCIES: readonly CurrencyCode[] = ["USD", "EUR", "GBP", "INR", "CAD", "AUD"];
+
+// Detected/parsed currency strings (e.g. from emailScanner's detectCurrency)
+// are loosely typed as `string`; narrow to the app's supported CurrencyCode
+// union here rather than casting at every call site, falling back to USD for
+// anything unrecognized instead of persisting a value the app can't format.
+export function toCurrencyCode(value: string): CurrencyCode {
+  const upper = value.toUpperCase();
+  return (SUPPORTED_CURRENCIES as readonly string[]).includes(upper) ? (upper as CurrencyCode) : "USD";
+}
 
 export function calculateNextRenewal(lastCharged: Date, cycle: DiscoveryBillingCycle): Date {
   const next = new Date(lastCharged);

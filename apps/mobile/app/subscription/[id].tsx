@@ -6,7 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useMemo, useState } from "react";
 import { useSubscriptionStore, type SubscriptionNotificationSettings } from "../../src/data/subscription-store";
 import { cancelNotificationsForSubscription, scheduleRenewalNotificationsWithPreferences } from "../../src/notifications/notificationService";
-import { formatMoney } from "../../src/utils/format";
+import { currencySymbol, formatMoney } from "../../src/utils/format";
 import { formatDaysLabel, formatShortDate, getDaysRemaining } from "../../src/utils/subscription-ui";
 import { AlertTriangle, Bell, BellOff, ChevronLeft, CircleCheck, Clock, MoreHorizontal } from "lucide-react-native";
 import { ServiceAvatar } from "../../src/components/zeno";
@@ -73,8 +73,8 @@ function formatServiceCategory(category: ServiceCategory): string {
   return category.replace("_", " ");
 }
 
-function toNotificationSubscription(subscription: { id: string; name: string; price: { amountMinor: number }; nextRenewalDate?: string }) {
-  return { id: subscription.id, name: subscription.name, amount: subscription.price.amountMinor / 100, nextRenewalDate: subscription.nextRenewalDate ?? "" };
+function toNotificationSubscription(subscription: { id: string; name: string; price: { amountMinor: number; currency: string }; nextRenewalDate?: string }) {
+  return { id: subscription.id, name: subscription.name, amount: subscription.price.amountMinor / 100, currency: subscription.price.currency, nextRenewalDate: subscription.nextRenewalDate ?? "" };
 }
 
 const billingCycleOptions: BillingCycle[] = ["weekly", "monthly", "quarterly", "annual", "trial", "unknown"];
@@ -352,7 +352,7 @@ export default function SubscriptionDetailScreen() {
                 </View>
 
                 <View style={styles.amountRow}>
-                  <Text style={styles.amountCurrency}>$</Text>
+                  <Text style={styles.amountCurrency}>{currencySymbol(sub.price.currency)}</Text>
                   <Text style={styles.amountWhole}>{amountWhole}</Text>
                   <Text style={styles.amountDecimal}>.{amountDecimal}</Text>
                 </View>

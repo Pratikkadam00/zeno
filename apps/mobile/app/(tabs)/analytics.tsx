@@ -287,7 +287,7 @@ export default function AnalyticsScreen() {
                 <Pressable
                   key={sub.id}
                   accessibilityRole="button"
-                  accessibilityLabel={`${sub.name}, ${formatMoney(monthlyAmount(sub))} per month`}
+                  accessibilityLabel={`${sub.name}, ${formatMoney(monthlyAmount(sub), sub.price.currency)} per month`}
                   onPress={() => router.push(`/subscription/${sub.id}` as never)}
                 >
                   <View style={styles.subRow}>
@@ -299,7 +299,7 @@ export default function AnalyticsScreen() {
                       </Text>
                     </View>
                     <View style={styles.subRight}>
-                      <Text style={styles.subAmount}>{formatMoney(monthlyAmount(sub))}</Text>
+                      <Text style={styles.subAmount}>{formatMoney(monthlyAmount(sub), sub.price.currency)}</Text>
                       {badge ? (
                         <View style={[styles.badge, { backgroundColor: badge.bg }]}>
                           <Text style={[styles.badgeText, { color: badge.text }]}>{badge.label}</Text>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyFreeCap, calculateNextRenewal, confidenceRank, inferRecurringCycle, isWithin, slugify, titleCase } from "./discovery-helpers";
+import { applyFreeCap, calculateNextRenewal, confidenceRank, inferRecurringCycle, isWithin, slugify, titleCase, toCurrencyCode } from "./discovery-helpers";
 
 describe("inferRecurringCycle", () => {
   it("infers monthly / weekly / annual from the median gap", () => {
@@ -99,5 +99,18 @@ describe("applyFreeCap", () => {
   it("treats a negative remaining count the same as zero (never adds a negative slice)", () => {
     const result = applyFreeCap(["a", "b"], -3);
     expect(result).toEqual({ toAdd: [], skipped: 2 });
+  });
+});
+
+describe("toCurrencyCode", () => {
+  it("passes through a recognized code regardless of case", () => {
+    expect(toCurrencyCode("USD")).toBe("USD");
+    expect(toCurrencyCode("inr")).toBe("INR");
+    expect(toCurrencyCode("Eur")).toBe("EUR");
+  });
+
+  it("falls back to USD for an unrecognized or empty currency string, never persisting an unformattable value", () => {
+    expect(toCurrencyCode("XYZ")).toBe("USD");
+    expect(toCurrencyCode("")).toBe("USD");
   });
 });

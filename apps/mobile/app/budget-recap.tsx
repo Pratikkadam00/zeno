@@ -7,8 +7,11 @@ import { Badge, Button, Card } from "../src/components/zeno";
 import { useBudgetStore } from "../src/data/budget-store";
 import { useSubscriptionStore } from "../src/data/subscription-store";
 import { useZenoTokens } from "../src/theme/useZenoTokens";
+import { formatMoney } from "../src/utils/format";
 
-const money = (minor: number) => `$${(minor / 100).toFixed(2)}`;
+// Aggregate monthly-spend-history figures — currently USD-only, matching the
+// rest of the aggregate math app-wide (see budget.tsx for the same convention).
+const money = (minor: number) => formatMoney(minor);
 const dollarsRound = (minor: number) => `$${Math.round(minor / 100)}`;
 
 export default function BudgetRecapScreen() {

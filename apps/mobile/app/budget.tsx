@@ -31,9 +31,14 @@ import { useBudgetStore } from "../src/data/budget-store";
 import { useSubscriptionStore } from "../src/data/subscription-store";
 import { budgetStatus, computeBudgetForecast, computeCategoryForecast, suggestedCapMinor, type BudgetStatus } from "../src/finance/budget";
 import { useZenoTokens } from "../src/theme/useZenoTokens";
+import { formatMoney } from "../src/utils/format";
 import { formatShortDate } from "../src/utils/subscription-ui";
 
-const money = (minor: number) => `$${(minor / 100).toFixed(2)}`;
+// These two operate on aggregate budget figures (forecast/headroom, summed
+// across all the user's subscriptions) — currently USD-only, matching the rest
+// of the aggregate math in this screen. Per-subscription amounts below use
+// formatMoney with that subscription's own stored currency.
+const money = (minor: number) => formatMoney(minor);
 const dollarsRound = (minor: number) => `$${Math.round(minor / 100)}`;
 
 function categoryLabel(category: SubscriptionCategory): string {
@@ -199,7 +204,7 @@ export default function BudgetScreen() {
                   <ServiceAvatar name={s.name} size={34} />
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: 14, color: c.textPrimary }}>{s.name}</Text>
-                    <Text style={{ fontFamily: t.fonts.mono.regular, fontSize: 12, color: c.textTertiary }}>{money(s.price.amountMinor)}/mo · ${Math.round((s.price.amountMinor / 100) * 12)}/yr</Text>
+                    <Text style={{ fontFamily: t.fonts.mono.regular, fontSize: 12, color: c.textTertiary }}>{formatMoney(s.price.amountMinor, s.price.currency)}/mo · {formatMoney(s.price.amountMinor * 12, s.price.currency)}/yr</Text>
                   </View>
                   <Button variant="secondary" size="sm" onPress={() => router.push(`/subscription/cancel/${s.id}` as never)}>Cancel</Button>
                 </View>
