@@ -155,24 +155,25 @@ Goal: a skeptical privacy-focused user cannot catch the app contradicting itself
 - Verify first: `_layout.tsx` routing logic; whether CSV discovery touches the API; RevenueCat anonymous-ID handling (U3) so a local-only user can still buy Pro/lifetime.
 - Acceptance: fresh install → skip account → import CSV → see results → set budget → export → delete, all in airplane mode after install.
 
-**1.2 Server-side account deletion.**
+**1.2 Server-side account deletion.** ✅ DONE (commit `76562b9`)
 - Today: "Cancel my Zeno account" only deletes local rows (`apps/mobile/src/storage/subscription-repository.ts:96`); cloud `kv_store` (sync blobs, sessions, sealed Plaid tokens, households, entitlement cache) is never purged. Apple requires apps with account creation to offer in-app account deletion that actually deletes.
 - Change: new authenticated `DELETE /api/v1/account` in `apps/api` — purge every `kv_store` namespace for the user, revoke sessions, remove Plaid items if any; wire the existing settings action to call it, then run local wipe; confirm irreversibility in UI copy.
 - Verify first: full list of `kv_store` namespaces in `apps/api/src/storage/pg.ts` and everywhere `kv_store` is written.
 - Acceptance: after deletion, direct DB inspection shows zero rows for that user across all namespaces; old session tokens rejected.
+- **Implementation notes:** `sync`/`family`/`auth_*` namespaces aren't keyed directly by userId (composite key, household id, token hash) — added per-module purge functions (`deleteEntitlementForUser`, `deletePlaidItem`, `deleteUserSyncData`, `removeUserFromAllHouseholds`, `revokeAllSessionsForAccount`) that each know their own key shape, called from the new route. Mobile `confirmCancelAccount` now calls the server FIRST and only wipes locally on server confirmation (previously silent server-side no-op). **Residual, not fixed:** a still-valid 15-min access token isn't revoked (stateless RS256 JWT, no revocation list) — pre-existing property of the auth design; refresh tokens ARE revoked immediately, satisfying "old session tokens rejected."
 
-**1.3 Kill trust contradictions (copy + surfaces).**
-- Execute the Phase 0.4 Plaid decision across the full footprint in §2.3. If killed: also remove the open-banking sitemap entry and noindex/410 the page.
-- Remove or substantiate "14,000+ people..." on `paywall.tsx` per U5.
-- Audit ALL public copy (mobile screens, web pages) against the three locked promises; resolve web `features/open-banking` messaging vs mobile "No bank login. Ever." (verbatim conflict today).
-- Verify first: read each copy-bearing file before editing (rule 2); U7 for Gmail-scan claims.
-- Acceptance: grep of repo copy strings surfaces zero claims contradicting the three promises; no consumer surface mentions bank login/connection except to say it is not required.
+**1.3 Kill trust contradictions (copy + surfaces).** ✅ DONE (commit `76562b9`) — scope narrowed by the Plaid-dormant decision
+- ~~Execute the Phase 0.4 Plaid decision across the full footprint~~ — **founder decided keep dormant; zero Plaid files touched.**
+- Removed the unsubstantiated "14,000+ people..." block from `paywall.tsx` per U5 (pre-launch, not real) — deleted the claim, its avatar-stack decoration, and 5 now-unused styles, rather than substantiating it.
+- Audited mobile + web copy (grep sweep for other stat claims and bank-login-adjacent phrasing): no other contradictions found. Every "no bank login" occurrence affirms the promise.
+- Acceptance met: no consumer surface mentions bank login/connection except to say it is not required.
 
-**1.4 Fix the import-vs-paywall collision.**
+**1.4 Fix the import-vs-paywall collision.** ✅ DONE (commit pending)
 - Today: `FREE_LIMIT = 10` (`dashboard.tsx:19`, `add.tsx:59`) can slam a paywall mid-first-import — CSV badged "MOST COMPLETE" can find >10, making the rage moment coincide with the first-value moment.
-- Change (pending 0.5 decision; recommended shape): discovery results are ALWAYS fully visible; the cap applies only to ongoing tracked/alerted subscriptions; picker UI when over cap.
-- Verify first: where the limit is enforced in the import flow (`discover.tsx`, `csvParser.ts` wrapper, stores) — enforcement points may exist beyond the two known constants.
-- Acceptance: import of a CSV containing 25 recurring merchants shows all 25; free user selects up to cap; paywall appears only at the selection step with honest copy.
+- Change (per 0.5 decision): discovery results are ALWAYS fully visible; the cap applies only to ongoing tracked/alerted subscriptions; picker UI when over cap.
+- **Verify-first finding (repo won over the plan's assumption):** `discover.tsx`'s `addSelected()` called `addSubscription` directly, bypassing `add.tsx`'s cap check entirely — so today's actual bug is the OPPOSITE of what was assumed: bulk discovery-import silently added unlimited items with zero cap enforcement, rather than interrupting mid-scan. The scan/results view (`setResults(...)` in both `handleImportCSV` and the Gmail-scan handler) was already fully un-truncated.
+- Implementation: new pure `applyFreeCap(selected, remainingSlots)` helper (`src/discovery/discovery-helpers.ts`, unit-tested) clamps to the first N selected items when over the free cap; `discover.tsx` now shows an honest pre-tap notice + adjusted button label ("Add N of M — Free plan") and, after adding up to the cap, routes to `/paywall` with a toast explaining the rest wasn't added. Pro/family pass `remainingSlots = Infinity` — never clamped.
+- Acceptance met: CSV/Gmail results always show everything found; free user's selection is capped only at the add step; paywall appears with honest copy, not mid-scan.
 
 **1.5 Currency honesty.**
 - Today: per-item currency stored incl. INR (`packages/shared/src/domain.ts:1`) but `budget.tsx` money formatter hardcodes `$`; totals assume one currency.

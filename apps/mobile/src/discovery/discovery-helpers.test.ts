@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateNextRenewal, confidenceRank, inferRecurringCycle, isWithin, slugify, titleCase } from "./discovery-helpers";
+import { applyFreeCap, calculateNextRenewal, confidenceRank, inferRecurringCycle, isWithin, slugify, titleCase } from "./discovery-helpers";
 
 describe("inferRecurringCycle", () => {
   it("infers monthly / weekly / annual from the median gap", () => {
@@ -69,5 +69,35 @@ describe("shared discovery helpers", () => {
   it("slugifies and title-cases merchant names", () => {
     expect(slugify("Netflix.com Inc!")).toBe("netflix-com-inc");
     expect(titleCase("netflix premium")).toBe("Netflix Premium");
+  });
+});
+
+describe("applyFreeCap", () => {
+  it("adds everything and skips nothing when under the remaining slots", () => {
+    const result = applyFreeCap(["a", "b", "c"], 10);
+    expect(result).toEqual({ toAdd: ["a", "b", "c"], skipped: 0 });
+  });
+
+  it("clamps to the first N selected items in order when over the cap", () => {
+    const result = applyFreeCap(["a", "b", "c", "d", "e"], 2);
+    expect(result.toAdd).toEqual(["a", "b"]);
+    expect(result.skipped).toBe(3);
+  });
+
+  it("adds nothing and skips everything when there are zero remaining slots", () => {
+    const result = applyFreeCap(["a", "b"], 0);
+    expect(result).toEqual({ toAdd: [], skipped: 2 });
+  });
+
+  it("never clamps for an unlimited (Pro/Family) caller passing Infinity", () => {
+    const many = Array.from({ length: 25 }, (_, i) => i);
+    const result = applyFreeCap(many, Infinity);
+    expect(result.toAdd).toHaveLength(25);
+    expect(result.skipped).toBe(0);
+  });
+
+  it("treats a negative remaining count the same as zero (never adds a negative slice)", () => {
+    const result = applyFreeCap(["a", "b"], -3);
+    expect(result).toEqual({ toAdd: [], skipped: 2 });
   });
 });

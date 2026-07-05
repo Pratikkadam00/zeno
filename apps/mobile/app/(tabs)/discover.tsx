@@ -7,8 +7,10 @@ import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, ToastAndroid, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuthStore } from "../../src/auth/authStore";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
 import { parseCSV } from "../../src/discovery/csvParser";
+import { applyFreeCap } from "../../src/discovery/discovery-helpers";
 import {
   connectGmail,
   disconnectGmailAccount,
@@ -50,6 +52,13 @@ function getConfidenceColor(confidence: ParsedSubscription["confidence"], theme:
   return theme.quietText;
 }
 
+// D2 (locked): free tier tracks up to 10 subscriptions. Discovery results
+// themselves are NEVER truncated (see handleImportCSV/handleScan below) — the
+// cap applies only when selected results become actively tracked, so the
+// rage-moment of a mid-scan paywall never coincides with the first-value
+// moment of seeing everything a CSV/Gmail scan found.
+const FREE_LIMIT = 10;
+
 const exportGuides = [
   ["Chase", "Settings → Download Account Activity → CSV"],
   ["Bank of America", "Accounts → Download → CSV format"],
@@ -63,6 +72,9 @@ export default function DiscoverScreen() {
   const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { addSubscription, subscriptions: tracked } = useSubscriptionStore();
+  const plan = useAuthStore((state) => state.plan);
+  const trackedCount = tracked.filter((subscription) => subscription.status !== "cancelled").length;
+  const remainingFreeSlots = plan === "free" ? Math.max(0, FREE_LIMIT - trackedCount) : Infinity;
 
   // Accuracy guard: flag results that match a subscription you already track
   // (by catalog slug or name) and deselect them by default — no duplicates.
@@ -201,7 +213,10 @@ export default function DiscoverScreen() {
 
   async function addSelected() {
     const selected = results.filter((r) => r.selected);
-    for (const result of selected) {
+    // Free plan: never truncate what was FOUND (already fully shown above) —
+    // the cap applies only to what becomes actively tracked/alerted.
+    const { toAdd, skipped } = applyFreeCap(selected, remainingFreeSlots);
+    for (const result of toAdd) {
       const service = result.serviceId ? services.find((s) => s.id === result.serviceId) : undefined;
       const id = addSubscription({
         name: result.name,
@@ -214,7 +229,18 @@ export default function DiscoverScreen() {
       });
       await scheduleRenewalNotifications({ id, name: result.name, amount: result.amount, nextRenewalDate: result.nextRenewal });
     }
-    showToast(`Added ${selected.length} subscriptions.`);
+
+    if (skipped > 0) {
+      showToast(
+        toAdd.length > 0
+          ? `Added ${toAdd.length} of ${selected.length} — Free plan tracks up to ${FREE_LIMIT}. Upgrade to track the rest.`
+          : `Free plan limit reached (${FREE_LIMIT} tracked). Upgrade to track any of the ${selected.length} you selected.`
+      );
+      router.push("/paywall");
+      return;
+    }
+
+    showToast(`Added ${toAdd.length} subscriptions.`);
     router.replace("/dashboard");
   }
 
@@ -319,6 +345,13 @@ export default function DiscoverScreen() {
 
         {/* Fixed bottom add button */}
         <View style={styles.bottomBar}>
+          {plan === "free" && selectedCount > remainingFreeSlots ? (
+            <Text style={styles.capNotice}>
+              {remainingFreeSlots > 0
+                ? `Free plan tracks up to ${FREE_LIMIT} — you can add ${remainingFreeSlots} more of these ${selectedCount}.`
+                : `Free plan limit reached (${FREE_LIMIT} tracked). Upgrade to track any of these.`}
+            </Text>
+          ) : null}
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ disabled: selectedCount === 0 }}
@@ -327,7 +360,13 @@ export default function DiscoverScreen() {
             style={[styles.primaryButton, { backgroundColor: selectedCount === 0 ? withAlpha(theme.primary, 0.3) : theme.primary }]}
           >
             <Text style={styles.primaryButtonText}>
-              {selectedCount === 0 ? "Select subscriptions to add" : `Add ${selectedCount} subscriptions`}
+              {selectedCount === 0
+                ? "Select subscriptions to add"
+                : plan !== "free" || selectedCount <= remainingFreeSlots
+                  ? `Add ${selectedCount} subscriptions`
+                  : remainingFreeSlots > 0
+                    ? `Add ${remainingFreeSlots} of ${selectedCount} (Free plan)`
+                    : `Upgrade to add ${selectedCount} subscriptions`}
             </Text>
           </Pressable>
         </View>
@@ -735,6 +774,7 @@ function createStyles(theme: ThemeTokens) {
     selectRow:     { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: spacing.screenH, marginBottom: 8 },
     selectCount:   { fontSize: 13, color: theme.mutedText },
     selectAllLink: { fontSize: 13, fontWeight: "600", color: theme.primary },
+    capNotice:     { fontSize: 13, color: theme.warning, textAlign: "center", marginBottom: 10 },
     groupCard:     { marginHorizontal: 16, backgroundColor: theme.card, borderRadius: spacing.groupRadius, overflow: "hidden" },
     resultRow:     { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 12, minHeight: spacing.rowH + 8 },
     checkbox:      { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: theme.border, alignItems: "center", justifyContent: "center" },

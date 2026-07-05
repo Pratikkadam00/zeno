@@ -56,3 +56,15 @@ export function slugify(value: string): string {
 export function titleCase(value: string): string {
   return value.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
 }
+
+export type FreeCapDecision<T> = { toAdd: T[]; skipped: number };
+
+// Free-tier cap for turning discovery results into tracked subscriptions. Never
+// truncates what was FOUND (the caller shows every result); only limits how
+// many become actively tracked in one batch, taking the first `remainingSlots`
+// selected items in the order the user selected them. Pro/family pass
+// remainingSlots = Infinity, so nothing is ever clamped for a paying user.
+export function applyFreeCap<T>(selected: T[], remainingSlots: number): FreeCapDecision<T> {
+  const toAdd = selected.slice(0, Math.max(0, remainingSlots));
+  return { toAdd, skipped: selected.length - toAdd.length };
+}
