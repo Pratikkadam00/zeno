@@ -27,6 +27,7 @@ type FakeCustomerInfoInput = {
   activeEntitlementIds?: string[];
   activeSubscriptions?: string[];
   productSubscriptions?: Record<string, boolean>;
+  purchasedProductIds?: string[];
 };
 
 // A minimal RevenueCat CustomerInfo fixture — only the fields
@@ -41,7 +42,8 @@ function customerInfo(input: FakeCustomerInfoInput = {}) {
   return {
     entitlements: { active },
     activeSubscriptions: input.activeSubscriptions ?? [],
-    subscriptionsByProductIdentifier
+    subscriptionsByProductIdentifier,
+    allPurchasedProductIdentifiers: input.purchasedProductIds ?? []
   } as Parameters<typeof getPlanFromCustomerInfo>[0];
 }
 
@@ -91,5 +93,26 @@ describe("getPlanFromCustomerInfo", () => {
     expect(getPlanFromCustomerInfo(customerInfo({
       activeSubscriptions: [revenueCatProductIds.proMonthly, revenueCatProductIds.familyMonthly]
     }))).toBe("family");
+  });
+
+  // Regression: a non-consumable (lifetime) purchase never appears in
+  // activeSubscriptions or subscriptionsByProductIdentifier — those track
+  // subscriptions only. RevenueCat tracks one-time purchases in
+  // allPurchasedProductIdentifiers instead. A naive port of the
+  // hasActiveProduct check (used for the two subscription SKUs) would silently
+  // never recognize a lifetime purchase at all.
+  it("is pro when the lifetime product appears in allPurchasedProductIdentifiers, even with no active subscription", () => {
+    expect(getPlanFromCustomerInfo(customerInfo({ purchasedProductIds: [revenueCatProductIds.proLifetime] }))).toBe("pro");
+  });
+
+  it("does NOT grant pro from a lifetime purchase appearing in activeSubscriptions or subscriptionsByProductIdentifier alone (that's not where non-consumables live)", () => {
+    // Confirms the fix targets the right field — a lifetime id showing up in the
+    // subscription-tracking fields (which real RevenueCat never does) must not
+    // be required for it to grant pro; only allPurchasedProductIdentifiers matters.
+    expect(getPlanFromCustomerInfo(customerInfo({ purchasedProductIds: [] }))).toBe("free");
+  });
+
+  it("is pro via the lifetime entitlement id too, mirroring the monthly/annual entitlement path", () => {
+    expect(getPlanFromCustomerInfo(customerInfo({ activeEntitlementIds: ["pro"], purchasedProductIds: [revenueCatProductIds.proLifetime] }))).toBe("pro");
   });
 });

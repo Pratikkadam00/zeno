@@ -17,12 +17,16 @@ export type ZenoOfferings = {
   family: PurchasesOffering | null;
   proMonthly: PurchasesPackage | null;
   proAnnual: PurchasesPackage | null;
+  proLifetime: PurchasesPackage | null;
   familyMonthly: PurchasesPackage | null;
 };
 
 export const revenueCatProductIds = {
   proMonthly: "zeno_pro_monthly",
   proAnnual: "zeno_pro_annual",
+  // Non-consumable (one-time purchase) — never expires, never renews. See
+  // hasNonConsumableProduct below: it is NOT tracked in activeSubscriptions.
+  proLifetime: "zeno_pro_lifetime",
   familyMonthly: "zeno_family_monthly"
 } as const;
 
@@ -88,6 +92,13 @@ export async function purchasePro(period: ProBillingPeriod = "annual"): Promise<
   const offerings = await getOfferings();
   const packageToPurchase = period === "annual" ? offerings.proAnnual : offerings.proMonthly;
   const customerInfo = await purchaseProductOrPackage(productId, packageToPurchase);
+  return getPlanFromCustomerInfo(customerInfo);
+}
+
+// One-time non-consumable purchase — no period/trial, never renews or expires.
+export async function purchaseLifetime(): Promise<BillingPlan> {
+  const offerings = await getOfferings();
+  const customerInfo = await purchaseProductOrPackage(revenueCatProductIds.proLifetime, offerings.proLifetime);
   return getPlanFromCustomerInfo(customerInfo);
 }
 
@@ -176,11 +187,12 @@ function mapOfferings(offerings: PurchasesOfferings): ZenoOfferings {
     family,
     proMonthly: findPackage(pro, revenueCatProductIds.proMonthly, "monthly"),
     proAnnual: findPackage(pro, revenueCatProductIds.proAnnual, "annual"),
+    proLifetime: findPackage(pro, revenueCatProductIds.proLifetime, "lifetime"),
     familyMonthly: findPackage(family, revenueCatProductIds.familyMonthly, "monthly")
   };
 }
 
-function findPackage(offering: PurchasesOffering | null, productId: string, period: ProBillingPeriod | "monthly"): PurchasesPackage | null {
+function findPackage(offering: PurchasesOffering | null, productId: string, period: ProBillingPeriod | "monthly" | "lifetime"): PurchasesPackage | null {
   if (!offering) {
     return null;
   }
@@ -190,7 +202,9 @@ function findPackage(offering: PurchasesOffering | null, productId: string, peri
     return direct;
   }
 
-  return period === "annual" ? offering.annual : offering.monthly;
+  if (period === "annual") return offering.annual;
+  if (period === "lifetime") return offering.lifetime;
+  return offering.monthly;
 }
 
 function matchesPackage(candidate: PurchasesPackage, productId: string): boolean {
@@ -206,7 +220,8 @@ export function getPlanFromCustomerInfo(customerInfo: CustomerInfo): BillingPlan
   if (
     proEntitlementIds.some((id) => activeEntitlements[id]?.isActive) ||
     hasActiveProduct(customerInfo, revenueCatProductIds.proMonthly) ||
-    hasActiveProduct(customerInfo, revenueCatProductIds.proAnnual)
+    hasActiveProduct(customerInfo, revenueCatProductIds.proAnnual) ||
+    hasNonConsumableProduct(customerInfo, revenueCatProductIds.proLifetime)
   ) {
     return "pro";
   }
@@ -217,6 +232,18 @@ export function getPlanFromCustomerInfo(customerInfo: CustomerInfo): BillingPlan
 function hasActiveProduct(customerInfo: CustomerInfo, productId: string): boolean {
   const subscription = customerInfo.subscriptionsByProductIdentifier[productId];
   return customerInfo.activeSubscriptions.includes(productId) || Boolean(subscription?.isActive);
+}
+
+// Non-consumables (one-time purchases like lifetime) never appear in
+// activeSubscriptions or subscriptionsByProductIdentifier — those track
+// subscriptions only. RevenueCat's CustomerInfo tracks one-time purchases in
+// allPurchasedProductIdentifiers instead; once bought, always owned (no
+// "isActive"/expiry concept applies). This is a deliberate defensive fallback:
+// if the RevenueCat dashboard attaches zeno_pro_lifetime to the pro
+// entitlement, the entitlement check above already catches it (expirationDate
+// is null for lifetime access); this covers the case where it isn't.
+function hasNonConsumableProduct(customerInfo: CustomerInfo, productId: string): boolean {
+  return customerInfo.allPurchasedProductIdentifiers.includes(productId);
 }
 
 function getRevenueCatApiKey(): string | null {
@@ -246,6 +273,7 @@ function emptyOfferings(): ZenoOfferings {
     family: null,
     proMonthly: null,
     proAnnual: null,
+    proLifetime: null,
     familyMonthly: null
   };
 }

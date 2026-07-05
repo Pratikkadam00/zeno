@@ -1,10 +1,10 @@
 import { router } from "expo-router";
-import { Bell, Check, Lightbulb, Link2, Search, ShieldCheck, Sparkles, Users, X } from "lucide-react-native";
+import { Bell, Check, Infinity as InfinityIcon, Lightbulb, Link2, Search, ShieldCheck, Sparkles, Users, X } from "lucide-react-native";
 import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, ToastAndroid, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { useAuthStore } from "../src/auth/authStore";
-import { getOfferings, getPackagePrice, purchaseFamily, purchasePro, restorePurchases, type BillingPlan, type ProBillingPeriod, type ZenoOfferings } from "../src/billing/revenueCat";
+import { getOfferings, getPackagePrice, purchaseFamily, purchaseLifetime, purchasePro, restorePurchases, type BillingPlan, type ProBillingPeriod, type ZenoOfferings } from "../src/billing/revenueCat";
 import { useZenoTheme } from "../src/theme/theme-provider";
 import type { ThemeTokens } from "../src/theme/tokens";
 import { type as typography } from "../src/theme/typography";
@@ -13,14 +13,23 @@ import { withAlpha } from "../src/utils/subscription-ui";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 // Pricing per the locked D2 decision (Pro $3.99/mo or $29.99/yr ≈ 37% off,
-// Family $6.99/mo). These display strings must match the configured RevenueCat
-// products before launch — the live price still comes from `getPackagePrice`.
+// Family $6.99/mo). Lifetime $79.99 confirmed with the founder 2026-07-05
+// (~2.7x the annual price; still undercuts YNAB's $109/year forever — see
+// ZENO_MASTER_PLAN.md Phase 2.1). These display strings must match the
+// configured RevenueCat products before launch — the live price still comes
+// from `getPackagePrice`.
 
 const fallbackPrices = {
   proMonthly: "$3.99",
   proAnnual:  "$29.99",
+  proLifetime: "$79.99",
   familyMonthly: "$6.99"
 };
+
+// Selection on this screen — a superset of ProBillingPeriod (the recurring
+// pro period type) plus "lifetime", a one-time non-consumable purchase with no
+// period/trial concept, handled by a separate purchase function.
+type PaywallSelection = ProBillingPeriod | "lifetime";
 
 type IconCmp = ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
 
@@ -62,7 +71,7 @@ export default function PaywallScreen() {
   const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const setPlan = useAuthStore((state) => state.setPlan);
-  const [period, setPeriod]                     = useState<ProBillingPeriod>("annual");
+  const [period, setPeriod]                     = useState<PaywallSelection>("annual");
   const [offerings, setOfferings]               = useState<ZenoOfferings | null>(null);
   const [isLoadingOfferings, setIsLoadingOfferings] = useState(true);
   const [isPurchasing, setIsPurchasing]         = useState(false);
@@ -79,13 +88,31 @@ export default function PaywallScreen() {
   }, []);
 
   const familyPrice = getPackagePrice(offerings?.familyMonthly ?? null, fallbackPrices.familyMonthly);
+  const lifetimePrice = getPackagePrice(offerings?.proLifetime ?? null, fallbackPrices.proLifetime);
 
   // Annual is billed yearly; show the monthly-equivalent in the big number.
-  const displayPrice = period === "annual" ? "$2.50" : "$3.99";
+  // Lifetime shows its one-time price directly (never a "/mo" figure).
+  const displayPrice = period === "lifetime" ? lifetimePrice : period === "annual" ? "$2.50" : "$3.99";
   const { dollars: priceDollars, cents: priceCents } = splitPrice(displayPrice);
-  const pricePeriodDesc = period === "annual" ? "billed as $29.99/year" : "billed monthly · cancel anytime";
+  const pricePeriodDesc = period === "lifetime"
+    ? "one payment · yours forever, no trial needed"
+    : period === "annual"
+      ? "billed as $29.99/year"
+      : "billed monthly · cancel anytime";
 
   async function handlePurchasePro() {
+    if (period === "lifetime") {
+      setIsPurchasing(true);
+      setError(null);
+      try {
+        finishPurchase(await purchaseLifetime());
+      } catch (purchaseError) {
+        setError(getErrorMessage(purchaseError));
+      } finally {
+        setIsPurchasing(false);
+      }
+      return;
+    }
     setIsPurchasing(true);
     setError(null);
     try {
@@ -204,6 +231,20 @@ export default function PaywallScreen() {
             </View>
             <Text style={[styles.togglePrice, period === "annual" ? styles.togglePriceActive : styles.togglePriceInactive]}>$29.99/yr</Text>
           </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ selected: period === "lifetime" }}
+            accessibilityLabel={`Lifetime plan, ${lifetimePrice} one-time payment, own it forever`}
+            onPress={() => setPeriod("lifetime")}
+            style={[styles.toggleOption, period === "lifetime" && styles.toggleOptionActive]}
+          >
+            <View style={styles.toggleTitleRow}>
+              <InfinityIcon size={13} color={period === "lifetime" ? theme.text : theme.mutedText} strokeWidth={2.5} />
+              <Text style={[styles.toggleTitle, period === "lifetime" ? styles.toggleTitleActive : styles.toggleTitleInactive]}>Lifetime</Text>
+            </View>
+            <Text style={[styles.togglePrice, period === "lifetime" ? styles.togglePriceActive : styles.togglePriceInactive]}>{lifetimePrice}</Text>
+          </Pressable>
         </View>
 
         {/* Price display */}
@@ -217,10 +258,13 @@ export default function PaywallScreen() {
                 <Text style={styles.priceDollars}>{priceDollars}</Text>
                 <View style={styles.priceRight}>
                   <Text style={styles.priceCents}>.{priceCents}</Text>
-                  <Text style={styles.pricePer}>/mo</Text>
+                  {period !== "lifetime" ? <Text style={styles.pricePer}>/mo</Text> : null}
                 </View>
               </View>
               <Text style={styles.priceDesc}>{pricePeriodDesc}</Text>
+              {period === "lifetime" ? (
+                <Text style={styles.lifetimeAnchor}>YNAB charges $109 — every single year. This is once, ever.</Text>
+              ) : null}
             </>
           )}
         </View>
@@ -260,10 +304,14 @@ export default function PaywallScreen() {
         >
           {isPurchasing
             ? <ActivityIndicator color={theme.onPrimary} />
-            : <Text style={styles.ctaBtnText}>Start 7-day free trial</Text>
+            : <Text style={styles.ctaBtnText}>{period === "lifetime" ? `Buy once for ${lifetimePrice}` : "Start 7-day free trial"}</Text>
           }
         </Pressable>
-        <Text style={styles.ctaSubText}>No charge until trial ends · we'll remind you before it does</Text>
+        <Text style={styles.ctaSubText}>
+          {period === "lifetime"
+            ? "One-time payment · no recurring charge, ever"
+            : "No charge until trial ends · we'll remind you before it does"}
+        </Text>
 
         {/* Family plan row */}
         <Pressable
@@ -355,6 +403,7 @@ function createStyles(theme: ThemeTokens) {
     priceCents:    { fontSize: 24, fontFamily: fonts.mono.regular, color: theme.mutedText },
     pricePer:      { fontSize: 14, fontFamily: fonts.sans.regular, color: theme.quietText, marginTop: 2 },
     priceDesc:     { marginTop: 8, fontSize: 14, fontFamily: fonts.sans.regular, color: theme.quietText, textAlign: "center" },
+    lifetimeAnchor:{ marginTop: 10, fontSize: 13, fontFamily: fonts.sans.semibold, color: theme.success, textAlign: "center", paddingHorizontal: 24 },
 
     // Value props
     groupCard:     { marginHorizontal: 16, marginBottom: 8, backgroundColor: theme.card, borderRadius: 16, overflow: "hidden" },
