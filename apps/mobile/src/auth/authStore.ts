@@ -24,7 +24,12 @@ const tokenKeys = {
   accessTokenExpiresAt: "zeno.auth.accessTokenExpiresAt.v1"
 };
 
-type AuthStatus = "loading" | "anonymous" | "pending" | "authenticated";
+// A device-local flag (not a session — there is no account) recording that the
+// user explicitly chose "Continue without an account" on onboarding. Checked
+// only when there's no stored session, so it never overrides a real login.
+const localOnlyKey = "zeno.auth.localOnly.v1";
+
+type AuthStatus = "loading" | "anonymous" | "pending" | "authenticated" | "local_only";
 
 type AuthSessionResponse = {
   accountId: string;
@@ -66,6 +71,7 @@ type AuthStoreState = {
   lastMagicLinkEmail: string | null;
   error: string | null;
   hydrate: () => Promise<void>;
+  continueLocalOnly: () => Promise<void>;
   loginWithMagicLink: (email: string) => Promise<void>;
   loginWithDemoAccount: (email: string, password: string) => Promise<void>;
   verifyMagicLink: (token: string) => Promise<void>;
@@ -95,6 +101,13 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
     const session = await readStoredSession();
     if (!session?.refreshToken) {
       stopRefreshTimer();
+      // No session — but the user may have previously chosen "Continue without
+      // an account". That choice persists across restarts so they land straight
+      // back in the app instead of seeing onboarding again every launch.
+      if (await readLocalOnlyFlag()) {
+        set({ status: "local_only", isAuthenticated: false, accountId: null, error: null });
+        return;
+      }
       setAnonymous(set);
       return;
     }
@@ -113,6 +126,14 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
 
     startRefreshTimer(get);
     setAuthenticated(set, session);
+  },
+
+  // "Continue without an account" from onboarding. No server session exists —
+  // this only unlocks local screens; anything server-side (cloud sync, AI
+  // coach, Family Vault) stays gated on a real login, unchanged.
+  async continueLocalOnly() {
+    await persistLocalOnlyFlag();
+    set({ status: "local_only", isAuthenticated: false, accountId: null, error: null });
   },
 
   async loginWithMagicLink(email: string) {
@@ -267,6 +288,10 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
     } finally {
       stopRefreshTimer();
       await clearStoredSession();
+      // A full sign-out always clears the local-only choice too, so "logout"
+      // is a complete reset back to onboarding — not a silent fall-through into
+      // local-only mode on the next launch.
+      await clearLocalOnlyFlag();
       setAnonymous(set);
     }
   },
@@ -310,6 +335,9 @@ function stopRefreshTimer(): void {
 }
 
 function setAuthenticated(set: (partial: Partial<AuthStoreState>) => void, session: StoredSession): void {
+  // A real login always supersedes a prior "local-only" choice — clear it so a
+  // later sign-out doesn't fall back into local-only mode with a stale flag.
+  void clearLocalOnlyFlag();
   set({
     status: "authenticated",
     isAuthenticated: true,
@@ -414,6 +442,33 @@ async function clearStoredSession(): Promise<void> {
     SecureStore.deleteItemAsync(tokenKeys.accountId),
     SecureStore.deleteItemAsync(tokenKeys.accessTokenExpiresAt)
   ]);
+}
+
+let memoryLocalOnly = false;
+
+async function persistLocalOnlyFlag(): Promise<void> {
+  if (Platform.OS === "web") {
+    memoryLocalOnly = true;
+    return;
+  }
+  await SecureStore.setItemAsync(localOnlyKey, "1", {
+    keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY
+  });
+}
+
+async function readLocalOnlyFlag(): Promise<boolean> {
+  if (Platform.OS === "web") {
+    return memoryLocalOnly;
+  }
+  return (await SecureStore.getItemAsync(localOnlyKey)) === "1";
+}
+
+async function clearLocalOnlyFlag(): Promise<void> {
+  if (Platform.OS === "web") {
+    memoryLocalOnly = false;
+    return;
+  }
+  await SecureStore.deleteItemAsync(localOnlyKey);
 }
 
 function toStoredSession(session: AuthSessionResponse): StoredSession {

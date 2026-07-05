@@ -12,21 +12,35 @@ import { palette } from "../src/theme/zeno";
 export default function ProfileScreen() {
   const { theme } = useZenoTheme();
   const styles = createStyles(theme);
-  const { plan, accountId, logout } = useAuthStore((state) => ({
+  const { plan, accountId, status, logout } = useAuthStore((state) => ({
     plan: state.plan,
     accountId: state.accountId,
+    status: state.status,
     logout: state.logout
   }));
   const lockEnabled = useLockStore((s) => s.enabled);
+  const isLocalOnly = status === "local_only";
 
-  const email = accountId ?? "you@example.com";
+  const email = isLocalOnly ? "Local-only mode" : accountId ?? "you@example.com";
   const planLabel = plan === "pro" ? "Pro" : plan === "family" ? "Family" : "Free plan";
 
-  const confirmSignOut = () =>
+  const confirmSignOut = () => {
+    if (isLocalOnly) {
+      Alert.alert(
+        "Exit local-only mode",
+        "This won't delete your data. You'll return to the welcome screen, where you can sign in or continue locally again.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Exit", style: "destructive", onPress: () => void logout() }
+        ]
+      );
+      return;
+    }
     Alert.alert("Sign out", "Are you sure you want to sign out?", [
       { text: "Cancel", style: "cancel" },
       { text: "Sign out", style: "destructive", onPress: () => void logout() }
     ]);
+  };
 
   return (
     <SafeAreaView style={styles.screen} edges={["bottom"]}>
@@ -68,7 +82,7 @@ export default function ProfileScreen() {
         <Text style={styles.metaLabel}>ACCOUNT ID</Text>
         <View style={styles.card}>
           <View style={styles.row}>
-            <Text style={styles.accountId} numberOfLines={1}>{accountId ?? "—"}</Text>
+            <Text style={styles.accountId} numberOfLines={1}>{isLocalOnly ? "No account — data stays on this device" : accountId ?? "—"}</Text>
           </View>
         </View>
 
@@ -77,9 +91,9 @@ export default function ProfileScreen() {
           <Text style={styles.privacyText}>Your financial data is encrypted on this device. We never see your bank login or your data.</Text>
         </View>
 
-        <Pressable accessibilityRole="button" accessibilityLabel="Sign out" style={styles.signOut} onPress={confirmSignOut}>
+        <Pressable accessibilityRole="button" accessibilityLabel={isLocalOnly ? "Exit local-only mode" : "Sign out"} style={styles.signOut} onPress={confirmSignOut}>
           <LogOut size={17} color={theme.text} strokeWidth={2} />
-          <Text style={styles.signOutText}>Sign out</Text>
+          <Text style={styles.signOutText}>{isLocalOnly ? "Exit local-only mode" : "Sign out"}</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>

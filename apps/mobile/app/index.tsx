@@ -4,6 +4,7 @@ import type { ComponentType } from "react";
 import { useMemo } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useAuthStore } from "../src/auth/authStore";
 import { type } from "../src/theme/typography";
 import { fonts } from "../src/theme/zeno";
 import { useZenoTheme } from "../src/theme/theme-provider";
@@ -23,6 +24,16 @@ const BEATS: { Icon: IconCmp; title: string; body: string }[] = [
 export default function OnboardingScreen() {
   const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const continueLocalOnly = useAuthStore((state) => state.continueLocalOnly);
+
+  // "Your data stays on your device" (beat 2 above) has to be true even before
+  // sign-in — this is the actual no-account path. Cloud sync, the AI coach, and
+  // Family Vault stay gated behind a real login; everything device-local
+  // (tracking, discovery, budgets, export, delete) works immediately.
+  async function handleContinueLocalOnly() {
+    await continueLocalOnly();
+    router.replace("/dashboard");
+  }
 
   return (
     <SafeAreaView edges={["top", "bottom"]} style={styles.safeArea}>
@@ -57,6 +68,14 @@ export default function OnboardingScreen() {
               <Text style={styles.bottomLink}>Sign in</Text>
             </Pressable>
           </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Continue without an account"
+            onPress={() => void handleContinueLocalOnly()}
+            style={styles.localOnlyLink}
+          >
+            <Text style={styles.localOnlyLinkText}>Continue without an account</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -84,6 +103,8 @@ function createStyles(theme: ThemeTokens) {
     startButtonText: { fontSize: 17, fontFamily: fonts.sans.semibold, color: theme.onPrimary },
     bottomRow: { flexDirection: "row", justifyContent: "center", gap: 4 },
     bottomHint: { ...type.footnote, color: theme.mutedText },
-    bottomLink: { ...type.footnote, fontFamily: fonts.sans.semibold, color: theme.primary }
+    bottomLink: { ...type.footnote, fontFamily: fonts.sans.semibold, color: theme.primary },
+    localOnlyLink: { marginTop: 4, alignItems: "center" },
+    localOnlyLinkText: { ...type.footnote, color: theme.mutedText, textDecorationLine: "underline" }
   });
 }

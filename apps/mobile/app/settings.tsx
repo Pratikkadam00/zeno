@@ -79,11 +79,13 @@ function formatHour(hour: number): string {
 export default function SettingsScreen() {
   const { theme, scheme, toggleScheme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { plan, accountId, logout } = useAuthStore((state) => ({
+  const { plan, accountId, status, logout } = useAuthStore((state) => ({
     plan: state.plan,
     accountId: state.accountId,
+    status: state.status,
     logout: state.logout
   }));
+  const isLocalOnly = status === "local_only";
   const { subscriptions, clearAllData, quietHours, setQuietHours } = useSubscriptionStore();
   const { reset: resetBudget } = useBudgetStore();
   const lockEnabled = useLockStore((s) => s.enabled);
@@ -97,7 +99,7 @@ export default function SettingsScreen() {
     { label: "Midnight – 9 AM", startHour: 0, endHour: 9 }
   ];
 
-  const userEmail = accountId ?? "you@example.com";
+  const userEmail = isLocalOnly ? "Local-only mode" : accountId ?? "you@example.com";
   const userPlan = (plan ?? "free") as UserPlan;
   const planLabel = userPlan === "pro" ? "Pro" : userPlan === "family" ? "Family" : "Free plan";
 
@@ -130,15 +132,19 @@ export default function SettingsScreen() {
   // Plaid item, household membership, and revokes sessions) and only wipes local
   // data + signs out once the server confirms it. If the server call fails, the
   // account is NOT touched locally — proceeding anyway would tell the user their
-  // account is gone while server-side data still exists.
+  // account is gone while server-side data still exists. A local-only user has
+  // no server account to delete (the settings UI hides this action for them;
+  // this guard is defense-in-depth against calling it some other way).
   async function cancelAccount() {
-    const serverDeleted = await deleteAccountOnServer();
-    if (!serverDeleted) {
-      Alert.alert(
-        "Couldn't delete your account",
-        "We couldn't reach the server to confirm deletion. Check your connection and try again — nothing was changed."
-      );
-      return;
+    if (!isLocalOnly) {
+      const serverDeleted = await deleteAccountOnServer();
+      if (!serverDeleted) {
+        Alert.alert(
+          "Couldn't delete your account",
+          "We couldn't reach the server to confirm deletion. Check your connection and try again — nothing was changed."
+        );
+        return;
+      }
     }
     resetBudget();
     await clearAllData();
@@ -293,20 +299,37 @@ export default function SettingsScreen() {
           accessibilityRole="button"
           accessibilityLabel="Sign out"
           style={styles.signOutCard}
-          onPress={() => Alert.alert("Sign out", "Are you sure you want to sign out?", [
-            { text: "Cancel", style: "cancel" },
-            { text: "Sign out", style: "destructive", onPress: () => void logout() }
-          ])}
+          onPress={() => {
+            if (isLocalOnly) {
+              Alert.alert(
+                "Exit local-only mode",
+                "This won't delete your data. You'll return to the welcome screen, where you can sign in or continue locally again.",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Exit", style: "destructive", onPress: () => void logout() }
+                ]
+              );
+              return;
+            }
+            Alert.alert("Sign out", "Are you sure you want to sign out?", [
+              { text: "Cancel", style: "cancel" },
+              { text: "Sign out", style: "destructive", onPress: () => void logout() }
+            ]);
+          }}
         >
           <View style={styles.signOutIconWrap} accessible={false} importantForAccessibility="no-hide-descendants">
             <LogOut size={17} color={theme.text} strokeWidth={2} />
           </View>
-          <Text style={styles.signOutText}>Sign out</Text>
+          <Text style={styles.signOutText}>{isLocalOnly ? "Exit local-only mode" : "Sign out"}</Text>
         </Pressable>
 
-        <Pressable accessibilityRole="button" accessibilityLabel="Cancel my Zeno account" style={styles.cancelAccountBtn} onPress={confirmCancelAccount}>
-          <Text style={styles.cancelAccountText}>Cancel my Zeno account</Text>
-        </Pressable>
+        {/* No server account exists in local-only mode — "Delete all my data"
+            above already covers the local-only equivalent of this action. */}
+        {!isLocalOnly ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="Cancel my Zeno account" style={styles.cancelAccountBtn} onPress={confirmCancelAccount}>
+            <Text style={styles.cancelAccountText}>Cancel my Zeno account</Text>
+          </Pressable>
+        ) : null}
 
         <View style={styles.versionSection}>
           <Text style={styles.versionText}>Zeno · Version {APP_VERSION}</Text>

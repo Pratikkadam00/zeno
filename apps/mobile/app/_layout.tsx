@@ -63,6 +63,12 @@ function RootStack() {
     setPlan,
     verifyMagicLink
   } = useAuthStore();
+  // Local-only users (no server account) are allowed into every device-local
+  // screen — full CRUD, discovery, budgets, analytics, calendar, notifications,
+  // export, delete all run on local SQLite regardless of auth. Only
+  // server-dependent features (cloud sync, AI coach, Family Vault) stay gated
+  // on isAuthenticated, unchanged.
+  const canUseApp = isAuthenticated || status === "local_only";
   const lockEngaged = useLockStore((s) => s.locked);
   const lockReady = useLockStore((s) => s.ready);
   const hydrateLock = useLockStore((s) => s.hydrate);
@@ -95,8 +101,18 @@ function RootStack() {
   }, []);
 
   useEffect(() => {
-    // Anonymous → make sure RevenueCat isn't still bound to a previous account.
     if (!accountId) {
+      // Local-only: no Zeno account to bind RevenueCat to, but purchases must
+      // still work — initialize RevenueCat (its own anonymous device id) and
+      // read the plan from the local CustomerInfo. checkStatus() already falls
+      // back to this client-side result whenever the server call 401s (no
+      // Zeno auth token), so a local-only Pro/lifetime purchase is recognized.
+      if (status === "local_only") {
+        void initRevenueCat().then(() => checkStatus()).then(setPlan).catch(() => setPlan("free"));
+        return;
+      }
+      // Logged out (on the login screen) → make sure RevenueCat isn't still
+      // bound to a previous account.
       void resetRevenueCatUser();
       return;
     }
@@ -107,7 +123,7 @@ function RootStack() {
       .then(() => checkStatus())
       .then(setPlan)
       .catch(() => setPlan("free"));
-  }, [setPlan, accountId]);
+  }, [setPlan, accountId, status]);
 
   useEffect(() => {
     const handleUrl = async (url: string | null) => {
@@ -145,20 +161,21 @@ function RootStack() {
     // Public routes are the onboarding screen ("/" → no segment) and login.
     const onPublicRoute = topSegment === undefined || topSegment === "login";
 
-    if (!isAuthenticated && !onPublicRoute) {
-      // Logged out on a protected screen → send to sign in.
+    if (!canUseApp && !onPublicRoute) {
+      // Logged out (and not local-only) on a protected screen → send to sign in.
       router.replace("/login");
       return;
     }
 
-    if (isAuthenticated && onPublicRoute) {
-      // Logged in but sitting on onboarding/login → go straight to the app.
+    if (canUseApp && onPublicRoute) {
+      // Already usable (real login or local-only) but sitting on onboarding/
+      // login → go straight to the app.
       router.replace("/dashboard");
     }
-  }, [isAuthenticated, segments, status]);
+  }, [canUseApp, segments, status]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!canUseApp) {
       return;
     }
 
@@ -178,7 +195,9 @@ function RootStack() {
       const wasBackgrounded = appState.current === "background" || appState.current === "inactive";
       appState.current = nextState;
 
-      if (wasBackgrounded && nextState === "active" && useAuthStore.getState().isAuthenticated) {
+      const liveAuth = useAuthStore.getState();
+      const liveCanUseApp = liveAuth.isAuthenticated || liveAuth.status === "local_only";
+      if (wasBackgrounded && nextState === "active" && liveCanUseApp) {
         // Re-engage the lock every time the app returns to the foreground.
         lockNow();
         void rescheduleAllNotifications(notificationSubscriptions, notificationSettings, quietHours);
@@ -186,7 +205,7 @@ function RootStack() {
     });
 
     return () => subscription.remove();
-  }, [isAuthenticated, hydrated, notificationSubscriptions, notificationSettings, quietHours, widgetSnapshot, hydrateLock, lockNow]);
+  }, [canUseApp, hydrated, notificationSubscriptions, notificationSettings, quietHours, widgetSnapshot, hydrateLock, lockNow]);
 
   if (status === "loading") {
     return (
@@ -238,7 +257,7 @@ function RootStack() {
       {/* Fail-closed: cover the app whenever the lock could apply. Until the lock
           store has hydrated (ready) we don't yet know if a PIN is set, so we treat
           "not ready" as locked to avoid flashing financial data on cold launch. */}
-      {isAuthenticated && (!lockReady || lockEngaged) ? <LockOverlay /> : null}
+      {canUseApp && (!lockReady || lockEngaged) ? <LockOverlay /> : null}
     </>
   );
 }
