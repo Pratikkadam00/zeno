@@ -7,7 +7,7 @@ import { getMarkedDates, getProjectedAnnual, getSubscriptionsForDate, getWeeklyG
 import { formatMoney } from "../../src/utils/format";
 import { formatShortDate, getDaysRemaining, getUrgencyBadge } from "../../src/utils/subscription-ui";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
-import type { Subscription } from "@zeno/shared";
+import { convertMinor, type CurrencyCode, type FxContext, type Subscription } from "@zeno/shared";
 import { ServiceAvatar } from "../../src/components/zeno";
 import { useZenoTheme } from "../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../src/theme/tokens";
@@ -74,11 +74,13 @@ function getCalendarTheme(theme: ThemeTokens) {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function DayPanel({
-  date, subscriptions, onClose
+  date, subscriptions, onClose, homeCurrency, fx
 }: {
   date: string;
   subscriptions: Subscription[];
   onClose: () => void;
+  homeCurrency: CurrencyCode;
+  fx: FxContext | undefined;
 }) {
   const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -94,7 +96,13 @@ function DayPanel({
     ]).start();
   }, [date, slideAnim, opacityAnim]);
 
-  const dayTotal = subscriptions.reduce((sum, s) => sum + s.price.amountMinor, 0);
+  // Never silently sum raw minor units across currencies — convert each
+  // charge into homeCurrency when a rate table is available, and skip (rather
+  // than fabricate) a subscription whose currency has no usable rate.
+  const dayTotal = subscriptions.reduce((sum, s) => {
+    const amount = fx ? convertMinor(s.price.amountMinor, s.price.currency, fx.homeCurrency, fx.rates) : s.price.amountMinor;
+    return amount === null ? sum : sum + amount;
+  }, 0);
 
   return (
     <Animated.View style={[styles.panelCard, { opacity: opacityAnim, transform: [{ translateY: slideAnim }] }]}>
@@ -138,7 +146,7 @@ function DayPanel({
       })}
       <View style={styles.panelFooter}>
         <Text style={styles.panelFooterLabel}>Total for this day</Text>
-        <Text style={styles.panelFooterAmount}>{formatMoney(dayTotal)}</Text>
+        <Text style={styles.panelFooterAmount}>{formatMoney(dayTotal, homeCurrency)}</Text>
       </View>
     </Animated.View>
   );
@@ -202,7 +210,7 @@ export default function CalendarScreen() {
   const { theme, scheme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const calendarTheme = useMemo(() => getCalendarTheme(theme), [theme]);
-  const { subscriptions } = useSubscriptionStore();
+  const { subscriptions, homeCurrency, fx } = useSubscriptionStore();
   const now = new Date();
   const thisMonthKey = getThisMonthKey(now);
 
@@ -224,8 +232,8 @@ export default function CalendarScreen() {
   );
   const groups = useMemo(() => getWeeklyGroups(activeSubscriptions), [activeSubscriptions]);
   const monthlyTotal = useMemo(() =>
-    getMonthlyTotal(activeSubscriptions, now.getFullYear(), now.getMonth() + 1),
-    [activeSubscriptions]
+    getMonthlyTotal(activeSubscriptions, now.getFullYear(), now.getMonth() + 1, fx),
+    [activeSubscriptions, fx]
   );
   const projectedAnnual = useMemo(() => getProjectedAnnual(activeSubscriptions), [activeSubscriptions]);
 
@@ -296,7 +304,7 @@ export default function CalendarScreen() {
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>THIS MONTH</Text>
-            <Text style={styles.statValue}>{formatMoney(Math.round(monthlyTotal * 100))}</Text>
+            <Text style={styles.statValue}>{formatMoney(Math.round(monthlyTotal * 100), homeCurrency)}</Text>
             <Text style={styles.statSub}>{thisMonthTotalCount} renewals</Text>
           </View>
 
@@ -333,6 +341,8 @@ export default function CalendarScreen() {
             date={selectedDate}
             subscriptions={selectedList}
             onClose={() => setPanelOpen(false)}
+            homeCurrency={homeCurrency}
+            fx={fx}
           />
         ) : null}
 

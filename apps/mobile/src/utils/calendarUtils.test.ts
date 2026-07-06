@@ -80,6 +80,35 @@ describe("calendarUtils", () => {
     expect(total).toBe(30);
   });
 
+  it("converts mixed-currency charges into home currency instead of summing raw minor units", () => {
+    const total = getMonthlyTotal(
+      [
+        buildSubscription({ id: "a", nextRenewalDate: "2026-05-05T00:00:00.000Z", price: { amountMinor: 1000, currency: "USD" } }),
+        buildSubscription({ id: "b", nextRenewalDate: "2026-05-10T00:00:00.000Z", price: { amountMinor: 9500, currency: "INR" } })
+      ],
+      2026,
+      5,
+      { homeCurrency: "USD", rates: { USD: 1, INR: 95 } }
+    );
+
+    // $10 + (₹95 -> $1) = $11. A naive raw sum would be $105.
+    expect(total).toBe(11);
+  });
+
+  it("excludes a charge whose currency has no rate rather than summing it raw", () => {
+    const total = getMonthlyTotal(
+      [
+        buildSubscription({ id: "a", nextRenewalDate: "2026-05-05T00:00:00.000Z", price: { amountMinor: 1000, currency: "USD" } }),
+        buildSubscription({ id: "b", nextRenewalDate: "2026-05-10T00:00:00.000Z", price: { amountMinor: 500, currency: "GBP" } })
+      ],
+      2026,
+      5,
+      { homeCurrency: "USD", rates: { USD: 1 } }
+    );
+
+    expect(total).toBe(10);
+  });
+
   it("buckets upcoming subscriptions into week groups", () => {
     const subscriptions = [
       buildSubscription({ id: "a", nextRenewalDate: "2026-06-02T00:00:00.000Z", price: { amountMinor: 1000, currency: "USD" } }),

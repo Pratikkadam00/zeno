@@ -7,22 +7,23 @@ import { Badge, Button, Card } from "../src/components/zeno";
 import { useBudgetStore } from "../src/data/budget-store";
 import { useSubscriptionStore } from "../src/data/subscription-store";
 import { useZenoTokens } from "../src/theme/useZenoTokens";
-import { formatMoney } from "../src/utils/format";
+import { currencySymbol, formatMoney } from "../src/utils/format";
 import { shareText } from "../src/utils/share";
-
-// Aggregate monthly-spend-history figures — currently USD-only, matching the
-// rest of the aggregate math app-wide (see budget.tsx for the same convention).
-const money = (minor: number) => formatMoney(minor);
-const dollarsRound = (minor: number) => `$${Math.round(minor / 100)}`;
 
 export default function BudgetRecapScreen() {
   const t = useZenoTokens();
   const c = t.color;
   const insets = useSafeAreaInsets();
-  const { subscriptions } = useSubscriptionStore();
+  const { subscriptions, homeCurrency, fx } = useSubscriptionStore();
   const { config } = useBudgetStore();
 
-  const history = buildMonthlySpendHistory(subscriptions, 6).map((point) => ({ label: point.label, amountMinor: point.amountMinor }));
+  // Aggregate monthly-spend-history figures — shown in the home-currency
+  // setting (Settings > Home currency), converted via fx when a rate table is
+  // available (see budget.tsx for the same convention).
+  const money = (minor: number) => formatMoney(minor, homeCurrency);
+  const dollarsRound = (minor: number) => `${currencySymbol(homeCurrency)}${Math.round(minor / 100)}`;
+
+  const history = buildMonthlySpendHistory(subscriptions, 6, undefined, fx).map((point) => ({ label: point.label, amountMinor: point.amountMinor }));
   // Recap the most recent COMPLETE month (the current month is still partial).
   const recapIndex = history.length >= 2 ? history.length - 2 : history.length - 1;
   const recap = history[recapIndex];

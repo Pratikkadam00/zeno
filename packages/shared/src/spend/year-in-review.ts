@@ -1,5 +1,5 @@
 import type { Subscription, SubscriptionCategory } from "../domain";
-import { monthlyAmount } from "./coach";
+import { monthlyAmount, monthlyAmountIn, type FxContext } from "./coach";
 import { buildMonthlySpendHistory } from "./history";
 
 export type YearInReview = {
@@ -10,6 +10,8 @@ export type YearInReview = {
   mostExpensive: { name: string; monthlyMinor: number } | null;
   topCategory: { category: SubscriptionCategory; monthlyMinor: number } | null;
   busiestMonth: { label: string; amountMinor: number } | null;
+  // Only meaningful when `fx` was passed — see SpendSummary.excludedCurrencyCount.
+  excludedCurrencyCount?: number;
 };
 
 /**
@@ -18,8 +20,8 @@ export type YearInReview = {
  * priciest sub, the category that ate the most, the most expensive month, and
  * how many were cancelled. Shareable retention moment.
  */
-export function buildYearInReview(subscriptions: Subscription[], now: Date = new Date()): YearInReview {
-  const history = buildMonthlySpendHistory(subscriptions, 12, now);
+export function buildYearInReview(subscriptions: Subscription[], now: Date = new Date(), fx?: FxContext): YearInReview {
+  const history = buildMonthlySpendHistory(subscriptions, 12, now, fx);
   const totalSpentMinor = history.reduce((sum, point) => sum + point.amountMinor, 0);
 
   const active = subscriptions.filter(
@@ -28,8 +30,16 @@ export function buildYearInReview(subscriptions: Subscription[], now: Date = new
 
   let mostExpensive: YearInReview["mostExpensive"] = null;
   const categoryTotals = new Map<SubscriptionCategory, number>();
+  let excludedCurrencyCount = 0;
+  let projectedAnnualMinor = 0;
+
   for (const subscription of active) {
-    const monthly = monthlyAmount(subscription);
+    const monthly = fx ? monthlyAmountIn(subscription, fx.homeCurrency, fx.rates) : monthlyAmount(subscription);
+    if (monthly === null) {
+      excludedCurrencyCount += 1;
+      continue;
+    }
+    projectedAnnualMinor += monthly * 12;
     if (!mostExpensive || monthly > mostExpensive.monthlyMinor) {
       mostExpensive = { name: subscription.name, monthlyMinor: monthly };
     }
@@ -50,13 +60,19 @@ export function buildYearInReview(subscriptions: Subscription[], now: Date = new
     }
   }
 
-  return {
+  const review: YearInReview = {
     totalSpentMinor,
-    projectedAnnualMinor: active.reduce((sum, s) => sum + monthlyAmount(s), 0) * 12,
+    projectedAnnualMinor,
     activeCount: active.length,
     cancelledCount: subscriptions.filter((s) => s.status === "cancelled").length,
     mostExpensive,
     topCategory,
     busiestMonth
   };
+
+  if (fx) {
+    review.excludedCurrencyCount = excludedCurrencyCount;
+  }
+
+  return review;
 }

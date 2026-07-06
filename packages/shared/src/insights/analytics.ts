@@ -1,5 +1,5 @@
 import type { Subscription, SubscriptionCategory } from "../domain";
-import { monthlyAmount } from "../spend/coach";
+import { monthlyAmount, monthlyAmountIn, type FxContext } from "../spend/coach";
 
 export type AnalyticsSnapshot = {
   monthlySpendMinor: number;
@@ -12,20 +12,40 @@ export type AnalyticsSnapshot = {
   };
   renewalLoadNext30Days: number;
   cancellationOpportunityMinor: number;
+  // Only meaningful when `fx` was passed — see SpendSummary.excludedCurrencyCount.
+  excludedCurrencyCount?: number;
 };
 
-export function createAnalyticsSnapshot(subscriptions: Subscription[], now = new Date()): AnalyticsSnapshot {
+export function createAnalyticsSnapshot(subscriptions: Subscription[], now = new Date(), fx?: FxContext): AnalyticsSnapshot {
   const active = subscriptions.filter((subscription) => subscription.status === "active");
-  const monthlySpendMinor = active.reduce((sum, subscription) => sum + monthlyAmount(subscription), 0);
+  let excludedCurrencyCount = 0;
+
+  const amountFor = (subscription: Subscription): number | null =>
+    fx ? monthlyAmountIn(subscription, fx.homeCurrency, fx.rates) : monthlyAmount(subscription);
+
+  let monthlySpendMinor = 0;
   const categorySpend = new Map<SubscriptionCategory, number>();
 
   for (const subscription of active) {
-    categorySpend.set(subscription.category, (categorySpend.get(subscription.category) ?? 0) + monthlyAmount(subscription));
+    const amount = amountFor(subscription);
+    if (amount === null) {
+      excludedCurrencyCount += 1;
+      continue;
+    }
+    monthlySpendMinor += amount;
+    categorySpend.set(subscription.category, (categorySpend.get(subscription.category) ?? 0) + amount);
   }
 
   const highestCategory = [...categorySpend.entries()]
     .sort((a, b) => b[1] - a[1])
     .map(([category, spend]) => ({ category, monthlySpendMinor: spend }))[0];
+
+  const cancellationOpportunityMinor = active
+    .filter((subscription) => subscription.valueRating === "low")
+    .reduce((sum, subscription) => {
+      const amount = amountFor(subscription);
+      return amount === null ? sum : sum + amount;
+    }, 0);
 
   const snapshot: AnalyticsSnapshot = {
     monthlySpendMinor,
@@ -33,13 +53,15 @@ export function createAnalyticsSnapshot(subscriptions: Subscription[], now = new
     activeSubscriptionCount: active.length,
     averageMonthlySubscriptionMinor: active.length ? Math.round(monthlySpendMinor / active.length) : 0,
     renewalLoadNext30Days: countRenewalsWithin(active, now, 30),
-    cancellationOpportunityMinor: active
-      .filter((subscription) => subscription.valueRating === "low")
-      .reduce((sum, subscription) => sum + monthlyAmount(subscription), 0)
+    cancellationOpportunityMinor
   };
 
   if (highestCategory) {
     snapshot.highestCategory = highestCategory;
+  }
+
+  if (fx) {
+    snapshot.excludedCurrencyCount = excludedCurrencyCount;
   }
 
   return snapshot;

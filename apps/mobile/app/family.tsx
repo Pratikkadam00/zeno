@@ -13,7 +13,7 @@ const HOUSEHOLD_KEY = "zeno.family.householdId";
 export default function FamilyScreen() {
   const { theme } = useZenoTheme();
   const accountId = useAuthStore((state) => state.accountId);
-  const { totalMonthlyMinor } = useSubscriptionStore();
+  const { totalMonthlyMinor, homeCurrency } = useSubscriptionStore();
 
   const memberId = accountId ?? "device-member";
   const memberName = accountId ? (accountId.split("@")[0] ?? accountId) : "You";
@@ -92,13 +92,19 @@ export default function FamilyScreen() {
 
             <Surface>
               <Text style={{ color: theme.text, fontSize: 18, fontWeight: "800", marginBottom: 10 }}>
-                {household.members.length} member{household.members.length === 1 ? "" : "s"} · {formatMoney(combined)}/mo combined
+                {household.members.length} member{household.members.length === 1 ? "" : "s"} · {formatMoney(combined, homeCurrency)}/mo combined
               </Text>
+              {/* The server's household contract (apps/api/src/family.ts) carries no
+                  per-member currency — each member's monthlySpendMinor was reported by
+                  their own device in whatever currency it used. Labeling every row with
+                  this device's home currency is a display-only best effort, not a claim
+                  that every member's number was actually converted; a genuine fix needs a
+                  currency field added to the server contract (tracked as a known gap). */}
               <View style={{ gap: 10 }}>
                 {household.members.map((m) => (
                   <View key={m.id} style={{ flexDirection: "row", justifyContent: "space-between" }}>
                     <Text style={{ color: theme.text }}>{m.name}{m.id === household.ownerId ? "  ·  owner" : ""}</Text>
-                    <Text style={{ color: theme.mutedText, fontVariant: ["tabular-nums"] }}>{formatMoney(m.monthlySpendMinor)}/mo</Text>
+                    <Text style={{ color: theme.mutedText, fontVariant: ["tabular-nums"] }}>{formatMoney(m.monthlySpendMinor, homeCurrency)}/mo</Text>
                   </View>
                 ))}
               </View>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, Text, View } from "react-native";
-import { monthlyAmount } from "@zeno/shared";
+import { monthlyAmount, monthlyAmountIn } from "@zeno/shared";
 import { Screen, Surface } from "../src/components/ui";
 import { getAiCoaching, type AiCoaching } from "../src/api/client";
 import { useBudgetStore } from "../src/data/budget-store";
@@ -11,8 +11,9 @@ import { useZenoTheme } from "../src/theme/theme-provider";
 
 export default function CoachScreen() {
   const { theme } = useZenoTheme();
-  const { spendSummary, subscriptions, totalMonthlyMinor } = useSubscriptionStore();
+  const { spendSummary, subscriptions, totalMonthlyMinor, homeCurrency, fx } = useSubscriptionStore();
   const { config: budgetConfig } = useBudgetStore();
+  const money = (minor: number) => formatMoney(minor, homeCurrency);
 
   const [ai, setAi] = useState<AiCoaching | null>(null);
   const [loadingAi, setLoadingAi] = useState(true);
@@ -22,14 +23,18 @@ export default function CoachScreen() {
   const budgetAdvice = useMemo(() => {
     const capMinor = budgetConfig.capMinor;
     if (capMinor == null) return null;
-    const forecast = computeBudgetForecast(subscriptions);
+    const forecast = computeBudgetForecast(subscriptions, undefined, fx);
     const status = budgetStatus(forecast.projectedMinor, capMinor);
     const overByMinor = Math.max(0, forecast.projectedMinor - capMinor);
     const cuts: { name: string; monthlyMinor: number }[] = [];
     if (overByMinor > 0) {
+      // Same fx conversion as the forecast above — otherwise a mixed-currency
+      // portfolio would compare cut candidates in native-currency minor units
+      // against a home-currency-converted overByMinor.
       const cheapest = subscriptions
         .filter((s) => s.status === "active")
-        .map((s) => ({ name: s.name, monthlyMinor: monthlyAmount(s) }))
+        .map((s) => ({ name: s.name, monthlyMinor: fx ? monthlyAmountIn(s, fx.homeCurrency, fx.rates) : monthlyAmount(s) }))
+        .filter((candidate): candidate is { name: string; monthlyMinor: number } => candidate.monthlyMinor !== null)
         .sort((a, b) => a.monthlyMinor - b.monthlyMinor);
       let accumulated = 0;
       for (const candidate of cheapest) {
@@ -39,14 +44,14 @@ export default function CoachScreen() {
       }
     }
     return { capMinor, projectedMinor: forecast.projectedMinor, status, overByMinor, cuts };
-  }, [budgetConfig.capMinor, subscriptions]);
+  }, [budgetConfig.capMinor, subscriptions, fx]);
 
   useEffect(() => {
     let active = true;
     setLoadingAi(true);
     const payload = {
       totalMonthlyMinor,
-      currency: "USD",
+      currency: homeCurrency,
       subscriptions: subscriptions
         .filter((subscription) => subscription.status === "active")
         .map((subscription) => ({
@@ -79,7 +84,7 @@ export default function CoachScreen() {
         </View>
 
         <Surface>
-          <Text style={{ color: theme.text, fontSize: 24, fontWeight: "900" }}>{formatMoney(totalMonthlyMinor)}</Text>
+          <Text style={{ color: theme.text, fontSize: 24, fontWeight: "900" }}>{money(totalMonthlyMinor)}</Text>
           <Text style={{ color: theme.mutedText, marginTop: 4 }}>Estimated monthly subscription spend</Text>
         </Surface>
 
@@ -89,17 +94,17 @@ export default function CoachScreen() {
             {budgetAdvice.overByMinor > 0 ? (
               <>
                 <Text style={{ color: theme.text, marginTop: 8, fontSize: 16, lineHeight: 22 }}>
-                  You&apos;re {formatMoney(budgetAdvice.overByMinor)} over your {formatMoney(budgetAdvice.capMinor)} budget (forecast {formatMoney(budgetAdvice.projectedMinor)}).
+                  You&apos;re {money(budgetAdvice.overByMinor)} over your {money(budgetAdvice.capMinor)} budget (forecast {money(budgetAdvice.projectedMinor)}).
                 </Text>
                 {budgetAdvice.cuts.length > 0 ? (
                   <Text style={{ color: theme.secondary, marginTop: 8, fontWeight: "800" }}>
-                    Cancel {budgetAdvice.cuts.map((cut) => cut.name).join(" + ")} → save {formatMoney(budgetAdvice.cuts.reduce((sum, cut) => sum + cut.monthlyMinor, 0))}/mo and get under.
+                    Cancel {budgetAdvice.cuts.map((cut) => cut.name).join(" + ")} → save {money(budgetAdvice.cuts.reduce((sum, cut) => sum + cut.monthlyMinor, 0))}/mo and get under.
                   </Text>
                 ) : null}
               </>
             ) : (
               <Text style={{ color: theme.text, marginTop: 8, fontSize: 16, lineHeight: 22 }}>
-                On pace — forecast {formatMoney(budgetAdvice.projectedMinor)} of your {formatMoney(budgetAdvice.capMinor)} budget.
+                On pace — forecast {money(budgetAdvice.projectedMinor)} of your {money(budgetAdvice.capMinor)} budget.
               </Text>
             )}
           </Surface>
@@ -144,7 +149,7 @@ export default function CoachScreen() {
                 {spendSummary.byCategory.map((row) => (
                   <View key={row.category} style={{ borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 10 }}>
                     <Text style={{ color: theme.text, fontWeight: "800" }}>{row.category.replace("_", " ")}</Text>
-                    <Text style={{ color: theme.mutedText, marginTop: 4 }}>{formatMoney(row.monthlyMinor)} · {row.count} active</Text>
+                    <Text style={{ color: theme.mutedText, marginTop: 4 }}>{money(row.monthlyMinor)} · {row.count} active</Text>
                   </View>
                 ))}
               </View>
@@ -160,7 +165,7 @@ export default function CoachScreen() {
                   <Text style={{ color: theme.mutedText, marginTop: 8, lineHeight: 21 }}>{insight.body}</Text>
                   {insight.estimatedMonthlyImpactMinor ? (
                     <Text style={{ color: theme.secondary, marginTop: 8, fontWeight: "800" }}>
-                      Potential impact: {formatMoney(insight.estimatedMonthlyImpactMinor)}/mo
+                      Potential impact: {money(insight.estimatedMonthlyImpactMinor)}/mo
                     </Text>
                   ) : null}
                 </Surface>

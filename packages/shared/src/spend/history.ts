@@ -1,5 +1,5 @@
 import type { Subscription } from "../domain";
-import { monthlyAmount } from "./coach";
+import { convertMinor, monthlyAmount, type FxContext } from "./coach";
 
 export type MonthlySpendPoint = {
   year: number;
@@ -15,8 +15,14 @@ export type MonthlySpendPoint = {
  * spike in their anniversary month and quarterly charges every third month, so
  * the chart reflects when money actually leaves — and a sub only contributes
  * from the month it was added. Deterministic (UTC) for stable SSR/hydration.
+ *
+ * When `fx` is passed, each charge is converted into fx.homeCurrency; a
+ * subscription whose currency has no usable rate contributes 0 for that month
+ * (never a fabricated number) — the aggregate exclusion count is surfaced by
+ * callers that already sum across the same subscription list (e.g.
+ * buildYearInReview), not duplicated here per-point.
  */
-export function buildMonthlySpendHistory(subscriptions: Subscription[], months = 6, now: Date = new Date()): MonthlySpendPoint[] {
+export function buildMonthlySpendHistory(subscriptions: Subscription[], months = 6, now: Date = new Date(), fx?: FxContext): MonthlySpendPoint[] {
   const monthFmt = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" });
   const points: MonthlySpendPoint[] = [];
 
@@ -26,7 +32,7 @@ export function buildMonthlySpendHistory(subscriptions: Subscription[], months =
     const month = d.getUTCMonth();
     let amountMinor = 0;
     for (const subscription of subscriptions) {
-      amountMinor += chargeInMonth(subscription, year, month);
+      amountMinor += chargeInMonth(subscription, year, month, fx);
     }
     points.push({ year, month, label: monthFmt.format(d), amountMinor });
   }
@@ -39,7 +45,7 @@ function anchorMonth(subscription: Subscription): number {
   return new Date(ref).getUTCMonth();
 }
 
-function chargeInMonth(subscription: Subscription, year: number, month: number): number {
+function chargeInMonth(subscription: Subscription, year: number, month: number, fx?: FxContext): number {
   if (subscription.status !== "active") return 0;
   if (subscription.billingCycle === "trial" || subscription.billingCycle === "unknown") return 0;
 
@@ -49,16 +55,23 @@ function chargeInMonth(subscription: Subscription, year: number, month: number):
     return 0; // subscription didn't exist yet
   }
 
+  const convert = (amountMinor: number): number => {
+    if (!fx) return amountMinor;
+    return convertMinor(amountMinor, subscription.price.currency, fx.homeCurrency, fx.rates) ?? 0;
+  };
+
   const price = subscription.price.amountMinor;
   switch (subscription.billingCycle) {
     case "monthly":
-      return price;
+      return convert(price);
     case "weekly":
-      return monthlyAmount(subscription); // month-equivalent of weekly charges
+      // month-equivalent of weekly charges; monthlyAmount already normalizes
+      // the cycle, fx-conversion (if any) is applied on top of that.
+      return fx ? (convertMinor(monthlyAmount(subscription), subscription.price.currency, fx.homeCurrency, fx.rates) ?? 0) : monthlyAmount(subscription);
     case "quarterly":
-      return (((month - anchorMonth(subscription)) % 3) + 3) % 3 === 0 ? price : 0;
+      return (((month - anchorMonth(subscription)) % 3) + 3) % 3 === 0 ? convert(price) : 0;
     case "annual":
-      return month === anchorMonth(subscription) ? price : 0;
+      return month === anchorMonth(subscription) ? convert(price) : 0;
     default:
       return 0;
   }

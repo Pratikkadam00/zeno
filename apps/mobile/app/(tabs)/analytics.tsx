@@ -9,7 +9,7 @@ import { budgetStatus, computeBudgetForecast } from "../../src/finance/budget";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
 import { generateInsights, getTotalSavingOpportunity } from "../../src/insights/insightsEngine";
 import type { Insight } from "../../src/insights/insightsEngine";
-import { formatMoney } from "../../src/utils/format";
+import { currencySymbol, formatMoney } from "../../src/utils/format";
 import { formatShortDate, getCategoryColor, getDaysRemaining, getUrgencyBadge, withAlpha } from "../../src/utils/subscription-ui";
 import { ServiceAvatar } from "../../src/components/zeno";
 import { useZenoTheme } from "../../src/theme/theme-provider";
@@ -57,17 +57,20 @@ function labelCategory(category: string): string {
 export default function AnalyticsScreen() {
   const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { subscriptions, spendSummary } = useSubscriptionStore();
+  const { subscriptions, spendSummary, totalMonthlyMinor, homeCurrency, fx } = useSubscriptionStore();
   const { config: budgetConfig } = useBudgetStore();
-  const budgetForecast = computeBudgetForecast(subscriptions);
+  const budgetForecast = computeBudgetForecast(subscriptions, undefined, fx);
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [sortDirection, setSortDirection] = useState<"desc" | "asc">("desc");
 
   const insights = useMemo(() => generateInsights(subscriptions), [subscriptions]);
   const visibleInsights = insights.filter((i) => !dismissed.includes(i.id));
+  // getTotalSavingOpportunity sums insight.savingAmount across all insights
+  // regardless of the underlying subscription's currency (insightsEngine.ts
+  // is a separate, mobile-local insight engine, not the shared package's
+  // createSpendSummary — its cross-currency handling is a known, documented
+  // gap; see ZENO_MASTER_PLAN.md Phase 5.2).
   const savingOpportunity = getTotalSavingOpportunity(insights);
-
-  const totalMonthlyMinor = subscriptions.reduce((sum, s) => sum + monthlyAmount(s), 0);
 
   const sortedSubscriptions = useMemo(() =>
     [...subscriptions].sort((a, b) =>
@@ -81,13 +84,13 @@ export default function AnalyticsScreen() {
   // ── 6-month spend history (actual cash-out per month, derived from real
   // subscription cycles — annual charges spike in their anniversary month). ──
   const chartData = useMemo(() => {
-    const history = buildMonthlySpendHistory(subscriptions, 6);
+    const history = buildMonthlySpendHistory(subscriptions, 6, undefined, fx);
     return history.map((point, i) => ({
       label: point.label,
       isCurrent: i === history.length - 1,
       amountMinor: point.amountMinor
     }));
-  }, [subscriptions]);
+  }, [subscriptions, fx]);
 
   const maxBarAmount = Math.max(...chartData.map((d) => d.amountMinor), 1);
 
@@ -109,7 +112,7 @@ export default function AnalyticsScreen() {
           {savingOpportunity > 0 ? (
             <View style={styles.savingsPill}>
               <TrendingUp size={13} color={theme.success} strokeWidth={2} />
-              <Text style={styles.savingsPillText}>Save up to ${savingOpportunity.toFixed(0)}</Text>
+              <Text style={styles.savingsPillText}>Save up to {currencySymbol(homeCurrency)}{savingOpportunity.toFixed(0)}</Text>
             </View>
           ) : null}
         </View>
@@ -128,8 +131,8 @@ export default function AnalyticsScreen() {
             <Text style={styles.budgetEntryTitle}>Budget</Text>
             <Text style={styles.budgetEntrySub}>
               {budgetConfig.capMinor == null
-                ? `Set a cap — forecast $${(budgetForecast.projectedMinor / 100).toFixed(0)} this month`
-                : `Forecast $${(budgetForecast.projectedMinor / 100).toFixed(2)} / $${Math.round(budgetConfig.capMinor / 100)} this month`}
+                ? `Set a cap — forecast ${currencySymbol(homeCurrency)}${(budgetForecast.projectedMinor / 100).toFixed(0)} this month`
+                : `Forecast ${currencySymbol(homeCurrency)}${(budgetForecast.projectedMinor / 100).toFixed(2)} / ${currencySymbol(homeCurrency)}${Math.round(budgetConfig.capMinor / 100)} this month`}
             </Text>
           </View>
           {budgetConfig.capMinor == null ? (
@@ -152,7 +155,7 @@ export default function AnalyticsScreen() {
         {/* ── Monthly spend chart ── */}
         <Text style={styles.sectionLabel}>MONTHLY SPEND</Text>
         <View style={styles.chartCard}>
-          <Text style={styles.chartTotal}>{formatMoney(totalMonthlyMinor)}</Text>
+          <Text style={styles.chartTotal}>{formatMoney(totalMonthlyMinor, homeCurrency)}</Text>
           <Text style={styles.chartTotalSub}>this month</Text>
           <View style={styles.barRow}>
             {chartData.map((entry, i) => {
@@ -160,7 +163,7 @@ export default function AnalyticsScreen() {
               return (
                 <View key={i} style={styles.barColumn}>
                   {entry.isCurrent ? (
-                    <Text style={styles.barValueLabel}>{formatMoney(entry.amountMinor)}</Text>
+                    <Text style={styles.barValueLabel}>{formatMoney(entry.amountMinor, homeCurrency)}</Text>
                   ) : null}
                   <View style={[styles.bar, {
                     height: barH,
@@ -200,7 +203,7 @@ export default function AnalyticsScreen() {
                       {insight.savingAmount && insight.savingAmount > 0 ? (
                         <View style={styles.insightSavingPill}>
                           <Text style={styles.insightSavingText}>
-                            Save {formatMoney(insight.savingAmount)}/mo
+                            Save {formatMoney(insight.savingAmount, homeCurrency)}/mo
                           </Text>
                         </View>
                       ) : null}
@@ -247,7 +250,7 @@ export default function AnalyticsScreen() {
                       </View>
                     </View>
                     <View style={styles.catRight}>
-                      <Text style={styles.catAmount}>{formatMoney(cat.monthlyMinor)}</Text>
+                      <Text style={styles.catAmount}>{formatMoney(cat.monthlyMinor, homeCurrency)}</Text>
                       <Text style={styles.catPct}>{Math.round(pct)}%</Text>
                     </View>
                   </View>
@@ -258,7 +261,7 @@ export default function AnalyticsScreen() {
           )}
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total monthly</Text>
-            <Text style={styles.totalAmount}>{formatMoney(spendSummary.totalMonthlyMinor)}</Text>
+            <Text style={styles.totalAmount}>{formatMoney(spendSummary.totalMonthlyMinor, homeCurrency)}</Text>
           </View>
         </View>
 

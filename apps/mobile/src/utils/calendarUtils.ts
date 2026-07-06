@@ -1,4 +1,4 @@
-import type { Subscription, SubscriptionCategory } from "@zeno/shared";
+import { convertMinor, type FxContext, type Subscription, type SubscriptionCategory } from "@zeno/shared";
 
 export interface CalendarDot {
   key: string;
@@ -115,7 +115,7 @@ export function getSubscriptionsForDate(subscriptions: Subscription[], dateStrin
     .sort((a, b) => Number(a.price.amountMinor) - Number(b.price.amountMinor));
 }
 
-export function getMonthlyTotal(subscriptions: Subscription[], year: number, month: number): number {
+export function getMonthlyTotal(subscriptions: Subscription[], year: number, month: number, fx?: FxContext): number {
   return subscriptions
     .filter((subscription) => subscription.status === "active" && !!subscription.nextRenewalDate)
     .reduce((sum, subscription) => {
@@ -132,7 +132,11 @@ export function getMonthlyTotal(subscriptions: Subscription[], year: number, mon
         return sum;
       }
 
-      return sum + subscription.price.amountMinor / 100;
+      // Never silently sum raw minor units across currencies — convert (or
+      // skip, never fabricate) when fx is available; unconverted fallback
+      // preserves the pre-5.2 behavior when it isn't.
+      const amountMinor = fx ? convertMinor(subscription.price.amountMinor, subscription.price.currency, fx.homeCurrency, fx.rates) : subscription.price.amountMinor;
+      return amountMinor === null ? sum : sum + amountMinor / 100;
     }, 0);
 }
 

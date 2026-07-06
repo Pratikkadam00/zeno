@@ -1,4 +1,6 @@
+import type { CurrencyCode } from "../domain";
 import { formatMoneyMinor } from "../notifications/renewal-plan";
+import { convertMinor, type ExchangeRates } from "./coach";
 
 export type SpendTwinComparison = {
   label: string;
@@ -30,23 +32,35 @@ const comparisonUnits: Array<Omit<SpendTwinComparison, "quantity">> = [
   }
 ];
 
-export function createSpendTwin(totalMonthlyMinor: number): SpendTwinComparison[] {
+// comparisonUnits' unitCostMinor values are USD-denominated (a $10 burrito,
+// a $70 gym membership, etc). When homeCurrency isn't USD, convert each unit
+// cost via the same rates table before comparing — otherwise raw minor units
+// of two different currencies would be compared directly (e.g. ₹1000 paise
+// against a $10 burrito).
+export function createSpendTwin(totalMonthlyMinor: number, homeCurrency: CurrencyCode = "USD", rates?: ExchangeRates): SpendTwinComparison[] {
   if (totalMonthlyMinor <= 0) {
     return [];
   }
 
-  return comparisonUnits.map((unit) => ({
-    ...unit,
-    quantity: Number((totalMonthlyMinor / unit.unitCostMinor).toFixed(totalMonthlyMinor < unit.unitCostMinor ? 1 : 0))
-  }));
+  return comparisonUnits.map((unit) => {
+    const unitCostMinor = homeCurrency === "USD"
+      ? unit.unitCostMinor
+      : convertMinor(unit.unitCostMinor, "USD", homeCurrency, rates ?? {}) ?? unit.unitCostMinor;
+
+    return {
+      ...unit,
+      unitCostMinor,
+      quantity: Number((totalMonthlyMinor / unitCostMinor).toFixed(totalMonthlyMinor < unitCostMinor ? 1 : 0))
+    };
+  });
 }
 
-export function summarizeSpendTwin(totalMonthlyMinor: number): string {
-  const comparisons = createSpendTwin(totalMonthlyMinor);
+export function summarizeSpendTwin(totalMonthlyMinor: number, homeCurrency: CurrencyCode = "USD", rates?: ExchangeRates): string {
+  const comparisons = createSpendTwin(totalMonthlyMinor, homeCurrency, rates);
   const [first, second] = comparisons;
   if (!first || !second) {
     return "No subscription spend to compare yet.";
   }
 
-  return `${formatMoneyMinor(totalMonthlyMinor)} per month equals about ${first.quantity} ${first.label} or ${second.quantity} ${second.label}.`;
+  return `${formatMoneyMinor(totalMonthlyMinor, homeCurrency)} per month equals about ${first.quantity} ${first.label} or ${second.quantity} ${second.label}.`;
 }

@@ -1,6 +1,6 @@
 import type { Subscription } from "../domain";
 import { formatMoneyMinor } from "../notifications/renewal-plan";
-import { monthlyAmount } from "../spend/coach";
+import { monthlyAmount, monthlyAmountIn, type FxContext } from "../spend/coach";
 
 export type WidgetSnapshot = {
   generatedAt: string;
@@ -16,15 +16,18 @@ export type WidgetSnapshot = {
   watchComplicationText: string;
 };
 
-export function createWidgetSnapshot(subscriptions: Subscription[], now = new Date()): WidgetSnapshot {
+export function createWidgetSnapshot(subscriptions: Subscription[], now = new Date(), fx?: FxContext): WidgetSnapshot {
   const active = subscriptions.filter((subscription) => subscription.status === "active");
   const next = active
     .filter((subscription) => subscription.nextRenewalDate)
     .sort((a, b) => Date.parse(a.nextRenewalDate ?? "") - Date.parse(b.nextRenewalDate ?? ""))[0];
-  const monthlySpend = active.reduce((sum, subscription) => sum + monthlyAmount(subscription), 0);
+  const monthlySpend = active.reduce((sum, subscription) => {
+    const amount = fx ? monthlyAmountIn(subscription, fx.homeCurrency, fx.rates) : monthlyAmount(subscription);
+    return amount === null ? sum : sum + amount;
+  }, 0);
   const snapshot: WidgetSnapshot = {
     generatedAt: now.toISOString(),
-    monthlySpendLabel: formatMoneyMinor(monthlySpend),
+    monthlySpendLabel: formatMoneyMinor(monthlySpend, fx?.homeCurrency),
     activeCount: active.length,
     watchComplicationText: next
       ? `${next.name} ${complicationDueLabel(daysUntil(next.nextRenewalDate ?? "", now))}`

@@ -1,3 +1,4 @@
+import type { CurrencyCode } from "@zeno/shared";
 import { useMemo, useState, type ComponentType } from "react";
 import { deleteAccountOnServer } from "../src/api/client";
 import { useAuthStore } from "../src/auth/authStore";
@@ -7,8 +8,10 @@ import { useLockStore } from "../src/security/lock-store";
 import { spacing } from "../src/theme/spacing";
 import { type as typography } from "../src/theme/typography";
 import { fonts, palette } from "../src/theme/zeno";
+import { currencySymbol } from "../src/utils/format";
 import { router } from "expo-router";
 import {
+  Banknote,
   Bell,
   CreditCard,
   Clock,
@@ -86,7 +89,7 @@ export default function SettingsScreen() {
     logout: state.logout
   }));
   const isLocalOnly = status === "local_only";
-  const { subscriptions, clearAllData, quietHours, setQuietHours } = useSubscriptionStore();
+  const { subscriptions, clearAllData, quietHours, setQuietHours, homeCurrency, setHomeCurrency, exchangeRatesAvailable } = useSubscriptionStore();
   const { reset: resetBudget } = useBudgetStore();
   const lockEnabled = useLockStore((s) => s.enabled);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -98,6 +101,9 @@ export default function SettingsScreen() {
     { label: "9 PM – 9 AM", startHour: 21, endHour: 9 },
     { label: "Midnight – 9 AM", startHour: 0, endHour: 9 }
   ];
+
+  const CURRENCY_OPTIONS: CurrencyCode[] = ["USD", "EUR", "GBP", "INR", "CAD", "AUD"];
+  const homeCurrencyLabel = `${homeCurrency} (${currencySymbol(homeCurrency)})`;
 
   const userEmail = isLocalOnly ? "Local-only mode" : accountId ?? "you@example.com";
   const userPlan = (plan ?? "free") as UserPlan;
@@ -174,7 +180,18 @@ export default function SettingsScreen() {
     {
       title: "App",
       rows: [
-        { id: "dark", Icon: Moon, iconBg: palette.ink[700], label: "Dark mode", isSwitch: true, switchValue: scheme === "dark", onToggle: () => toggleScheme() }
+        { id: "dark", Icon: Moon, iconBg: palette.ink[700], label: "Dark mode", isSwitch: true, switchValue: scheme === "dark", onToggle: () => toggleScheme() },
+        {
+          id: "home-currency", Icon: Banknote, iconBg: palette.category.green, label: "Home currency",
+          sub: exchangeRatesAvailable
+            ? "Totals across currencies are converted"
+            : "Conversion rates unavailable — totals show your dominant currency only",
+          value: homeCurrencyLabel, chevron: true,
+          onPress: () => Alert.alert("Home currency", "Totals and budgets are shown in this currency. Individual subscriptions keep displaying in the currency you added them in.", [
+            ...CURRENCY_OPTIONS.map((code) => ({ text: `${code} (${currencySymbol(code)})`, onPress: () => setHomeCurrency(code) })),
+            { text: "Cancel", style: "cancel" as const }
+          ])
+        }
       ]
     },
     {

@@ -1,6 +1,8 @@
-import type { Subscription } from "@zeno/shared";
+import type { ExchangeRates, Subscription } from "@zeno/shared";
 import { describe, expect, it } from "vitest";
-import { budgetStatus, computeBudgetForecast, suggestedCapMinor } from "./budget";
+import { budgetStatus, computeBudgetForecast, computeCategoryForecast, suggestedCapMinor } from "./budget";
+
+const rates: ExchangeRates = { USD: 1, INR: 95, GBP: 0.75 };
 
 function sub(partial: Partial<Subscription> & { id: string }): Subscription {
   return {
@@ -68,6 +70,52 @@ describe("computeBudgetForecast", () => {
     expect(forecast.projectedMinor).toBe(2000); // 4 weekly charges
     expect(forecast.committedMinor).toBe(1000); // Jun 4 + Jun 11 already passed
     expect(forecast.remaining).toHaveLength(2); // Jun 18 + Jun 25 still to come
+  });
+
+  it("converts mixed-currency charges into home currency instead of summing raw minor units", () => {
+    const subs = [
+      sub({ id: "usd", nextRenewalDate: "2026-06-20T00:00:00.000Z", price: { amountMinor: 1000, currency: "USD" } }),
+      sub({ id: "inr", nextRenewalDate: "2026-06-22T00:00:00.000Z", price: { amountMinor: 9500, currency: "INR" } })
+    ];
+    const forecast = computeBudgetForecast(subs, now, { homeCurrency: "USD", rates });
+    // $10 + (₹95 -> $1) = $11 = 1100 cents. A naive raw sum would be 10500.
+    expect(forecast.projectedMinor).toBe(1100);
+    expect(forecast.excludedCurrencyCount).toBe(0);
+  });
+
+  it("excludes (never silently sums) a subscription whose currency has no rate, and reports the count", () => {
+    const subs = [
+      sub({ id: "usd", nextRenewalDate: "2026-06-20T00:00:00.000Z", price: { amountMinor: 1000, currency: "USD" } }),
+      sub({ id: "eur", nextRenewalDate: "2026-06-22T00:00:00.000Z", price: { amountMinor: 900, currency: "EUR" } })
+    ];
+    const forecast = computeBudgetForecast(subs, now, { homeCurrency: "USD", rates });
+    expect(forecast.projectedMinor).toBe(1000);
+    expect(forecast.excludedCurrencyCount).toBe(1);
+  });
+
+  it("omits excludedCurrencyCount entirely when fx is not passed (legacy behavior unchanged)", () => {
+    const subs = [sub({ id: "usd", nextRenewalDate: "2026-06-20T00:00:00.000Z", price: { amountMinor: 1000, currency: "USD" } })];
+    const forecast = computeBudgetForecast(subs, now);
+    expect(forecast.excludedCurrencyCount).toBeUndefined();
+  });
+});
+
+describe("computeCategoryForecast", () => {
+  const now = new Date("2026-06-15T12:00:00.000Z");
+
+  it("converts mixed-currency charges into home currency per category", () => {
+    const subs = [
+      sub({ id: "usd", category: "entertainment", nextRenewalDate: "2026-06-20T00:00:00.000Z", price: { amountMinor: 1000, currency: "USD" } }),
+      sub({ id: "inr", category: "entertainment", nextRenewalDate: "2026-06-22T00:00:00.000Z", price: { amountMinor: 9500, currency: "INR" } })
+    ];
+    const forecast = computeCategoryForecast(subs, now, { homeCurrency: "USD", rates });
+    expect(forecast.entertainment).toBe(1100);
+  });
+
+  it("excludes a category charge whose currency has no rate", () => {
+    const subs = [sub({ id: "eur", category: "entertainment", nextRenewalDate: "2026-06-20T00:00:00.000Z", price: { amountMinor: 900, currency: "EUR" } })];
+    const forecast = computeCategoryForecast(subs, now, { homeCurrency: "USD", rates });
+    expect(forecast.entertainment).toBeUndefined();
   });
 });
 

@@ -1,4 +1,4 @@
-import type { Subscription, SubscriptionCategory } from "../domain";
+import type { CurrencyCode, Subscription, SubscriptionCategory } from "../domain";
 import { formatMoneyMinor } from "../notifications/renewal-plan";
 
 export type SpendInsightKind =
@@ -25,6 +25,23 @@ export type SpendSummary = {
     count: number;
   }>;
   insights: SpendInsight[];
+  // Only meaningful when `fx` was passed to createSpendSummary — count of
+  // active subscriptions excluded from totalMonthlyMinor/byCategory because no
+  // usable exchange rate existed for their currency. Mirrors the existing
+  // excluded-with-notice pattern in
+  // apps/mobile/src/discovery/discovery-helpers.ts's summarizeFoundMoney —
+  // never silently folded into the total.
+  excludedCurrencyCount?: number;
+};
+
+// A fixed-base rate table (units of each currency per 1 USD — e.g. from
+// open.er-api.com/v6/latest/USD). The same table converts between any pair of
+// the app's supported currencies regardless of which one is "home."
+export type ExchangeRates = Partial<Record<CurrencyCode, number>>;
+
+export type FxContext = {
+  homeCurrency: CurrencyCode;
+  rates: ExchangeRates;
 };
 
 const profileBenchmarks: Partial<Record<SubscriptionCategory, number>> = {
@@ -33,13 +50,36 @@ const profileBenchmarks: Partial<Record<SubscriptionCategory, number>> = {
   entertainment: 4500
 };
 
-export function createSpendSummary(subscriptions: Subscription[], now = new Date()): SpendSummary {
+/**
+ * Converts amountMinor from one supported currency to another using a
+ * fixed-base rate table. Returns null (never a fabricated number) when no
+ * rate exists for either currency — callers must treat null as "exclude,"
+ * not zero.
+ */
+export function convertMinor(amountMinor: number, from: CurrencyCode, to: CurrencyCode, rates: ExchangeRates): number | null {
+  if (from === to) {
+    return amountMinor;
+  }
+  const fromRate = rates[from];
+  const toRate = rates[to];
+  if (!fromRate || !toRate) {
+    return null;
+  }
+  return Math.round((amountMinor / fromRate) * toRate);
+}
+
+export function createSpendSummary(subscriptions: Subscription[], now = new Date(), fx?: FxContext): SpendSummary {
   const active = subscriptions.filter((subscription) => subscription.status === "active");
   const categoryMap = new Map<SubscriptionCategory, { monthlyMinor: number; count: number; ids: string[] }>();
   let totalMonthlyMinor = 0;
+  let excludedCurrencyCount = 0;
 
   for (const subscription of active) {
-    const monthly = monthlyAmount(subscription);
+    const monthly = fx ? monthlyAmountIn(subscription, fx.homeCurrency, fx.rates) : monthlyAmount(subscription);
+    if (monthly === null) {
+      excludedCurrencyCount += 1;
+      continue;
+    }
     totalMonthlyMinor += monthly;
     const current = categoryMap.get(subscription.category) ?? { monthlyMinor: 0, count: 0, ids: [] };
     current.monthlyMinor += monthly;
@@ -52,17 +92,23 @@ export function createSpendSummary(subscriptions: Subscription[], now = new Date
     .map(([category, value]) => ({ category, monthlyMinor: value.monthlyMinor, count: value.count }))
     .sort((a, b) => b.monthlyMinor - a.monthlyMinor);
 
-  return {
+  const summary: SpendSummary = {
     totalMonthlyMinor,
     byCategory,
     insights: [
-      ...categoryBudgetInsights(categoryMap),
+      ...categoryBudgetInsights(categoryMap, fx?.homeCurrency),
       ...duplicateCategoryInsights(categoryMap),
       ...annualSavingsInsights(active),
       ...unusedReviewInsights(active, now),
-      spendTwinInsight(totalMonthlyMinor)
+      spendTwinInsight(totalMonthlyMinor, fx?.homeCurrency, fx?.rates)
     ].filter((insight): insight is SpendInsight => Boolean(insight))
   };
+
+  if (fx) {
+    summary.excludedCurrencyCount = excludedCurrencyCount;
+  }
+
+  return summary;
 }
 
 export function monthlyAmount(subscription: Subscription): number {
@@ -84,7 +130,17 @@ export function monthlyAmount(subscription: Subscription): number {
   return 0;
 }
 
-function categoryBudgetInsights(categoryMap: Map<SubscriptionCategory, { monthlyMinor: number; count: number; ids: string[] }>): SpendInsight[] {
+/**
+ * Same recurring-cycle normalization as monthlyAmount, converted into
+ * homeCurrency. Returns null when no usable rate exists for this
+ * subscription's currency — the caller must exclude it from any sum, never
+ * treat null as 0 (that would silently understate spend).
+ */
+export function monthlyAmountIn(subscription: Subscription, homeCurrency: CurrencyCode, rates: ExchangeRates): number | null {
+  return convertMinor(monthlyAmount(subscription), subscription.price.currency, homeCurrency, rates);
+}
+
+function categoryBudgetInsights(categoryMap: Map<SubscriptionCategory, { monthlyMinor: number; count: number; ids: string[] }>, homeCurrency?: CurrencyCode): SpendInsight[] {
   return [...categoryMap.entries()].flatMap(([category, value]) => {
     const benchmark = profileBenchmarks[category];
     if (!benchmark || value.monthlyMinor <= benchmark) {
@@ -96,7 +152,7 @@ function categoryBudgetInsights(categoryMap: Map<SubscriptionCategory, { monthly
       kind: "category_over_budget",
       severity: "warning",
       title: `${labelCategory(category)} is above profile benchmark`,
-      body: `You spend ${formatMoneyMinor(value.monthlyMinor)} per month; the profile benchmark is ${formatMoneyMinor(benchmark)}.`,
+      body: `You spend ${formatMoneyMinor(value.monthlyMinor, homeCurrency)} per month; the profile benchmark is ${formatMoneyMinor(benchmark, homeCurrency)}.`,
       subscriptionIds: value.ids,
       estimatedMonthlyImpactMinor: overage
     }];
@@ -130,7 +186,7 @@ function annualSavingsInsights(subscriptions: Subscription[]): SpendInsight[] {
       kind: "annual_savings",
       severity: "opportunity",
       title: `Check annual pricing for ${subscription.name}`,
-      body: `If annual billing saves 18%, this could reduce spend by about ${formatMoneyMinor(estimate)} per month.`,
+      body: `If annual billing saves 18%, this could reduce spend by about ${formatMoneyMinor(estimate, subscription.price.currency)} per month.`,
       subscriptionIds: [subscription.id],
       estimatedMonthlyImpactMinor: estimate
     };
@@ -158,11 +214,17 @@ function unusedReviewInsights(subscriptions: Subscription[], now: Date): SpendIn
   });
 }
 
-function spendTwinInsight(totalMonthlyMinor: number): SpendInsight | null {
+function spendTwinInsight(totalMonthlyMinor: number, homeCurrency?: CurrencyCode, rates?: ExchangeRates): SpendInsight | null {
   if (totalMonthlyMinor <= 0) {
     return null;
   }
-  const burritos = Math.max(1, Math.round(totalMonthlyMinor / 1000));
+  // 1000 minor units == one $10 burrito — a USD-denominated comparison unit.
+  // Convert it into homeCurrency (via the same rates table) rather than
+  // comparing raw minor units of two different currencies.
+  const burritoCostMinor = homeCurrency && homeCurrency !== "USD" && rates
+    ? convertMinor(1000, "USD", homeCurrency, rates) ?? 1000
+    : 1000;
+  const burritos = Math.max(1, Math.round(totalMonthlyMinor / burritoCostMinor));
   return {
     kind: "spend_twin",
     severity: "info",

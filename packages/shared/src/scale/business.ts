@@ -1,5 +1,5 @@
 import type { Money, Subscription } from "../domain";
-import { monthlyAmount } from "../spend/coach";
+import { monthlyAmount, monthlyAmountIn, type ExchangeRates } from "../spend/coach";
 
 export type BusinessSeatRole = "owner" | "admin" | "finance" | "viewer";
 
@@ -30,7 +30,8 @@ export function createBusinessSummary(
   workspace: BusinessWorkspace,
   subscriptions: Subscription[],
   now = new Date(),
-  currency: Money["currency"] = "USD"
+  currency: Money["currency"] = "USD",
+  rates?: ExchangeRates
 ): BusinessSubscriptionSummary {
   const active = subscriptions.filter((subscription) => subscription.status === "active");
   return {
@@ -38,7 +39,10 @@ export function createBusinessSummary(
     workspaceName: workspace.name,
     seatCount: workspace.seats.length,
     monthlySpend: {
-      amountMinor: active.reduce((sum, subscription) => sum + monthlyAmount(subscription), 0),
+      amountMinor: active.reduce((sum, subscription) => {
+        const amount = rates ? monthlyAmountIn(subscription, currency, rates) : monthlyAmount(subscription);
+        return amount === null ? sum : sum + amount;
+      }, 0),
       currency
     },
     subscriptionCount: active.length,

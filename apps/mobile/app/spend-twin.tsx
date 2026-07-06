@@ -6,7 +6,7 @@ import { useZenoTheme } from "../src/theme/theme-provider";
 
 export default function SpendTwinScreen() {
   const { theme } = useZenoTheme();
-  const { totalMonthlyMinor, spendTwin } = useSubscriptionStore();
+  const { totalMonthlyMinor, spendTwin, homeCurrency } = useSubscriptionStore();
 
   return (
     <Screen>
@@ -14,7 +14,7 @@ export default function SpendTwinScreen() {
         <View>
           <Text style={{ color: theme.text, fontSize: 30, lineHeight: 36, fontWeight: "900" }}>Spend Twin</Text>
           <Text style={{ color: theme.mutedText, marginTop: 6, fontSize: 16 }}>
-            {formatMoney(totalMonthlyMinor)} per month translated into real-world tradeoffs.
+            {formatMoney(totalMonthlyMinor, homeCurrency)} per month translated into real-world tradeoffs.
           </Text>
         </View>
 

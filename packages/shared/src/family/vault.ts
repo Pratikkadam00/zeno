@@ -1,5 +1,5 @@
 import type { Money, Subscription } from "../domain";
-import { monthlyAmount } from "../spend/coach";
+import { monthlyAmount, monthlyAmountIn, type ExchangeRates } from "../spend/coach";
 
 export type FamilyMember = {
   id: string;
@@ -20,14 +20,18 @@ export type FamilyVaultSummary = {
 export function createFamilyVaultSummary(
   members: FamilyMember[],
   subscriptions: Subscription[],
-  currency: Money["currency"] = "USD"
+  currency: Money["currency"] = "USD",
+  rates?: ExchangeRates
 ): FamilyVaultSummary {
   const memberRows = members.map((member) => {
     const owned = subscriptions.filter((subscription) => subscription.ownerProfileId === member.id && subscription.status === "active");
     return {
       ...member,
       monthlySpend: {
-        amountMinor: owned.reduce((sum, subscription) => sum + monthlyAmount(subscription), 0),
+        amountMinor: owned.reduce((sum, subscription) => {
+          const amount = rates ? monthlyAmountIn(subscription, currency, rates) : monthlyAmount(subscription);
+          return amount === null ? sum : sum + amount;
+        }, 0),
         currency
       },
       subscriptionCount: owned.length

@@ -1,4 +1,4 @@
-import type { BillingCycle, SubscriptionCategory } from "@zeno/shared";
+import type { BillingCycle, CurrencyCode, SubscriptionCategory } from "@zeno/shared";
 import { router, Stack } from "expo-router";
 import { AlarmClock, AlertTriangle, Bell, ChevronRight, CircleCheck, Plus, Radar, Search, Target, TrendingUp, User } from "lucide-react-native";
 import { useEffect, useState, type ReactNode } from "react";
@@ -12,7 +12,7 @@ import { budgetStatus, computeBudgetForecast } from "../../src/finance/budget";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
 import { generateInsights, getTotalSavingOpportunity } from "../../src/insights/insightsEngine";
 import { useZenoTokens } from "../../src/theme/useZenoTokens";
-import { formatMoney } from "../../src/utils/format";
+import { currencySymbol, formatMoney } from "../../src/utils/format";
 import { formatShortDate, getDaysRemaining } from "../../src/utils/subscription-ui";
 
 // D2 (locked): free tier tracks up to 10 subscriptions.
@@ -37,7 +37,7 @@ export default function DashboardScreen() {
   const t = useZenoTokens();
   const c = t.color;
   const insets = useSafeAreaInsets();
-  const { subscriptions, totalMonthlyMinor, upcoming, endingTrials, priceHikes } = useSubscriptionStore();
+  const { subscriptions, totalMonthlyMinor, upcoming, endingTrials, priceHikes, homeCurrency, fx } = useSubscriptionStore();
   const { plan, setPlan } = useAuthStore();
   const [dismissed, setDismissed] = useState<string[]>([]);
 
@@ -49,7 +49,7 @@ export default function DashboardScreen() {
     .slice(0, 2);
 
   const { config: budgetConfig } = useBudgetStore();
-  const budgetForecast = computeBudgetForecast(subscriptions);
+  const budgetForecast = computeBudgetForecast(subscriptions, undefined, fx);
   const attentionSubs = subscriptions.filter((s) => s.status === "attention");
   const trackedCount = subscriptions.filter((s) => s.status !== "cancelled").length;
   const renewingThisWeek = upcoming.filter((s) => {
@@ -169,12 +169,12 @@ export default function DashboardScreen() {
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: t.fontSize.body, color: c.textPrimary }}>Set a monthly budget</Text>
-                <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: t.fontSize.bodySm, color: c.textTertiary }}>Forecast {formatMoney(budgetForecast.projectedMinor)} this month from your renewals</Text>
+                <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: t.fontSize.bodySm, color: c.textTertiary }}>Forecast {formatMoney(budgetForecast.projectedMinor, homeCurrency)} this month from your renewals</Text>
               </View>
               <ChevronRight size={18} color={c.textTertiary} strokeWidth={2} />
             </Pressable>
           ) : (
-            <BudgetStatusCard t={t} projectedMinor={budgetForecast.projectedMinor} capMinor={budgetConfig.capMinor} />
+            <BudgetStatusCard t={t} projectedMinor={budgetForecast.projectedMinor} capMinor={budgetConfig.capMinor} currency={homeCurrency} />
           )}
         </View>
 
@@ -263,7 +263,7 @@ export default function DashboardScreen() {
                   style={{ backgroundColor: c.successSoft, borderRadius: t.radius.lg, padding: 12 }}
                 >
                   <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: t.fontSize.bodySm, color: c.success, lineHeight: 18 }}>
-                    You could save ${savingOpportunity.toFixed(0)}/mo — tap to see how
+                    You could save {currencySymbol(homeCurrency)}{savingOpportunity.toFixed(0)}/mo — tap to see how
                   </Text>
                 </Pressable>
               ) : null}
@@ -345,7 +345,7 @@ function AttentionRow({
   );
 }
 
-function BudgetStatusCard({ t, projectedMinor, capMinor }: { t: ReturnType<typeof useZenoTokens>; projectedMinor: number; capMinor: number }) {
+function BudgetStatusCard({ t, projectedMinor, capMinor, currency }: { t: ReturnType<typeof useZenoTokens>; projectedMinor: number; capMinor: number; currency: CurrencyCode }) {
   const c = t.color;
   const status = budgetStatus(projectedMinor, capMinor);
   const main = status === "over" ? c.danger : status === "approaching" ? c.warning : c.success;
@@ -369,8 +369,8 @@ function BudgetStatusCard({ t, projectedMinor, capMinor }: { t: ReturnType<typeo
         </View>
       </View>
       <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginTop: 10 }}>
-        <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: 17, color: c.textPrimary }}>{formatMoney(projectedMinor)}</Text>
-        <Text style={{ fontFamily: t.fonts.mono.regular, fontSize: 13, color: c.textTertiary }}>projected / ${Math.round(capMinor / 100)}</Text>
+        <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: 17, color: c.textPrimary }}>{formatMoney(projectedMinor, currency)}</Text>
+        <Text style={{ fontFamily: t.fonts.mono.regular, fontSize: 13, color: c.textTertiary }}>projected / {currencySymbol(currency)}{Math.round(capMinor / 100)}</Text>
       </View>
       <View style={{ height: 7, backgroundColor: c.surfaceSunken, borderRadius: 4, overflow: "hidden", marginTop: 8 }}>
         <View style={{ width: `${pct}%`, height: "100%", backgroundColor: main, borderRadius: 4 }} />

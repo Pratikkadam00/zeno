@@ -1,4 +1,4 @@
-import type { Subscription } from "@zeno/shared";
+import { convertMinor, type FxContext, type Subscription } from "@zeno/shared";
 
 /* Subscription-first, forecast-led budgeting — all derived from real renewal
    dates (no bank feed). "committed" = charges that have already hit this month;
@@ -15,6 +15,10 @@ export type BudgetForecast = {
   projectedMinor: number;
   remaining: ForecastCharge[];
   daysLeftInMonth: number;
+  // Only meaningful when `fx` was passed — count of billable subscriptions
+  // excluded from committed/projected because no usable exchange rate existed
+  // for their currency (never silently summed as if same-currency).
+  excludedCurrencyCount?: number;
 };
 
 export type BudgetStatus = "under" | "approaching" | "over";
@@ -71,17 +75,26 @@ function isBillable(sub: Subscription): boolean {
   return (sub.status === "active" || sub.status === "trial") && sub.price.amountMinor > 0;
 }
 
-export function computeBudgetForecast(subscriptions: Subscription[], now: Date = new Date()): BudgetForecast {
+export function computeBudgetForecast(subscriptions: Subscription[], now: Date = new Date(), fx?: FxContext): BudgetForecast {
   const { start, end } = monthBounds(now);
   const nowMs = now.getTime();
   let committedMinor = 0;
   let projectedMinor = 0;
+  let excludedCurrencyCount = 0;
   const remaining: ForecastCharge[] = [];
 
   for (const sub of subscriptions) {
     if (!isBillable(sub)) continue;
-    for (const date of chargeDatesInMonth(sub, start, end)) {
-      const amountMinor = sub.price.amountMinor;
+    const dates = chargeDatesInMonth(sub, start, end);
+    if (dates.length === 0) continue;
+
+    const amountMinor = fx ? convertMinor(sub.price.amountMinor, sub.price.currency, fx.homeCurrency, fx.rates) : sub.price.amountMinor;
+    if (amountMinor === null) {
+      excludedCurrencyCount += 1;
+      continue;
+    }
+
+    for (const date of dates) {
       projectedMinor += amountMinor;
       if (date.getTime() <= nowMs) {
         committedMinor += amountMinor;
@@ -99,19 +112,24 @@ export function computeBudgetForecast(subscriptions: Subscription[], now: Date =
 
   remaining.sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
   const daysLeftInMonth = Math.max(0, Math.ceil((end - nowMs) / DAY_MS));
-  return { committedMinor, projectedMinor, remaining, daysLeftInMonth };
+  const forecast: BudgetForecast = { committedMinor, projectedMinor, remaining, daysLeftInMonth };
+  if (fx) {
+    forecast.excludedCurrencyCount = excludedCurrencyCount;
+  }
+  return forecast;
 }
 
 /** Projected recurring spend per category this month (for category budgets). */
-export function computeCategoryForecast(subscriptions: Subscription[], now: Date = new Date()): Record<string, number> {
+export function computeCategoryForecast(subscriptions: Subscription[], now: Date = new Date(), fx?: FxContext): Record<string, number> {
   const { start, end } = monthBounds(now);
   const out: Record<string, number> = {};
   for (const sub of subscriptions) {
     if (!isBillable(sub)) continue;
     const charges = chargeDatesInMonth(sub, start, end).length;
-    if (charges > 0) {
-      out[sub.category] = (out[sub.category] ?? 0) + sub.price.amountMinor * charges;
-    }
+    if (charges === 0) continue;
+    const amountMinor = fx ? convertMinor(sub.price.amountMinor, sub.price.currency, fx.homeCurrency, fx.rates) : sub.price.amountMinor;
+    if (amountMinor === null) continue;
+    out[sub.category] = (out[sub.category] ?? 0) + amountMinor * charges;
   }
   return out;
 }

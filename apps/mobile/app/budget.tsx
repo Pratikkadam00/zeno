@@ -31,15 +31,8 @@ import { useBudgetStore } from "../src/data/budget-store";
 import { useSubscriptionStore } from "../src/data/subscription-store";
 import { budgetStatus, computeBudgetForecast, computeCategoryForecast, suggestedCapMinor, type BudgetStatus } from "../src/finance/budget";
 import { useZenoTokens } from "../src/theme/useZenoTokens";
-import { formatMoney } from "../src/utils/format";
+import { currencySymbol, formatMoney } from "../src/utils/format";
 import { formatShortDate } from "../src/utils/subscription-ui";
-
-// These two operate on aggregate budget figures (forecast/headroom, summed
-// across all the user's subscriptions) — currently USD-only, matching the rest
-// of the aggregate math in this screen. Per-subscription amounts below use
-// formatMoney with that subscription's own stored currency.
-const money = (minor: number) => formatMoney(minor);
-const dollarsRound = (minor: number) => `$${Math.round(minor / 100)}`;
 
 function categoryLabel(category: SubscriptionCategory): string {
   if (category === "ai_tools") return "AI tools";
@@ -51,12 +44,20 @@ export default function BudgetScreen() {
   const t = useZenoTokens();
   const c = t.color;
   const insets = useSafeAreaInsets();
-  const { subscriptions } = useSubscriptionStore();
+  const { subscriptions, homeCurrency, fx } = useSubscriptionStore();
   const { config, setCap, setIncome, addEnvelope, logEnvelope, removeEnvelope, setCategoryCap } = useBudgetStore();
   const { plan } = useAuthStore();
   const isPro = plan === "pro" || plan === "family";
 
-  const forecast = computeBudgetForecast(subscriptions);
+  // These two operate on aggregate budget figures (forecast/headroom, summed
+  // across all the user's subscriptions) — shown in the home-currency setting
+  // (Settings > Home currency), converted via fx when a rate table is
+  // available. Per-subscription amounts below use formatMoney with that
+  // subscription's own stored currency instead.
+  const money = (minor: number) => formatMoney(minor, homeCurrency);
+  const dollarsRound = (minor: number) => `${currencySymbol(homeCurrency)}${Math.round(minor / 100)}`;
+
+  const forecast = computeBudgetForecast(subscriptions, undefined, fx);
   const { committedMinor, projectedMinor, remaining, daysLeftInMonth } = forecast;
 
   const [setupCapMinor, setSetupCapMinor] = useState(() => suggestedCapMinor(projectedMinor));
@@ -148,7 +149,7 @@ export default function BudgetScreen() {
     .sort((a, b) => a.price.amountMinor - b.price.amountMinor)
     .slice(0, 3);
 
-  const categoryForecast = computeCategoryForecast(subscriptions);
+  const categoryForecast = computeCategoryForecast(subscriptions, undefined, fx);
   const categoryRows = Object.entries(categoryForecast)
     .sort((a, b) => b[1] - a[1])
     .map(([category, projected]) => {
@@ -187,6 +188,11 @@ export default function BudgetScreen() {
             <Info size={13} color={t.palette.ink[400]} strokeWidth={2} />
             <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: 12, color: t.palette.ink[300] }}>Forecast from your renewal dates</Text>
           </View>
+          {forecast.excludedCurrencyCount ? (
+            <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: 11.5, color: t.palette.ink[400], marginTop: 4 }}>
+              {forecast.excludedCurrencyCount} subscription{forecast.excludedCurrencyCount > 1 ? "s" : ""} in other currencies not included above.
+            </Text>
+          ) : null}
         </View>
 
         {/* Get back under */}
@@ -259,7 +265,7 @@ export default function BudgetScreen() {
             </Text>
             <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
               <View style={{ flex: 1 }}>
-                <Input prefix="$" mono placeholder="4200" keyboardType="number-pad" value={incomeInput} onChangeText={(text) => setIncomeInput(text.replace(/[^0-9]/g, ""))} />
+                <Input prefix={currencySymbol(homeCurrency)} mono placeholder="4200" keyboardType="number-pad" value={incomeInput} onChangeText={(text) => setIncomeInput(text.replace(/[^0-9]/g, ""))} />
               </View>
               <Button variant="secondary" size="lg" onPress={() => { const n = Number(incomeInput); if (n > 0) setIncome(Math.round(n * 100)); }}>Add</Button>
             </View>
@@ -349,7 +355,7 @@ export default function BudgetScreen() {
                       <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: 14, color: c.textPrimary }}>{e.name}</Text>
                       <Text style={{ fontFamily: t.fonts.mono.regular, fontSize: 12, color: over ? c.danger : c.textTertiary }}>{money(e.spentMinor)} of {money(e.fundedMinor)}{over ? " · over" : ""}</Text>
                     </View>
-                    <Button variant="ghost" size="sm" onPress={() => logEnvelope(e.id, 500)} leftIcon={<Plus size={15} color={c.textPrimary} strokeWidth={2} />}>Log $5</Button>
+                    <Button variant="ghost" size="sm" onPress={() => logEnvelope(e.id, 500)} leftIcon={<Plus size={15} color={c.textPrimary} strokeWidth={2} />}>Log {currencySymbol(homeCurrency)}5</Button>
                     <IconButton variant="ghost" size={32} label={`Remove ${e.name}`} onPress={confirmRemove}>
                       <Trash2 size={16} color={c.textTertiary} strokeWidth={2} />
                     </IconButton>

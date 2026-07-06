@@ -1,4 +1,4 @@
-import { monthlyAmount, type Subscription, type SubscriptionStatus } from "@zeno/shared";
+import { monthlyAmount, monthlyAmountIn, type Subscription, type SubscriptionStatus } from "@zeno/shared";
 import { router } from "expo-router";
 import { Inbox, Plus, Search } from "lucide-react-native";
 import { useState } from "react";
@@ -18,11 +18,6 @@ import { useSubscriptionStore } from "../../src/data/subscription-store";
 import { useZenoTokens } from "../../src/theme/useZenoTokens";
 import { formatMoney } from "../../src/utils/format";
 import { formatShortDate } from "../../src/utils/subscription-ui";
-
-// Aggregate total (summed across all billing subscriptions) — currently
-// USD-only, matching the rest of the aggregate math app-wide. The per-item row
-// below uses formatMoney with that subscription's own stored currency.
-const money = (minor: number) => formatMoney(minor);
 
 type FilterKey = "All" | "Active" | "Paused" | "Pending" | "Cancelled";
 const FILTERS: { key: FilterKey; match: (s: Subscription) => boolean }[] = [
@@ -65,12 +60,20 @@ export default function SubscriptionsScreen() {
   const t = useZenoTokens();
   const c = t.color;
   const insets = useSafeAreaInsets();
-  const { subscriptions } = useSubscriptionStore();
+  const { subscriptions, homeCurrency, fx } = useSubscriptionStore();
   const [filter, setFilter] = useState<FilterKey>("All");
   const [query, setQuery] = useState("");
+  // Aggregate total (summed across all billing subscriptions) — shown in the
+  // home-currency setting, converted via fx when a rate table is available.
+  // The per-item row below uses formatMoney with that subscription's own
+  // stored currency instead.
+  const money = (minor: number) => formatMoney(minor, homeCurrency);
 
   const billing = subscriptions.filter((s) => s.status === "active" || s.status === "trial");
-  const totalMinor = billing.reduce((sum, s) => sum + monthlyAmount(s), 0);
+  const totalMinor = billing.reduce((sum, s) => {
+    const amount = fx ? monthlyAmountIn(s, fx.homeCurrency, fx.rates) : monthlyAmount(s);
+    return amount === null ? sum : sum + amount;
+  }, 0);
 
   const active = FILTERS.find((f) => f.key === filter) ?? FILTERS[0];
   let list = subscriptions.filter(active.match);
