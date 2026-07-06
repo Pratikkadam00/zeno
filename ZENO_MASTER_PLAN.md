@@ -302,7 +302,9 @@ All cards: client-rendered from the existing design system (design tokens live i
 - 3 new tests in `revenueCat.test.ts` confirm the SKU-tagged event fires on a completed purchase and does not fire on a cancelled one.
 - Full monorepo typecheck clean; 339/339 tests passing (up from 325).
 - **Not done — the "revisit the cap decision" half of this item is not applicable yet**, same reasoning as 5.4 below: no real usage data exists pre-launch to revisit anything with.
-**5.4 Iterate pricing/gates from conversion data**, not opinion. Includes evaluating whether lifetime price moves after launch-window pricing.
+**5.4 Iterate pricing/gates from conversion data** ⏸ NOT APPLICABLE YET — explicitly not actionable, not silently skipped: this item requires real conversion data from the funnel counters 5.3 just built, and the app is pre-launch (no users, no data). Revisit once 4.1 (deploy) and 4.6 (launch) have happened and the `zeno_product_events_total` counters have accumulated meaningful volume.
+
+**Phase 5 exit:** crash reporting real (inert until a DSN is created — a manual, non-code step), aggregate totals FX-correct, funnel counters live. **Status: 5.1–5.3 fully done and verified; 5.4 correctly blocked on data that can't exist before launch.**
 
 ---
 
