@@ -5,6 +5,7 @@ import styles from "@/components/site/content.module.css";
 export const metadata: Metadata = {
   title: "Optional Open Banking — Read-only bank connections | Zeno",
   description: "Zeno's optional open banking uses Plaid and MX as read-only OAuth adapters: it sees transactions, never login credentials, and the core app works without connecting a bank.",
+  alternates: { canonical: "/features/open-banking" },
   openGraph: {
     title: "Optional Open Banking — Read-only bank connections | Zeno",
     description: "Read-only Plaid and MX adapters: Zeno sees transactions, never login credentials, and works without a bank connection.",

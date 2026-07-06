@@ -8,6 +8,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${BASE}/`, lastModified, changeFrequency: "weekly", priority: 1 },
+    // The hub for the ~600 cancel/[slug] guides below — the biggest owned SEO
+    // asset was previously orphaned with no index page (Phase 4.3).
+    { url: `${BASE}/cancel`, lastModified, changeFrequency: "weekly", priority: 0.8 },
     { url: `${BASE}/analytics`, lastModified, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/developers`, lastModified, changeFrequency: "monthly", priority: 0.5 },
     { url: `${BASE}/partners`, lastModified, changeFrequency: "monthly", priority: 0.5 },

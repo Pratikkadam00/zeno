@@ -6,6 +6,7 @@ import styles from "@/components/site/content.module.css";
 export const metadata: Metadata = {
   title: "Family Vault — Shared household subscriptions | Zeno",
   description: "Family Vault is Zeno's shared view for household subscriptions: member roles, ownership, and renewal accountability for streaming, tools, and family app costs.",
+  alternates: { canonical: "/features/family-vault" },
   openGraph: {
     title: "Family Vault — Shared household subscriptions | Zeno",
     description: "Zeno's shared view for household subscriptions: member roles, ownership, and renewal accountability.",

@@ -44,6 +44,21 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@zeno/shared", "@zeno/service-catalog"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
+  },
+  async redirects() {
+    return [
+      // Canonicalize to the apex domain (zeno.app) — matches metadataBase,
+      // sitemap.ts, and robots.ts elsewhere in this app, all of which already
+      // treat https://zeno.app as canonical. Trailing-slash canonicalization
+      // needs no config: verified locally (next build && next start) that
+      // Next.js 16's App Router already 308s /path/ -> /path by default.
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.zeno.app" }],
+        destination: "https://zeno.app/:path*",
+        permanent: true
+      }
+    ];
   }
 };
 

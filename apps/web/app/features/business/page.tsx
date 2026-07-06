@@ -6,6 +6,7 @@ import styles from "@/components/site/content.module.css";
 export const metadata: Metadata = {
   title: "Business Tier — Team subscription tracking | Zeno",
   description: "Track company subscriptions, finance seats, renewal load, and team spending with Zeno's Business Tier — without turning your tracker into a bank-data warehouse.",
+  alternates: { canonical: "/features/business" },
   openGraph: {
     title: "Business Tier — Team subscription tracking | Zeno",
     description: "Track company subscriptions, finance seats, renewal load, and team spending with Zeno's Business Tier.",

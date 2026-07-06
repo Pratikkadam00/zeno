@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   description:
     "The terms for using Zeno — a subscription manager that helps you find, track, and cancel subscriptions. Pre-launch terms; finalized at launch.",
   robots: { index: true, follow: true },
+  alternates: { canonical: "/legal/terms" },
   openGraph: {
     title: "Terms of Service | Zeno",
     description: "The terms for using Zeno, the subscription radar. Pre-launch; finalized at launch.",

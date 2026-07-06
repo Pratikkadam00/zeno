@@ -1,9 +1,11 @@
 import { findServiceBySlug, services } from "@zeno/service-catalog";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ContentShell } from "@/components/site/ContentShell";
 import { JsonLd } from "@/components/site/JsonLd";
 import styles from "@/components/site/content.module.css";
+import hubStyles from "../cancel-hub.module.css";
 
 export function generateStaticParams() {
   return services.map((service) => ({ slug: service.slug }));
@@ -56,6 +58,15 @@ export default async function CancellationGuidePage({ params }: { params: Promis
   const difficultyLabel = difficulty.replace("_", " ");
   const badgeClass = DIFFICULTY_BADGE[difficulty] ?? styles.badgeMedium ?? "";
 
+  // Related guides: other services in the same catalog category (the raw,
+  // richer ServiceCategory — streaming/gaming/music/etc — not the coarser
+  // SubscriptionCategory findServiceBySlug maps onto), so "related" actually
+  // means similar, not just broadly "entertainment".
+  const rawService = services.find((candidate) => candidate.slug === slug);
+  const relatedServices = rawService
+    ? services.filter((candidate) => candidate.category === rawService.category && candidate.slug !== slug).slice(0, 6)
+    : [];
+
   return (
     <ContentShell
       eyebrow="Cancellation guide"
@@ -75,6 +86,17 @@ export default async function CancellationGuidePage({ params }: { params: Promis
           }))
         }}
       />
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Home", item: "https://zeno.app/" },
+            { "@type": "ListItem", position: 2, name: "Cancellation guides", item: "https://zeno.app/cancel" },
+            { "@type": "ListItem", position: 3, name: service.name, item: `https://zeno.app/cancel/${slug}` }
+          ]
+        }}
+      />
       <span className={`${styles.badge} ${badgeClass}`}>Difficulty: {difficultyLabel}</span>
 
       <ol className={styles.steps}>
@@ -91,8 +113,21 @@ export default async function CancellationGuidePage({ params }: { params: Promis
         </p>
       ) : null}
 
+      {relatedServices.length > 0 ? (
+        <>
+          <h2>Related cancellation guides</h2>
+          <ul className={hubStyles.relatedGrid}>
+            {relatedServices.map((related) => (
+              <li key={related.slug}>
+                <Link href={`/cancel/${related.slug}`}>{related.name}</Link>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+
       <div className={styles.backRow}>
-        <a href="/">← Back to Zeno</a>
+        <Link href="/cancel">← All cancellation guides</Link>
       </div>
     </ContentShell>
   );

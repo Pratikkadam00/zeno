@@ -6,6 +6,7 @@ import styles from "@/components/site/content.module.css";
 export const metadata: Metadata = {
   title: "Spend Twin — What your subscriptions really cost | Zeno",
   description: "Spend Twin turns abstract subscription totals into real-world tradeoffs you understand at a glance, computed locally from Zeno's encrypted subscription ledger.",
+  alternates: { canonical: "/features/spend-twin" },
   openGraph: {
     title: "Spend Twin — What your subscriptions really cost | Zeno",
     description: "Turns abstract subscription totals into real-world tradeoffs, computed locally from your encrypted subscription ledger.",

@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   description:
     "How the Zeno marketing website uses cookies and local storage — essential only, with optional privacy-respecting analytics. No ad tracking.",
   robots: { index: true, follow: true },
+  alternates: { canonical: "/legal/cookies" },
   openGraph: {
     title: "Cookie Policy | Zeno",
     description: "Essential cookies plus optional analytics. No ad tracking.",

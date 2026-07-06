@@ -6,6 +6,7 @@ import styles from "@/components/site/content.module.css";
 export const metadata: Metadata = {
   title: "Public API for developers | Zeno",
   description: "Build on Zeno's public API: scoped keys with masked previews, explicit read/write scopes, and a consistent { data, error, meta } response envelope. Financial sync stays encrypted.",
+  alternates: { canonical: "/developers" },
   openGraph: {
     title: "Public API for developers | Zeno",
     description: "Scoped API keys, masked previews, explicit read/write scopes, and a consistent response envelope.",

@@ -6,6 +6,7 @@ import styles from "@/components/site/content.module.css";
 export const metadata: Metadata = {
   title: "Widgets + Watch — Renewals at a glance | Zeno",
   description: "Zeno's home screen widgets and Apple Watch complications show your next renewal and monthly spend from a compact local snapshot — no raw financial records on the server.",
+  alternates: { canonical: "/features/widgets-watch" },
   openGraph: {
     title: "Widgets + Watch — Renewals at a glance | Zeno",
     description: "Home screen widgets and Apple Watch complications show your next renewal and monthly spend from a compact local snapshot.",

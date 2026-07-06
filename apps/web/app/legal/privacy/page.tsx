@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   description:
     "How Zeno handles your data: subscription data is encrypted on-device, optional Gmail read-only access stays local, no bank credentials, and we never sell your data.",
   robots: { index: true, follow: true },
+  alternates: { canonical: "/legal/privacy" },
   openGraph: {
     title: "Privacy Policy | Zeno",
     description:

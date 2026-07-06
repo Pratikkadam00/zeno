@@ -6,6 +6,7 @@ import styles from "@/components/site/content.module.css";
 export const metadata: Metadata = {
   title: "Partner Integrations | Zeno",
   description: "Browse Zeno's partner integrations and their review status. Partner manifests define scope and whether user-approved financial export is required.",
+  alternates: { canonical: "/partners" },
   openGraph: {
     title: "Partner Integrations | Zeno",
     description: "Browse Zeno's partner integrations, their review status, scopes, and financial export requirements.",
