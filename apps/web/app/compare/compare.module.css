@@ -1,0 +1,68 @@
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 24px 0 36px;
+  font-size: 15px;
+}
+
+.table th,
+.table td {
+  padding: 12px 14px;
+  border: 1px solid var(--z-line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.table th {
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  font-weight: 600;
+  color: var(--z-text);
+  background: var(--z-panel);
+}
+
+.table td {
+  color: var(--z-muted);
+}
+
+.zenoCol {
+  color: var(--z-text) !important;
+  font-weight: 500;
+}
+
+.ctaRow {
+  margin: 40px 0;
+  padding: 28px;
+  border: 1px solid var(--z-line);
+  border-radius: 16px;
+  background: var(--z-panel);
+  text-align: center;
+}
+
+.ctaTitle {
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--z-text);
+  margin: 0 0 6px;
+}
+
+.ctaSub {
+  font-size: 14.5px;
+  color: var(--z-muted);
+  margin: 0 0 20px;
+}
+
+.ctaForm {
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+@media (max-width: 640px) {
+  .table {
+    font-size: 13.5px;
+  }
+  .table th,
+  .table td {
+    padding: 9px 10px;
+  }
+}

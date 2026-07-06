@@ -21,7 +21,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/features/widgets-watch`, lastModified, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/legal/privacy`, lastModified, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/legal/terms`, lastModified, changeFrequency: "yearly", priority: 0.3 },
-    { url: `${BASE}/legal/cookies`, lastModified, changeFrequency: "yearly", priority: 0.3 }
+    { url: `${BASE}/legal/cookies`, lastModified, changeFrequency: "yearly", priority: 0.3 },
+    // Complaint-language comparison pages (Phase 4.4).
+    { url: `${BASE}/compare/no-bank-login`, lastModified, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${BASE}/compare/budget-app-no-bank-sync`, lastModified, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${BASE}/compare/rocket-money-alternative`, lastModified, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${BASE}/compare/monarch-alternative`, lastModified, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${BASE}/compare/ynab-alternative`, lastModified, changeFrequency: "monthly", priority: 0.7 }
   ];
 
   // The cancellation guides are the largest indexable surface — one per service.
