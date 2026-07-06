@@ -9,6 +9,7 @@ import { useSubscriptionStore } from "../src/data/subscription-store";
 import { useZenoTokens } from "../src/theme/useZenoTokens";
 import { currencySymbol, formatMoney } from "../src/utils/format";
 import { shareText } from "../src/utils/share";
+import { recordFunnelEvent } from "../src/api/client";
 
 export default function BudgetRecapScreen() {
   const t = useZenoTokens();
@@ -68,9 +69,10 @@ export default function BudgetRecapScreen() {
 
   // Streak = retention mechanic + recurring share trigger (3.3). Only worth
   // sharing once it's a genuine streak, matching the badge's own threshold.
-  const shareStreak = () => shareText(
-    `I've stayed under my subscription budget for ${streak} months straight.`
-  );
+  const shareStreak = () => {
+    recordFunnelEvent("share_card_generated", "budget_streak");
+    return shareText(`I've stayed under my subscription budget for ${streak} months straight.`);
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp, paddingTop: insets.top }}>

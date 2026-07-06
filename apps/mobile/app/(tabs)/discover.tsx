@@ -27,6 +27,7 @@ import { spacing } from "../../src/theme/spacing";
 import { withAlpha } from "../../src/utils/subscription-ui";
 import { formatMoney } from "../../src/utils/format";
 import { shareText } from "../../src/utils/share";
+import { recordFunnelEvent } from "../../src/api/client";
 import { Check, ChevronDown, ChevronUp, FileSpreadsheet, MailSearch, Plus, Search, Share2, Upload } from "lucide-react-native";
 import { ServiceAvatar } from "../../src/components/zeno";
 import { fonts } from "../../src/theme/zeno";
@@ -234,7 +235,17 @@ export default function DiscoverScreen() {
       await scheduleRenewalNotifications({ id, name: result.name, amount: result.amount, currency, nextRenewalDate: result.nextRenewal });
     }
 
+    if (toAdd.length > 0) {
+      // One event per distinct source actually imported (a batch can mix Gmail
+      // + CSV results) — aggregate-only, no device/account id (Phase 5.3).
+      const sources = new Set(toAdd.map((result) => (result.source === "Gmail" ? "email" : "csv")));
+      for (const source of sources) {
+        recordFunnelEvent("import_completed", source);
+      }
+    }
+
     if (skipped > 0) {
+      recordFunnelEvent("free_cap_hit");
       showToast(
         toAdd.length > 0
           ? `Added ${toAdd.length} of ${selected.length} — Free plan tracks up to ${FREE_LIMIT}. Upgrade to track the rest.`
@@ -262,6 +273,7 @@ export default function DiscoverScreen() {
     const excludedNote = foundMoney.excludedCount > 0
       ? ` (plus ${foundMoney.excludedCount} more in other currencies)`
       : "";
+    recordFunnelEvent("share_card_generated", "found_money");
     await shareText(`Zeno found ${total}/year in subscriptions I'd forgotten I was paying for${excludedNote}.`);
   }
 

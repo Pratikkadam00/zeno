@@ -68,6 +68,46 @@ describe("api app", () => {
     expect(body).toContain("zeno_http_in_flight_requests");
   });
 
+  it("accepts a valid product-funnel event with no auth (local-only users must be able to call this)", async () => {
+    const app = await buildApp();
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/events",
+      payload: { event: "free_cap_hit" }
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().data.recorded).toBe(true);
+
+    const metrics = await app.inject({ method: "GET", url: "/metrics" });
+    expect(metrics.body).toContain('zeno_product_events_total{event="free_cap_hit"} 1');
+  });
+
+  it("accepts a valid product-funnel event with an allowed label", async () => {
+    const app = await buildApp();
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/events",
+      payload: { event: "paywall_purchase_completed", label: "zeno_pro_lifetime" }
+    });
+    expect(response.statusCode).toBe(200);
+
+    const metrics = await app.inject({ method: "GET", url: "/metrics" });
+    expect(metrics.body).toContain('zeno_product_events_total{event="paywall_purchase_completed",label="zeno_pro_lifetime"} 1');
+  });
+
+  it("rejects an unknown event or an out-of-allowlist label with 400, not a silently-dropped 200", async () => {
+    const app = await buildApp();
+    const unknown = await app.inject({ method: "POST", url: "/api/v1/events", payload: { event: "made_up_event" } });
+    expect(unknown.statusCode).toBe(400);
+
+    const badLabel = await app.inject({
+      method: "POST",
+      url: "/api/v1/events",
+      payload: { event: "paywall_purchase_completed", label: "not_a_real_sku" }
+    });
+    expect(badLabel.statusCode).toBe(400);
+  });
+
   it("gates /metrics behind METRICS_TOKEN when it is set", async () => {
     const original = process.env.METRICS_TOKEN;
     process.env.METRICS_TOKEN = "secret-scrape-token";

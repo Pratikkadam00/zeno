@@ -268,3 +268,23 @@ export async function createOpenBankingIntentViaApi(provider: "plaid" | "mx"): P
   }
   return envelope.data.intent;
 }
+
+// Aggregate, anonymous product-funnel events (Phase 5.3) — see
+// ZENO_MASTER_PLAN.md. Fire-and-forget: never blocks the caller, never
+// throws, and a failed/offline post is silently dropped (this is a
+// nice-to-have signal, not something a user action should ever wait on or
+// fail over). Deliberately does NOT attach an auth header even when the user
+// is signed in — the whole point is that no event can be linked to an
+// account or device, so a local-only user and an authenticated user produce
+// identical, uncorrelated pings.
+export type FunnelEvent = "import_completed" | "share_card_generated" | "free_cap_hit" | "paywall_purchase_completed";
+
+export function recordFunnelEvent(event: FunnelEvent, label?: string): void {
+  void fetch(`${getApiBaseUrl()}/events`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(label ? { event, label } : { event })
+  }).catch(() => {
+    // best-effort — a network failure here must never surface to the user
+  });
+}

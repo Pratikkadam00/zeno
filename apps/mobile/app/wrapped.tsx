@@ -6,6 +6,7 @@ import { useZenoTheme } from "../src/theme/theme-provider";
 import type { ThemeTokens } from "../src/theme/tokens";
 import { formatMoney } from "../src/utils/format";
 import { shareText } from "../src/utils/share";
+import { recordFunnelEvent } from "../src/api/client";
 
 // Small per-stat share affordance — each Wrapped stat is its own share
 // moment (3.2), not just the combined "Share my Wrapped" summary below.
@@ -41,23 +42,33 @@ export default function WrappedScreen() {
       review.cancelledCount > 0 ? `· Cancelled ${review.cancelledCount} I didn't need` : null,
       review.excludedCurrencyCount ? `· ${review.excludedCurrencyCount} subscription(s) in other currencies not included` : null
     ].filter(Boolean).join("\n");
+    recordFunnelEvent("share_card_generated", "wrapped_summary");
     await shareText(lines);
   };
 
   // Per-stat share cards (3.2): one designed card per stat, not just the
   // combined summary above — each is its own share moment.
-  const shareTotal = () => shareText(
-    `I spent ${money(review.totalSpentMinor)} on subscriptions this year — and I'm on pace for ${money(review.projectedAnnualMinor)} next year.`
-  );
-  const shareMostExpensive = () => review.mostExpensive && shareText(
-    `My priciest subscription this year: ${review.mostExpensive.name} at ${money(review.mostExpensive.monthlyMinor)}/month.`
-  );
-  const shareTopCategory = () => review.topCategory && shareText(
-    `${labelCategory(review.topCategory.category)} was where most of my subscription money went this year — ${money(review.topCategory.monthlyMinor)}/month.`
-  );
-  const shareBusiestMonth = () => review.busiestMonth && shareText(
-    `${review.busiestMonth.label} was my most expensive month for subscriptions: ${money(review.busiestMonth.amountMinor)}.`
-  );
+  const shareTotal = () => {
+    recordFunnelEvent("share_card_generated", "wrapped_total");
+    return shareText(
+      `I spent ${money(review.totalSpentMinor)} on subscriptions this year — and I'm on pace for ${money(review.projectedAnnualMinor)} next year.`
+    );
+  };
+  const shareMostExpensive = () => {
+    if (!review.mostExpensive) return undefined;
+    recordFunnelEvent("share_card_generated", "wrapped_most_expensive");
+    return shareText(`My priciest subscription this year: ${review.mostExpensive.name} at ${money(review.mostExpensive.monthlyMinor)}/month.`);
+  };
+  const shareTopCategory = () => {
+    if (!review.topCategory) return undefined;
+    recordFunnelEvent("share_card_generated", "wrapped_top_category");
+    return shareText(`${labelCategory(review.topCategory.category)} was where most of my subscription money went this year — ${money(review.topCategory.monthlyMinor)}/month.`);
+  };
+  const shareBusiestMonth = () => {
+    if (!review.busiestMonth) return undefined;
+    recordFunnelEvent("share_card_generated", "wrapped_busiest_month");
+    return shareText(`${review.busiestMonth.label} was my most expensive month for subscriptions: ${money(review.busiestMonth.amountMinor)}.`);
+  };
 
   return (
     <Screen>

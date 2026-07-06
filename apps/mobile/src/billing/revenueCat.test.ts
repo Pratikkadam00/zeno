@@ -1,11 +1,12 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // revenueCat.ts imports several native/RN modules purely for their purchase-
 // flow side effects, which getPlanFromCustomerInfo never touches. Stub them
 // just enough for the module to load under Vitest.
 vi.mock("expo-constants", () => ({ default: { expoConfig: { extra: {} } } }));
 vi.mock("react-native", () => ({ Platform: { OS: "ios" } }));
-vi.mock("../api/client", () => ({ getServerEntitlement: vi.fn() }));
+const recordFunnelEventMock = vi.fn();
+vi.mock("../api/client", () => ({ getServerEntitlement: vi.fn(), recordFunnelEvent: recordFunnelEventMock }));
 vi.mock("react-native-purchases", () => ({
   default: {
     isConfigured: vi.fn(),
@@ -21,7 +22,18 @@ vi.mock("react-native-purchases", () => ({
   }
 }));
 
-const { getPlanFromCustomerInfo, revenueCatProductIds } = await import("./revenueCat");
+const { getPlanFromCustomerInfo, revenueCatProductIds, purchasePro, purchaseLifetime } = await import("./revenueCat");
+const Purchases = (await import("react-native-purchases")).default;
+
+// Minimal empty CustomerInfo — getPlanFromCustomerInfo is exercised separately
+// above; these tests only care that a completed purchase fires the funnel
+// event with the right SKU, and a cancelled one does not.
+const emptyCustomerInfo = {
+  entitlements: { active: {} },
+  activeSubscriptions: [],
+  subscriptionsByProductIdentifier: {},
+  allPurchasedProductIdentifiers: []
+};
 
 type FakeCustomerInfoInput = {
   activeEntitlementIds?: string[];
@@ -114,5 +126,51 @@ describe("getPlanFromCustomerInfo", () => {
 
   it("is pro via the lifetime entitlement id too, mirroring the monthly/annual entitlement path", () => {
     expect(getPlanFromCustomerInfo(customerInfo({ activeEntitlementIds: ["pro"], purchasedProductIds: [revenueCatProductIds.proLifetime] }))).toBe("pro");
+  });
+});
+
+describe("purchase completion fires an aggregate funnel event (Phase 5.3)", () => {
+  const originalIosKey = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY;
+
+  beforeEach(() => {
+    // getRevenueCatApiKey() must see a key or initRevenueCat() short-circuits
+    // to unconfigured and every purchase throws before reaching the funnel event.
+    process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY = "test-key";
+    recordFunnelEventMock.mockClear();
+    vi.mocked(Purchases.isConfigured).mockResolvedValue(true);
+    // Empty offerings -> findPackage returns null for every SKU -> purchaseProductOrPackage
+    // takes the getProducts/purchaseStoreProduct fallback path (simplest to mock).
+    vi.mocked(Purchases.getOfferings).mockResolvedValue({ all: {}, current: null } as never);
+  });
+
+  afterEach(() => {
+    if (originalIosKey === undefined) delete process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY;
+    else process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY = originalIosKey;
+  });
+
+  it("records paywall_purchase_completed with the monthly SKU on a completed pro purchase", async () => {
+    vi.mocked(Purchases.getProducts).mockResolvedValue([{ identifier: revenueCatProductIds.proMonthly }] as never);
+    vi.mocked(Purchases.purchaseStoreProduct).mockResolvedValue({ customerInfo: emptyCustomerInfo } as never);
+
+    await purchasePro("monthly");
+
+    expect(recordFunnelEventMock).toHaveBeenCalledWith("paywall_purchase_completed", revenueCatProductIds.proMonthly);
+  });
+
+  it("records paywall_purchase_completed with the lifetime SKU on a completed lifetime purchase", async () => {
+    vi.mocked(Purchases.getProducts).mockResolvedValue([{ identifier: revenueCatProductIds.proLifetime }] as never);
+    vi.mocked(Purchases.purchaseStoreProduct).mockResolvedValue({ customerInfo: emptyCustomerInfo } as never);
+
+    await purchaseLifetime();
+
+    expect(recordFunnelEventMock).toHaveBeenCalledWith("paywall_purchase_completed", revenueCatProductIds.proLifetime);
+  });
+
+  it("does not record the event when the user cancels the native purchase sheet", async () => {
+    vi.mocked(Purchases.getProducts).mockResolvedValue([{ identifier: revenueCatProductIds.proMonthly }] as never);
+    vi.mocked(Purchases.purchaseStoreProduct).mockRejectedValue(new Error("cancelled"));
+
+    await expect(purchasePro("monthly")).rejects.toThrow();
+    expect(recordFunnelEventMock).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,6 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
-import { getServerEntitlement } from "../api/client";
+import { getServerEntitlement, recordFunnelEvent } from "../api/client";
 import Purchases, {
   type CustomerInfo,
   type PurchasesOffering,
@@ -91,7 +91,12 @@ export async function purchasePro(period: ProBillingPeriod = "annual"): Promise<
   const productId = period === "annual" ? revenueCatProductIds.proAnnual : revenueCatProductIds.proMonthly;
   const offerings = await getOfferings();
   const packageToPurchase = period === "annual" ? offerings.proAnnual : offerings.proMonthly;
+  // purchaseProductOrPackage rejects (never resolves) on a user-cancelled
+  // native purchase sheet, so reaching this line means a real purchase
+  // completed — an aggregate, anonymous funnel signal (Phase 5.3), not tied
+  // to any device/account id.
   const customerInfo = await purchaseProductOrPackage(productId, packageToPurchase);
+  recordFunnelEvent("paywall_purchase_completed", productId);
   return getPlanFromCustomerInfo(customerInfo);
 }
 
@@ -99,12 +104,14 @@ export async function purchasePro(period: ProBillingPeriod = "annual"): Promise<
 export async function purchaseLifetime(): Promise<BillingPlan> {
   const offerings = await getOfferings();
   const customerInfo = await purchaseProductOrPackage(revenueCatProductIds.proLifetime, offerings.proLifetime);
+  recordFunnelEvent("paywall_purchase_completed", revenueCatProductIds.proLifetime);
   return getPlanFromCustomerInfo(customerInfo);
 }
 
 export async function purchaseFamily(): Promise<BillingPlan> {
   const offerings = await getOfferings();
   const customerInfo = await purchaseProductOrPackage(revenueCatProductIds.familyMonthly, offerings.familyMonthly);
+  recordFunnelEvent("paywall_purchase_completed", revenueCatProductIds.familyMonthly);
   return getPlanFromCustomerInfo(customerInfo);
 }
 

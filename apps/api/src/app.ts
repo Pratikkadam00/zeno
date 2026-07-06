@@ -15,7 +15,7 @@ import { deleteUserSyncData, pullChanges, pushChanges, type EncryptedChange } fr
 import { createHousehold, getHousehold, joinHousehold, removeMember, removeUserFromAllHouseholds, setMemberSpend, type Household } from "./family";
 import { coachConfigured, coachModel, generateCoaching } from "./coach";
 import { registerAuthGuard } from "./auth-guard";
-import { markRequestStart, recordRequest, renderMetrics } from "./metrics";
+import { markRequestStart, recordProductEvent, recordRequest, renderMetrics } from "./metrics";
 
 export type BuildAppOptions = {
   logger?: boolean;
@@ -89,6 +89,13 @@ const familyJoinSchema = z.object({
 });
 const familySpendSchema = z.object({
   monthlySpendMinor: z.number().int().min(0)
+});
+// Shape-only validation — event/label are checked against the fixed allowlist
+// in recordProductEvent (metrics.ts), not here, since that allowlist is the
+// single source of truth shared with the Prometheus rendering.
+const productEventSchema = z.object({
+  event: z.string().min(1).max(64),
+  label: z.string().min(1).max(64).optional()
 });
 const coachRequestSchema = z.object({
   totalMonthlyMinor: z.number().int().min(0),
@@ -241,6 +248,28 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     }
     reply.header("content-type", "text/plain; version=0.0.4; charset=utf-8");
     return renderMetrics();
+  });
+
+  // Aggregate, anonymous product-funnel events (Phase 5.3): import completion,
+  // share-card generation, hitting the free-tier import cap, paywall→purchase
+  // by SKU. Public/unauthenticated — local-only (no-account) users must be
+  // able to call this too — and deliberately does not read request.userId even
+  // when a caller happens to be signed in, so no event is ever linked to an
+  // account. event/label are validated against a fixed allowlist in
+  // recordProductEvent, so a public endpoint can't inject arbitrary-cardinality
+  // data into the in-memory counters.
+  app.post("/api/v1/events", limit(60), async (request, reply) => {
+    const parsed = parseBody(productEventSchema, request.body, request.id);
+    if (!parsed.ok) {
+      reply.code(400);
+      return parsed.error;
+    }
+    const recorded = recordProductEvent(parsed.data.event, parsed.data.label);
+    if (!recorded) {
+      reply.code(400);
+      return fail("BAD_REQUEST", "Unknown event or label.", request.id);
+    }
+    return ok({ recorded: true }, request.id);
   });
 
   app.get("/api/v1/account", async (request) => ok({
