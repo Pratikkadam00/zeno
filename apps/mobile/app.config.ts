@@ -39,6 +39,11 @@ const config: ExpoConfig = {
     "expo-router",
     "expo-font",
     "expo-notifications",
+    // Inert without EXPO_PUBLIC_SENTRY_DSN (see src/monitoring/report.ts) — the
+    // plugin itself has no required config; source-map upload (org/project/
+    // authToken) is opt-in and intentionally not configured until there's a
+    // real Sentry project to upload to.
+    "@sentry/react-native",
     [
       "expo-secure-store",
       {
@@ -79,7 +84,8 @@ const config: ExpoConfig = {
     revenueCat: {
       iosKey: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY,
       androidKey: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY
-    }
+    },
+    sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN
   }
 };
 

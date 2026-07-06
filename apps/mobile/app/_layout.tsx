@@ -17,9 +17,14 @@ import { LockOverlay } from "../src/security/LockOverlay";
 import { useLockStore } from "../src/security/lock-store";
 import { isAuthVerifyLink } from "../src/utils/deep-link";
 import { ZenoThemeProvider, useZenoTheme } from "../src/theme/theme-provider";
+import { initErrorReporting } from "../src/monitoring/report";
 
 // Hold the native splash until the Zeno typefaces are ready.
 void SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// As early as possible, before any component renders — inert without
+// EXPO_PUBLIC_SENTRY_DSN (see src/monitoring/report.ts).
+initErrorReporting();
 
 export default function RootLayout() {
   const { loaded, error } = useZenoFonts();
