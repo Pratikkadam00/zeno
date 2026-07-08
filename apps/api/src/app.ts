@@ -77,10 +77,18 @@ function createRateLimitRedis(): Redis | null {
   return client;
 }
 
-// Kept in sync with CurrencyCode (packages/shared/src/domain.ts) via `satisfies`
-// — a drift between the two fails typecheck rather than silently accepting or
-// rejecting the wrong set of currencies.
+// Kept in sync with CurrencyCode (packages/shared/src/domain.ts) in both
+// directions: `satisfies` catches an extra/typo'd element (it only checks
+// this array is assignable TO CurrencyCode[], not the reverse), and the
+// exhaustiveness check below additionally fails typecheck if CURRENCY_CODES
+// is ever missing a legitimate CurrencyCode member — so a drift either way
+// (rejecting a real currency, or accepting a fake one) breaks the build
+// instead of silently shipping.
 const CURRENCY_CODES = ["USD", "EUR", "GBP", "INR", "CAD", "AUD"] as const satisfies readonly CurrencyCode[];
+type MissingFromCurrencyCodes = Exclude<CurrencyCode, (typeof CURRENCY_CODES)[number]>;
+// If this line errors, CurrencyCode has a member not listed in CURRENCY_CODES.
+const _currencyCodesExhaustive: MissingFromCurrencyCodes extends never ? true : ["CURRENCY_CODES is missing:", MissingFromCurrencyCodes] = true;
+void _currencyCodesExhaustive;
 const currencyCodeSchema = z.enum(CURRENCY_CODES);
 
 // Identity (ownerId / memberId) is taken from the verified token, NOT the body.

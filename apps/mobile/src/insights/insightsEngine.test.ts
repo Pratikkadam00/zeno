@@ -202,6 +202,35 @@ describe("insightsEngine — FX conversion (Phase 5.2 gap fix)", () => {
     expect(insights).toHaveLength(0);
   });
 
+  // Regression: an adversarial review of this fix found that detectHighSpend
+  // converted `spend` into fx.homeCurrency but left categoryBenchmarks (fixed
+  // USD-scale constants) unconverted, so a non-USD homeCurrency compared an
+  // apples (home-currency spend) to oranges (USD-scale constant) figure — a
+  // user on INR (~83:1) would get a false "high spend" alert for completely
+  // ordinary spend, with a nonsensical, wildly inflated savingAmount.
+  const fxInr: FxContext = { homeCurrency: "INR", rates };
+
+  it("detectHighSpend: converts the USD-denominated benchmark into a non-USD home currency before comparing — does not fire for ordinary spend", () => {
+    const insights = detectHighSpend([
+      // ₹3320/mo is exactly the productivity benchmark (40 USD) converted at
+      // 83 INR/USD — ordinary spend, not "high" by any reasonable definition.
+      subscription({ id: "inr-tool", name: "Notion India", category: "productivity", price: { amountMinor: 332000, currency: "INR" } })
+    ], fxInr);
+    expect(insights).toHaveLength(0);
+  });
+
+  it("detectHighSpend: still fires correctly for genuinely high spend in a non-USD home currency, with a sanely-scaled savingAmount", () => {
+    const insights = detectHighSpend([
+      // ₹5000/mo, well above the converted ₹3320 * 1.5 = ₹4980 threshold.
+      subscription({ id: "inr-tool", name: "Notion India", category: "productivity", price: { amountMinor: 500000, currency: "INR" } })
+    ], fxInr);
+    expect(insights).toHaveLength(1);
+    expect(insights[0]?.message).toContain("₹5000");
+    expect(insights[0]?.message).toContain("₹3320");
+    // Not the nonsensical 5000 - 40 = 4960 a pre-fix implementation would produce.
+    expect(insights[0]?.savingAmount).toBe(1680);
+  });
+
   it("generateSpendSummary: totals and 'biggest subscription' selection use fx-converted amounts", () => {
     const summary = generateSpendSummary([
       subscription({ id: "inr-sub", name: "CraftIN", price: { amountMinor: 249000, currency: "INR" } }), // -> $30

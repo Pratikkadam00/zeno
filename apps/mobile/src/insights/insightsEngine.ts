@@ -1,5 +1,5 @@
 import { getServiceById, getServiceBySlug } from "@zeno/service-catalog";
-import { monthlyAmount, monthlyAmountIn, type FxContext, type Subscription } from "@zeno/shared";
+import { convertMinor, monthlyAmount, monthlyAmountIn, type FxContext, type Subscription } from "@zeno/shared";
 import { currencySymbol } from "../utils/format";
 
 export interface Insight {
@@ -236,7 +236,13 @@ export function detectHighSpend(subscriptions: Subscription[], fx?: FxContext): 
 
   return [...spendByCategory.entries()]
     .flatMap(([category, spend]) => {
-      const benchmark = categoryBenchmarks[category as BenchmarkCategory] ?? categoryBenchmarks.other;
+      // categoryBenchmarks are fixed, USD-denominated constants (this app has
+      // no currency-aware per-user pricing config). spend above is already
+      // fx-converted into fx.homeCurrency, so the benchmark must be too before
+      // comparing/subtracting — otherwise a non-USD homeCurrency (INR at
+      // ~83:1, say) would compare a home-currency figure against a USD-scale
+      // constant and fire a nonsensical "high spend" alert for ordinary spend.
+      const benchmark = benchmarkIn(categoryBenchmarks[category as BenchmarkCategory] ?? categoryBenchmarks.other, fx);
       if (spend <= benchmark * 1.5) {
         return [];
       }
@@ -406,6 +412,23 @@ function monthlyDollarsIn(subscription: Subscription, fx: FxContext | undefined)
   }
   const minor = monthlyAmountIn(subscription, fx.homeCurrency, fx.rates);
   return minor === null ? null : roundMoney(minor / 100);
+}
+
+// categoryBenchmarks are fixed, USD-denominated dollar amounts (e.g. 40, not
+// 4000 minor units). Converts one into fx.homeCurrency via the same rate
+// table used for the subscriptions being compared against it — comparing an
+// already-converted spend figure to a raw USD constant would silently
+// mis-scale for any homeCurrency far from 1:1 with USD (INR at ~83:1, say).
+// Falls back to the raw USD value only if conversion genuinely can't succeed
+// (in practice this shouldn't happen: reaching this call means at least one
+// subscription's monthlyDollarsIn already resolved against fx.homeCurrency,
+// which requires fx.rates[fx.homeCurrency] to exist).
+function benchmarkIn(benchmarkUsdDollars: number, fx: FxContext | undefined): number {
+  if (!fx) {
+    return benchmarkUsdDollars;
+  }
+  const convertedMinor = convertMinor(Math.round(benchmarkUsdDollars * 100), "USD", fx.homeCurrency, fx.rates);
+  return convertedMinor === null ? benchmarkUsdDollars : roundMoney(convertedMinor / 100);
 }
 
 function benchmarkCategory(subscription: Subscription): BenchmarkCategory {
