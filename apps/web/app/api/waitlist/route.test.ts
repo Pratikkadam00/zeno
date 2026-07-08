@@ -12,16 +12,23 @@ function post(email: unknown, ip: string, rawBody?: string): Request {
 }
 
 const originalWebhook = process.env.WAITLIST_WEBHOOK_URL;
+const originalTrustProxyHops = process.env.TRUST_PROXY_HOPS;
 
 beforeEach(() => {
   // Route signups through a webhook so tests never touch the filesystem.
   process.env.WAITLIST_WEBHOOK_URL = "https://webhook.example.com/waitlist";
+  // trustedHopCount() defaults to 0 (no trust) outside production, matching
+  // resolveTrustProxy() — these tests simulate a real single-hop deployment
+  // (Vercel in front), so opt in explicitly rather than relying on prod-only.
+  process.env.TRUST_PROXY_HOPS = "1";
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
   if (originalWebhook === undefined) delete process.env.WAITLIST_WEBHOOK_URL;
   else process.env.WAITLIST_WEBHOOK_URL = originalWebhook;
+  if (originalTrustProxyHops === undefined) delete process.env.TRUST_PROXY_HOPS;
+  else process.env.TRUST_PROXY_HOPS = originalTrustProxyHops;
 });
 
 describe("waitlist POST", () => {
@@ -129,5 +136,29 @@ describe("waitlist POST", () => {
     });
     const response = await POST(request);
     expect(response.status).toBe(413);
+  });
+
+  it("fails closed to a shared 'unknown' bucket — both a hops/topology mismatch and no TRUST_PROXY_HOPS default outside production", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(null, { status: 200 }))));
+    // Configured to trust 2 hops, but every request below carries only ONE
+    // X-Forwarded-For entry — a topology mismatch. The prior fallback treated
+    // the single (fully client-authored) entry as trusted, letting an
+    // attacker rotate it per request to dodge the rate limiter entirely.
+    process.env.TRUST_PROXY_HOPS = "2";
+    for (let i = 0; i < 4; i += 1) {
+      const ok = await POST(post(`mismatch${i}@example.com`, `${i}.${i}.${i}.${i}`));
+      expect(ok.status).toBe(200);
+    }
+
+    // Now simulate the OTHER fail-closed path: no TRUST_PROXY_HOPS at all
+    // outside production. This resolves to the SAME "unknown" bucket as
+    // above (not a fresh one per spoofed IP) — proving both misconfigurations
+    // fail closed consistently rather than falling back to trusting whatever
+    // the client sent.
+    delete process.env.TRUST_PROXY_HOPS;
+    const stillCounting = await POST(post("mismatch4@example.com", "4.4.4.4"));
+    expect(stillCounting.status).toBe(200); // 5th hit on the shared bucket
+    const limited = await POST(post("overflow@example.com", "9.9.9.9"));
+    expect(limited.status).toBe(429); // 6th hit — limited, despite yet another fresh IP
   });
 });

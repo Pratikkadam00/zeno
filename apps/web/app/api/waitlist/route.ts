@@ -45,14 +45,18 @@ function rateLimited(ip: string): boolean {
 // X-Forwarded-For — everything before that is whatever the client declared,
 // and is not trustworthy for rate-limit keying. Taking the FIRST entry (the
 // prior bug here) lets a client rotate its own limiter bucket on every request
-// by sending a fresh made-up leftmost value.
+// by sending a fresh made-up leftmost value. Defaults to 0 (no trust) outside
+// production, same as resolveTrustProxy() — without this, a bare `next dev`
+// (no real reverse proxy in front) would trust a self-supplied XFF header as
+// if a proxy had appended it, letting a local/test caller spoof their own
+// rate-limit bucket.
 function trustedHopCount(): number {
   const raw = process.env.TRUST_PROXY_HOPS;
   if (raw !== undefined) {
     const hops = Number.parseInt(raw, 10);
     if (Number.isInteger(hops) && hops >= 0) return hops;
   }
-  return 1;
+  return process.env.NODE_ENV === "production" ? 1 : 0;
 }
 
 function resolveClientIp(request: Request): string {
@@ -63,7 +67,13 @@ function resolveClientIp(request: Request): string {
   const parts = header.split(",").map((part) => part.trim()).filter(Boolean);
   if (parts.length === 0) return "unknown";
   const index = parts.length - hops;
-  return (index >= 0 ? parts[index] : parts[0]) ?? "unknown";
+  // A negative index means TRUST_PROXY_HOPS is configured higher than the
+  // number of entries this request's header actually carries (e.g. a
+  // topology mismatch after fronting the site with an extra CDN/WAF) — fail
+  // closed to "unknown" rather than falling back to the leftmost,
+  // client-authored entry, which would reopen the exact spoofing hole this
+  // function exists to close.
+  return index >= 0 ? (parts[index] ?? "unknown") : "unknown";
 }
 
 function maskEmail(email: string): string {
