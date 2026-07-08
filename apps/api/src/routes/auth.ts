@@ -12,35 +12,43 @@ const issuer = process.env.JWT_ISSUER ?? "zeno-api";
 const audience = process.env.JWT_AUDIENCE ?? "zeno-mobile";
 const defaultMagicLinkRedirect = process.env.MAGIC_LINK_REDIRECT_URL ?? "zeno://auth/verify";
 
+// RFC 5321's own limit — every .email() field in this file is bounded by it,
+// matching the convention used everywhere else in the schema set (e.g.
+// familyCreateSchema.ownerName.max(80)) instead of trusting the 1MB bodyLimit
+// alone to keep oversized values out of normalizeEmail/hashToken/Resend calls.
+const emailSchema = z.string().email().max(254);
+
 const magicLinkRequestSchema = z.object({
-  email: z.string().email()
+  email: emailSchema
 });
 
 const magicLinkVerifyQuerySchema = z.object({
   token: z.string().min(32).optional(),
-  email: z.string().email().optional(),
+  email: emailSchema.optional(),
   code: z.string().min(6).max(12).optional()
 }).refine((value) => Boolean(value.token) || Boolean(value.email && value.code), {
   message: "Provide either token or email and code."
 });
 
 const legacyMagicLinkVerifySchema = z.object({
-  email: z.string().email(),
+  email: emailSchema,
   code: z.string().min(6).max(12)
 });
 
 const appleOAuthSchema = z.object({
   identityToken: z.string().min(10),
   authorizationCode: z.string().min(4).optional(),
-  email: z.string().email().optional(),
-  fullName: z.string().min(1).optional()
+  email: emailSchema.optional(),
+  // Never read after parsing (Apple's own name is used instead) — bounded for
+  // hygiene, not because it's used downstream.
+  fullName: z.string().min(1).max(160).optional()
 });
 
 const googleOAuthSchema = z.object({
   idToken: z.string().min(10).optional(),
   accessToken: z.string().min(10).optional(),
   serverAuthCode: z.string().min(4).optional(),
-  email: z.string().email().optional()
+  email: emailSchema.optional()
 }).refine((value) => Boolean(value.idToken || value.accessToken || value.serverAuthCode), {
   message: "Provide idToken, accessToken, or serverAuthCode."
 });
@@ -50,7 +58,7 @@ const refreshSchema = z.object({
 });
 
 const demoLoginSchema = z.object({
-  email: z.string().email(),
+  email: emailSchema,
   password: z.string().min(8).max(128)
 });
 

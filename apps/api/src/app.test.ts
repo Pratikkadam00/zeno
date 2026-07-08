@@ -941,4 +941,26 @@ describe("api app", () => {
     // ... and the enforced output contract appended.
     expect(prompt).toContain("outOfScope");
   });
+
+  it("rejects an oversized email on the magic-link route (>254 chars, RFC 5321's own limit)", async () => {
+    const app = await buildApp();
+    const oversizedEmail = `${"a".repeat(250)}@example.com`;
+    const response = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email: oversizedEmail } });
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("rejects an implausibly large monthlySpendMinor on the family spend route", async () => {
+    const app = await buildApp();
+    const owner = await tokenFor(app, "spend-cap-owner@zeno.test");
+    const create = await app.inject({ method: "POST", url: "/api/v1/family/create", headers: authH(owner.token), payload: { ownerName: "Owner" } });
+    const householdId = create.json().data.household.id;
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/v1/family/${householdId}/spend`,
+      headers: authH(owner.token),
+      payload: { monthlySpendMinor: 100_000_000_00 + 1 }
+    });
+    expect(response.statusCode).toBe(400);
+  });
 });

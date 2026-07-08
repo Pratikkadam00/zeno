@@ -112,19 +112,25 @@ const currencyCodeSchema = z.enum(CURRENCY_CODES);
 // Identity (ownerId / memberId) is taken from the verified token, NOT the body.
 // currency is optional at the schema level (defaulting to "USD" in family.ts)
 // so an not-yet-updated mobile client isn't hard-broken with a 400.
+// Upper-bounded (100M currency units, in minor units) same as this codebase's
+// other magnitude-capped numeric fields (see syncPushSchema's vectorClock in
+// packages/shared/src/schemas.ts) — comfortably above any real household's
+// spend, but rules out a value large enough to produce formatting/overflow
+// surprises once combined across members.
+const monthlySpendMinorSchema = z.number().int().min(0).max(100_000_000_00);
 const familyCreateSchema = z.object({
   ownerName: z.string().min(1).max(80),
-  monthlySpendMinor: z.number().int().min(0).optional(),
+  monthlySpendMinor: monthlySpendMinorSchema.optional(),
   currency: currencyCodeSchema.optional()
 });
 const familyJoinSchema = z.object({
   shareCode: z.string().min(4).max(12),
   memberName: z.string().min(1).max(80),
-  monthlySpendMinor: z.number().int().min(0).optional(),
+  monthlySpendMinor: monthlySpendMinorSchema.optional(),
   currency: currencyCodeSchema.optional()
 });
 const familySpendSchema = z.object({
-  monthlySpendMinor: z.number().int().min(0),
+  monthlySpendMinor: monthlySpendMinorSchema,
   currency: currencyCodeSchema.optional()
 });
 // Shape-only validation — event/label are checked against the fixed allowlist
@@ -158,7 +164,10 @@ const revenueCatWebhookSchema = z.object({
     expiration_at_ms: z.number().int().nonnegative().optional()
   }).passthrough()
 }).passthrough();
-const plaidExchangeSchema = z.object({ publicToken: z.string().min(1) });
+// Real Plaid public tokens are short (well under 200 chars); 512 is a
+// generous cap, bounding the value before it's forwarded verbatim into a
+// server-to-server call to Plaid rather than relying on the 1MB bodyLimit alone.
+const plaidExchangeSchema = z.object({ publicToken: z.string().min(1).max(512) });
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({
