@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "next build",
+    "build": "npm run build --workspace @zeno/shared --workspace @zeno/service-catalog && next build",
     "start": "next start",
     "test": "vitest run --root ../.. --passWithNoTests apps/web",
     "typecheck": "tsc -p tsconfig.json --noEmit"
