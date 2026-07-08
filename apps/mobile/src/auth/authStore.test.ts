@@ -117,3 +117,70 @@ describe("local-only mode", () => {
     expect(useAuthStore.getState().status).toBe("anonymous");
   });
 });
+
+// Regression test for a real race: getValidAccessToken() is called by every
+// authenticated API request (client.ts's authHeaders()), and several fire in
+// parallel on app resume (notifications, widgets, billing, family/sync).
+// Before de-duplication, each independently read the same not-yet-rotated
+// refresh token and POSTed it to /auth/refresh, which is single-use
+// server-side — every request but the first 401'd, and that "loser" call's
+// error handling cleared the session and force-logged-out the user even
+// though a sibling call's refresh had just succeeded.
+describe("refreshToken — concurrent-call de-duplication", () => {
+  it("collapses concurrent refreshToken() calls into a single request and leaves the user authenticated", async () => {
+    // Establish a real logged-in session first.
+    timedFetchMock.mockImplementationOnce(async () => authSessionEnvelope());
+    await useAuthStore.getState().verifyMagicLink("some-magic-token");
+    expect(useAuthStore.getState().status).toBe("authenticated");
+
+    let refreshCalls = 0;
+    timedFetchMock.mockImplementation(async (url: string) => {
+      if (typeof url === "string" && url.includes("/auth/refresh")) {
+        refreshCalls += 1;
+        return new Response(
+          JSON.stringify({
+            data: {
+              accountId: "acct_1",
+              accessToken: "refreshed-access-token",
+              refreshToken: "refreshed-refresh-token",
+              expiresInSeconds: 900,
+              refreshExpiresInSeconds: 2_592_000,
+              tokenType: "Bearer"
+            },
+            error: null
+          }),
+          { status: 200 }
+        );
+      }
+      throw new Error(`unexpected fetch in this test: ${url}`);
+    });
+
+    // Simulate several screens' concurrent API calls all deciding at once
+    // that the access token needs refreshing.
+    await Promise.all([
+      useAuthStore.getState().refreshToken(),
+      useAuthStore.getState().refreshToken(),
+      useAuthStore.getState().refreshToken()
+    ]);
+
+    expect(refreshCalls).toBe(1);
+    expect(useAuthStore.getState().status).toBe("authenticated");
+    expect(useAuthStore.getState().accountId).toBe("acct_1");
+  });
+
+  it("a later refreshToken() call (after the in-flight one settles) makes a fresh request", async () => {
+    timedFetchMock.mockImplementationOnce(async () => authSessionEnvelope());
+    await useAuthStore.getState().verifyMagicLink("some-magic-token");
+
+    let refreshCalls = 0;
+    timedFetchMock.mockImplementation(async () => {
+      refreshCalls += 1;
+      return authSessionEnvelope();
+    });
+
+    await useAuthStore.getState().refreshToken();
+    await useAuthStore.getState().refreshToken();
+
+    expect(refreshCalls).toBe(2);
+  });
+});

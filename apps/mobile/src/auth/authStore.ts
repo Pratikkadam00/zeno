@@ -86,6 +86,15 @@ type AuthStoreState = {
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 let memorySession: RuntimeAuthSession = null;
+// De-dupes concurrent refreshToken() calls onto a single in-flight request.
+// Several screens call getValidAccessToken() in parallel (e.g. on app resume:
+// notifications, widgets, billing, family/sync all fire together) — without
+// this, each one independently reads the same not-yet-rotated refresh token
+// and POSTs it to /auth/refresh, which is single-use server-side: only the
+// first request wins, and every other one's catch block would clear the
+// session and force-log-out the user even though the winner's refresh just
+// succeeded moments earlier.
+let refreshInFlight: Promise<void> | null = null;
 
 export const useAuthStore = create<AuthStoreState>((set, get) => ({
   status: "loading",
@@ -257,25 +266,35 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
   },
 
   async refreshToken() {
-    const session = await readStoredSession();
-    if (!session?.refreshToken) {
-      stopRefreshTimer();
-      await clearStoredSession();
-      setAnonymous(set);
-      return;
+    if (refreshInFlight) {
+      return refreshInFlight;
     }
+    refreshInFlight = (async () => {
+      const session = await readStoredSession();
+      if (!session?.refreshToken) {
+        stopRefreshTimer();
+        await clearStoredSession();
+        setAnonymous(set);
+        return;
+      }
 
+      try {
+        const refreshed = await apiPost<AuthSessionResponse>("/auth/refresh", {
+          refreshToken: session.refreshToken
+        });
+        await persistSession(refreshed);
+        startRefreshTimer(get);
+        setAuthenticated(set, toStoredSession(refreshed));
+      } catch (error) {
+        stopRefreshTimer();
+        await clearStoredSession();
+        set({ status: "anonymous", isAuthenticated: false, accountId: null, accessTokenExpiresAt: null, error: getErrorMessage(error) });
+      }
+    })();
     try {
-      const refreshed = await apiPost<AuthSessionResponse>("/auth/refresh", {
-        refreshToken: session.refreshToken
-      });
-      await persistSession(refreshed);
-      startRefreshTimer(get);
-      setAuthenticated(set, toStoredSession(refreshed));
-    } catch (error) {
-      stopRefreshTimer();
-      await clearStoredSession();
-      set({ status: "anonymous", isAuthenticated: false, accountId: null, accessTokenExpiresAt: null, error: getErrorMessage(error) });
+      await refreshInFlight;
+    } finally {
+      refreshInFlight = null;
     }
   },
 
