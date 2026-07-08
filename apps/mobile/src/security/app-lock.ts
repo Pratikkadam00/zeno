@@ -1,6 +1,6 @@
 import * as Crypto from "expo-crypto";
 import * as LocalAuthentication from "expo-local-authentication";
-import { pbkdf2Sync } from "react-native-quick-crypto";
+import { Buffer, pbkdf2Sync, timingSafeEqual } from "react-native-quick-crypto";
 import {
   clearLockStateValue,
   loadLockStateValue,
@@ -80,7 +80,7 @@ export async function verifyPin(pin: string): Promise<boolean> {
   if (parts.length === 4 && parts[0] === pinHashVersion) {
     const parsed = parseSaltedHash(parts);
     if (!parsed) return false;
-    return derivePinHash(pin, parsed.salt, parsed.iterations) === parsed.expected;
+    return constantTimeHexEqual(derivePinHash(pin, parsed.salt, parsed.iterations), parsed.expected);
   }
 
   if (parts.length === 4 && parts[0] === "v2") {
@@ -88,7 +88,7 @@ export async function verifyPin(pin: string): Promise<boolean> {
     // derivation, then transparently upgrade straight to the current version.
     const parsed = parseSaltedHash(parts);
     if (!parsed) return false;
-    const matches = (await deriveLegacyV2Hash(pin, parsed.salt, parsed.iterations)) === parsed.expected;
+    const matches = constantTimeHexEqual(await deriveLegacyV2Hash(pin, parsed.salt, parsed.iterations), parsed.expected);
     if (matches) {
       await setPin(pin);
     }
@@ -97,7 +97,7 @@ export async function verifyPin(pin: string): Promise<boolean> {
 
   // Legacy v1 (unsalted): verify, then transparently upgrade straight to the
   // current version.
-  const matchesLegacy = stored === await legacyHashPin(pin);
+  const matchesLegacy = constantTimeHexEqual(stored, await legacyHashPin(pin));
   if (matchesLegacy) {
     await setPin(pin);
   }
@@ -168,4 +168,16 @@ async function legacyHashPin(pin: string): Promise<string> {
 
 function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+// Plain `===` on two hash hex strings short-circuits on the first mismatching
+// character, leaking timing information — of limited practical value here
+// (the caller already needs the hash off the device to exploit it, and the
+// PBKDF2 upgrade already made brute-forcing the underlying PIN itself
+// expensive), but comparing MACs/hashes with `===` is exactly the pattern
+// this codebase avoids everywhere else (see auth.ts's constantTimeEqual).
+function constantTimeHexEqual(actualHex: string, expectedHex: string): boolean {
+  const actual = Buffer.from(actualHex, "hex");
+  const expected = Buffer.from(expectedHex, "hex");
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
 }

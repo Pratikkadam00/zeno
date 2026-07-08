@@ -1,4 +1,4 @@
-import { randomBytes, createHash, pbkdf2Sync } from "node:crypto";
+import { randomBytes, createHash, pbkdf2Sync, timingSafeEqual } from "node:crypto";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 // Same fake-SecureStore approach as app-lock.test.ts: real hashing logic under
@@ -26,7 +26,9 @@ vi.mock("expo-crypto", () => ({
 // same real-equivalent stand-in as app-lock.test.ts.
 vi.mock("react-native-quick-crypto", () => ({
   pbkdf2Sync: (password: string, salt: string, iterations: number, keylen: number, digest: string) =>
-    pbkdf2Sync(password, salt, iterations, keylen, digest)
+    pbkdf2Sync(password, salt, iterations, keylen, digest),
+  timingSafeEqual: (a: Uint8Array, b: Uint8Array) => timingSafeEqual(a, b),
+  Buffer
 }));
 
 const biometricMocks = vi.hoisted(() => ({

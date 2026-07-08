@@ -1,4 +1,4 @@
-import { createHash, pbkdf2Sync, randomBytes } from "node:crypto";
+import { createHash, pbkdf2Sync, randomBytes, timingSafeEqual } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 
 // A tiny deterministic in-memory fake for the SecureStore-backed persistence
@@ -30,11 +30,15 @@ vi.mock("expo-crypto", () => ({
 
 // react-native-quick-crypto is a native module and can't run under Vitest, but
 // it's explicitly designed as a drop-in for Node's own crypto module — so
-// node:crypto's real pbkdf2Sync (same signature, same algorithm) is a
-// genuinely equivalent stand-in, not a fake.
+// node:crypto's real pbkdf2Sync/timingSafeEqual (same signatures, same
+// algorithms) are genuinely equivalent stand-ins, not fakes. Buffer is
+// re-exported from RNQC for real (@craftzdog/react-native-buffer) — Node's
+// global Buffer is an equivalent stand-in here too.
 vi.mock("react-native-quick-crypto", () => ({
   pbkdf2Sync: (password: string, salt: string, iterations: number, keylen: number, digest: string) =>
-    pbkdf2Sync(password, salt, iterations, keylen, digest)
+    pbkdf2Sync(password, salt, iterations, keylen, digest),
+  timingSafeEqual: (a: Uint8Array, b: Uint8Array) => timingSafeEqual(a, b),
+  Buffer
 }));
 
 const biometricMocks = vi.hoisted(() => ({
