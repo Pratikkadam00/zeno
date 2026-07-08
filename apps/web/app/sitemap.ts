@@ -11,7 +11,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // The hub for the ~600 cancel/[slug] guides below — the biggest owned SEO
     // asset was previously orphaned with no index page (Phase 4.3).
     { url: `${BASE}/cancel`, lastModified, changeFrequency: "weekly", priority: 0.8 },
-    { url: `${BASE}/analytics`, lastModified, changeFrequency: "monthly", priority: 0.6 },
+    // /analytics is deliberately excluded: it's noindex'd (see app/analytics/
+    // layout.tsx's robots metadata) and, by default, 404s in production unless
+    // SHOW_PUBLIC_ANALYTICS=1 — a sitemap should never list a noindex'd URL.
     { url: `${BASE}/developers`, lastModified, changeFrequency: "monthly", priority: 0.5 },
     { url: `${BASE}/partners`, lastModified, changeFrequency: "monthly", priority: 0.5 },
     { url: `${BASE}/features/business`, lastModified, changeFrequency: "monthly", priority: 0.6 },

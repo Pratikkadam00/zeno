@@ -5,17 +5,26 @@ import Link from "next/link";
 import { Magnetic } from "./primitives";
 import styles from "../../app/home.module.css";
 
-const links = [
+const baseLinks = [
   { href: "/#features", label: "Features" },
   { href: "/#how", label: "How it works" },
-  { href: "/#pricing", label: "Pricing" },
-  { href: "/analytics", label: "Analytics" },
-  { href: "/#faq", label: "FAQ" }
+  { href: "/#pricing", label: "Pricing" }
 ];
+const analyticsLink = { href: "/analytics", label: "Analytics" };
+const faqLink = { href: "/#faq", label: "FAQ" };
 
-export function Nav() {
+export type NavProps = {
+  // Server-computed (isPublicAnalyticsEnabled reads a non-NEXT_PUBLIC_ env
+  // var, unavailable to this Client Component directly) — omitting the link
+  // entirely when disabled avoids a dead nav item that 404s on a stock
+  // production deploy.
+  showAnalytics?: boolean;
+};
+
+export function Nav({ showAnalytics = false }: NavProps) {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const links = showAnalytics ? [...baseLinks, analyticsLink, faqLink] : [...baseLinks, faqLink];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);

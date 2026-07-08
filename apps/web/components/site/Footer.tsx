@@ -1,9 +1,16 @@
 import Link from "next/link";
+import { isPublicAnalyticsEnabled } from "@/lib/analytics-flag";
 import styles from "../../app/home.module.css";
 
 export function Footer() {
+  const productLinks: [string, string][] = [["Features", "#features"], ["How it works", "#how"], ["Pricing", "#pricing"]];
+  if (isPublicAnalyticsEnabled()) {
+    productLinks.push(["Analytics", "/analytics"]);
+  }
+  productLinks.push(["Waitlist", "#waitlist"]);
+
   const cols = [
-    { h: "Product", links: [["Features", "#features"], ["How it works", "#how"], ["Pricing", "#pricing"], ["Analytics", "/analytics"], ["Waitlist", "#waitlist"]] },
+    { h: "Product", links: productLinks },
     { h: "Company", links: [["Developers", "/developers"], ["Partners", "/partners"], ["Open banking", "/features/open-banking"], ["Spend twin", "/features/spend-twin"]] },
     { h: "Legal", links: [["Privacy policy", "/legal/privacy"], ["Terms of service", "/legal/terms"], ["Cookie policy", "/legal/cookies"]] }
   ] as const;

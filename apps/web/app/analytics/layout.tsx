@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Nav } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
+import { isPublicAnalyticsEnabled } from "@/lib/analytics-flag";
 
 export const metadata: Metadata = {
   title: "Growth Analytics — Zeno",
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 export default function AnalyticsLayout({ children }: { children: ReactNode }) {
   return (
     <>
-      <Nav />
+      <Nav showAnalytics={isPublicAnalyticsEnabled()} />
       {children}
       <Footer />
     </>

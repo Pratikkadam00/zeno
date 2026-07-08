@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Nav } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
+import { isPublicAnalyticsEnabled } from "@/lib/analytics-flag";
 import styles from "./content.module.css";
 
 type ContentShellProps = {
@@ -18,7 +19,7 @@ type ContentShellProps = {
 export function ContentShell({ eyebrow, title, lead, children }: ContentShellProps) {
   return (
     <div className={styles.shell}>
-      <Nav />
+      <Nav showAnalytics={isPublicAnalyticsEnabled()} />
       <main id="main" className={styles.main}>
         <article className={styles.article}>
           <p className={styles.eyebrow}>{eyebrow}</p>
