@@ -63,13 +63,8 @@ export default function AnalyticsScreen() {
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [sortDirection, setSortDirection] = useState<"desc" | "asc">("desc");
 
-  const insights = useMemo(() => generateInsights(subscriptions), [subscriptions]);
+  const insights = useMemo(() => generateInsights(subscriptions, fx), [subscriptions, fx]);
   const visibleInsights = insights.filter((i) => !dismissed.includes(i.id));
-  // getTotalSavingOpportunity sums insight.savingAmount across all insights
-  // regardless of the underlying subscription's currency (insightsEngine.ts
-  // is a separate, mobile-local insight engine, not the shared package's
-  // createSpendSummary — its cross-currency handling is a known, documented
-  // gap; see ZENO_MASTER_PLAN.md Phase 5.2).
   const savingOpportunity = getTotalSavingOpportunity(insights);
 
   const sortedSubscriptions = useMemo(() =>

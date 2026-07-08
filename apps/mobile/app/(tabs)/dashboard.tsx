@@ -41,7 +41,7 @@ export default function DashboardScreen() {
   const { plan, setPlan } = useAuthStore();
   const [dismissed, setDismissed] = useState<string[]>([]);
 
-  const allInsights = generateInsights(subscriptions);
+  const allInsights = generateInsights(subscriptions, fx);
   const savingOpportunity = getTotalSavingOpportunity(allInsights);
   const previewInsights = allInsights
     .filter((i) => i.type !== "spend_summary")

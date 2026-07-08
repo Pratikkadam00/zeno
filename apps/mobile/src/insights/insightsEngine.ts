@@ -1,5 +1,5 @@
 import { getServiceById, getServiceBySlug } from "@zeno/service-catalog";
-import { monthlyAmount, type Subscription } from "@zeno/shared";
+import { monthlyAmount, monthlyAmountIn, type FxContext, type Subscription } from "@zeno/shared";
 import { currencySymbol } from "../utils/format";
 
 export interface Insight {
@@ -50,7 +50,7 @@ const categoryBenchmarks: Record<BenchmarkCategory, number> = {
   other: 20
 };
 
-export function detectUnused(subscriptions: Subscription[]): Insight[] {
+export function detectUnused(subscriptions: Subscription[], fx?: FxContext): Insight[] {
   const today = startOfToday();
   return activeSubscriptions(subscriptions)
     .flatMap((subscription) => {
@@ -70,12 +70,17 @@ export function detectUnused(subscriptions: Subscription[]): Insight[] {
       }
 
       const monthly = monthlyDollars(subscription);
+      // savingAmount feeds cross-insight aggregation in getTotalSavingOpportunity,
+      // so it must be expressed in fx.homeCurrency, not this subscription's own
+      // currency — exclude (undefined, never fabricate) when no usable rate
+      // exists. The message keeps showing the subscription's own native
+      // currency/amount regardless, since that doesn't depend on conversion.
       return [createInsight({
         id: `unused-${subscription.id}`,
         type: "unused",
         title: `Not used in ${daysUnused} days`,
         message: `${subscription.name} is ${formatMoney(monthly, subscription.price.currency)}/mo but you haven't opened it in ${daysUnused} days. Still worth it?`,
-        savingAmount: monthly,
+        savingAmount: monthlyDollarsIn(subscription, fx) ?? undefined,
         subscriptionId: subscription.id,
         priority: daysUnused > 60 ? "high" : "medium",
         actionLabel: "Cancel Subscription",
@@ -86,7 +91,7 @@ export function detectUnused(subscriptions: Subscription[]): Insight[] {
     .slice(0, 3);
 }
 
-export function detectDuplicates(subscriptions: Subscription[]): Insight[] {
+export function detectDuplicates(subscriptions: Subscription[], fx?: FxContext): Insight[] {
   const byCategory = new Map<string, Subscription[]>();
   for (const subscription of activeSubscriptions(subscriptions)) {
     if (subscription.category === "other") {
@@ -101,17 +106,36 @@ export function detectDuplicates(subscriptions: Subscription[]): Insight[] {
         return [];
       }
 
-      const [first, second] = [...categorySubscriptions].sort((a, b) => monthlyAmount(b) - monthlyAmount(a)).slice(0, 2);
+      // Rank by fx-converted monthly amount (native amount when fx is
+      // omitted, matching legacy behavior) — comparing raw minor units across
+      // different currencies would misrank which two are actually "biggest."
+      const ranked = [...categorySubscriptions].sort((a, b) => {
+        const rankA = fx ? monthlyAmountIn(a, fx.homeCurrency, fx.rates) : monthlyAmount(a);
+        const rankB = fx ? monthlyAmountIn(b, fx.homeCurrency, fx.rates) : monthlyAmount(b);
+        return (rankB ?? -Infinity) - (rankA ?? -Infinity);
+      });
+      const [first, second] = ranked;
+      if (!first || !second) {
+        return [];
+      }
+
       const amountA = monthlyDollars(first);
       const amountB = monthlyDollars(second);
+      // savingAmount/priority feed cross-insight comparisons, so they must use
+      // fx.homeCurrency-comparable values, not amountA/amountB's native-currency
+      // figures. Exclude (undefined/legacy-medium) rather than fabricate when
+      // either subscription's currency has no usable rate.
+      const comparableA = monthlyDollarsIn(first, fx);
+      const comparableB = monthlyDollarsIn(second, fx);
+      const savingAmount = comparableA !== null && comparableB !== null ? Math.min(comparableA, comparableB) : undefined;
       return [createInsight({
         id: `duplicate-${category}-${first.id}-${second.id}`,
         type: "duplicate",
         title: `Two ${labelCategory(category)} tools`,
         message: `You pay for both ${first.name} (${formatMoney(amountA, first.price.currency)}) and ${second.name} (${formatMoney(amountB, second.price.currency)}). Could you replace one?`,
-        savingAmount: Math.min(amountA, amountB),
+        savingAmount,
         subscriptionIds: [first.id, second.id],
-        priority: amountA > 10 && amountB > 10 ? "high" : "medium",
+        priority: (comparableA ?? 0) > 10 && (comparableB ?? 0) > 10 ? "high" : "medium",
         actionLabel: "Compare",
         actionRoute: "/analytics"
       })];
@@ -199,11 +223,15 @@ export function detectTrialEnding(subscriptions: Subscription[]): Insight[] {
     .sort((a, b) => Date.parse(getSubscriptionTrialEnd(subscriptions, a.subscriptionId)) - Date.parse(getSubscriptionTrialEnd(subscriptions, b.subscriptionId)));
 }
 
-export function detectHighSpend(subscriptions: Subscription[]): Insight[] {
+export function detectHighSpend(subscriptions: Subscription[], fx?: FxContext): Insight[] {
   const spendByCategory = new Map<string, number>();
   for (const subscription of activeSubscriptions(subscriptions)) {
     const category = benchmarkCategory(subscription);
-    spendByCategory.set(category, (spendByCategory.get(category) ?? 0) + monthlyDollars(subscription));
+    const amount = monthlyDollarsIn(subscription, fx);
+    if (amount === null) {
+      continue; // excluded: no usable rate for this subscription's currency
+    }
+    spendByCategory.set(category, (spendByCategory.get(category) ?? 0) + amount);
   }
 
   return [...spendByCategory.entries()]
@@ -217,7 +245,7 @@ export function detectHighSpend(subscriptions: Subscription[]): Insight[] {
         id: `high-spend-${category}`,
         type: "high_spend",
         title: `High spend on ${labelCategory(category)}`,
-        message: `You spend ${formatMoney(spend)}/mo on ${labelCategory(category)} tools. Average is around ${formatMoney(benchmark)}/mo.`,
+        message: `You spend ${formatMoney(spend, fx?.homeCurrency)}/mo on ${labelCategory(category)} tools. Average is around ${formatMoney(benchmark, fx?.homeCurrency)}/mo.`,
         savingAmount: roundMoney(spend - benchmark),
         subscriptionIds: activeSubscriptions(subscriptions)
           .filter((subscription) => benchmarkCategory(subscription) === category)
@@ -231,11 +259,24 @@ export function detectHighSpend(subscriptions: Subscription[]): Insight[] {
     .slice(0, 2);
 }
 
-export function generateSpendSummary(subscriptions: Subscription[]): Insight {
+export function generateSpendSummary(subscriptions: Subscription[], fx?: FxContext): Insight {
   const active = activeSubscriptions(subscriptions);
-  const totalMonthly = active.reduce((sum, subscription) => sum + monthlyDollars(subscription), 0);
-  const mostExpensive = [...active].sort((a, b) => monthlyAmount(b) - monthlyAmount(a))[0];
-  const topCategory = getTopCategory(active);
+  let totalMonthly = 0;
+  let excludedCurrencyCount = 0;
+  for (const subscription of active) {
+    const amount = monthlyDollarsIn(subscription, fx);
+    if (amount === null) {
+      excludedCurrencyCount += 1;
+      continue;
+    }
+    totalMonthly += amount;
+  }
+  totalMonthly = roundMoney(totalMonthly);
+
+  const mostExpensive = [...active]
+    .filter((subscription) => monthlyDollarsIn(subscription, fx) !== null)
+    .sort((a, b) => (monthlyDollarsIn(b, fx) ?? 0) - (monthlyDollarsIn(a, fx) ?? 0))[0];
+  const topCategory = getTopCategory(active, fx);
   const renewingThisWeek = active.filter((subscription) => {
     if (!subscription.nextRenewalDate) {
       return false;
@@ -248,19 +289,26 @@ export function generateSpendSummary(subscriptions: Subscription[]): Insight {
     ? `${mostExpensive.name} is your biggest at ${formatMoney(monthlyDollars(mostExpensive), mostExpensive.price.currency)}/mo.`
     : "No active subscriptions yet.";
   const categoryText = topCategory ? `${labelCategory(topCategory.category)} leads your category spend. ` : "";
+  // Never silently folds excluded-currency subscriptions into the "across N
+  // subscriptions" count — surfaces them explicitly instead, in the spirit of
+  // coach.ts's createSpendSummary excludedCurrencyCount field (Insight has no
+  // dedicated numeric field for this, so it's appended to the free-text message).
+  const excludedText = excludedCurrencyCount > 0
+    ? ` (${excludedCurrencyCount} more excluded — no exchange rate available)`
+    : "";
 
   return createInsight({
     id: "spend-summary",
     type: "spend_summary",
     title: "Monthly overview",
-    message: `You pay ${formatMoney(totalMonthly)}/mo across ${active.length} subscriptions. ${topServiceText} ${categoryText}${renewingThisWeek} renewals this week.`,
+    message: `You pay ${formatMoney(totalMonthly, fx?.homeCurrency)}/mo across ${active.length - excludedCurrencyCount} subscriptions${excludedText}. ${topServiceText} ${categoryText}${renewingThisWeek} renewals this week.`,
     priority: "low",
     actionLabel: "See breakdown",
     actionRoute: "/analytics"
   });
 }
 
-export function detectCancellationReminders(subscriptions: Subscription[]): Insight[] {
+export function detectCancellationReminders(subscriptions: Subscription[], fx?: FxContext): Insight[] {
   return subscriptions
     .filter((subscription) => subscription.status === "cancelled" && subscription.nextRenewalDate && daysUntil(subscription.nextRenewalDate) >= 0)
     .sort((a, b) => Date.parse(a.nextRenewalDate ?? "") - Date.parse(b.nextRenewalDate ?? ""))
@@ -270,21 +318,21 @@ export function detectCancellationReminders(subscriptions: Subscription[]): Insi
       type: "cancellation_reminder",
       title: `${subscription.name} cancelled - active until ${formatDate(subscription.nextRenewalDate)}`,
       message: `Your access continues until ${formatDate(subscription.nextRenewalDate)}. After that you save ${formatMoney(monthlyDollars(subscription), subscription.price.currency)}/mo.`,
-      savingAmount: monthlyDollars(subscription),
+      savingAmount: monthlyDollarsIn(subscription, fx) ?? undefined,
       subscriptionId: subscription.id,
       priority: "low"
     }));
 }
 
-export function generateInsights(subscriptions: Subscription[]): Insight[] {
-  const summary = generateSpendSummary(subscriptions);
+export function generateInsights(subscriptions: Subscription[], fx?: FxContext): Insight[] {
+  const summary = generateSpendSummary(subscriptions, fx);
   const candidates = [
     ...detectTrialEnding(subscriptions),
-    ...detectUnused(subscriptions),
-    ...detectDuplicates(subscriptions),
+    ...detectUnused(subscriptions, fx),
+    ...detectDuplicates(subscriptions, fx),
     ...detectAnnualSavings(subscriptions),
-    ...detectHighSpend(subscriptions),
-    ...detectCancellationReminders(subscriptions)
+    ...detectHighSpend(subscriptions, fx),
+    ...detectCancellationReminders(subscriptions, fx)
   ].sort(compareInsights);
 
   const usedSubscriptionIds = new Set<string>();
@@ -308,6 +356,12 @@ export function generateInsights(subscriptions: Subscription[]): Insight[] {
   return deduped.slice(0, 8);
 }
 
+// Sums each insight's savingAmount as-is. Correctness depends entirely on the
+// caller having built `insights` via a single generateInsights(subscriptions, fx)
+// call with one consistent fx context — every savingAmount here is then
+// already expressed in fx.homeCurrency (or, if fx was omitted, in the legacy
+// mixed-native-currency approximation, unchanged from pre-fix behavior). This
+// function cannot itself verify that invariant — it has no per-insight currency.
 export function getTotalSavingOpportunity(insights: Insight[]): number {
   return roundMoney(insights.reduce((sum, insight) => sum + (insight.savingAmount ?? 0), 0));
 }
@@ -337,6 +391,23 @@ function monthlyDollars(subscription: Subscription): number {
   return roundMoney(monthlyAmount(subscription) / 100);
 }
 
+// Same recurring-cycle normalization as monthlyDollars, converted into
+// fx.homeCurrency when fx is supplied — mirrors packages/shared/src/spend/
+// coach.ts's monthlyAmountIn/convertMinor pattern and
+// apps/mobile/src/finance/budget.ts's computeBudgetForecast. Returns null
+// (never a fabricated number) when no usable rate exists for this
+// subscription's currency — callers must exclude it from any cross-subscription
+// sum/comparison, never treat null as 0. When fx is omitted, falls back
+// unchanged to the legacy monthlyDollars() value (native currency) for
+// backward compatibility.
+function monthlyDollarsIn(subscription: Subscription, fx: FxContext | undefined): number | null {
+  if (!fx) {
+    return monthlyDollars(subscription);
+  }
+  const minor = monthlyAmountIn(subscription, fx.homeCurrency, fx.rates);
+  return minor === null ? null : roundMoney(minor / 100);
+}
+
 function benchmarkCategory(subscription: Subscription): BenchmarkCategory {
   const service = findService(subscription);
   const category = service?.category ?? subscription.category;
@@ -355,11 +426,15 @@ function benchmarkCategory(subscription: Subscription): BenchmarkCategory {
   return "other";
 }
 
-function getTopCategory(subscriptions: Subscription[]): { category: string; spend: number } | null {
+function getTopCategory(subscriptions: Subscription[], fx?: FxContext): { category: string; spend: number } | null {
   const categorySpend = new Map<string, number>();
   for (const subscription of subscriptions) {
     const category = benchmarkCategory(subscription);
-    categorySpend.set(category, (categorySpend.get(category) ?? 0) + monthlyDollars(subscription));
+    const amount = monthlyDollarsIn(subscription, fx);
+    if (amount === null) {
+      continue;
+    }
+    categorySpend.set(category, (categorySpend.get(category) ?? 0) + amount);
   }
   const [category, spend] = [...categorySpend.entries()].sort((a, b) => b[1] - a[1])[0] ?? [];
   return category ? { category, spend } : null;
