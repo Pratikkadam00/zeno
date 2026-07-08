@@ -1,7 +1,50 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { applyWebhookEvent, clearEntitlementCache, getCachedEntitlement, planFromEntitlements } from "./billing";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { applyWebhookEvent, clearEntitlementCache, getCachedEntitlement, planFromEntitlements, verifyWebhookAuth } from "./billing";
 
 afterEach(() => clearEntitlementCache());
+
+describe("verifyWebhookAuth", () => {
+  const originalSecret = process.env.REVENUECAT_WEBHOOK_AUTH;
+
+  beforeEach(() => {
+    process.env.REVENUECAT_WEBHOOK_AUTH = "correct-shared-secret";
+  });
+
+  afterEach(() => {
+    if (originalSecret === undefined) delete process.env.REVENUECAT_WEBHOOK_AUTH;
+    else process.env.REVENUECAT_WEBHOOK_AUTH = originalSecret;
+  });
+
+  it("accepts the correct secret with a Bearer prefix", () => {
+    expect(verifyWebhookAuth("Bearer correct-shared-secret")).toBe(true);
+  });
+
+  it("accepts the correct secret with no Bearer prefix", () => {
+    expect(verifyWebhookAuth("correct-shared-secret")).toBe(true);
+  });
+
+  it("rejects a same-length but wrong secret (exercises the timingSafeEqual branch, not just the length short-circuit)", () => {
+    expect(verifyWebhookAuth("Bearer wrong-shared-secre1")).toBe(false);
+  });
+
+  it("rejects a shorter or longer secret without throwing", () => {
+    expect(verifyWebhookAuth("Bearer short")).toBe(false);
+    expect(verifyWebhookAuth("Bearer correct-shared-secret-with-extra-suffix")).toBe(false);
+  });
+
+  it("rejects a missing Authorization header", () => {
+    expect(verifyWebhookAuth(undefined)).toBe(false);
+  });
+
+  it("rejects an empty Authorization header", () => {
+    expect(verifyWebhookAuth("")).toBe(false);
+  });
+
+  it("fails closed when REVENUECAT_WEBHOOK_AUTH is not configured, even given a matching-looking header", () => {
+    delete process.env.REVENUECAT_WEBHOOK_AUTH;
+    expect(verifyWebhookAuth("Bearer correct-shared-secret")).toBe(false);
+  });
+});
 
 describe("entitlement cache expiry", () => {
   it("does not serve an active grant past its own expiresAt (missed downgrade webhook)", () => {

@@ -12,7 +12,15 @@ import { dirname } from "node:path";
 //      Set WAITLIST_WEBHOOK_URL in production.
 //
 // Client contract: POST { email } → 200 { ok: true } on success, else 4xx/502.
-const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+// Same pattern the WHATWG HTML living standard requires from <input type=email>
+// — deliberately not a full RFC 5322 grammar (no quoted-string local parts, no
+// bare/comment forms), which also keeps it free of nested-quantifier ReDoS risk.
+const EMAIL_RE = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+const MAX_EMAIL_LENGTH = 254;
+// Cheap defense-in-depth against an oversized body: Content-Length is client-
+// supplied and can be omitted/wrong, so this isn't a hard guarantee, but it
+// short-circuits the obvious case before any parsing/buffering happens.
+const MAX_BODY_BYTES = 2_048;
 
 // Best-effort in-memory rate limit (per IP). Resets on cold start; a production
 // deployment should also have a platform/WAF limiter in front.
@@ -29,6 +37,33 @@ function rateLimited(ip: string): boolean {
   }
   entry.count += 1;
   return entry.count > MAX_PER_WINDOW;
+}
+
+// How many reverse-proxy hops to trust for client-IP resolution, mirroring
+// apps/api/src/app.ts's resolveTrustProxy(). A standard reverse proxy (Vercel
+// included) APPENDS the peer address it actually observed as the LAST entry in
+// X-Forwarded-For — everything before that is whatever the client declared,
+// and is not trustworthy for rate-limit keying. Taking the FIRST entry (the
+// prior bug here) lets a client rotate its own limiter bucket on every request
+// by sending a fresh made-up leftmost value.
+function trustedHopCount(): number {
+  const raw = process.env.TRUST_PROXY_HOPS;
+  if (raw !== undefined) {
+    const hops = Number.parseInt(raw, 10);
+    if (Number.isInteger(hops) && hops >= 0) return hops;
+  }
+  return 1;
+}
+
+function resolveClientIp(request: Request): string {
+  const header = request.headers.get("x-forwarded-for");
+  if (!header) return "unknown";
+  const hops = trustedHopCount();
+  if (hops <= 0) return "unknown";
+  const parts = header.split(",").map((part) => part.trim()).filter(Boolean);
+  if (parts.length === 0) return "unknown";
+  const index = parts.length - hops;
+  return (index >= 0 ? parts[index] : parts[0]) ?? "unknown";
 }
 
 function maskEmail(email: string): string {
@@ -70,9 +105,14 @@ async function persist(email: string): Promise<void> {
 }
 
 export async function POST(request: Request) {
-  const ip = (request.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() || "unknown";
+  const ip = resolveClientIp(request);
   if (rateLimited(ip)) {
     return NextResponse.json({ ok: false, error: "Too many requests. Try again in a minute." }, { status: 429 });
+  }
+
+  const contentLength = Number.parseInt(request.headers.get("content-length") ?? "", 10);
+  if (Number.isInteger(contentLength) && contentLength > MAX_BODY_BYTES) {
+    return NextResponse.json({ ok: false, error: "Request body too large." }, { status: 413 });
   }
 
   let body: unknown;
@@ -82,10 +122,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Invalid request body." }, { status: 400 });
   }
 
-  const email = typeof body === "object" && body && "email" in body
-    ? String((body as { email: unknown }).email).trim().toLowerCase()
-    : "";
-  if (!EMAIL_RE.test(email) || email.length > 254) {
+  const rawEmail = typeof body === "object" && body !== null && "email" in body
+    ? (body as { email: unknown }).email
+    : undefined;
+  // Reject non-string values outright — coercing an array/object via String()
+  // (e.g. Array.prototype.toString joining ["a@b.com", "extra"] into
+  // "a@b.com,extra") could smuggle extra text past validation.
+  if (typeof rawEmail !== "string") {
+    return NextResponse.json({ ok: false, error: "Please provide a valid email." }, { status: 422 });
+  }
+  const email = rawEmail.trim().toLowerCase();
+  if (email.length === 0 || email.length > MAX_EMAIL_LENGTH || !EMAIL_RE.test(email)) {
     return NextResponse.json({ ok: false, error: "Please provide a valid email." }, { status: 422 });
   }
 

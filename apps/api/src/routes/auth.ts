@@ -1,9 +1,9 @@
 import { fail, ok } from "@zeno/shared";
-import type { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync, FastifyReply } from "fastify";
 import { createHash, createPublicKey, createSign, createVerify, generateKeyPairSync, randomBytes, randomInt, randomUUID, timingSafeEqual, type JsonWebKey } from "node:crypto";
 import { z, ZodError } from "zod";
 import { fetchWithTimeout } from "../http";
-import { kvDelete, kvPersistAwait, registerHydrator, type StoredEntry } from "../storage/pg";
+import { kvDelete, kvDeleteAwait, kvPersistAwait, registerHydrator, type StoredEntry } from "../storage/pg";
 
 const accessTokenTtlSeconds = 15 * 60;
 const magicLinkTtlSeconds = 10 * 60;
@@ -173,6 +173,11 @@ export function sweepExpiredAuth(): void {
       kvDelete("auth_refresh", hash);
     }
   }
+  for (const [email, entry] of magicLinkEmailHits) {
+    if (entry.reset <= now) {
+      magicLinkEmailHits.delete(email);
+    }
+  }
 }
 
 // Account deletion: revoke every session/magic-link record tied to this account
@@ -184,31 +189,56 @@ export function sweepExpiredAuth(): void {
 // token — those are stateless RS256 JWTs verified by signature only, with no
 // revocation list; that tail is an existing property of the access-token design,
 // not something this function changes.
-export function revokeAllSessionsForAccount(accountId: string): void {
+export async function revokeAllSessionsForAccount(accountId: string): Promise<void> {
+  const deletes: Promise<void>[] = [];
   for (const [hash, record] of magicLinksByHash) {
     if (record.accountId === accountId) {
       magicLinksByHash.delete(hash);
-      kvDelete("auth_magic", hash);
+      deletes.push(kvDeleteAwait("auth_magic", hash));
     }
   }
   for (const [email, record] of legacyCodesByEmail) {
     if (record.accountId === accountId) {
       legacyCodesByEmail.delete(email);
-      kvDelete("auth_legacy", email);
+      deletes.push(kvDeleteAwait("auth_legacy", email));
     }
   }
   for (const [hash, record] of refreshSessionsByHash) {
     if (record.accountId === accountId) {
       refreshSessionsByHash.delete(hash);
-      kvDelete("auth_refresh", hash);
+      // Awaited: this is the account-deletion path — a crash before this lands
+      // would let a "revoked" refresh token get replayed back into memory on
+      // the next restart, within its remaining 30-day TTL.
+      deletes.push(kvDeleteAwait("auth_refresh", hash));
     }
   }
+  await Promise.all(deletes);
 }
 
 // Auth endpoints get much stricter limits than the global bucket: magic-link
 // codes are 6 digits, so verification attempts must be expensive to repeat.
 const requestLimit = { config: { rateLimit: { max: 5, timeWindow: "1 minute" } } };
 const verifyLimit = { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } };
+
+// The per-IP requestLimit above stops one IP from spamming many addresses, but
+// not the inverse: an attacker rotating source IPs to email-bomb ONE victim's
+// inbox sails right through it, since each new IP gets its own bucket. This
+// caps sends to the same RECIPIENT regardless of source IP. Swept alongside
+// the other auth maps in sweepExpiredAuth() so it can't grow unbounded.
+const MAGIC_LINK_EMAIL_WINDOW_MS = 15 * 60 * 1000;
+const MAGIC_LINK_EMAIL_MAX = 5;
+const magicLinkEmailHits = new Map<string, { count: number; reset: number }>();
+
+function magicLinkEmailRateLimited(email: string): boolean {
+  const now = Date.now();
+  const entry = magicLinkEmailHits.get(email);
+  if (!entry || now > entry.reset) {
+    magicLinkEmailHits.set(email, { count: 1, reset: now + MAGIC_LINK_EMAIL_WINDOW_MS });
+    return false;
+  }
+  entry.count += 1;
+  return entry.count > MAGIC_LINK_EMAIL_MAX;
+}
 
 export const authRoutes: FastifyPluginAsync = async (app) => {
   app.post("/auth/magic-link", requestLimit, async (request, reply) => {
@@ -218,7 +248,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       return parsed.error;
     }
 
-    return requestMagicLink(parsed.data.email, request.id);
+    return requestMagicLink(parsed.data.email, request.id, reply);
   });
 
   app.get("/auth/verify", verifyLimit, async (request, reply) => {
@@ -329,7 +359,10 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     if (parsed.success && parsed.data.refreshToken) {
       const hash = hashToken(parsed.data.refreshToken);
       refreshSessionsByHash.delete(hash);
-      kvDelete("auth_refresh", hash);
+      // Awaited: a crash between the in-memory delete and this landing could
+      // let the "logged out" refresh token get replayed back into memory on
+      // the next restart, within its remaining 30-day TTL.
+      await kvDeleteAwait("auth_refresh", hash);
     }
 
     return ok({ loggedOut: true }, request.id);
@@ -342,7 +375,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       return parsed.error;
     }
 
-    return requestMagicLink(parsed.data.email, request.id);
+    return requestMagicLink(parsed.data.email, request.id, reply);
   });
 
   app.post("/auth/magic-link/verify", verifyLimit, async (request, reply) => {
@@ -362,8 +395,12 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
   });
 };
 
-async function requestMagicLink(emailInput: string, requestId: string) {
+async function requestMagicLink(emailInput: string, requestId: string, reply: FastifyReply) {
   const email = normalizeEmail(emailInput);
+  if (magicLinkEmailRateLimited(email)) {
+    reply.code(429);
+    return fail("RATE_LIMITED", "Too many magic links requested for this address. Try again later.", requestId);
+  }
   const token = randomToken();
   const code = randomNumericCode();
   const record: MagicLinkRecord = {

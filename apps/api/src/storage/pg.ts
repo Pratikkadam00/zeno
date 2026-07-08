@@ -85,12 +85,25 @@ export function kvPersist(namespace: string, key: string, value: unknown): void 
   void kvPersistAwait(namespace, key, value);
 }
 
-/** Remove a single key. Fire-and-forget. */
-export function kvDelete(namespace: string, key: string): void {
+/** Remove a single key, awaiting until the row is gone (or the attempt failed —
+ *  errors are logged, never thrown). Use this wherever revocation must be
+ *  durable before the caller acks success (refresh-token logout/deletion) —
+ *  otherwise a crash between the in-memory delete and this write landing could
+ *  let a "revoked" token get replayed back into memory on the next restart. */
+export async function kvDeleteAwait(namespace: string, key: string): Promise<void> {
   const p = getPool();
   if (!p) return;
-  p.query("DELETE FROM kv_store WHERE namespace = $1 AND key = $2", [namespace, key])
-    .catch((err) => console.error(`[pg] delete ${namespace}/${key} failed:`, err.message));
+  try {
+    await p.query("DELETE FROM kv_store WHERE namespace = $1 AND key = $2", [namespace, key]);
+  } catch (err) {
+    console.error(`[pg] delete ${namespace}/${key} failed:`, (err as Error).message);
+  }
+}
+
+/** Remove a single key. Fire-and-forget — use kvDeleteAwait where the caller
+ *  must not ack success before the delete is durable. */
+export function kvDelete(namespace: string, key: string): void {
+  void kvDeleteAwait(namespace, key);
 }
 
 /** Drop an entire namespace (used by the test/maintenance clear* helpers). */

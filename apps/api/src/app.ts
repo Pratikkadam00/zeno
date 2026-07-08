@@ -28,6 +28,24 @@ const MAX_SERVICES_LIMIT = 100;
 // that are expensive (call paid upstreams like Groq/Plaid) or abuse-prone.
 const limit = (max: number) => ({ config: { rateLimit: { max, timeWindow: "1 minute" } } });
 
+// Keyed by account instead of IP: an IP-keyed limit lets one attacker with one
+// valid token evade it entirely by rotating source IPs, which matters here
+// because every request calls a paid LLM upstream. Uses the "preHandler" hook
+// (not the plugin's default "onRequest") so this runs after the auth guard's
+// onRequest hook has set request.userId — coach is never a public route, so by
+// the time preHandler runs, userId is always populated or the request already
+// 401'd and never reached here.
+const limitByAccount = (max: number) => ({
+  config: {
+    rateLimit: {
+      max,
+      timeWindow: "1 minute",
+      hook: "preHandler" as const,
+      keyGenerator: (req: FastifyRequest) => req.userId ?? req.ip
+    }
+  }
+});
+
 // How many proxy hops to trust for client-IP resolution (rate-limit keying).
 // A number is safe (trusts exactly N upstream hops); `true` would trust any
 // X-Forwarded-For and is intentionally avoided.
@@ -118,7 +136,7 @@ const productEventSchema = z.object({
 });
 const coachRequestSchema = z.object({
   totalMonthlyMinor: z.number().int().min(0),
-  currency: z.string().length(3).optional(),
+  currency: currencyCodeSchema.optional(),
   subscriptions: z.array(z.object({
     name: z.string().min(1).max(80),
     category: z.string().min(1).max(40),
@@ -140,7 +158,6 @@ const revenueCatWebhookSchema = z.object({
     expiration_at_ms: z.number().int().nonnegative().optional()
   }).passthrough()
 }).passthrough();
-const plaidLinkTokenSchema = z.object({ userId: z.string().min(1).max(128).optional() });
 const plaidExchangeSchema = z.object({ publicToken: z.string().min(1) });
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
@@ -309,7 +326,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     deletePlaidItem(userId);
     deleteUserSyncData(userId);
     removeUserFromAllHouseholds(userId);
-    revokeAllSessionsForAccount(userId);
+    await revokeAllSessionsForAccount(userId);
     return ok({ deleted: true }, request.id);
   });
 
@@ -507,7 +524,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 
   // ── AI spend coach. Live when ANTHROPIC_API_KEY is set; otherwise reports
   //    "unconfigured" so the client falls back to local rule-based insights. ──
-  app.post("/api/v1/coach", limit(10), async (request, reply) => {
+  app.post("/api/v1/coach", limitByAccount(10), async (request, reply) => {
     const parsed = parseBody(coachRequestSchema, request.body, request.id);
     if (!parsed.ok) {
       reply.code(400);
@@ -569,13 +586,10 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       reply.code(503);
       return fail("SERVICE_UNAVAILABLE", "Bank connect is not configured on this server.", request.id);
     }
-    const parsed = parseBody(plaidLinkTokenSchema, request.body ?? {}, request.id);
-    if (!parsed.ok) {
-      reply.code(400);
-      return parsed.error;
-    }
     try {
-      return ok(await createLinkToken(parsed.data.userId ?? "zeno-sandbox-user"), request.id);
+      // Identity comes from the verified token, NOT the body — matches every
+      // other identity-bearing route in this file (see /plaid/exchange below).
+      return ok(await createLinkToken(request.userId!), request.id);
     } catch (error) {
       reply.code(502);
       return fail("UPSTREAM_ERROR", error instanceof Error ? error.message : "Plaid request failed.", request.id);

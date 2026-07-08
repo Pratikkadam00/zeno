@@ -16,6 +16,23 @@ function getSentryDsn(): string | null {
   return process.env.EXPO_PUBLIC_SENTRY_DSN ?? extra?.sentryDsn ?? null;
 }
 
+// Magic-link verification (authStore.ts) and Gmail OAuth revocation
+// (emailScanner.ts) both call fetch() with a one-time token in the URL's
+// query string. Sentry's default fetch/xhr breadcrumb instrumentation records
+// the full request URL independent of tracesSampleRate (that setting only
+// gates performance-tracing spans, not breadcrumbs) — without this, the token
+// would ride along into every error report's breadcrumb trail the instant a
+// DSN is configured. Strip the query string from fetch/xhr breadcrumbs only;
+// everything else (method, status, timing) is left intact.
+export function scrubBreadcrumb(breadcrumb: Sentry.Breadcrumb): Sentry.Breadcrumb | null {
+  const url = breadcrumb.data?.url;
+  const isHttpBreadcrumb = breadcrumb.category === "fetch" || breadcrumb.category === "xhr";
+  if (isHttpBreadcrumb && typeof url === "string" && url.includes("?")) {
+    return { ...breadcrumb, data: { ...breadcrumb.data, url: url.split("?")[0] } };
+  }
+  return breadcrumb;
+}
+
 // Call once at app startup (see app/_layout.tsx). Safe to call multiple times.
 export function initErrorReporting(): void {
   if (initialized) {
@@ -28,7 +45,7 @@ export function initErrorReporting(): void {
   // tracesSampleRate: 0 — error capture only, no performance tracing. Adding
   // trace sampling is a separate, deliberate decision (more data collected),
   // not something to default on silently.
-  Sentry.init({ dsn, tracesSampleRate: 0 });
+  Sentry.init({ dsn, tracesSampleRate: 0, beforeBreadcrumb: scrubBreadcrumb });
   initialized = true;
 }
 

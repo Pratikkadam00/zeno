@@ -764,6 +764,35 @@ describe("api app", () => {
     expect(response.statusCode).toBe(400);
   });
 
+  it("rate-limits the AI coach by ACCOUNT, not source IP — rotating IPs must not evade it", async () => {
+    const app = await buildApp();
+    const { token } = await tokenFor(app, "coach-rl@zeno.test");
+    const coachPayload = {
+      totalMonthlyMinor: 4599,
+      subscriptions: [{ name: "Netflix", category: "entertainment", monthlyMinor: 1549, billingCycle: "monthly" }]
+    };
+
+    // Same account, a DIFFERENT source IP on every single request.
+    for (let i = 0; i < 10; i += 1) {
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/coach",
+        headers: authH(token),
+        remoteAddress: `10.1.1.${i}`,
+        payload: coachPayload
+      });
+      expect(response.statusCode).toBe(200);
+    }
+    const overflow = await app.inject({
+      method: "POST",
+      url: "/api/v1/coach",
+      headers: authH(token),
+      remoteAddress: "10.1.1.99",
+      payload: coachPayload
+    });
+    expect(overflow.statusCode).toBe(429);
+  });
+
   it("sets security headers on responses (helmet)", async () => {
     const app = await buildApp();
     const response = await app.inject({ method: "GET", url: "/api/v1/health" });

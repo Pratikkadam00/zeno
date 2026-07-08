@@ -215,3 +215,55 @@ restarts the server, and loses nothing.
 This plan + the `Zeno Design System/` folder are the durable references. A memory entry points
 here so future sessions reuse the same design. When in doubt, open `Zeno UX Architecture.html`
 and the matching `ui_kits/app/*.jsx` screen before writing any UI.
+
+---
+
+## Security audit (2026-07-08) — findings and fixes
+
+A full-monorepo audit (5 parallel agents: rate limiting, API input validation, auth/tokens/webhooks,
+mobile security surfaces, web security + test-coverage inventory) surfaced several real, confirmed
+issues. All were fixed and covered with real Vitest regression tests (this repo has no Jest anywhere
+— Vitest is the one and only test runner).
+
+**Fixed:**
+- **CSV/formula injection** in Settings → Export: a merchant name from a bank-statement CSV or
+  billing email (e.g. `=HYPERLINK(...)`) survived discovery parsing verbatim into the CSV export,
+  which spreadsheet apps would evaluate as a live formula. Extracted a `csvSafeCell()` guard
+  (`apps/mobile/src/utils/csv-export.ts`) that prefixes formula-trigger characters with `'`.
+- **Waitlist rate-limit bypass**: the web waitlist route keyed its limiter off the client-controlled
+  *first* `X-Forwarded-For` hop — trivially spoofable. Fixed to trust a bounded hop count from the
+  *right* (mirroring the API's own `resolveTrustProxy()`), plus tightened the email regex (WHATWG
+  pattern), fixed length-check ordering, rejected non-string email values (array-coercion
+  smuggling), and added a Content-Length guard.
+- **Plaid link-token identity**: took `userId` from the request body instead of the verified token
+  subject, breaking the file's own stated invariant. Now uses `request.userId!` like every sibling route.
+- **Coach currency validation**: loosely typed (`z.string().length(3)`) instead of the shared
+  `currencyCodeSchema` enum used everywhere else.
+- **Refresh-token revocation race**: logout and account-deletion fire-and-forgot the Postgres
+  delete of a revoked refresh token — a crash in that window could let it survive a restart and be
+  replayed. Added `kvDeleteAwait` and awaited it on both paths.
+- **IP-only rate limiting on cost/abuse-bearing routes**: `/api/v1/coach` (paid LLM calls) is now
+  keyed by account, not IP, so one attacker can't evade the cap by rotating source IPs. Magic-link
+  sends now ALSO cap by recipient email (on top of the existing per-IP cap), closing an
+  email-bombing gap where an attacker rotating IPs could spam one victim's inbox.
+- **Sentry breadcrumb token leakage**: magic-link verify and Gmail OAuth revoke both call `fetch()`
+  with a one-time token in the URL query string; Sentry's default breadcrumb instrumentation would
+  have captured the full URL the moment a DSN is configured. Added a `beforeBreadcrumb` scrubber.
+- **Test-coverage gaps** closed with real negative-path tests: `verifyAccessToken` had zero
+  coverage for an invalid-but-present token (only "no token" was tested) — added tamper/expiry/
+  alg-confusion tests; `verifyWebhookAuth` had no direct unit test; `secure-store.ts`'s web
+  sensitive-vs-localStorage split (the one thing standing between a PIN hash/DB key/Gmail token and
+  `localStorage`) had zero coverage.
+
+**Investigated and found NOT to be a real issue** (the audit's own severity claim didn't survive
+verification — see the lesson recorded above about testing claims empirically, not trusting them):
+the mobile audit flagged a "critical" PIN-lock bypass via "Sign out instead" → "Continue without an
+account." Tracing the actual code (and proving it with a real test,
+`apps/mobile/src/security/lock-store.test.ts`) showed `hasPin()` reads from a secure-store key
+logout never touches, so `hydrateLock()` reliably re-engages the lock the moment the app becomes
+usable again — there is no bypass. Kept the regression test since it guards a real security
+property, but did not "fix" a non-existent bug.
+
+**Deliberately not changed:** the mobile PIN KDF (1000-round iterated SHA-256 instead of a vetted
+PBKDF2/Argon2/scrypt) — real but lower-severity, and swapping it needs a migration path for
+existing installed PINs; left as a known, documented tradeoff rather than a rushed change.

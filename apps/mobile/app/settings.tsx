@@ -8,6 +8,7 @@ import { useLockStore } from "../src/security/lock-store";
 import { spacing } from "../src/theme/spacing";
 import { type as typography } from "../src/theme/typography";
 import { fonts, palette } from "../src/theme/zeno";
+import { csvSafeCell } from "../src/utils/csv-export";
 import { currencySymbol } from "../src/utils/format";
 import { router } from "expo-router";
 import {
@@ -114,7 +115,7 @@ export default function SettingsScreen() {
     const header = "name,amount,currency,billingCycle,nextRenewalDate,status,category";
     const rows = subscriptions.map((s) =>
       [
-        `"${s.name.replace(/"/g, '""')}"`,
+        csvSafeCell(s.name),
         (s.price.amountMinor / 100).toFixed(2),
         s.price.currency,
         s.billingCycle,
