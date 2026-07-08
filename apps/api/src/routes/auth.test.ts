@@ -175,6 +175,105 @@ describe("magic-link send — per-recipient rate limit", () => {
   });
 });
 
+// A wrong guess against consumeLegacyCode used to delete the record on the
+// FIRST mismatch — reachable unauthenticated by anyone who knows only the
+// victim's email (not their code), letting them destroy a legitimate pending
+// login with zero knowledge. Fixed with a bounded wrong-attempt counter.
+describe("magic-link code verification — wrong-guess denial-of-service guard", () => {
+  function otherCode(realCode: string): string {
+    return realCode === "000000" ? "111111" : "000000";
+  }
+
+  it("a single wrong guess from someone who doesn't know the code does not destroy the victim's real, still-valid code", async () => {
+    const app = await buildApp();
+    const email = "code-dos-victim@example.com";
+    const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email } });
+    const realCode = requested.json().data.devCode as string;
+    expect(realCode).toBeDefined();
+
+    const attackerGuess = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/magic-link/verify",
+      payload: { email, code: otherCode(realCode) }
+    });
+    expect(attackerGuess.statusCode).toBe(401);
+
+    const victimVerify = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/magic-link/verify",
+      payload: { email, code: realCode }
+    });
+    expect(victimVerify.statusCode).toBe(200);
+  });
+
+  it("still invalidates the code after enough consecutive wrong guesses (bounded, not unlimited)", async () => {
+    const app = await buildApp();
+    const email = "code-bruteforce-cap@example.com";
+    const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email } });
+    const realCode = requested.json().data.devCode as string;
+    const wrongCode = otherCode(realCode);
+
+    for (let i = 0; i < 5; i += 1) {
+      const attempt = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/magic-link/verify",
+        payload: { email, code: wrongCode }
+      });
+      expect(attempt.statusCode).toBe(401);
+    }
+
+    // The cap is reached — even the real code no longer works, since the
+    // record itself is gone. This preserves the original anti-bruteforce
+    // property (a 6-digit code can't be guessed indefinitely).
+    const tooLate = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/magic-link/verify",
+      payload: { email, code: realCode }
+    });
+    expect(tooLate.statusCode).toBe(401);
+  });
+
+  it("consumes the code on a correct guess so it cannot be replayed", async () => {
+    const app = await buildApp();
+    const email = "code-single-use@example.com";
+    const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email } });
+    const realCode = requested.json().data.devCode as string;
+
+    const first = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/magic-link/verify",
+      payload: { email, code: realCode }
+    });
+    expect(first.statusCode).toBe(200);
+
+    const replay = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/magic-link/verify",
+      payload: { email, code: realCode }
+    });
+    expect(replay.statusCode).toBe(401);
+  });
+
+  it("the SAME fix applies via the GET /auth/verify?email=&code= path", async () => {
+    const app = await buildApp();
+    const email = "code-dos-victim-get-path@example.com";
+    const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email } });
+    const realCode = requested.json().data.devCode as string;
+
+    const attackerGuess = await app.inject({
+      method: "GET",
+      url: `/api/v1/auth/verify?email=${encodeURIComponent(email)}&code=${otherCode(realCode)}`
+    });
+    expect(attackerGuess.statusCode).toBe(401);
+
+    const victimVerify = await app.inject({
+      method: "GET",
+      url: `/api/v1/auth/verify?email=${encodeURIComponent(email)}&code=${realCode}`
+    });
+    expect(victimVerify.statusCode).toBe(200);
+  });
+});
+
 // Pulls the server's real RSA public key out of its JWKS-style exposure if
 // one exists; otherwise derives it isn't needed — HMAC-confusion only needs
 // SOME string an attacker could plausibly guess is reused as a secret, and the

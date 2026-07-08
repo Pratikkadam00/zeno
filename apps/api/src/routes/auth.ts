@@ -3,7 +3,7 @@ import type { FastifyPluginAsync, FastifyReply } from "fastify";
 import { createHash, createPublicKey, createSign, createVerify, generateKeyPairSync, randomBytes, randomInt, randomUUID, timingSafeEqual, type JsonWebKey } from "node:crypto";
 import { z, ZodError } from "zod";
 import { fetchWithTimeout } from "../http";
-import { kvDelete, kvDeleteAwait, kvPersistAwait, registerHydrator, type StoredEntry } from "../storage/pg";
+import { kvDelete, kvDeleteAwait, kvPersist, kvPersistAwait, registerHydrator, type StoredEntry } from "../storage/pg";
 
 const accessTokenTtlSeconds = 15 * 60;
 const magicLinkTtlSeconds = 10 * 60;
@@ -64,6 +64,9 @@ type MagicLinkRecord = {
   tokenHash: string;
   code: string;
   expiresAt: number;
+  // Optional so a record persisted before this field existed still hydrates
+  // safely (treated as 0 wrong attempts so far).
+  wrongAttempts?: number;
 };
 
 type RefreshRecord = {
@@ -408,7 +411,8 @@ async function requestMagicLink(emailInput: string, requestId: string, reply: Fa
     email,
     tokenHash: hashToken(token),
     code,
-    expiresAt: Date.now() + magicLinkTtlSeconds * 1000
+    expiresAt: Date.now() + magicLinkTtlSeconds * 1000,
+    wrongAttempts: 0
   };
 
   magicLinksByHash.set(record.tokenHash, record);
@@ -473,15 +477,39 @@ function consumeMagicToken(token: string): MagicLinkRecord | null {
   return record;
 }
 
+// Bounds brute-force guessing of the 6-digit code (1-in-a-million odds per
+// guess) without letting a single wrong guess destroy the record outright —
+// see the mismatch branch below for why that distinction matters.
+const maxLegacyCodeAttempts = 5;
+
 function consumeLegacyCode(email: string, code: string): MagicLinkRecord | null {
   const normalized = normalizeEmail(email);
   const record = legacyCodesByEmail.get(normalized);
-  // Constant-time code comparison (consistent with the demo-password check) so a
-  // 6-digit code can't be narrowed by timing. (Delete-on-mismatch below already
-  // limits this to one guess per code, but keep the compare uniform.)
-  if (!record || !constantTimeEqual(code, record.code) || record.expiresAt <= Date.now()) {
+
+  if (!record || record.expiresAt <= Date.now()) {
     legacyCodesByEmail.delete(normalized);
     kvDelete("auth_legacy", normalized);
+    return null;
+  }
+
+  // Constant-time code comparison (consistent with the demo-password check) so
+  // a 6-digit code can't be narrowed by timing.
+  if (!constantTimeEqual(code, record.code)) {
+    // Cap wrong guesses instead of invalidating on the very first mismatch:
+    // this route is unauthenticated and keyed only by EMAIL, so a caller who
+    // knows nothing but a victim's address (not their code) could otherwise
+    // send one deliberately-wrong guess and destroy the victim's real,
+    // still-valid pending code — a zero-knowledge denial-of-service with no
+    // rate limiting protecting it (verifyLimit is IP-keyed, not email-keyed).
+    // A 5-guess cap still keeps brute force negligible (5-in-a-million).
+    const wrongAttempts = (record.wrongAttempts ?? 0) + 1;
+    if (wrongAttempts >= maxLegacyCodeAttempts) {
+      legacyCodesByEmail.delete(normalized);
+      kvDelete("auth_legacy", normalized);
+      return null;
+    }
+    record.wrongAttempts = wrongAttempts;
+    kvPersist("auth_legacy", normalized, record);
     return null;
   }
 
