@@ -653,6 +653,63 @@ describe("api app", () => {
     expect(afterDisband.statusCode).toBe(404);
   });
 
+  // Regression test for a real broken-access-control bug: removeMember() used
+  // to leave `ownerId` pointing at the departed owner when other members
+  // remained, and isHouseholdMember() treats ownerId===userId as sufficient
+  // authorization on its own — so a departed owner kept indefinite read/write
+  // access to a household they explicitly left. Fixed by reassigning
+  // ownership to a remaining member on the owner's departure.
+  it("an owner who leaves a household with other members remaining loses all further access to it", async () => {
+    const app = await buildApp();
+    const owner = await tokenFor(app, "owner-departs@zeno.test");
+    const create = await app.inject({
+      method: "POST",
+      url: "/api/v1/family/create",
+      headers: authH(owner.token),
+      payload: { ownerName: "Owner" }
+    });
+    const household = create.json().data.household;
+    const householdId = household.id as string;
+
+    const member = await tokenFor(app, "member-stays@zeno.test");
+    await app.inject({
+      method: "POST",
+      url: "/api/v1/family/join",
+      headers: authH(member.token),
+      payload: { shareCode: household.shareCode, memberName: "Member" }
+    });
+
+    const ownerLeaves = await app.inject({
+      method: "POST",
+      url: `/api/v1/family/${householdId}/leave`,
+      headers: authH(owner.token)
+    });
+    expect(ownerLeaves.statusCode).toBe(200);
+    // Ownership transferred to the remaining member, not left dangling.
+    expect(ownerLeaves.json().data.household.ownerId).toBe(member.accountId);
+
+    // The departed owner can no longer read the household...
+    const readAfterLeaving = await app.inject({ method: "GET", url: `/api/v1/family/${householdId}`, headers: authH(owner.token) });
+    expect(readAfterLeaving.statusCode).toBe(403);
+
+    // ...nor post a spend update...
+    const spendAfterLeaving = await app.inject({
+      method: "POST",
+      url: `/api/v1/family/${householdId}/spend`,
+      headers: authH(owner.token),
+      payload: { monthlySpendMinor: 1234 }
+    });
+    expect(spendAfterLeaving.statusCode).toBe(403);
+
+    // ...nor call leave again to re-observe the household's current state.
+    const leaveAgain = await app.inject({ method: "POST", url: `/api/v1/family/${householdId}/leave`, headers: authH(owner.token) });
+    expect(leaveAgain.statusCode).toBe(403);
+
+    // The remaining member's access is unaffected.
+    const memberStillReads = await app.inject({ method: "GET", url: `/api/v1/family/${householdId}`, headers: authH(member.token) });
+    expect(memberStillReads.statusCode).toBe(200);
+  });
+
   it("caps households per owner (409 past the limit)", async () => {
     const app = await buildApp();
     const owner = await tokenFor(app, "hh-cap@zeno.test");
