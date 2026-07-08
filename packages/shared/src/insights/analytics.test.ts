@@ -28,6 +28,51 @@ describe("analytics snapshot", () => {
     expect(snapshot.cancellationOpportunityMinor).toBe(5499);
   });
 
+  it("averages only over subscriptions actually convertible — excluded-currency ones don't dilute the average", () => {
+    const subscriptions: Subscription[] = [
+      {
+        id: "sub_usd",
+        createdAt: "2026-05-24T00:00:00.000Z",
+        updatedAt: "2026-05-24T00:00:00.000Z",
+        version: 1,
+        name: "Adobe",
+        category: "productivity",
+        price: { amountMinor: 4150, currency: "USD" },
+        billingCycle: "monthly",
+        status: "active",
+        ownerProfileId: "profile_local",
+        source: "manual"
+      },
+      {
+        id: "sub_no_rate",
+        createdAt: "2026-05-24T00:00:00.000Z",
+        updatedAt: "2026-05-24T00:00:00.000Z",
+        version: 1,
+        name: "SomeTool",
+        category: "productivity",
+        // No rate for JPY in the fx table below, so this is excluded from the
+        // sum via excludedCurrencyCount — it must also be excluded from the
+        // average's denominator.
+        price: { amountMinor: 500000, currency: "JPY" },
+        billingCycle: "monthly",
+        status: "active",
+        ownerProfileId: "profile_local",
+        source: "manual"
+      }
+    ];
+
+    const snapshot = createAnalyticsSnapshot(subscriptions, new Date("2026-05-24T00:00:00.000Z"), {
+      homeCurrency: "USD",
+      rates: { USD: 1 } // no JPY entry
+    });
+
+    expect(snapshot.excludedCurrencyCount).toBe(1);
+    expect(snapshot.monthlySpendMinor).toBe(4150);
+    // The true average over the ONE included subscription is 4150, not 2075
+    // (which is what dividing by both active subscriptions would produce).
+    expect(snapshot.averageMonthlySubscriptionMinor).toBe(4150);
+  });
+
   it("excludes trial and unknown cycles from monthly and annualized spend", () => {
     const subscriptions: Subscription[] = [
       {

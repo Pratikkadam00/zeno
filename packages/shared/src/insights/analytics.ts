@@ -47,11 +47,17 @@ export function createAnalyticsSnapshot(subscriptions: Subscription[], now = new
       return amount === null ? sum : sum + amount;
     }, 0);
 
+  // Average over only the subscriptions actually folded into monthlySpendMinor
+  // — subscriptions excluded for a missing exchange rate (excludedCurrencyCount)
+  // contribute nothing to the sum, so including them in the denominator too
+  // would silently understate the average (e.g. 1 included subscription out
+  // of 2 active would report half its real monthly cost as "the average").
+  const includedCount = active.length - excludedCurrencyCount;
   const snapshot: AnalyticsSnapshot = {
     monthlySpendMinor,
     annualizedSpendMinor: monthlySpendMinor * 12,
     activeSubscriptionCount: active.length,
-    averageMonthlySubscriptionMinor: active.length ? Math.round(monthlySpendMinor / active.length) : 0,
+    averageMonthlySubscriptionMinor: includedCount ? Math.round(monthlySpendMinor / includedCount) : 0,
     renewalLoadNext30Days: countRenewalsWithin(active, now, 30),
     cancellationOpportunityMinor
   };
