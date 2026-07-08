@@ -42,11 +42,27 @@ export function parseCsv(text: string): Array<Record<string, string>> {
 }
 
 function dedupeHeaderKeys(keys: string[]): string[] {
+  // Reserve every original name up front (a Set naturally collapses the
+  // duplicates themselves) so a generated "<key>_N" can't collide with a
+  // DIFFERENT column that already legitimately has that exact name — e.g.
+  // ["amount", "amount_2", "amount"] must become
+  // ["amount", "amount_2", "amount_3"], not silently reuse "amount_2".
+  const used = new Set(keys);
   const seen = new Map<string, number>();
   return keys.map((key) => {
-    const count = seen.get(key) ?? 0;
-    seen.set(key, count + 1);
-    return count === 0 ? key : `${key}_${count + 1}`;
+    const count = (seen.get(key) ?? 0) + 1;
+    seen.set(key, count);
+    if (count === 1) {
+      return key;
+    }
+    let suffix = count;
+    let candidate = `${key}_${suffix}`;
+    while (used.has(candidate)) {
+      suffix += 1;
+      candidate = `${key}_${suffix}`;
+    }
+    used.add(candidate);
+    return candidate;
   });
 }
 

@@ -125,6 +125,18 @@ describe("CSV recurring detector", () => {
     expect(rows[0]).toEqual({ Date: "2026-01-05", Amount: "first", Amount_2: "second" });
   });
 
+  it("does not let a generated suffix collide with a genuinely different column of that exact name", () => {
+    // A 3rd "Amount" duplicate would naively be suffixed "_2" (its own repeat
+    // count), colliding with the SECOND column's real, pre-existing "Amount_2"
+    // name and silently overwriting its data via Object.fromEntries.
+    const rows = parseCsv([
+      "Amount,Amount_2,Amount",
+      "first,second,third"
+    ].join("\n"));
+
+    expect(rows[0]).toEqual({ Amount: "first", Amount_2: "second", Amount_3: "third" });
+  });
+
   it("does not merge far-apart amounts into one cluster", () => {
     // Two distinct charges under one merchant: ~$10 and ~$50. A non-transitive
     // tolerance could chain them together; a stable single-reference window must
