@@ -36,4 +36,13 @@ describe("parseAmountMinor", () => {
     expect(parseAmountMinor("   ")).toBeNull();
     expect(parseAmountMinor("abc")).toBeNull();
   });
+
+  it("rejects an implausibly large amount instead of silently rounding it to a large-but-finite value", () => {
+    // Number.parseInt doesn't overflow to Infinity until 400+ digits — short
+    // of that, an adversarial/malformed CSV field would otherwise parse to a
+    // large, finite (if imprecise) number rather than being rejected.
+    expect(parseAmountMinor("99999999999999999999999999.99")).toBeNull();
+    // A merely large-but-real amount (well under the plausibility cap) still works.
+    expect(parseAmountMinor("9,999,999.99")).toBe(999999999);
+  });
 });

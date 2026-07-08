@@ -92,7 +92,15 @@ export function parseAmountMinor(input: string | undefined): number | null {
   if (frac.length >= 3 && frac.charCodeAt(2) - 48 >= 5) {
     amountMinor += 1; // round the third decimal
   }
-  if (!Number.isFinite(amountMinor)) {
+  // An implausibly long digit string (e.g. a malformed or adversarial CSV
+  // field) doesn't overflow to Infinity until 400+ digits — Number.parseInt
+  // silently rounds anything shorter to a large-but-finite double instead of
+  // failing, which would otherwise flow unguarded into spend totals/insights.
+  // $10,000,000 is far beyond any real single subscription/transaction amount
+  // (comfortably above the largest legitimate value exercised in this file's
+  // own thousands-separator parsing tests).
+  const MAX_PLAUSIBLE_AMOUNT_MINOR = 10_000_000_00;
+  if (!Number.isFinite(amountMinor) || amountMinor > MAX_PLAUSIBLE_AMOUNT_MINOR) {
     return null;
   }
   return negative ? -amountMinor : amountMinor;
