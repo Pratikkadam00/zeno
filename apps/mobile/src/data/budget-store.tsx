@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform } from "react-native";
+import * as Crypto from "expo-crypto";
 import { openZenoDatabase, readAppMeta, writeAppMeta, type ZenoDatabase } from "../storage/database";
 
 export type BudgetEnvelope = { id: string; name: string; icon: string; fundedMinor: number; spentMinor: number };
@@ -92,7 +93,12 @@ export function BudgetStoreProvider({ children }: { children: ReactNode }) {
         persist({ ...config, incomeMinor });
       },
       addEnvelope(name, fundedMinor, icon = "wallet") {
-        const id = `env_${config.envelopes.length}_${name.replace(/\s+/g, "").slice(0, 8).toLowerCase()}`;
+        // A random id, not one derived from envelopes.length: two addEnvelope
+        // calls fired before a re-render (e.g. a fast double-tap) would
+        // otherwise close over the same stale `config` and compute the exact
+        // same length-derived id, silently merging two distinct envelopes
+        // under one id (logEnvelope/removeEnvelope both key by id).
+        const id = `env_${Crypto.randomUUID()}`;
         persist({ ...config, envelopes: [...config.envelopes, { id, name, icon, fundedMinor, spentMinor: 0 }] });
       },
       logEnvelope(id, amountMinor) {
