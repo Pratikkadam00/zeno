@@ -36,7 +36,7 @@ export default function BudgetRecapScreen() {
       <Text style={{ flex: 1, fontFamily: t.fonts.sans.semibold, fontSize: 17, color: c.textPrimary, paddingLeft: 8 }}>
         {recap ? `${recap.label} recap` : "Recap"}
       </Text>
-      <Button variant="ghost" size="sm" onPress={() => router.back()}>
+      <Button variant="ghost" size="sm" accessibilityLabel="Close" onPress={() => router.back()}>
         <X size={20} color={c.textSecondary} strokeWidth={2} />
       </Button>
     </View>

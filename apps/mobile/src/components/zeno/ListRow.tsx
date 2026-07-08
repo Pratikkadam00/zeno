@@ -14,6 +14,10 @@ export type ListRowProps = {
   onPress?: () => void;
   divider?: boolean;
   style?: StyleProp<ViewStyle>;
+  // Overrides the accessible name derived from title/subtitle/amount below —
+  // needed when `title` is a non-string ReactNode, since there's nothing to
+  // derive a name from in that case.
+  accessibilityLabel?: string;
 };
 
 /**
@@ -30,7 +34,8 @@ export function ListRow({
   chevron = false,
   onPress,
   divider = false,
-  style
+  style,
+  accessibilityLabel
 }: ListRowProps) {
   const t = useZenoTokens();
   const c = t.color;
@@ -90,8 +95,18 @@ export function ListRow({
   );
 
   if (onPress) {
+    const derivedLabel = accessibilityLabel ?? [
+      typeof title === "string" ? title : null,
+      subtitle,
+      amount ? (cadence ? `${amount} per ${cadence}` : amount) : null
+    ].filter(Boolean).join(", ");
     return (
-      <Pressable onPress={onPress} style={({ pressed }) => content(pressed)}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={derivedLabel || undefined}
+        onPress={onPress}
+        style={({ pressed }) => content(pressed)}
+      >
         {inner}
       </Pressable>
     );

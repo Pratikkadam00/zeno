@@ -16,6 +16,9 @@ export type IconButtonProps = {
   style?: StyleProp<ViewStyle>;
 };
 
+// iOS HIG / Material minimum recommended touch target.
+const MIN_TOUCH_TARGET = 44;
+
 export function IconButton({
   variant = "ghost",
   size = 40,
@@ -28,6 +31,10 @@ export function IconButton({
 }: IconButtonProps) {
   const t = useZenoTokens();
   const c = t.color;
+  // Icons smaller than the minimum touch target (e.g. the 26-32px steppers on
+  // the budget screen) still get a real ~44x44 tap area via hitSlop, without
+  // growing the visual size.
+  const compensation = Math.max(0, Math.ceil((MIN_TOUCH_TARGET - size) / 2));
 
   const variants: Record<IconButtonVariant, { bg: string; pressed: string; border: string }> = {
     ghost: { bg: "transparent", pressed: c.surfaceSunken, border: "transparent" },
@@ -43,6 +50,7 @@ export function IconButton({
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
+      hitSlop={compensation}
       style={({ pressed }) => [
         {
           alignItems: "center",

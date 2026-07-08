@@ -77,6 +77,8 @@ export function Input({
           <Text style={{ color: c.textTertiary, fontFamily: t.fonts.mono.medium }}>{prefix}</Text>
         ) : null}
         <TextInput
+          accessibilityLabel={label}
+          accessibilityHint={hint}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}

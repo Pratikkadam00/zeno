@@ -8,10 +8,11 @@ export type SwitchProps = {
   disabled?: boolean;
   size?: "sm" | "md";
   style?: StyleProp<ViewStyle>;
+  accessibilityLabel?: string;
 };
 
 /** Zeno Switch — iOS-style toggle; green when on, gentle spring on the knob. */
-export function Switch({ checked = false, onChange, disabled = false, size = "md", style }: SwitchProps) {
+export function Switch({ checked = false, onChange, disabled = false, size = "md", style, accessibilityLabel }: SwitchProps) {
   const t = useZenoTokens();
   const dims = size === "sm" ? { w: 40, h: 24, k: 18 } : { w: 50, h: 30, k: 24 };
   const pad = (dims.h - dims.k) / 2;
@@ -32,6 +33,7 @@ export function Switch({ checked = false, onChange, disabled = false, size = "md
   return (
     <Pressable
       accessibilityRole="switch"
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ checked, disabled }}
       disabled={disabled}
       onPress={() => onChange?.(!checked)}
