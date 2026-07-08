@@ -66,6 +66,29 @@ describe("joinHousehold", () => {
   });
 });
 
+describe("joinHousehold member cap", () => {
+  it("allows exactly MAX_MEMBERS_PER_HOUSEHOLD (5) members (owner + 4 joiners), then rejects a 6th", () => {
+    const household = createHousehold("member-cap-owner", "Owner")!;
+    for (let i = 0; i < 4; i += 1) {
+      expect(joinHousehold(household.shareCode, `member-${i}`, `Member ${i}`)).not.toBeNull();
+    }
+    // Owner (1) + 4 joiners = 5, the cap. A 5th joiner is rejected.
+    expect(joinHousehold(household.shareCode, "member-overflow", "Overflow")).toBeNull();
+  });
+
+  it("re-joining an existing member never counts against the cap", () => {
+    const household = createHousehold("member-cap-rejoin-owner", "Owner")!;
+    for (let i = 0; i < 4; i += 1) {
+      joinHousehold(household.shareCode, `member-${i}`, `Member ${i}`);
+    }
+    // The household is now full (5/5) — an EXISTING member re-joining
+    // (e.g. re-syncing their name/spend) must still succeed.
+    const rejoined = joinHousehold(household.shareCode, "member-0", "Member Zero Renamed", 5000);
+    expect(rejoined).not.toBeNull();
+    expect(rejoined!.members).toHaveLength(5);
+  });
+});
+
 describe("removeMember", () => {
   it("removes just that member, leaving the household and its other members intact", () => {
     const household = createHousehold("leave-owner", "Owner")!;

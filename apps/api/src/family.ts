@@ -34,6 +34,12 @@ const CODE_BYTE_CEILING = 256 - (256 % CODE_ALPHABET.length);
 // without bound by spamming create.
 const MAX_HOUSEHOLDS_PER_OWNER = 5;
 
+// Matches the product's advertised "Family — up to 5 members" limit
+// (apps/mobile/app/paywall.tsx, apps/web pricing copy) — the server never
+// enforced this, so anyone who knew a household's share code could join
+// unboundedly many accounts to it, growing the persisted row without limit.
+const MAX_MEMBERS_PER_HOUSEHOLD = 5;
+
 function genId(prefix: string): string {
   return `${prefix}_${randomBytes(8).toString("hex")}`;
 }
@@ -85,6 +91,7 @@ export function joinHousehold(shareCode: string, memberId: string, memberName: s
     existing.monthlySpendMinor = monthlySpendMinor;
     existing.currency = currency;
   } else {
+    if (household.members.length >= MAX_MEMBERS_PER_HOUSEHOLD) return null;
     household.members.push({ id: memberId, name: memberName, monthlySpendMinor, currency });
   }
   kvPersist("family", household.id, household);
