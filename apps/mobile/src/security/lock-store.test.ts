@@ -1,4 +1,4 @@
-import { randomBytes, createHash } from "node:crypto";
+import { randomBytes, createHash, pbkdf2Sync } from "node:crypto";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 // Same fake-SecureStore approach as app-lock.test.ts: real hashing logic under
@@ -20,6 +20,13 @@ vi.mock("expo-crypto", () => ({
   getRandomBytes: (size: number) => new Uint8Array(randomBytes(size)),
   digestStringAsync: async (_algo: unknown, input: string) => createHash("sha256").update(input).digest("hex"),
   CryptoDigestAlgorithm: { SHA256: "SHA256" }
+}));
+
+// react-native-quick-crypto is a native module and can't run under Vitest —
+// same real-equivalent stand-in as app-lock.test.ts.
+vi.mock("react-native-quick-crypto", () => ({
+  pbkdf2Sync: (password: string, salt: string, iterations: number, keylen: number, digest: string) =>
+    pbkdf2Sync(password, salt, iterations, keylen, digest)
 }));
 
 const biometricMocks = vi.hoisted(() => ({

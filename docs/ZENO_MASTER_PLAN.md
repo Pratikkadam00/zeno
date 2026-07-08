@@ -264,6 +264,17 @@ logout never touches, so `hydrateLock()` reliably re-engages the lock the moment
 usable again — there is no bypass. Kept the regression test since it guards a real security
 property, but did not "fix" a non-existent bug.
 
-**Deliberately not changed:** the mobile PIN KDF (1000-round iterated SHA-256 instead of a vetted
-PBKDF2/Argon2/scrypt) — real but lower-severity, and swapping it needs a migration path for
-existing installed PINs; left as a known, documented tradeoff rather than a rushed change.
+**Update (2026-07-09) — PIN KDF upgraded.** Replaced the 1000-round chained-SHA256 PIN hash with
+real PBKDF2-HMAC-SHA256 at 600,000 iterations (OWASP's current recommendation), via
+`react-native-quick-crypto` (native, JSI-based — `expo-crypto` has no PBKDF2/HMAC primitive, only
+plain digests, and a hand-rolled HMAC/PBKDF2 built from repeated `digestStringAsync` calls would
+cost one JS↔native round trip per hash operation, making a security-grade iteration count
+impractically slow). This is a **native module** requiring `npx expo prebuild` + a custom dev
+client rebuild — it does **not** work in Expo Go, same as `expo-sqlite`'s `useSQLCipher` already
+in this project's `app.config.ts` plugins, so this doesn't introduce a new build paradigm.
+Migration: `verifyPin` now recognizes v1 (legacy unsalted), v2 (the old 1000-round chain), and v3
+(new PBKDF2) formats — a v1 or v2 hash still verifies correctly and is transparently re-saved as
+v3 on the next successful unlock, so no existing user is locked out. Covered by new tests in
+`app-lock.test.ts` (v2→v3 and v1→v3 upgrade paths, wrong-PIN-does-not-upgrade, malformed-hash
+rejection for both v2 and v3) — Node's real `pbkdf2Sync` stands in for the native module in Vitest
+(same algorithm, same signature, not a fake).

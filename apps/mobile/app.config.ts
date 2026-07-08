@@ -58,6 +58,11 @@ const config: ExpoConfig = {
         useSQLCipher: true
       }
     ],
+    // Real PBKDF2 for PIN hashing (src/security/app-lock.ts) — expo-crypto has
+    // no PBKDF2/HMAC primitive, only plain digests. Native module, like
+    // expo-sqlite's SQLCipher above: requires a prebuild + custom dev client,
+    // not usable in Expo Go.
+    "react-native-quick-crypto",
     [
       "expo-splash-screen",
       {

@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, pbkdf2Sync, randomBytes } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 
 // A tiny deterministic in-memory fake for the SecureStore-backed persistence
@@ -26,6 +26,15 @@ vi.mock("expo-crypto", () => ({
   getRandomBytes: (size: number) => new Uint8Array(randomBytes(size)),
   digestStringAsync: async (_algo: unknown, input: string) => createHash("sha256").update(input).digest("hex"),
   CryptoDigestAlgorithm: { SHA256: "SHA256" }
+}));
+
+// react-native-quick-crypto is a native module and can't run under Vitest, but
+// it's explicitly designed as a drop-in for Node's own crypto module — so
+// node:crypto's real pbkdf2Sync (same signature, same algorithm) is a
+// genuinely equivalent stand-in, not a fake.
+vi.mock("react-native-quick-crypto", () => ({
+  pbkdf2Sync: (password: string, salt: string, iterations: number, keylen: number, digest: string) =>
+    pbkdf2Sync(password, salt, iterations, keylen, digest)
 }));
 
 const biometricMocks = vi.hoisted(() => ({
@@ -97,25 +106,63 @@ describe("setPin / verifyPin / hasPin", () => {
     expect(await verifyPin("1234")).toBe(false);
   });
 
-  it("stores a versioned, salted hash — not the raw PIN", async () => {
+  it("stores a versioned, salted hash — not the raw PIN — using real PBKDF2 (v3)", async () => {
     resetFakeStore();
     await setPin("9999");
     expect(fakeStore.pinHash).not.toContain("9999");
-    expect(fakeStore.pinHash?.startsWith("v2$")).toBe(true);
+    expect(fakeStore.pinHash?.startsWith("v3$")).toBe(true);
   });
 
-  it("verifies a legacy (unsalted, unversioned) hash and transparently upgrades it", async () => {
+  it("verifies a legacy v1 (unsalted, unversioned) hash and transparently upgrades it straight to v3", async () => {
     resetFakeStore();
     // Simulate a pre-existing v1 hash for PIN "1111", computed the same way
     // app-lock.ts's internal legacyHashPin does (single unsalted SHA-256).
     fakeStore.pinHash = createHash("sha256").update("zeno.pin.v1.1111").digest("hex");
     expect(await verifyPin("1111")).toBe(true);
-    // The successful legacy match should have transparently re-saved as v2.
-    expect(fakeStore.pinHash?.startsWith("v2$")).toBe(true);
+    // The successful legacy match should have transparently re-saved as v3
+    // (the PBKDF2 format), skipping the intermediate v2 format entirely.
+    expect(fakeStore.pinHash?.startsWith("v3$")).toBe(true);
     expect(await verifyPin("1111")).toBe(true); // still verifies after the upgrade
   });
 
-  it("rejects a malformed stored hash instead of throwing", async () => {
+  it("verifies a legacy v2 (1000-round chained SHA-256) hash and transparently upgrades it to v3", async () => {
+    resetFakeStore();
+    // Reproduce exactly what the pre-PBKDF2 setPin() used to persist, so this
+    // test proves an install that already has a v2 PIN keeps working.
+    const salt = "aabbccddeeff00112233445566778899";
+    let digest = `zeno.pin.v2.${salt}.2468`;
+    for (let round = 0; round < 1000; round += 1) {
+      digest = createHash("sha256").update(`${digest}.${salt}.${round}`).digest("hex");
+    }
+    fakeStore.pinHash = `v2$1000$${salt}$${digest}`;
+
+    expect(await verifyPin("2468")).toBe(true);
+    expect(fakeStore.pinHash?.startsWith("v3$")).toBe(true);
+    expect(await verifyPin("2468")).toBe(true); // still verifies after the upgrade
+    expect(await verifyPin("0000")).toBe(false); // and still rejects a wrong PIN post-upgrade
+  });
+
+  it("rejects a wrong PIN against a legacy v2 hash without upgrading it", async () => {
+    resetFakeStore();
+    const salt = "00112233445566778899aabbccddeeff";
+    let digest = `zeno.pin.v2.${salt}.1357`;
+    for (let round = 0; round < 1000; round += 1) {
+      digest = createHash("sha256").update(`${digest}.${salt}.${round}`).digest("hex");
+    }
+    const originalV2Hash = `v2$1000$${salt}$${digest}`;
+    fakeStore.pinHash = originalV2Hash;
+
+    expect(await verifyPin("9999")).toBe(false);
+    expect(fakeStore.pinHash).toBe(originalV2Hash); // untouched — no upgrade on failure
+  });
+
+  it("rejects a malformed v3 stored hash instead of throwing", async () => {
+    resetFakeStore();
+    fakeStore.pinHash = "v3$not-a-number$salt$hash";
+    expect(await verifyPin("1234")).toBe(false);
+  });
+
+  it("rejects a malformed v2 stored hash instead of throwing", async () => {
     resetFakeStore();
     fakeStore.pinHash = "v2$not-a-number$salt$hash";
     expect(await verifyPin("1234")).toBe(false);

@@ -1,5 +1,6 @@
 import * as Crypto from "expo-crypto";
 import * as LocalAuthentication from "expo-local-authentication";
+import { pbkdf2Sync } from "react-native-quick-crypto";
 import {
   clearLockStateValue,
   loadLockStateValue,
@@ -17,8 +18,16 @@ export type LockState = {
 export const maxPinAttempts = 10;
 export const lockoutDurationMs = 15 * 60 * 1000;
 
-const pinHashVersion = "v2";
-const pinHashIterations = 1000;
+// v3: real PBKDF2-HMAC-SHA256 (react-native-quick-crypto, native — expo-crypto
+// has no PBKDF2/HMAC primitive, only plain digests). 600,000 iterations matches
+// OWASP's current PBKDF2-HMAC-SHA256 recommendation. v2 (1000 rounds of
+// chained SHA-256) is fast and not memory-hard — an attacker with a raw copy
+// of the salted hash (e.g. from a compromised/rooted device) could brute-force
+// a 4-8 digit PIN's small keyspace quickly, since 1000 rounds adds negligible
+// cost. v2 verification is kept below purely to upgrade existing installs.
+const pinHashVersion = "v3";
+const pinHashIterations = 600_000;
+const pinKeyLengthBytes = 32;
 
 export async function canUseBiometrics(): Promise<boolean> {
   const hasHardware = await LocalAuthentication.hasHardwareAsync();
@@ -37,7 +46,7 @@ export async function unlockWithBiometrics(): Promise<boolean> {
 
 export async function setPin(pin: string): Promise<void> {
   const salt = bytesToHex(Crypto.getRandomBytes(16));
-  const hash = await derivePinHash(pin, salt, pinHashIterations);
+  const hash = derivePinHash(pin, salt, pinHashIterations);
   await savePinHash(`${pinHashVersion}$${pinHashIterations}$${salt}$${hash}`);
 }
 
@@ -47,6 +56,19 @@ export async function hasPin(): Promise<boolean> {
   return (await loadPinHash()) !== null;
 }
 
+// Parses the common "$"-delimited "<iterations>$<salt>$<hash>" tail shared by
+// both the v2 and v3 stored formats. Returns null on any malformed field
+// rather than throwing.
+function parseSaltedHash(parts: string[]): { iterations: number; salt: string; expected: string } | null {
+  const iterations = Number.parseInt(parts[1] ?? "", 10);
+  const salt = parts[2] ?? "";
+  const expected = parts[3] ?? "";
+  if (!Number.isInteger(iterations) || iterations < 1 || !salt || !expected) {
+    return null;
+  }
+  return { iterations, salt, expected };
+}
+
 export async function verifyPin(pin: string): Promise<boolean> {
   const stored = await loadPinHash();
   if (!stored) {
@@ -54,17 +76,27 @@ export async function verifyPin(pin: string): Promise<boolean> {
   }
 
   const parts = stored.split("$");
+
   if (parts.length === 4 && parts[0] === pinHashVersion) {
-    const iterations = Number.parseInt(parts[1] ?? "", 10);
-    const salt = parts[2] ?? "";
-    const expected = parts[3] ?? "";
-    if (!Number.isInteger(iterations) || iterations < 1 || !salt || !expected) {
-      return false;
-    }
-    return await derivePinHash(pin, salt, iterations) === expected;
+    const parsed = parseSaltedHash(parts);
+    if (!parsed) return false;
+    return derivePinHash(pin, parsed.salt, parsed.iterations) === parsed.expected;
   }
 
-  // Legacy unsalted hash: verify, then transparently upgrade to the salted format.
+  if (parts.length === 4 && parts[0] === "v2") {
+    // Legacy v2 (iterated SHA-256, pre-PBKDF2): verify against the old
+    // derivation, then transparently upgrade straight to the current version.
+    const parsed = parseSaltedHash(parts);
+    if (!parsed) return false;
+    const matches = (await deriveLegacyV2Hash(pin, parsed.salt, parsed.iterations)) === parsed.expected;
+    if (matches) {
+      await setPin(pin);
+    }
+    return matches;
+  }
+
+  // Legacy v1 (unsalted): verify, then transparently upgrade straight to the
+  // current version.
   const matchesLegacy = stored === await legacyHashPin(pin);
   if (matchesLegacy) {
     await setPin(pin);
@@ -112,8 +144,15 @@ export async function loadLockState(): Promise<LockState> {
   }
 }
 
-async function derivePinHash(pin: string, salt: string, iterations: number): Promise<string> {
-  let digest = `zeno.pin.${pinHashVersion}.${salt}.${pin}`;
+function derivePinHash(pin: string, salt: string, iterations: number): string {
+  return pbkdf2Sync(pin, salt, iterations, pinKeyLengthBytes, "sha256").toString("hex");
+}
+
+// Pre-v3 derivation (1000 rounds of chained SHA-256, expo-crypto only) — kept
+// so a PIN set before the PBKDF2 migration still verifies; setPin() never
+// creates a new hash in this format.
+async function deriveLegacyV2Hash(pin: string, salt: string, iterations: number): Promise<string> {
+  let digest = `zeno.pin.v2.${salt}.${pin}`;
   for (let round = 0; round < iterations; round += 1) {
     digest = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, `${digest}.${salt}.${round}`);
   }
