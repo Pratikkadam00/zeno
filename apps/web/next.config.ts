@@ -14,9 +14,16 @@ import type { NextConfig } from "next";
 // killing SSG on the 500+ cancel-guide SEO pages — for defense against an XSS
 // sink the audit confirmed does not exist (no external scripts, no iframes, no
 // user-rendered HTML). Revisit if a user-content sink is ever introduced.
+//
+// 'unsafe-eval' is added to script-src ONLY outside production: Next's dev
+// server (Fast Refresh, stack-trace reconstruction) uses eval() internally,
+// which the strict production policy blocks — that code never ships to real
+// users, so relaxing it here doesn't change the production security posture
+// (React itself never calls eval() in production, per its own runtime check).
+const isProd = process.env.NODE_ENV === "production";
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self'",

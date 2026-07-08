@@ -201,12 +201,16 @@ export function getKpis(range: RangeKey): Kpi[] {
 export type PlanSlice = { plan: string; subscribers: number; revenue: number; color: string };
 
 export function getPlanBreakdown(): PlanSlice[] {
-  // Revenue ties to the published monthly plan prices (Pro $4.99, Family
-  // $8.99, Business $14.99) so the breakdown matches the marketing pricing.
+  // Revenue ties to the real, shipped in-app prices (Pro $3.99/mo, Family
+  // $6.99/mo — apps/mobile/app/paywall.tsx) so this synthetic breakdown
+  // matches the actual paywall, not invented numbers. Lifetime is a one-time
+  // $79.99 purchase, not a recurring monthly charge, so its slice models
+  // one-time purchases recognized in this period rather than an "active
+  // subscriber" count like the two recurring plans.
   return [
-    { plan: "Pro", subscribers: 21840, revenue: 108982, color: PAL.blue },
-    { plan: "Family", subscribers: 9120, revenue: 81989, color: PAL.emerald },
-    { plan: "Business", subscribers: 2470, revenue: 37025, color: PAL.amber },
+    { plan: "Pro", subscribers: 21840, revenue: 87142, color: PAL.blue },
+    { plan: "Family", subscribers: 9120, revenue: 63749, color: PAL.emerald },
+    { plan: "Lifetime", subscribers: 640, revenue: 51194, color: PAL.amber },
     { plan: "Free", subscribers: 14800, revenue: 0, color: PAL.slate }
   ];
 }

@@ -258,13 +258,22 @@ export function AnalyticsTeaser() {
 }
 
 // ── Pricing ───────────────────────────────────────────────────────────────────
-// Pricing logic: Zeno is a money-SAVING app, so every paid tier is anchored to
-// the ~$219/yr the average person wastes on forgotten subscriptions — each plan
-// pays for itself by cancelling a single thing. Annual is the default (the
-// product is about annual renewals), priced at ~2 months free vs monthly. Tiers
-// roughly double in scope (1 person → household → team) so they don't cannibalise.
+// Matches the real, shipped in-app paywall exactly (apps/mobile/app/paywall.tsx
+// / src/billing/revenueCat.ts) — no invented tiers or numbers. The app sells:
+// Free (no purchase), Pro monthly $3.99 or annual $29.99 (~37% off), a Pro
+// Lifetime one-time purchase at $79.99, and a Family plan at a flat $6.99/mo
+// (no annual variant exists for Family in the app). There is no purchasable
+// "Business" tier today — apps/mobile's Business/Public API/Partners screens
+// were removed from the consumer nav and kept only as files for a future B2B
+// tier (see ZENO_MASTER_PLAN.md) — so it's not listed here as something you
+// can actually buy.
 type Plan = {
-  name: string; monthly: number; annual: number;
+  name: string;
+  // Monthly/annual: present together only for plans the in-app toggle actually
+  // offers both periods for (Free, Pro). `annual` omitted = a flat monthly-only
+  // plan (Family). `oneTime` set = a single one-time purchase (Lifetime),
+  // unaffected by the monthly/annual toggle entirely.
+  monthly: number; annual?: number; oneTime?: number;
   blurb: string; meta?: string; payback: string;
   features: string[]; featured?: boolean;
 };
@@ -277,24 +286,24 @@ const PLANS: Plan[] = [
     features: ["Track up to 10 subscriptions", "7 / 3 / day-of renewal reminders", "Full cancellation guides", "On-device & encrypted"]
   },
   {
-    name: "Pro", monthly: 4.99, annual: 39.99, featured: true,
+    name: "Pro", monthly: 3.99, annual: 29.99, featured: true,
     blurb: "The full radar — unlimited tracking, auto-discovery and the analytics to see where the money goes.",
     payback: "Pays for itself the first thing you cancel",
     features: ["Unlimited subscriptions", "Gmail + bank-statement discovery", "Spend analytics & insights", "Priority cancellation guides", "Multiple inboxes"]
   },
   {
-    name: "Family", monthly: 8.99, annual: 74.99,
-    blurb: "One dashboard for the whole household, with per-person breakdowns.",
-    meta: "Up to 5 members · ~$1.25 / person / mo",
-    payback: "Everything in Pro, shared",
-    features: ["Up to 5 members", "Shared family vault", "Per-member spend breakdowns", "Everything in Pro"]
+    name: "Lifetime", monthly: 0, oneTime: 79.99,
+    blurb: "Pay once, own it forever — no renewal, ever.",
+    meta: "YNAB charges $109 every year. This is once.",
+    payback: "Breaks even inside 2 years vs. Pro annual",
+    features: ["Everything in Pro", "One payment — yours forever", "No trial needed", "No recurring charge, ever"]
   },
   {
-    name: "Business", monthly: 14.99, annual: 129.99,
-    blurb: "See and control SaaS spend across your team, with seats, roles and exports.",
-    meta: "Up to 10 seats · more on request",
-    payback: "Cheaper than one unused SaaS seat",
-    features: ["Up to 10 team seats & roles", "SaaS spend reporting", "CSV / API export", "Priority support", "Everything in Family"]
+    name: "Family", monthly: 6.99,
+    blurb: "One dashboard for the whole household, with per-person breakdowns.",
+    meta: "Up to 5 members · ~$1.40 / person / mo",
+    payback: "Everything in Pro, shared",
+    features: ["Up to 5 members", "Shared family vault", "Per-member spend breakdowns", "Everything in Pro"]
   }
 ];
 
@@ -316,30 +325,37 @@ export function Pricing() {
           <div className={styles.billingToggle} role="group" aria-label="Billing period">
             <button className={`${styles.billingBtn} ${!annual ? styles.billingBtnActive : ""}`} aria-pressed={!annual} onClick={() => setAnnual(false)}>Monthly</button>
             <button className={`${styles.billingBtn} ${annual ? styles.billingBtnActive : ""}`} aria-pressed={annual} onClick={() => setAnnual(true)}>
-              Annual <span className={styles.billingSave}>2 months free</span>
+              Annual <span className={styles.billingSave}>Save 37%</span>
             </button>
           </div>
         </Reveal>
 
         <StaggerGroup className={styles.pricing}>
           {PLANS.map((p) => {
-            const free = p.monthly === 0;
-            const perMo = annual ? p.annual / 12 : p.monthly;
-            const savePct = free ? 0 : Math.round((1 - p.annual / (p.monthly * 12)) * 100);
+            const isOneTime = p.oneTime !== undefined;
+            const free = p.monthly === 0 && !isOneTime;
+            const hasAnnual = p.annual !== undefined;
+            const perMo = annual && hasAnnual ? p.annual! / 12 : p.monthly;
+            const savePct = !free && hasAnnual && annual ? Math.round((1 - p.annual! / (p.monthly * 12)) * 100) : 0;
             return (
               <m.div key={p.name} className={`${styles.priceCard} ${p.featured ? styles.priceCardFeatured : ""}`} variants={staggerChild}>
                 {p.featured ? <span className={styles.priceTag}>Most popular</span> : null}
                 <div className={styles.priceName}>{p.name}</div>
 
                 <div className={styles.priceAmt}>
-                  {free ? "$0" : money(perMo)}<span>{free ? "" : " /mo"}</span>
+                  {free ? "$0" : isOneTime ? money(p.oneTime!) : money(perMo)}
+                  <span>{free || isOneTime ? "" : " /mo"}</span>
                 </div>
                 <div className={styles.priceBilled}>
                   {free
                     ? "Free forever"
-                    : annual
-                      ? <>billed {money(p.annual)}/yr <span className={styles.priceSavePill}>save {savePct}%</span></>
-                      : <>or {money(p.annual)}/yr</>}
+                    : isOneTime
+                      ? "one payment · yours forever"
+                      : !hasAnnual
+                        ? "billed monthly"
+                        : annual
+                          ? <>billed {money(p.annual!)}/yr <span className={styles.priceSavePill}>save {savePct}%</span></>
+                          : <>or {money(p.annual!)}/yr</>}
                 </div>
 
                 <div className={styles.priceDesc}>{p.blurb}</div>

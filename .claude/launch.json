@@ -3,9 +3,8 @@
   "configurations": [
     {
       "name": "zeno-web",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["next", "dev", "-p", "3011"],
-      "cwd": "apps/web",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd /d D:\\projects\\zeno\\apps\\web && npx next dev -p 3011"],
       "port": 3011
     }
   ]
