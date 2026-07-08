@@ -3,10 +3,17 @@
 import { useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, m } from "motion/react";
+import { services } from "@zeno/service-catalog";
 import { CountUp, Magnetic, Reveal, StaggerGroup, staggerChild } from "./primitives";
 import { FAQS } from "./faq-data";
 import { WaitlistForm } from "./WaitlistForm";
 import styles from "../../app/home.module.css";
+
+// Real catalog size, not a rounded marketing guess — kept in sync with
+// packages/service-catalog automatically so this can never drift the way a
+// hardcoded "600" did (the real count is 509, and /cancel already computes it
+// the same way).
+const SERVICE_COUNT = services.length;
 
 // ── Features ──────────────────────────────────────────────────────────────
 export function Features() {
@@ -29,7 +36,7 @@ export function Features() {
               <p className={styles.featureBody}>Connect Gmail or drop in a bank statement and Zeno surfaces every recurring charge — even the annual ones you forgot and the App Store bundles you can&rsquo;t see. Multiple inboxes, merged into one clean list.</p>
               <ul className={styles.featureList}>
                 <li className={styles.featureLi}><span className={styles.featureLiDot}>✓</span>Email + bank-statement discovery, scanned on your device</li>
-                <li className={styles.featureLi}><span className={styles.featureLiDot}>✓</span>600-service catalog with auto-filled prices &amp; cycles</li>
+                <li className={styles.featureLi}><span className={styles.featureLiDot}>✓</span>{SERVICE_COUNT}-service catalog with auto-filled prices &amp; cycles</li>
                 <li className={styles.featureLi}><span className={styles.featureLiDot}>✓</span>Catches annual plans and free trials before they bill</li>
               </ul>
             </Reveal>
@@ -98,7 +105,7 @@ function MockDiscovery() {
   const rows = [
     { n: "Netflix", c: "#E50914", a: "$15.49", b: "monthly", t: "rgba(229,9,20,0.16)" },
     { n: "ChatGPT Plus", c: "#10A37F", a: "$20.00", b: "monthly", t: "rgba(16,163,127,0.16)" },
-    { n: "Adobe CC", c: "#FF3B30", a: "$54.99", b: "monthly", t: "rgba(255,59,48,0.16)" },
+    { n: "Adobe CC", c: "#FF3B30", a: "$55", b: "monthly", t: "rgba(255,59,48,0.16)" },
     { n: "Spotify", c: "#1DB954", a: "$10.99", b: "monthly", t: "rgba(29,185,84,0.16)" }
   ];
   return (
@@ -146,7 +153,7 @@ function MockCancel() {
     <div className={styles.visual}>
       <div className={styles.mockAlert}>
         <span style={{ fontSize: 20 }}>⚠️</span>
-        <div><div className={styles.mockName}>Adobe renews in 2 days</div><div className={styles.mockMeta}>$54.99 · known dark pattern</div></div>
+        <div><div className={styles.mockName}>Adobe renews in 2 days</div><div className={styles.mockMeta}>$55 · known dark pattern</div></div>
         <span className={styles.mockCancelBtn}>Cancel</span>
       </div>
       <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--z-quiet)", margin: "6px 0 12px" }}>HOW TO CANCEL · 6 STEPS</div>
@@ -211,7 +218,7 @@ export function Stats() {
       <div className={styles.container}>
         <div className={styles.statsGrid}>
           <Reveal><div><div className={`${styles.statVal} ${styles.gradText}`}><CountUp to={219} prefix="$" /></div><div className={styles.statLabel}>Avg. wasted per person / year on forgotten subs</div></div></Reveal>
-          <Reveal delay={0.1}><div><div className={styles.statVal}><CountUp to={600} suffix="+" /></div><div className={styles.statLabel}>Services in the cancellation catalog</div></div></Reveal>
+          <Reveal delay={0.1}><div><div className={styles.statVal}><CountUp to={SERVICE_COUNT} suffix="+" /></div><div className={styles.statLabel}>Services in the cancellation catalog</div></div></Reveal>
           <Reveal delay={0.2}><div><div className={styles.statVal}><CountUp to={3} /></div><div className={styles.statLabel}>Reminders before every renewal</div></div></Reveal>
           <Reveal delay={0.3}><div><div className={`${styles.statVal}`} style={{ color: "var(--z-emerald)" }}><CountUp to={0} /></div><div className={styles.statLabel}>Bank logins required</div></div></Reveal>
         </div>

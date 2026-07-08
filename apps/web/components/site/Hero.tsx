@@ -9,7 +9,7 @@ const ease = [0.16, 1, 0.3, 1] as const;
 
 const SUBS = [
   { n: "Netflix", c: "#E50914", amt: 15.49, d: "1 day", danger: true },
-  { n: "Adobe CC", c: "#FF3B30", amt: 54.99, d: "2 days", danger: true },
+  { n: "Adobe CC", c: "#FF3B30", amt: 55, d: "2 days", danger: true },
   { n: "Midjourney", c: "#8B5CF6", amt: 10.0, d: "5 days", danger: false },
   { n: "Spotify", c: "#1DB954", amt: 10.99, d: "12 days", danger: false }
 ];
@@ -122,8 +122,9 @@ export function Hero() {
               </div>
             </m.div>
             {/* Hero strip = the promise (how it feels to use Zeno). The hard
-                numbers ($219 / 600+ / 3 / 0) live in the Stats band below, so
-                these stay action-framed to avoid reading as a duplicate. */}
+                numbers ($219 / catalog size / 3 / 0) live in the Stats band
+                below, so these stay action-framed to avoid reading as a
+                duplicate. */}
             <m.div className={styles.heroStats} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.46, ease }}>
               <div className={styles.heroStat}><span className={styles.heroStatVal}>1 tap</span><span className={styles.heroStatLabel}>to cancel a renewal</span></div>
               <span className={styles.heroStatDiv} />
@@ -273,10 +274,10 @@ function ScreenCancel() {
       <div className={styles.cgHero}>
         <span className={styles.cgIco} style={{ background: "rgba(255,59,48,0.14)", color: "#FF6B60" }}>A</span>
         <div className={styles.cgName}>Adobe Creative Cloud</div>
-        <div className={styles.cgMeta}>$54.99 · monthly</div>
+        <div className={styles.cgMeta}>$55 · monthly</div>
         <span className={styles.cgBadge}>⚠ Dark pattern</span>
       </div>
-      <div className={styles.cgSave}>Cancelling saves you <strong>$659.88/yr</strong></div>
+      <div className={styles.cgSave}>Cancelling saves you <strong>$660/yr</strong></div>
       <div className={styles.appListLabel}>How to cancel</div>
       {CANCEL_STEPS.map((s, i) => (
         <div key={s} className={styles.cgStep}><span className={styles.cgStepNum}>{i + 1}</span>{s}</div>

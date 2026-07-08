@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
+import { services } from "@zeno/service-catalog";
 import { ContentShell } from "@/components/site/ContentShell";
 import { JsonLd } from "@/components/site/JsonLd";
 import { ComparisonTable } from "@/components/site/ComparisonTable";
 import { ComparePageCta } from "@/components/site/ComparePageCta";
+
+const SERVICE_COUNT = services.length;
 
 export const metadata: Metadata = {
   title: "A budget app that doesn't connect to your bank | Zeno",
@@ -40,7 +43,7 @@ export default function BudgetAppNoBankSyncComparePage() {
           { feature: "Bank account connection required", zeno: "No", competitor: "Yes, for automatic transaction sync" },
           { feature: "Can break when your bank changes login", zeno: "Nothing to break — no live connection", competitor: "Yes — a common source of gaps in your history" },
           { feature: "CSV / statement import supported", zeno: "Yes — several major bank export formats", competitor: "Varies" },
-          { feature: "Manual entry supported", zeno: "Yes, with a 600+ service catalog for autofill", competitor: "Varies, often an afterthought" }
+          { feature: "Manual entry supported", zeno: `Yes, with a ${SERVICE_COUNT}+ service catalog for autofill`, competitor: "Varies, often an afterthought" }
         ]}
       />
 
