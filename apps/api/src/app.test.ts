@@ -505,6 +505,100 @@ describe("api app", () => {
     expect(bad.statusCode).toBe(404);
   });
 
+  // Phase 5.2 gap fix: FamilyMember carried no currency at all, so two members
+  // reporting spend in different currencies were silently summed server-side
+  // as if same-currency.
+  it("stores and returns each member's own currency, defaults to USD when omitted, and rejects an invalid one", async () => {
+    const app = await buildApp();
+    const owner = await tokenFor(app, "currency-owner@zeno.test");
+    const create = await app.inject({
+      method: "POST",
+      url: "/api/v1/family/create",
+      headers: authH(owner.token),
+      payload: { ownerName: "Owner", monthlySpendMinor: 5000, currency: "EUR" }
+    });
+    expect(create.statusCode).toBe(200);
+    const household = create.json().data.household;
+    expect(household.members[0]).toMatchObject({ currency: "EUR" });
+
+    const member = await tokenFor(app, "currency-member@zeno.test");
+    const join = await app.inject({
+      method: "POST",
+      url: "/api/v1/family/join",
+      headers: authH(member.token),
+      payload: { shareCode: household.shareCode, memberName: "Member", monthlySpendMinor: 3000, currency: "GBP" }
+    });
+    expect(join.statusCode).toBe(200);
+    const joinedMember = join.json().data.household.members.find((m: { id: string }) => m.id === member.accountId);
+    expect(joinedMember).toMatchObject({ currency: "GBP" });
+
+    // Confirmed on a subsequent GET too — not just the create/join response.
+    const fetched = await app.inject({ method: "GET", url: `/api/v1/family/${household.id}`, headers: authH(owner.token) });
+    const fetchedMembers = fetched.json().data.household.members as Array<{ id: string; currency: string }>;
+    expect(fetchedMembers.find((m) => m.id === owner.accountId)?.currency).toBe("EUR");
+    expect(fetchedMembers.find((m) => m.id === member.accountId)?.currency).toBe("GBP");
+
+    // Omitting currency entirely still succeeds and defaults to USD (backward
+    // compatibility for a not-yet-updated client).
+    const noCurrency = await tokenFor(app, "no-currency-owner@zeno.test");
+    const createDefault = await app.inject({
+      method: "POST",
+      url: "/api/v1/family/create",
+      headers: authH(noCurrency.token),
+      payload: { ownerName: "Owner" }
+    });
+    expect(createDefault.json().data.household.members[0]).toMatchObject({ currency: "USD" });
+
+    // An invalid currency is rejected outright, not silently accepted.
+    const invalid = await app.inject({
+      method: "POST",
+      url: "/api/v1/family/create",
+      headers: authH(owner.token),
+      payload: { ownerName: "Owner", currency: "XXX" }
+    });
+    expect(invalid.statusCode).toBe(400);
+    expect(invalid.json().error.code).toBe("BAD_REQUEST");
+
+    const lowercase = await app.inject({
+      method: "POST",
+      url: "/api/v1/family/create",
+      headers: authH(owner.token),
+      payload: { ownerName: "Owner", currency: "usd" }
+    });
+    expect(lowercase.statusCode).toBe(400);
+  });
+
+  it("POST /family/:id/spend updates currency independently of monthlySpendMinor, and leaves it unchanged when omitted", async () => {
+    const app = await buildApp();
+    const owner = await tokenFor(app, "spend-route-owner@zeno.test");
+    const create = await app.inject({
+      method: "POST",
+      url: "/api/v1/family/create",
+      headers: authH(owner.token),
+      payload: { ownerName: "Owner", monthlySpendMinor: 1000, currency: "USD" }
+    });
+    const household = create.json().data.household;
+
+    const withCurrency = await app.inject({
+      method: "POST",
+      url: `/api/v1/family/${household.id}/spend`,
+      headers: authH(owner.token),
+      payload: { monthlySpendMinor: 2000, currency: "CAD" }
+    });
+    expect(withCurrency.statusCode).toBe(200);
+    expect(withCurrency.json().data.household.members[0]).toMatchObject({ monthlySpendMinor: 2000, currency: "CAD" });
+
+    const withoutCurrency = await app.inject({
+      method: "POST",
+      url: `/api/v1/family/${household.id}/spend`,
+      headers: authH(owner.token),
+      payload: { monthlySpendMinor: 3000 }
+    });
+    expect(withoutCurrency.statusCode).toBe(200);
+    // currency stays CAD from the previous call — omitting it doesn't reset to USD.
+    expect(withoutCurrency.json().data.household.members[0]).toMatchObject({ monthlySpendMinor: 3000, currency: "CAD" });
+  });
+
   it("removes a member server-side on leave, and disbands the household when the last member leaves", async () => {
     const app = await buildApp();
     const owner = await tokenFor(app, "leave-owner@zeno.test");

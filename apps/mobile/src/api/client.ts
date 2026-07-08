@@ -1,5 +1,5 @@
 import Constants from "expo-constants";
-import type { ApiEnvelope, OpenBankingConnectionIntent } from "@zeno/shared";
+import type { ApiEnvelope, CurrencyCode, OpenBankingConnectionIntent } from "@zeno/shared";
 import { useAuthStore } from "../auth/authStore";
 import { timedFetch } from "./http";
 
@@ -182,7 +182,7 @@ export async function getAiCoaching(input: CoachRequestInput): Promise<AiCoachin
   }
 }
 
-export type FamilyMember = { id: string; name: string; monthlySpendMinor: number };
+export type FamilyMember = { id: string; name: string; monthlySpendMinor: number; currency: CurrencyCode };
 export type Household = { id: string; shareCode: string; ownerId: string; members: FamilyMember[]; createdAt: string };
 
 async function familyPost(path: string, body: unknown): Promise<Household | null> {
@@ -200,12 +200,21 @@ async function familyPost(path: string, body: unknown): Promise<Household | null
   }
 }
 
-export function createHousehold(ownerId: string, ownerName: string, monthlySpendMinor: number): Promise<Household | null> {
-  return familyPost("/family/create", { ownerId, ownerName, monthlySpendMinor });
+export function createHousehold(ownerId: string, ownerName: string, monthlySpendMinor: number, currency: CurrencyCode): Promise<Household | null> {
+  return familyPost("/family/create", { ownerId, ownerName, monthlySpendMinor, currency });
 }
 
-export function joinHousehold(shareCode: string, memberId: string, memberName: string, monthlySpendMinor: number): Promise<Household | null> {
-  return familyPost("/family/join", { shareCode, memberId, memberName, monthlySpendMinor });
+export function joinHousehold(shareCode: string, memberId: string, memberName: string, monthlySpendMinor: number, currency: CurrencyCode): Promise<Household | null> {
+  return familyPost("/family/join", { shareCode, memberId, memberName, monthlySpendMinor, currency });
+}
+
+// The server route exists (POST /api/v1/family/:householdId/spend) but until
+// now was never called from anywhere in the app — a member's monthlySpendMinor
+// was only ever sent once, at create/join time, so the household's combined
+// view silently went stale as soon as any member's own subscriptions changed.
+// See family.tsx's periodic re-push.
+export function setMemberSpend(householdId: string, monthlySpendMinor: number, currency: CurrencyCode): Promise<Household | null> {
+  return familyPost(`/family/${encodeURIComponent(householdId)}/spend`, { monthlySpendMinor, currency });
 }
 
 export async function getHousehold(householdId: string): Promise<Household | null> {

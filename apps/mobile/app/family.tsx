@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ScrollView, Text, TextInput, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import { PrimaryButton, Screen, Surface } from "../src/components/ui";
-import { createHousehold, getHousehold, joinHousehold, leaveHousehold, type Household } from "../src/api/client";
+import { createHousehold, getHousehold, joinHousehold, leaveHousehold, setMemberSpend, type Household } from "../src/api/client";
 import { useAuthStore } from "../src/auth/authStore";
 import { useSubscriptionStore } from "../src/data/subscription-store";
 import { formatMoney } from "../src/utils/format";
@@ -44,7 +44,7 @@ export default function FamilyScreen() {
 
   const onCreate = () => {
     setBusy(true); setError(null);
-    void createHousehold(memberId, memberName, totalMonthlyMinor)
+    void createHousehold(memberId, memberName, totalMonthlyMinor, homeCurrency)
       .then((next) => { if (next) void persist(next); else setError("Couldn't create a household. Is the server running?"); })
       .finally(() => setBusy(false));
   };
@@ -52,7 +52,7 @@ export default function FamilyScreen() {
   const onJoin = () => {
     if (code.trim().length < 4) { setError("Enter the 8-character code."); return; }
     setBusy(true); setError(null);
-    void joinHousehold(code.trim(), memberId, memberName, totalMonthlyMinor)
+    void joinHousehold(code.trim(), memberId, memberName, totalMonthlyMinor, homeCurrency)
       .then((next) => { if (next) void persist(next); else setError("No household found for that code."); })
       .finally(() => setBusy(false));
   };
@@ -68,7 +68,25 @@ export default function FamilyScreen() {
     if (householdId) void leaveHousehold(householdId);
   };
 
+  // The server's /spend route existed but was never called after the initial
+  // create/join — a member's monthlySpendMinor (and currency) went stale the
+  // moment their own subscriptions or home-currency setting changed. Re-push on
+  // every value change (and once per app open, since household.id becoming
+  // defined after the initial load also triggers this).
+  useEffect(() => {
+    if (!household) {
+      return;
+    }
+    void setMemberSpend(household.id, totalMonthlyMinor, homeCurrency).then((updated) => {
+      if (updated) setHousehold(updated);
+    });
+    // household.id (not the whole object) is the dependency — setHousehold
+    // above changes the object reference but not its id, so this doesn't loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [household?.id, totalMonthlyMinor, homeCurrency]);
+
   const combined = household ? household.members.reduce((sum, m) => sum + m.monthlySpendMinor, 0) : 0;
+  const allSameCurrency = household ? household.members.every((m) => m.currency === household.members[0]?.currency) : true;
 
   return (
     <Screen>
@@ -92,19 +110,16 @@ export default function FamilyScreen() {
 
             <Surface>
               <Text style={{ color: theme.text, fontSize: 18, fontWeight: "800", marginBottom: 10 }}>
-                {household.members.length} member{household.members.length === 1 ? "" : "s"} · {formatMoney(combined, homeCurrency)}/mo combined
+                {household.members.length} member{household.members.length === 1 ? "" : "s"}
+                {allSameCurrency
+                  ? ` · ${formatMoney(combined, household.members[0]?.currency ?? homeCurrency)}/mo combined`
+                  : " · mixed currencies — see below"}
               </Text>
-              {/* The server's household contract (apps/api/src/family.ts) carries no
-                  per-member currency — each member's monthlySpendMinor was reported by
-                  their own device in whatever currency it used. Labeling every row with
-                  this device's home currency is a display-only best effort, not a claim
-                  that every member's number was actually converted; a genuine fix needs a
-                  currency field added to the server contract (tracked as a known gap). */}
               <View style={{ gap: 10 }}>
                 {household.members.map((m) => (
                   <View key={m.id} style={{ flexDirection: "row", justifyContent: "space-between" }}>
                     <Text style={{ color: theme.text }}>{m.name}{m.id === household.ownerId ? "  ·  owner" : ""}</Text>
-                    <Text style={{ color: theme.mutedText, fontVariant: ["tabular-nums"] }}>{formatMoney(m.monthlySpendMinor, homeCurrency)}/mo</Text>
+                    <Text style={{ color: theme.mutedText, fontVariant: ["tabular-nums"] }}>{formatMoney(m.monthlySpendMinor, m.currency)}/mo</Text>
                   </View>
                 ))}
               </View>

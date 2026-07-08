@@ -100,4 +100,44 @@ describe("setMemberSpend", () => {
     expect(updated.members.find((m) => m.id === "member-y")?.monthlySpendMinor).toBe(5000);
     expect(updated.members.find((m) => m.id === "spend-owner")?.monthlySpendMinor).toBe(1000);
   });
+
+  it("optionally updates currency, and leaves it untouched when omitted", () => {
+    const household = createHousehold("spend-owner-2", "Owner", 1000, "EUR")!;
+    const withCurrency = setMemberSpend(household.id, "spend-owner-2", 1500, "GBP")!;
+    expect(withCurrency.members[0]).toMatchObject({ monthlySpendMinor: 1500, currency: "GBP" });
+
+    const withoutCurrency = setMemberSpend(household.id, "spend-owner-2", 2000)!;
+    expect(withoutCurrency.members[0]).toMatchObject({ monthlySpendMinor: 2000, currency: "GBP" });
+  });
+});
+
+// Phase 5.2 gap fix: FamilyMember previously carried no currency at all, so two
+// members reporting spend in different currencies were silently summed
+// server-side as if same-currency, with no way to detect it.
+describe("FamilyMember currency (Phase 5.2 gap fix)", () => {
+  it("createHousehold defaults the owner's currency to USD when not passed, and stores the passed value when given", () => {
+    const defaulted = createHousehold("owner-default", "Owner")!;
+    expect(defaulted.members[0]?.currency).toBe("USD");
+
+    const explicit = createHousehold("owner-eur", "Owner", 1000, "EUR")!;
+    expect(explicit.members[0]?.currency).toBe("EUR");
+  });
+
+  it("joinHousehold stores the joining member's own currency, independent of the owner's — the core regression test for this fix", () => {
+    const household = createHousehold("currency-owner", "Owner", 1000, "USD")!;
+    const joined = joinHousehold(household.shareCode, "currency-member", "Member", 83000, "INR")!;
+
+    expect(joined.members).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "currency-owner", currency: "USD" }),
+      expect.objectContaining({ id: "currency-member", currency: "INR" })
+    ]));
+  });
+
+  it("re-joining updates the member's currency too, same as name/spend", () => {
+    const household = createHousehold("rejoin-owner", "Owner")!;
+    joinHousehold(household.shareCode, "rejoin-member", "Member", 1000, "USD");
+    const rejoined = joinHousehold(household.shareCode, "rejoin-member", "Member Renamed", 3000, "CAD")!;
+    const member = rejoined.members.find((m) => m.id === "rejoin-member");
+    expect(member).toMatchObject({ name: "Member Renamed", monthlySpendMinor: 3000, currency: "CAD" });
+  });
 });

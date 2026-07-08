@@ -2,7 +2,7 @@ import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import { findServiceBySlug, searchServices, services } from "@zeno/service-catalog";
-import { createBusinessSummary, createMockOpenBankingAdapter, createPublicApiKeyPreview, demoBusinessWorkspace, fail, listPartnerIntegrations, ok, syncPullSchema, syncPushSchema, type OpenBankingProvider, type PublicApiKey } from "@zeno/shared";
+import { createBusinessSummary, createMockOpenBankingAdapter, createPublicApiKeyPreview, demoBusinessWorkspace, fail, listPartnerIntegrations, ok, syncPullSchema, syncPushSchema, type CurrencyCode, type OpenBankingProvider, type PublicApiKey } from "@zeno/shared";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import { pingStorage } from "./storage/pg";
 import Redis from "ioredis";
@@ -77,18 +77,29 @@ function createRateLimitRedis(): Redis | null {
   return client;
 }
 
+// Kept in sync with CurrencyCode (packages/shared/src/domain.ts) via `satisfies`
+// — a drift between the two fails typecheck rather than silently accepting or
+// rejecting the wrong set of currencies.
+const CURRENCY_CODES = ["USD", "EUR", "GBP", "INR", "CAD", "AUD"] as const satisfies readonly CurrencyCode[];
+const currencyCodeSchema = z.enum(CURRENCY_CODES);
+
 // Identity (ownerId / memberId) is taken from the verified token, NOT the body.
+// currency is optional at the schema level (defaulting to "USD" in family.ts)
+// so an not-yet-updated mobile client isn't hard-broken with a 400.
 const familyCreateSchema = z.object({
   ownerName: z.string().min(1).max(80),
-  monthlySpendMinor: z.number().int().min(0).optional()
+  monthlySpendMinor: z.number().int().min(0).optional(),
+  currency: currencyCodeSchema.optional()
 });
 const familyJoinSchema = z.object({
   shareCode: z.string().min(4).max(12),
   memberName: z.string().min(1).max(80),
-  monthlySpendMinor: z.number().int().min(0).optional()
+  monthlySpendMinor: z.number().int().min(0).optional(),
+  currency: currencyCodeSchema.optional()
 });
 const familySpendSchema = z.object({
-  monthlySpendMinor: z.number().int().min(0)
+  monthlySpendMinor: z.number().int().min(0),
+  currency: currencyCodeSchema.optional()
 });
 // Shape-only validation — event/label are checked against the fixed allowlist
 // in recordProductEvent (metrics.ts), not here, since that allowlist is the
@@ -410,7 +421,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       return parsed.error;
     }
     // Owner is the authenticated caller — never a client-supplied id.
-    const household = createHousehold(request.userId!, parsed.data.ownerName, parsed.data.monthlySpendMinor ?? 0);
+    const household = createHousehold(request.userId!, parsed.data.ownerName, parsed.data.monthlySpendMinor ?? 0, parsed.data.currency ?? "USD");
     if (!household) {
       reply.code(409);
       return fail("CONFLICT", "Household limit reached for this account.", request.id);
@@ -425,7 +436,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       return parsed.error;
     }
     // The joining member is the authenticated caller.
-    const household = joinHousehold(parsed.data.shareCode, request.userId!, parsed.data.memberName, parsed.data.monthlySpendMinor ?? 0);
+    const household = joinHousehold(parsed.data.shareCode, request.userId!, parsed.data.memberName, parsed.data.monthlySpendMinor ?? 0, parsed.data.currency ?? "USD");
     if (!household) {
       reply.code(404);
       return fail("NOT_FOUND", "No household found for that code.", request.id);
@@ -466,7 +477,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       reply.code(403);
       return fail("FORBIDDEN", "You are not a member of this household.", request.id);
     }
-    const household = setMemberSpend(householdId, request.userId!, parsed.data.monthlySpendMinor);
+    const household = setMemberSpend(householdId, request.userId!, parsed.data.monthlySpendMinor, parsed.data.currency);
     return ok({ household }, request.id);
   });
 

@@ -5,10 +5,11 @@
 //
 // In-memory working set; mirrored to Postgres when DATABASE_URL is set so a
 // restart doesn't drop households / share-codes (see storage/pg.ts).
+import type { CurrencyCode } from "@zeno/shared";
 import { randomBytes } from "node:crypto";
 import { kvClear, kvDelete, kvPersist, registerHydrator, type StoredEntry } from "./storage/pg";
 
-export type FamilyMember = { id: string; name: string; monthlySpendMinor: number };
+export type FamilyMember = { id: string; name: string; monthlySpendMinor: number; currency: CurrencyCode };
 export type Household = {
   id: string;
   shareCode: string;
@@ -50,7 +51,7 @@ function genCode(): string {
   return code;
 }
 
-export function createHousehold(ownerId: string, ownerName: string, monthlySpendMinor = 0): Household | null {
+export function createHousehold(ownerId: string, ownerName: string, monthlySpendMinor = 0, currency: CurrencyCode = "USD"): Household | null {
   let owned = 0;
   for (const household of households.values()) {
     if (household.ownerId === ownerId) owned += 1;
@@ -63,7 +64,7 @@ export function createHousehold(ownerId: string, ownerName: string, monthlySpend
     id: genId("hh"),
     shareCode,
     ownerId,
-    members: [{ id: ownerId, name: ownerName, monthlySpendMinor }],
+    members: [{ id: ownerId, name: ownerName, monthlySpendMinor, currency }],
     createdAt: new Date().toISOString()
   };
   households.set(household.id, household);
@@ -72,7 +73,7 @@ export function createHousehold(ownerId: string, ownerName: string, monthlySpend
   return household;
 }
 
-export function joinHousehold(shareCode: string, memberId: string, memberName: string, monthlySpendMinor = 0): Household | null {
+export function joinHousehold(shareCode: string, memberId: string, memberName: string, monthlySpendMinor = 0, currency: CurrencyCode = "USD"): Household | null {
   const householdId = codeIndex.get(shareCode.trim().toUpperCase());
   if (!householdId) return null;
   const household = households.get(householdId);
@@ -82,8 +83,9 @@ export function joinHousehold(shareCode: string, memberId: string, memberName: s
   if (existing) {
     existing.name = memberName;
     existing.monthlySpendMinor = monthlySpendMinor;
+    existing.currency = currency;
   } else {
-    household.members.push({ id: memberId, name: memberName, monthlySpendMinor });
+    household.members.push({ id: memberId, name: memberName, monthlySpendMinor, currency });
   }
   kvPersist("family", household.id, household);
   return household;
@@ -93,11 +95,14 @@ export function getHousehold(householdId: string): Household | null {
   return households.get(householdId) ?? null;
 }
 
-export function setMemberSpend(householdId: string, memberId: string, monthlySpendMinor: number): Household | null {
+export function setMemberSpend(householdId: string, memberId: string, monthlySpendMinor: number, currency?: CurrencyCode): Household | null {
   const household = households.get(householdId);
   if (!household) return null;
   const member = household.members.find((candidate) => candidate.id === memberId);
-  if (member) member.monthlySpendMinor = monthlySpendMinor;
+  if (member) {
+    member.monthlySpendMinor = monthlySpendMinor;
+    if (currency) member.currency = currency;
+  }
   kvPersist("family", household.id, household);
   return household;
 }
@@ -146,6 +151,12 @@ export function clearFamilyStore(): void {
 registerHydrator("family", (entries: StoredEntry[]) => {
   for (const { value } of entries) {
     const household = value as Household;
+    // Backfill members persisted before `currency` existed on FamilyMember —
+    // the jsonb cast above performs no runtime validation, so a pre-migration
+    // row would otherwise carry `currency: undefined` despite the type's promise.
+    for (const member of household.members) {
+      member.currency ??= "USD";
+    }
     households.set(household.id, household);
     codeIndex.set(household.shareCode, household.id);
   }
