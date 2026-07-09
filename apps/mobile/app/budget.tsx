@@ -269,7 +269,7 @@ export default function BudgetScreen() {
             </Text>
             <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
               <View style={{ flex: 1 }}>
-                <Input prefix={currencySymbol(homeCurrency)} mono placeholder="4200" keyboardType="number-pad" value={incomeInput} onChangeText={(text) => setIncomeInput(text.replace(/[^0-9]/g, ""))} />
+                <Input prefix={currencySymbol(homeCurrency)} mono placeholder="4200" accessibilityLabel="Monthly income" keyboardType="number-pad" value={incomeInput} onChangeText={(text) => setIncomeInput(text.replace(/[^0-9]/g, ""))} />
               </View>
               <Button variant="secondary" size="lg" onPress={() => { const n = Number(incomeInput); if (n > 0) setIncome(Math.round(n * 100)); }}>Add</Button>
             </View>

@@ -11,6 +11,8 @@ import { useZenoTokens } from "../../theme/useZenoTokens";
 
 export type InputProps = {
   label?: string;
+  /** Screen-reader name when there's no visible `label` (e.g. an icon + placeholder search field). Defaults to `label`. */
+  accessibilityLabel?: string;
   hint?: string;
   error?: string;
   prefix?: string;
@@ -31,6 +33,7 @@ export type InputProps = {
 /** Zeno Input — text field with label, prefix/suffix, icons. Use prefix="$" for money. */
 export function Input({
   label,
+  accessibilityLabel,
   hint,
   error,
   prefix,
@@ -77,7 +80,7 @@ export function Input({
           <Text style={{ color: c.textTertiary, fontFamily: t.fonts.mono.medium }}>{prefix}</Text>
         ) : null}
         <TextInput
-          accessibilityLabel={label}
+          accessibilityLabel={accessibilityLabel ?? label}
           accessibilityHint={hint}
           value={value}
           onChangeText={onChangeText}

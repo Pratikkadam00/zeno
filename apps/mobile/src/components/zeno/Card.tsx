@@ -9,12 +9,14 @@ export type CardProps = {
   interactive?: boolean;
   elevated?: boolean;
   onPress?: () => void;
+  /** Required when interactive/onPress is set, so a tappable card always announces correctly. */
+  accessibilityLabel?: string;
   children?: ReactNode;
   style?: StyleProp<ViewStyle>;
 };
 
 /** Zeno Card — white surface, hairline border, soft resting shadow. */
-export function Card({ padding = "md", interactive = false, elevated = false, onPress, children, style }: CardProps) {
+export function Card({ padding = "md", interactive = false, elevated = false, onPress, accessibilityLabel, children, style }: CardProps) {
   const t = useZenoTokens();
   const c = t.color;
   const pads: Record<CardPadding, number> = { none: 0, sm: t.space[3], md: t.space[5], lg: t.space[6] };
@@ -31,6 +33,8 @@ export function Card({ padding = "md", interactive = false, elevated = false, on
     return (
       <Pressable
         onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
         style={({ pressed }) => [base, pressed ? t.shadow.md : elevated ? t.shadow.sm : t.shadow.xs, style]}
       >
         {children}

@@ -108,6 +108,7 @@ export default function SubscriptionsScreen() {
         <Input
           leftIcon={<Search size={18} color={c.textTertiary} strokeWidth={2} />}
           placeholder="Search subscriptions"
+          accessibilityLabel="Search subscriptions"
           value={query}
           onChangeText={setQuery}
         />
