@@ -83,6 +83,20 @@ export async function connectPlaidSandbox(): Promise<{ transactionCount: number 
   return { transactionCount: count };
 }
 
+// §7 error taxonomy: a client call resolves to a discriminated result so a
+// screen can say something TRUE — a network failure is distinguishable from a
+// 401, a genuine 404, or a server error, instead of every failure collapsing to
+// one null (which made e.g. a household join say "no household found" when the
+// phone was merely offline).
+export type ApiFailureReason = "offline" | "auth" | "not_found" | "server";
+export type ApiResult<T> = { ok: true; data: T } | { ok: false; reason: ApiFailureReason };
+
+function reasonFromStatus(status: number): ApiFailureReason {
+  if (status === 401) return "auth";
+  if (status === 404) return "not_found";
+  return "server";
+}
+
 export type ServerEntitlement = { plan: "free" | "pro" | "family"; active: boolean; source: string };
 
 // The server independently verifies entitlements with RevenueCat, so it's the
@@ -100,46 +114,8 @@ export async function getServerEntitlement(): Promise<ServerEntitlement | null> 
   }
 }
 
-export type SyncChange = {
-  entityType: "subscription" | "preference" | "profile";
-  entityId: string;
-  operation: "create" | "update" | "delete";
-  encryptedPayload: string;
-  vectorClock: Record<string, number>;
-};
-
-// Push locally-encrypted changes to the cloud backup. Payloads are ciphertext —
-// the server stores opaque blobs it can't read. Returns null if unreachable.
-export async function pushSyncChanges(changes: SyncChange[]): Promise<{ accepted: number; rejected: number; cursor: string } | null> {
-  try {
-    const response = await timedFetch(`${getApiBaseUrl()}/sync/push`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...(await authHeaders()) },
-      body: JSON.stringify({ encryptedChanges: changes })
-    });
-    if (!response.ok) return null;
-    const envelope = await response.json() as ApiEnvelope<{ accepted: number; rejected: number; cursor: string }>;
-    return envelope.data ?? null;
-  } catch {
-    return null;
-  }
-}
-
-// Pull encrypted changes since a cursor (for restore / multi-device merge).
-export async function pullSyncChanges(cursor?: string): Promise<{ changes: SyncChange[]; cursor: string; hasMore: boolean } | null> {
-  try {
-    const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
-    const response = await timedFetch(`${getApiBaseUrl()}/sync/pull${query}`, {
-      headers: await authHeaders()
-    }, { retries: 1 });
-    if (!response.ok) return null;
-    const envelope = await response.json() as ApiEnvelope<{ encryptedChanges: SyncChange[]; cursor: string; hasMore: boolean }>;
-    if (!envelope.data) return null;
-    return { changes: envelope.data.encryptedChanges, cursor: envelope.data.cursor, hasMore: envelope.data.hasMore };
-  } catch {
-    return null;
-  }
-}
+// (Cloud-sync push/pull client helpers were removed here: they had zero callers
+// and sync stays disabled until P6 ships real client-side encryption. §15.)
 
 export type CoachRecommendation = { title: string; detail: string; estimatedMonthlySavingsLabel?: string };
 export type AiCoaching =
@@ -157,47 +133,55 @@ export type CoachRequestInput = {
   budgetCapMinor?: number;
 };
 
-// Ask the server-side AI coach for a coaching plan. Returns null if the server
-// is unreachable; { source: "unconfigured" } when no AI key is set on the
-// server. Either way the screen falls back to local rule-based insights.
-export async function getAiCoaching(input: CoachRequestInput): Promise<AiCoaching | null> {
+// Ask the server-side AI coach for a coaching plan. { source: "unconfigured" }
+// is a SUCCESSFUL result (no AI key set on the server); a failure result means
+// the request itself didn't complete. The screen falls back to local rule-based
+// insights on any non-ok result.
+export async function getAiCoaching(input: CoachRequestInput): Promise<ApiResult<AiCoaching>> {
+  let response: Response;
   try {
-    const response = await timedFetch(`${getApiBaseUrl()}/coach`, {
+    response = await timedFetch(`${getApiBaseUrl()}/coach`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...(await authHeaders()) },
       body: JSON.stringify(input)
     }, { timeoutMs: 35_000 });
-    if (!response.ok) return null;
-    const envelope = await response.json() as ApiEnvelope<AiCoaching>;
-    return envelope.data ?? null;
   } catch {
-    return null;
+    return { ok: false, reason: "offline" };
   }
+  if (!response.ok) {
+    return { ok: false, reason: reasonFromStatus(response.status) };
+  }
+  const envelope = await response.json().catch(() => null) as ApiEnvelope<AiCoaching> | null;
+  return envelope?.data ? { ok: true, data: envelope.data } : { ok: false, reason: "server" };
 }
 
 export type FamilyMember = { id: string; name: string; monthlySpendMinor: number; currency: CurrencyCode };
 export type Household = { id: string; shareCode: string; ownerId: string; members: FamilyMember[]; createdAt: string };
 
-async function familyPost(path: string, body: unknown): Promise<Household | null> {
+async function familyPost(path: string, body: unknown): Promise<ApiResult<Household>> {
+  let response: Response;
   try {
-    const response = await timedFetch(`${getApiBaseUrl()}${path}`, {
+    response = await timedFetch(`${getApiBaseUrl()}${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...(await authHeaders()) },
       body: JSON.stringify(body)
     });
-    if (!response.ok) return null;
-    const envelope = await response.json() as ApiEnvelope<{ household: Household }>;
-    return envelope.data?.household ?? null;
   } catch {
-    return null;
+    return { ok: false, reason: "offline" };
   }
+  if (!response.ok) {
+    return { ok: false, reason: reasonFromStatus(response.status) };
+  }
+  const envelope = await response.json().catch(() => null) as ApiEnvelope<{ household: Household }> | null;
+  const household = envelope?.data?.household;
+  return household ? { ok: true, data: household } : { ok: false, reason: "server" };
 }
 
-export function createHousehold(ownerId: string, ownerName: string, monthlySpendMinor: number, currency: CurrencyCode): Promise<Household | null> {
+export function createHousehold(ownerId: string, ownerName: string, monthlySpendMinor: number, currency: CurrencyCode): Promise<ApiResult<Household>> {
   return familyPost("/family/create", { ownerId, ownerName, monthlySpendMinor, currency });
 }
 
-export function joinHousehold(shareCode: string, memberId: string, memberName: string, monthlySpendMinor: number, currency: CurrencyCode): Promise<Household | null> {
+export function joinHousehold(shareCode: string, memberId: string, memberName: string, monthlySpendMinor: number, currency: CurrencyCode): Promise<ApiResult<Household>> {
   return familyPost("/family/join", { shareCode, memberId, memberName, monthlySpendMinor, currency });
 }
 
@@ -206,19 +190,24 @@ export function joinHousehold(shareCode: string, memberId: string, memberName: s
 // was only ever sent once, at create/join time, so the household's combined
 // view silently went stale as soon as any member's own subscriptions changed.
 // See family.tsx's periodic re-push.
-export function setMemberSpend(householdId: string, monthlySpendMinor: number, currency: CurrencyCode): Promise<Household | null> {
+export function setMemberSpend(householdId: string, monthlySpendMinor: number, currency: CurrencyCode): Promise<ApiResult<Household>> {
   return familyPost(`/family/${encodeURIComponent(householdId)}/spend`, { monthlySpendMinor, currency });
 }
 
-export async function getHousehold(householdId: string): Promise<Household | null> {
+export async function getHousehold(householdId: string): Promise<ApiResult<Household>> {
+  let response: Response;
   try {
-    const response = await timedFetch(`${getApiBaseUrl()}/family/${encodeURIComponent(householdId)}`, { headers: await authHeaders() }, { retries: 1 });
-    if (!response.ok) return null;
-    const envelope = await response.json() as ApiEnvelope<{ household: Household }>;
-    return envelope.data?.household ?? null;
+    response = await timedFetch(`${getApiBaseUrl()}/family/${encodeURIComponent(householdId)}`, { headers: await authHeaders() }, { retries: 1 });
   } catch {
-    return null;
+    return { ok: false, reason: "offline" };
   }
+  if (!response.ok) {
+    return { ok: false, reason: reasonFromStatus(response.status) };
+  }
+  const envelope = await response.json().catch(() => null) as ApiEnvelope<{ household: Household }> | null;
+  const household = envelope?.data?.household;
+  // A successful response with no household means it was disbanded server-side.
+  return household ? { ok: true, data: household } : { ok: false, reason: "not_found" };
 }
 
 // Removes the caller from the household server-side (disbanding it if they were

@@ -2,13 +2,30 @@ import { useEffect, useState } from "react";
 import { ScrollView, Text, TextInput, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import { PrimaryButton, Screen, Surface } from "../src/components/ui";
-import { createHousehold, getHousehold, joinHousehold, leaveHousehold, setMemberSpend, type Household } from "../src/api/client";
+import { createHousehold, getHousehold, joinHousehold, leaveHousehold, setMemberSpend, type ApiFailureReason, type Household } from "../src/api/client";
 import { useAuthStore } from "../src/auth/authStore";
 import { useSubscriptionStore } from "../src/data/subscription-store";
 import { formatMoney } from "../src/utils/format";
 import { useZenoTheme } from "../src/theme/theme-provider";
 
 const HOUSEHOLD_KEY = "zeno.family.householdId";
+
+// Turn a failure reason into an honest, action-specific message — so a network
+// drop no longer reads as "no household found for that code" (P4.6 / §7).
+function messageForReason(reason: ApiFailureReason, action: "create" | "join"): string {
+  switch (reason) {
+    case "offline":
+      return "You're offline. Check your connection and try again.";
+    case "auth":
+      return "Please sign in again to manage your household.";
+    case "not_found":
+      return action === "join" ? "No household found for that code." : "That household no longer exists.";
+    case "server":
+      return action === "create"
+        ? "Couldn't create a household right now. Please try again."
+        : "Couldn't join right now. Please try again.";
+  }
+}
 
 export default function FamilyScreen() {
   const { theme } = useZenoTheme();
@@ -29,8 +46,14 @@ export default function FamilyScreen() {
     void (async () => {
       const id = await SecureStore.getItemAsync(HOUSEHOLD_KEY).catch(() => null);
       if (id) {
-        const existing = await getHousehold(id);
-        if (active && existing) setHousehold(existing);
+        const result = await getHousehold(id);
+        if (active && result.ok) {
+          setHousehold(result.data);
+        } else if (result.ok === false && result.reason === "not_found") {
+          // The household was disbanded server-side — drop the stale local pointer
+          // so we don't keep trying to restore a household that no longer exists.
+          void SecureStore.deleteItemAsync(HOUSEHOLD_KEY).catch(() => undefined);
+        }
       }
       if (active) setLoading(false);
     })();
@@ -45,7 +68,7 @@ export default function FamilyScreen() {
   const onCreate = () => {
     setBusy(true); setError(null);
     void createHousehold(memberId, memberName, totalMonthlyMinor, homeCurrency)
-      .then((next) => { if (next) void persist(next); else setError("Couldn't create a household. Is the server running?"); })
+      .then((result) => { if (result.ok) void persist(result.data); else setError(messageForReason(result.reason, "create")); })
       .finally(() => setBusy(false));
   };
 
@@ -53,7 +76,7 @@ export default function FamilyScreen() {
     if (code.trim().length < 4) { setError("Enter the 8-character code."); return; }
     setBusy(true); setError(null);
     void joinHousehold(code.trim(), memberId, memberName, totalMonthlyMinor, homeCurrency)
-      .then((next) => { if (next) void persist(next); else setError("No household found for that code."); })
+      .then((result) => { if (result.ok) void persist(result.data); else setError(messageForReason(result.reason, "join")); })
       .finally(() => setBusy(false));
   };
 
@@ -77,8 +100,10 @@ export default function FamilyScreen() {
     if (!household) {
       return;
     }
-    void setMemberSpend(household.id, totalMonthlyMinor, homeCurrency).then((updated) => {
-      if (updated) setHousehold(updated);
+    // Best-effort re-push of this member's total; a failure just leaves the
+    // last-known combined view in place until the next change (no user-facing error).
+    void setMemberSpend(household.id, totalMonthlyMinor, homeCurrency).then((result) => {
+      if (result.ok) setHousehold(result.data);
     });
     // household.id (not the whole object) is the dependency — setHousehold
     // above changes the object reference but not its id, so this doesn't loop.

@@ -88,7 +88,10 @@ export default function CoachScreen() {
       ...(budgetConfig.capMinor != null ? { budgetCapMinor: budgetConfig.capMinor } : {})
     };
     void getAiCoaching(payload)
-      .then((result) => { if (active) setAi(result); })
+      // On any non-ok result (offline / server / auth) fall back to the on-device
+      // deterministic sections below — same graceful degradation as before, now
+      // without collapsing every failure into an ambiguous null.
+      .then((result) => { if (active) setAi(result.ok ? result.data : null); })
       .finally(() => { if (active) setLoadingAi(false); });
     return () => { active = false; };
   }, [aiConsented, subscriptions, homeCurrency, fx, budgetConfig.capMinor]);
