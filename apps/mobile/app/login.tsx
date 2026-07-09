@@ -80,6 +80,10 @@ export default function LoginScreen() {
     try {
       await loginWithMagicLink(email);
       setMessage("Check your email for a sign-in link");
+    } catch {
+      // authStore already surfaces the failure via `error` state (rendered
+      // below); rethrowing here would just be an unhandled promise rejection
+      // since nothing awaits this onPress handler's return value.
     } finally {
       setActiveProvider(null);
     }
@@ -93,6 +97,8 @@ export default function LoginScreen() {
     setMessage(null);
     try {
       await loginWithApple();
+    } catch {
+      // See handleMagicLink — authStore already surfaces the error via state.
     } finally {
       setActiveProvider(null);
     }
@@ -107,6 +113,8 @@ export default function LoginScreen() {
     setMessage(null);
     try {
       await loginWithDemoAccount(demoEmail, demoPassword);
+    } catch {
+      // See handleMagicLink — authStore already surfaces the error via state.
     } finally {
       setActiveProvider(null);
     }
@@ -120,6 +128,8 @@ export default function LoginScreen() {
     setMessage(null);
     try {
       await loginWithGoogle();
+    } catch {
+      // See handleMagicLink — authStore already surfaces the error via state.
     } finally {
       setActiveProvider(null);
     }

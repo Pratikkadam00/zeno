@@ -64,6 +64,19 @@ const config: ExpoConfig = {
     // not usable in Expo Go.
     "react-native-quick-crypto",
     [
+      // react-native-quick-crypto and expo-sqlite's SQLCipher build both bundle
+      // their own libcrypto.so for the same ABI, which fails Android's native
+      // lib merge with a duplicate-path error unless one is picked explicitly.
+      "expo-build-properties",
+      {
+        android: {
+          packagingOptions: {
+            pickFirst: ["**/libcrypto.so"]
+          }
+        }
+      }
+    ],
+    [
       "expo-splash-screen",
       {
         image: "./assets/splash-icon.png",

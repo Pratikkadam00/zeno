@@ -3,7 +3,25 @@ import { getOrCreateDatabaseKey } from "../security/secure-store";
 
 export type ZenoDatabase = SQLite.SQLiteDatabase;
 
-export async function openZenoDatabase(): Promise<ZenoDatabase> {
+// Memoized so concurrent callers (budget-store and subscription-store each
+// open on mount, independently, on cold start) share one open+migrate
+// sequence instead of racing SQLite.openDatabaseAsync for the same file —
+// two concurrent opens of a not-yet-existing "zeno.db" can otherwise race
+// expo-sqlite's own parent-directory creation and fail with something like
+// "Path already points to a non-normal file".
+let dbPromise: Promise<ZenoDatabase> | null = null;
+
+export function openZenoDatabase(): Promise<ZenoDatabase> {
+  if (!dbPromise) {
+    dbPromise = openZenoDatabaseInternal().catch((error: unknown) => {
+      dbPromise = null; // let the next call retry instead of caching a failure forever
+      throw error;
+    });
+  }
+  return dbPromise;
+}
+
+async function openZenoDatabaseInternal(): Promise<ZenoDatabase> {
   const db = await SQLite.openDatabaseAsync("zeno.db");
   const key = await getOrCreateDatabaseKey();
   await db.execAsync(`PRAGMA key = '${key.replace(/'/g, "''")}';`);
