@@ -130,7 +130,7 @@ export function Hero() {
               <span className={styles.heroStatDiv} />
               <div className={styles.heroStat}><span className={styles.heroStatVal}>7 days</span><span className={styles.heroStatLabel}>heads-up before it charges</span></div>
               <span className={styles.heroStatDiv} />
-              <div className={styles.heroStat}><span className={styles.heroStatVal}>100%</span><span className={styles.heroStatLabel}>on-device &amp; encrypted</span></div>
+              <div className={styles.heroStat}><span className={styles.heroStatVal}>No</span><span className={styles.heroStatLabel}>bank login required</span></div>
             </m.div>
           </div>
 

@@ -17,8 +17,9 @@ Zeno is **privacy-first by design**, which makes compliance much easier:
 
 - Sensitive financial data (your subscriptions, amounts, renewals) is stored
   **encrypted on the device**, not on Zeno servers.
-- Cloud sync (optional) stores only **end-to-end-encrypted ciphertext** the server
-  can't read.
+- Cloud sync is **not enabled at launch**. The sync endpoints exist but store an
+  opaque payload without client-side end-to-end encryption yet, so we do not
+  advertise or rely on "encrypted sync" until P6 ships real E2E encryption.
 - We **never** ask for or store bank login credentials.
 - We **don't sell** personal data and don't use it for third-party ad targeting.
 
@@ -33,11 +34,11 @@ in the codebase.
 |---|---|---|---|
 | Email address | Auth provider / server | Email delivery provider | For sign-in (magic link / Apple / Google) + waitlist |
 | Subscriptions, amounts, renewals, notes | **On device** (encrypted SQLite/SQLCipher) | No one | Never uploaded in plaintext |
-| Encrypted sync blob | Server | No one (ciphertext only) | Optional; server cannot decrypt |
+| Sync payload | Server | No one | Sync **disabled at launch**; not yet client-side encrypted (E2E deferred to P6) |
 | Plan / entitlement status | Server + RevenueCat | RevenueCat (billing) | No card numbers — handled by app stores |
-| AI coach input | Sent per-request to AI provider (Groq/Anthropic) | AI provider | Subscription **summary only** — no name/email/bank data |
-| Bank transactions | On device, via aggregator | Plaid (only if user opts in) | Zeno never sees bank credentials |
-| Diagnostics / crash logs | Analytics provider | Analytics provider | Aggregated, no subscription contents |
+| AI coach input | Sent per-request to AI provider (Groq) | AI provider | Subscription **summary only** — no name/email/bank data, no email-discovered items; consent-gated |
+| Bank transactions | On device, via aggregator | Plaid (planned) | **Planned/optional, not enabled**; Zeno never sees bank credentials |
+| Diagnostics / crash logs | Sentry (only if enabled) | Sentry | Inert until DSN set; aggregated, no subscription contents; no product analytics |
 
 ---
 
@@ -156,5 +157,5 @@ These are hard requirements; the app **will be rejected** without them.
 - Real legal URLs in the app (`zeno.app/legal/...`) replacing `example.com`.
 - Privacy Policy updated to disclose the AI coach and optional bank aggregator.
 - AI coach constitution + anti-jailbreak/scope security layer.
-- Privacy-first architecture: on-device encryption, E2E-encrypted sync, no bank
-  credentials, no data sale.
+- Privacy-first architecture: on-device encryption, no bank credentials, no data
+  sale. (Cloud sync stays disabled until P6 ships real end-to-end encryption.)

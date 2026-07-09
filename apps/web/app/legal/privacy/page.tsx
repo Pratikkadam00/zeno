@@ -98,21 +98,30 @@ export default function PrivacyPage() {
         process the information needed to manage that subscription, such as your store account
         identifier and plan status. We do not receive or store your full payment card numbers.
       </p>
+      <h3>Family sharing data</h3>
+      <p>
+        If you create or join a <strong>Family (household) plan</strong>, we store your household
+        membership and the combined spend totals needed to show a shared view to members. Each
+        member&rsquo;s individual subscription details stay encrypted on their own device — the
+        shared view is built from aggregated totals, not from other members&rsquo; raw lists.
+      </p>
       <h3>Diagnostics</h3>
       <p>
-        We may collect anonymized, aggregated usage analytics and crash reports to keep the app
-        working — for example which screens load slowly or where the app crashes. These are
-        designed to avoid identifying you personally and never include your subscription
-        contents.
+        To keep the app working, we may use crash reporting and anonymized, aggregated diagnostics
+        — for example which screens load slowly or where the app crashes. These are configured to
+        avoid identifying you personally and never include your subscription contents.{" "}
+        <strong>Crash reporting is currently inert</strong> and only activates if we enable it with
+        a monitoring provider (see Section 6). We do not run website or product analytics today.
       </p>
       <h3>What we do not collect</h3>
       <ul>
         <li>
           <strong>No bank credentials.</strong> Zeno never asks for, sees, or stores your
-          online-banking username, password, or login. Connecting a bank is entirely optional; if
-          you choose to, the connection is handled by a regulated account-aggregation provider
-          (such as Plaid) that authenticates you directly — Zeno receives only the transaction
-          information needed to detect subscriptions, never your credentials.
+          online-banking username, password, or login. A bank connection is not currently offered;
+          if Zeno ever adds one it would be entirely optional and handled by a regulated
+          account-aggregation provider (such as Plaid) that authenticates you directly — Zeno would
+          receive only the transaction information needed to detect subscriptions, never your
+          credentials.
         </li>
         <li>
           <strong>No full payment card data.</strong> Billing is handled by the app stores.
@@ -135,7 +144,7 @@ export default function PrivacyPage() {
       </ul>
       <p>
         We process this data because it is necessary to provide a Service you requested, because
-        you have consented (for example to optional analytics or Gmail access), or because we
+        you have consented (for example to Gmail access or the AI spend coach), or because we
         have a legitimate interest in keeping the Service secure and reliable.
       </p>
 
@@ -167,30 +176,37 @@ export default function PrivacyPage() {
 
       <h2 id="third-parties">6. Third parties & service providers</h2>
       <p>
-        We share data only with providers that help us run the Service, and only as needed. These
-        may include:
+        We share data only with providers that help us run the Service, and only as needed. We use
+        each provider only when the related feature is enabled. They currently include:
       </p>
       <ul>
-        <li><strong>Email delivery</strong> — to send waitlist and account emails;</li>
-        <li><strong>App stores</strong> (Apple App Store, Google Play) — for app distribution and billing of paid plans;</li>
-        <li><strong>Hosting & infrastructure</strong> — for the website and supporting services;</li>
+        <li><strong>Email delivery</strong> — <strong>Resend</strong>, to send waitlist and sign-in emails;</li>
+        <li><strong>Hosting &amp; infrastructure</strong> — <strong>Render</strong>, to run the website and API;</li>
+        <li><strong>App stores &amp; billing</strong> — <strong>Apple App Store</strong> and <strong>Google Play</strong> for distribution, and <strong>RevenueCat</strong> to manage paid-plan entitlements;</li>
         <li>
-          <strong>AI coaching provider</strong> — if you use the optional AI spend coach, a summary
-          of your subscriptions (service names, amounts, categories, and the in-app insights — but
-          not your name, email, or bank data) is sent to our AI provider solely to generate
-          suggestions and return them to you;
+          <strong>AI coaching provider</strong> — <strong>Groq</strong>. Only if you turn on the
+          optional AI spend coach and grant consent, a summary of your subscriptions (service
+          names, amounts, categories, and the in-app insights — but not your name, email, bank
+          data, or any subscription discovered from your email) is sent to generate suggestions and
+          return them to you;
         </li>
         <li>
-          <strong>Bank-connection aggregator</strong> (such as Plaid) — only if you opt in to
-          connecting a financial account, and only to retrieve transactions for subscription
-          detection;
+          <strong>Crash reporting</strong> — <strong>Sentry</strong>, only if we enable it; it is
+          inert until then and never receives your subscription contents;
         </li>
-        <li><strong>Optional analytics & crash reporting</strong> — using privacy-respecting, aggregated tooling.</li>
+        <li>
+          <strong>Bank-connection aggregator</strong> (such as <strong>Plaid</strong>) — a{" "}
+          <strong>planned, optional</strong> integration that is <strong>not currently
+          available</strong>. If we ship it and you opt in, it would retrieve transactions solely
+          for subscription detection, and never your banking credentials.
+        </li>
       </ul>
       <p>
-        These providers are bound to use the data only to perform services for us. We may also
-        disclose information if required by law or to protect the rights and safety of users and
-        the public.
+        These providers are bound to use the data only to perform services for us. Some of them are
+        located in the <strong>United States</strong>; where your data is transferred
+        internationally, we rely on appropriate safeguards such as the European Commission&rsquo;s
+        Standard Contractual Clauses where applicable. We may also disclose information if required
+        by law or to protect the rights and safety of users and the public.
       </p>
 
       <h2 id="retention">7. Data retention</h2>
@@ -200,6 +216,13 @@ export default function PrivacyPage() {
         subscription data</strong> remains on your device until you delete it or uninstall the
         app. Diagnostic data is retained only as long as needed to investigate issues and is
         then deleted or further aggregated.
+      </p>
+      <p>
+        On the server side, we retain your <strong>account record</strong> (such as your store
+        account identifier, plan status, and any household membership) until you delete your
+        account, after which it is erased. <strong>Sign-in (magic-link) tokens</strong> are
+        short-lived and expire within about 15 minutes. Operational <strong>server logs</strong>{" "}
+        are retained for up to 30 days and then deleted.
       </p>
 
       <h2 id="your-rights">8. Your rights & choices</h2>

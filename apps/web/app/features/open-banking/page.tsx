@@ -4,12 +4,12 @@ import { ContentShell } from "@/components/site/ContentShell";
 import styles from "@/components/site/content.module.css";
 
 export const metadata: Metadata = {
-  title: "Optional Open Banking — Read-only bank connections | Zeno",
-  description: "Zeno's optional open banking uses Plaid and MX as read-only OAuth adapters: it sees transactions, never login credentials, and the core app works without connecting a bank.",
+  title: "Open Banking (planned) — Read-only bank connections | Zeno",
+  description: "Optional read-only bank connections are a planned Zeno feature, not available today. Zeno works fully without connecting a bank, using email receipts and statement imports.",
   alternates: { canonical: "/features/open-banking" },
   openGraph: {
-    title: "Optional Open Banking — Read-only bank connections | Zeno",
-    description: "Read-only Plaid and MX adapters: Zeno sees transactions, never login credentials, and works without a bank connection.",
+    title: "Open Banking (planned) — Read-only bank connections | Zeno",
+    description: "A planned, optional feature — not available today. Zeno works fully without a bank connection.",
     type: "website",
     images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno subscription manager dashboard" }]
   }
@@ -18,14 +18,15 @@ export const metadata: Metadata = {
 export default function OpenBankingFeaturePage() {
   return (
     <ContentShell
-      eyebrow="Optional Open Banking"
-      title="Read-only bank connections"
-      lead="Plaid and MX are modeled as read-only OAuth adapters. Zeno sees transactions, not login credentials, and the core app works without this premium connection."
+      eyebrow="Planned · not available today"
+      title="Read-only bank connections (planned)"
+      lead="This is a feature we're considering, not one you can use today. If Zeno adds optional bank connections, they would be read-only OAuth adapters (Plaid or MX) that see transactions, never your login credentials — and the app would keep working fully without them. Everything Zeno does today runs on email receipts and statement imports you control, with no bank connection required."
     >
+      <p className={styles.lead}>How it would work, if we ship it:</p>
       <ol className={styles.steps}>
-        <li>You start a provider-hosted connection.</li>
-        <li>The provider returns a read-only token reference.</li>
-        <li>Recurring charges are normalized locally before confirmation.</li>
+        <li>You would start a provider-hosted connection.</li>
+        <li>The provider would return a read-only token reference.</li>
+        <li>Recurring charges would be normalized locally before confirmation.</li>
       </ol>
 
       <div className={styles.backRow}>

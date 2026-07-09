@@ -6,7 +6,7 @@ import { ComparePageCta } from "@/components/site/ComparePageCta";
 
 export const metadata: Metadata = {
   title: "Rocket Money alternative without Plaid | Zeno",
-  description: "Rocket Money connects to your accounts through Plaid. Zeno finds and tracks subscriptions from email receipts and statement imports instead — no bank login, no Plaid, ever.",
+  description: "Rocket Money connects to your accounts through Plaid. Zeno finds and tracks subscriptions from email receipts and statement imports instead — no bank login and no Plaid connection.",
   alternates: { canonical: "/compare/rocket-money-alternative" },
   openGraph: {
     title: "Rocket Money alternative without Plaid | Zeno",

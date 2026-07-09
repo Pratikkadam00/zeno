@@ -150,6 +150,11 @@ export default function TermsPage() {
         that the Service will be uninterrupted, error-free, or that every subscription will be
         detected or every cancellation completed.
       </p>
+      <p>
+        Some features — including the AI spend coach — generate suggestions automatically. Anything
+        the coach produces is <strong>general information, not financial advice</strong>; it may be
+        incomplete or inaccurate, and you should review it before acting on it.
+      </p>
 
       <h2 id="liability">9. Limitation of liability</h2>
       <p>

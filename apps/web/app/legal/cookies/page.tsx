@@ -5,12 +5,12 @@ import styles from "../legal.module.css";
 export const metadata: Metadata = {
   title: "Cookie Policy | Zeno",
   description:
-    "How the Zeno marketing website uses cookies and local storage — essential only, with optional privacy-respecting analytics. No ad tracking.",
+    "How the Zeno marketing website uses cookies and local storage — strictly-necessary storage only. No analytics, no ad tracking, no cross-site profiling.",
   robots: { index: true, follow: true },
   alternates: { canonical: "/legal/cookies" },
   openGraph: {
     title: "Cookie Policy | Zeno",
-    description: "Essential cookies plus optional analytics. No ad tracking.",
+    description: "Strictly-necessary storage only. No analytics, no ad tracking.",
     type: "website"
   }
 };
@@ -19,7 +19,7 @@ const sections = [
   ["overview", "1. Overview"],
   ["what-are-cookies", "2. What cookies & local storage are"],
   ["essential", "3. Essential cookies"],
-  ["analytics", "4. Optional analytics"],
+  ["analytics", "4. Analytics"],
   ["no-ads", "5. No ad tracking"],
   ["controls", "6. How to control cookies"],
   ["app", "7. The Zeno app"],
@@ -37,8 +37,8 @@ export default function CookiesPage() {
 
       <p className={styles.lede}>
         The Zeno marketing site is deliberately minimal. We use only the storage we need to make
-        the site work, plus optional, privacy-respecting analytics. We do not use cookies to track
-        you across the web or to serve ads.
+        the site work. We do not run analytics, and we do not use cookies to track you across the
+        web or to serve ads.
       </p>
 
       <div className={styles.note}>
@@ -83,14 +83,12 @@ export default function CookiesPage() {
         switched off through our consent controls. They do not track you for advertising.
       </p>
 
-      <h2 id="analytics">4. Optional analytics</h2>
+      <h2 id="analytics">4. Analytics</h2>
       <p>
-        We may use <strong>privacy-respecting analytics</strong> to understand, in aggregate, how
-        people find and use the site — for example which pages are most visited and whether the
-        waitlist flow works. Where required by law, we ask for your consent before setting any
-        optional analytics storage, and you can decline without losing access to the site. The
-        analytics we choose are configured to minimize data collection and avoid building
-        cross-site profiles of you.
+        Zeno does <strong>not</strong> run analytics on this website. There is no page-view
+        tracking, product analytics, session recording, or browser fingerprinting. If we ever
+        introduce privacy-respecting analytics, we will update this policy first — and obtain your
+        consent where the law requires it — before turning anything on.
       </p>
 
       <h2 id="no-ads">5. No ad tracking</h2>
@@ -103,7 +101,6 @@ export default function CookiesPage() {
       <h2 id="controls">6. How to control cookies</h2>
       <p>You are in control. You can:</p>
       <ul>
-        <li>accept or decline optional analytics when prompted, and change your choice later;</li>
         <li>
           block or delete cookies through your browser settings — most browsers let you clear
           existing cookies and refuse new ones; and

@@ -378,7 +378,10 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     capabilities: [
       "top_50_service_catalog",
       "service_cancellation_guides",
-      "encrypted_sync_envelope_only",
+      // Cloud sync/backup is intentionally NOT advertised (P2.4): the sync
+      // endpoints exist but store an opaque payload without client-side
+      // encryption yet, so we do not claim "encrypted sync" until P6 ships real
+      // end-to-end encryption. Re-add an accurate capability string then.
       "local_email_receipt_parsing_architecture",
       "local_spend_coach_architecture",
       "ai_spend_coach_when_configured",

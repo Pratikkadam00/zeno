@@ -20,9 +20,9 @@ which is a manual step once there's a build to screenshot.
 
 **Subtitle** (≤30 chars — 29 used): `Track & cancel, no bank login`
 
-**Keywords** (≤100 chars, comma-separated, no spaces after commas — 99 used, verified via node -e):
+**Keywords** (≤100 chars, comma-separated, no spaces after commas — 97 used, verified via node -e). NO competitor brand names here — Apple rejects them and it invites trademark complaints (P2.13):
 ```
-subscription tracker,cancel subscription,budget app,bill tracker,recurring charges,ynab alternative
+subscription tracker,cancel subscription,budget app,bill tracker,recurring charges,trial reminder
 ```
 
 **Promotional text** (≤170 chars, editable without a new build — 139 used, verified via node -e):
@@ -52,7 +52,7 @@ NO BANK LOGIN. EVER.
 Zeno never asks for your banking credentials, and never sees them. Full stop.
 
 YOUR DATA STAYS ON YOUR DEVICE
-Discovery runs from email receipts and statements you control — on-device and encrypted. You can even use Zeno with no account at all: everything works offline, from day one.
+Discovery runs from email receipts and statements you control — on-device and encrypted. You can even use Zeno with no account at all: everything works offline, from day one. Optional cloud features like the AI coach and Family Vault only send data when you turn them on — and we ask first.
 
 WARNED BEFORE YOU'RE CHARGED
 A heads-up 7 and 3 days before any renewal or trial conversion — never a surprise charge again.
@@ -66,8 +66,8 @@ WHAT ZENO DOES
 - Share your Wrapped year-in-review, a "found money" card, and budget streaks
 
 PRICING THAT DOESN'T HATE YOU BACK
-- Free: track up to 10 subscriptions, full budgeting, full discovery
-- Pro: $3.99/month or $29.99/year
+- Free: track up to 10 subscriptions, a monthly budget, full discovery, and every cancellation guide
+- Pro: $3.99/month or $29.99/year — unlimited subscriptions, category budgets, and envelope budgeting
 - Lifetime: $79.99 once — pay one time, own it, no renewal, ever
 
 Track what you're really paying for. Cancel what you don't need. Never hand over your bank login to do it.

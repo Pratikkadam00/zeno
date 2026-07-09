@@ -6,7 +6,7 @@ import styles from "@/components/site/content.module.css";
 
 export const metadata: Metadata = {
   title: "Public API for developers | Zeno",
-  description: "Build on Zeno's public API: scoped keys with masked previews, explicit read/write scopes, and a consistent { data, error, meta } response envelope. Financial sync stays encrypted.",
+  description: "Build on Zeno's public API: scoped keys with masked previews, explicit read/write scopes, and a consistent { data, error, meta } response envelope. Your raw financial data stays on your device.",
   alternates: { canonical: "/developers" },
   openGraph: {
     title: "Public API for developers | Zeno",
@@ -31,7 +31,7 @@ export default function DevelopersPage() {
     <ContentShell
       eyebrow="Developers"
       title="Public API"
-      lead="The power-user API uses scoped keys, masked previews, and explicit read/write scopes. Financial sync remains encrypted by default."
+      lead="The power-user API uses scoped keys, masked previews, and explicit read/write scopes. Your raw financial data stays on your device — it isn't exposed through this API."
     >
       <ul className={styles.list}>
         <li>

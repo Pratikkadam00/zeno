@@ -98,6 +98,8 @@ Currently sync is server-complete but dead code (nothing calls `syncPush`/`syncP
 - **A4** Google OAuth verification + CASA security assessment scheduling before Gmail scanning goes beyond 100 test users (restricted-scope requirement; lead time is weeks — start early).
 - **A5** Render: attach Postgres, set `DATABASE_URL`, redeploy current `main` (live build is days behind and in-memory).
 - **A6** Store assets when builds exist: screenshots, privacy questionnaire (answers derive from the P2 privacy policy), data-safety form on Play.
+- **A7** US export self-classification (P2.12): the app now declares `usesNonExemptEncryption: true` (SQLCipher/OpenSSL AES-256 at rest). File the annual self-classification report to BIS/NSA under the mass-market exemption (ECCN 5D992.c) before shipping; once App Store Connect issues an `ITSEncryptionExportComplianceCode`, add it to `app.config.ts` infoPlist to skip the per-submission questionnaire.
+- **A8** Quarterly competitor-pricing re-check (P2.13): the compare pages (YNAB, Monarch) cite competitor prices with a "verified July 2026" footnote. Re-verify each competitor's public pricing page every quarter and bump the footnote date, or soften the claim, so no stale price ships.
 
 ## Execution order & definition of done
 
