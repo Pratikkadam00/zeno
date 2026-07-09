@@ -9,7 +9,7 @@ import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
 import { Platform } from "react-native";
 import { create } from "zustand";
-import { getApiBaseUrl } from "../api/client";
+import { getApiBaseUrl } from "../api/config";
 import { timedFetch } from "../api/http";
 import type { BillingPlan } from "../billing/revenueCat";
 

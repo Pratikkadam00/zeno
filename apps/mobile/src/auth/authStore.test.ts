@@ -19,7 +19,7 @@ vi.mock("expo-auth-session/providers/google", () => ({ discovery: {} }));
 vi.mock("expo-constants", () => ({ default: { expoConfig: { extra: {} }, easConfig: {} } }));
 vi.mock("expo-crypto", () => ({ getRandomBytes: (size: number) => new Uint8Array(size) }));
 vi.mock("expo-web-browser", () => ({ maybeCompleteAuthSession: vi.fn() }));
-vi.mock("../api/client", () => ({ getApiBaseUrl: () => "http://test.invalid/api/v1" }));
+vi.mock("../api/config", () => ({ getApiBaseUrl: () => "http://test.invalid/api/v1" }));
 
 const timedFetchMock = vi.fn();
 vi.mock("../api/http", () => ({ timedFetch: (...args: unknown[]) => timedFetchMock(...args) }));

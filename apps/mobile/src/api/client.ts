@@ -1,9 +1,7 @@
-import Constants from "expo-constants";
 import type { ApiEnvelope, CurrencyCode, OpenBankingConnectionIntent } from "@zeno/shared";
 import { useAuthStore } from "../auth/authStore";
+import { getApiBaseUrl } from "./config";
 import { timedFetch } from "./http";
-
-const fallbackApiBaseUrl = "http://127.0.0.1:8787/api/v1";
 
 // Attaches the signed-in user's bearer token to a protected request. The API
 // derives identity from this token (never from a client-supplied id/header).
@@ -20,11 +18,6 @@ export type MobileBackendStatus = {
   capabilities: string[];
   message: string;
 };
-
-export function getApiBaseUrl(): string {
-  const extra = Constants.expoConfig?.extra as { apiBaseUrl?: string } | undefined;
-  return extra?.apiBaseUrl ?? fallbackApiBaseUrl;
-}
 
 
 export async function getMobileBackendStatus(): Promise<MobileBackendStatus> {
