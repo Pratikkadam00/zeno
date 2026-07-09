@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { createBusinessSummary, demoBusinessWorkspace } from "@zeno/shared";
 import { ContentShell } from "@/components/site/ContentShell";
 import styles from "@/components/site/content.module.css";
@@ -40,7 +41,7 @@ export default function BusinessFeaturePage() {
       </ul>
 
       <div className={styles.backRow}>
-        <a href="/">← Back to Zeno</a>
+        <Link href="/">← Back to Zeno</Link>
       </div>
     </ContentShell>
   );

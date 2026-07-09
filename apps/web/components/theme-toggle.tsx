@@ -14,8 +14,13 @@ export function ThemeToggle() {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    // The inline script in app/layout.tsx already resolved the stored
-    // preference (or OS preference) before paint; sync state with the result.
+    // Deliberate: `document` isn't available during SSR, so the resolved
+    // theme can only be read client-side. Rendering `isDark=false` on both
+    // the server and the initial client render (then correcting it here)
+    // avoids a hydration mismatch — reading document.documentElement in a
+    // useState lazy initializer instead would make the client's hydration
+    // render disagree with the server-rendered HTML.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsDark(document.documentElement.classList.contains("dark"));
   }, []);
 

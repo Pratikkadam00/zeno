@@ -51,7 +51,7 @@ export function AreaChart({ points, compare, color, gradientId, height = 240, fo
   const ref = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState<number | null>(null);
 
-  const { values, min, max, main, cmp } = useMemo(() => {
+  const { main, cmp } = useMemo(() => {
     const values = points.map((p) => p.value);
     const cmpValues = compare?.map((p) => p.value) ?? [];
     const all = showCompare ? [...values, ...cmpValues] : values;
@@ -61,9 +61,6 @@ export function AreaChart({ points, compare, color, gradientId, height = 240, fo
     const min = Math.max(0, lo - pad);
     const max = hi + pad;
     return {
-      values,
-      min,
-      max,
       main: buildPath(values, min, max, height),
       cmp: compare ? buildPath(cmpValues, min, max, height) : null
     };

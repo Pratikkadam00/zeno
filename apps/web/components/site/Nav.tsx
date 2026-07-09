@@ -55,12 +55,12 @@ export function Nav({ showAnalytics = false }: NavProps) {
         </Link>
         <div className={styles.navLinks}>
           {links.map((l) => (
-            <a key={l.href} href={l.href} className={styles.navLink}>{l.label}</a>
+            <Link key={l.href} href={l.href} className={styles.navLink}>{l.label}</Link>
           ))}
         </div>
         <div className={styles.navRight}>
           <Magnetic strength={0.3}>
-            <a href="/#waitlist" className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`}>Join waitlist</a>
+            <Link href="/#waitlist" className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`}>Join waitlist</Link>
           </Magnetic>
           <button
             type="button"
@@ -85,9 +85,9 @@ export function Nav({ showAnalytics = false }: NavProps) {
       />
       <div id="mobile-nav" className={`${styles.navMenu} ${open ? styles.navMenuOpen : ""}`} hidden={!open}>
         {links.map((l) => (
-          <a key={l.href} href={l.href} className={styles.navMenuLink} onClick={() => setOpen(false)}>{l.label}</a>
+          <Link key={l.href} href={l.href} className={styles.navMenuLink} onClick={() => setOpen(false)}>{l.label}</Link>
         ))}
-        <a href="/#waitlist" className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => setOpen(false)}>Join waitlist</a>
+        <Link href="/#waitlist" className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => setOpen(false)}>Join waitlist</Link>
       </div>
     </nav>
   );

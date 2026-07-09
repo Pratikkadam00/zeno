@@ -3,7 +3,6 @@ import { ContentShell } from "@/components/site/ContentShell";
 import { JsonLd } from "@/components/site/JsonLd";
 import { ComparisonTable } from "@/components/site/ComparisonTable";
 import { ComparePageCta } from "@/components/site/ComparePageCta";
-import styles from "@/components/site/content.module.css";
 
 export const metadata: Metadata = {
   title: "A subscription tracker without bank login | Zeno",
