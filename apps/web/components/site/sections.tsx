@@ -32,7 +32,7 @@ export function Features() {
           <div className={styles.featureRow}>
             <Reveal>
               <span className={styles.featureKicker} style={{ color: "var(--z-blue)" }}>01 — Discover</span>
-              <h3 className={styles.featureTitle}>Finds every subscription, automatically.</h3>
+              <h3 className={styles.featureTitle}>Finds the subscriptions you forgot.</h3>
               <p className={styles.featureBody}>Connect Gmail or drop in a bank statement and Zeno surfaces every recurring charge — even the annual ones you forgot and the App Store bundles you can&rsquo;t see. Multiple inboxes, merged into one clean list.</p>
               <ul className={styles.featureList}>
                 <li className={styles.featureLi}><span className={styles.featureLiDot}>✓</span>Email + bank-statement discovery, scanned on your device</li>
@@ -235,12 +235,12 @@ export function AnalyticsTeaser() {
       <div className={styles.container}>
         <div className={styles.teaser}>
           <Reveal>
-            <span className={styles.eyebrow}><span className={styles.eyebrowDot} />The numbers</span>
+            <span className={styles.eyebrow}><span className={styles.eyebrowDot} />Analytics engine</span>
             <h2 className={styles.h2}>Spending, made&nbsp;legible.</h2>
-            <p className={styles.lead}>Behind Zeno is a real analytics engine — MRR, retention, churn and growth, all wired live. Take a look at the same dashboard we run the business on.</p>
+            <p className={styles.lead}>Behind Zeno is a real analytics engine — MRR, retention, churn and growth. Explore the interactive dashboard, shown here with sample data.</p>
             <div style={{ marginTop: 28 }}>
               <Magnetic strength={0.3}>
-                <Link href="/analytics" className={`${styles.btn} ${styles.btnGhost}`}>Open live analytics <span aria-hidden>→</span></Link>
+                <Link href="/analytics" className={`${styles.btn} ${styles.btnGhost}`}>Open the sample dashboard <span aria-hidden>→</span></Link>
               </Magnetic>
             </div>
           </Reveal>
@@ -294,9 +294,9 @@ const PLANS: Plan[] = [
   },
   {
     name: "Pro", monthly: 3.99, annual: 29.99, featured: true,
-    blurb: "The full radar — unlimited tracking, auto-discovery and the analytics to see where the money goes.",
+    blurb: "The full radar — unlimited tracking plus category budgets and envelope budgeting.",
     payback: "Pays for itself the first thing you cancel",
-    features: ["Unlimited subscriptions", "Gmail + bank-statement discovery", "Spend analytics & insights", "Priority cancellation guides", "Multiple inboxes"]
+    features: ["Unlimited subscriptions", "Category budgets", "Envelope budgeting", "Everything in Free, included"]
   },
   {
     name: "Lifetime", monthly: 0, oneTime: 79.99,

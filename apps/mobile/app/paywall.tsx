@@ -80,6 +80,23 @@ function perMonthFromAnnual(annualPriceString: string): string | null {
   return `$${(value / 12).toFixed(2)}`;
 }
 
+// Annual-vs-monthly discount from the live prices — only when BOTH are plain USD
+// amounts, so a localized/other-currency price never yields a bogus percentage.
+// Returns null (badge suppressed) when it can't be computed truthfully.
+function parseUsd(priceString: string): number | null {
+  const match = priceString.match(/^\$(\d+)(?:\.(\d{2}))?$/);
+  if (!match) return null;
+  return Number(match[1]) + (match[2] ? Number(match[2]) / 100 : 0);
+}
+
+function usdSavingsPercent(monthlyPriceString: string, annualPriceString: string): number | null {
+  const monthly = parseUsd(monthlyPriceString);
+  const annual = parseUsd(annualPriceString);
+  if (monthly === null || annual === null || monthly <= 0) return null;
+  const pct = Math.round((1 - annual / (monthly * 12)) * 100);
+  return pct > 0 ? pct : null;
+}
+
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function PaywallScreen() {
@@ -119,8 +136,15 @@ export default function PaywallScreen() {
       ? (annualPerMonth ?? proAnnualPrice)
       : proMonthlyPrice;
   const { dollars: priceDollars, cents: priceCents } = splitPrice(displayPrice);
+  // The big-number layout ("$" + dollars + ".cents") only works for a plain USD
+  // amount. For a localized store price (e.g. "29,99 €", "£3.99") render the raw
+  // string so we never show a wrong symbol or a garbled "$29,99 €.00".
+  const isPlainUsdPrice = /^\$\d+(?:\.\d{2})?$/.test(displayPrice);
   const showPerMonthSuffix = period === "monthly" || (period === "annual" && annualPerMonth !== null);
   const showPerYearSuffix = period === "annual" && annualPerMonth === null;
+  // Derive the annual-vs-monthly discount from the LIVE prices when both parse as
+  // plain USD; null (badge hidden) otherwise, so we never assert an unverified %.
+  const savingsPercent = usdSavingsPercent(proMonthlyPrice, proAnnualPrice);
   const pricePeriodDesc = period === "lifetime"
     ? "one payment · yours forever, no trial needed"
     : period === "annual"
@@ -246,15 +270,17 @@ export default function PaywallScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ selected: period === "annual" }}
-            accessibilityLabel={`Annual plan, ${proAnnualPrice} per year, save 37 percent`}
+            accessibilityLabel={`Annual plan, ${proAnnualPrice} per year${savingsPercent !== null ? `, save ${savingsPercent} percent` : ""}`}
             onPress={() => setPeriod("annual")}
             style={[styles.toggleOption, period === "annual" && styles.toggleOptionActive]}
           >
             <View style={styles.toggleTitleRow}>
               <Text style={[styles.toggleTitle, period === "annual" ? styles.toggleTitleActive : styles.toggleTitleInactive]}>Annual</Text>
-              <View style={styles.saveBadge}>
-                <Text style={styles.saveBadgeText}>Save 37%</Text>
-              </View>
+              {savingsPercent !== null ? (
+                <View style={styles.saveBadge}>
+                  <Text style={styles.saveBadgeText}>Save {savingsPercent}%</Text>
+                </View>
+              ) : null}
             </View>
             <Text style={[styles.togglePrice, period === "annual" ? styles.togglePriceActive : styles.togglePriceInactive]}>{proAnnualPrice}/yr</Text>
           </Pressable>
@@ -281,13 +307,25 @@ export default function PaywallScreen() {
           ) : (
             <>
               <View style={styles.priceRow}>
-                <Text style={styles.priceDollarSign}>$</Text>
-                <Text style={styles.priceDollars}>{priceDollars}</Text>
-                <View style={styles.priceRight}>
-                  <Text style={styles.priceCents}>.{priceCents}</Text>
-                  {showPerMonthSuffix ? <Text style={styles.pricePer}>/mo</Text> : null}
-                  {showPerYearSuffix ? <Text style={styles.pricePer}>/yr</Text> : null}
-                </View>
+                {isPlainUsdPrice ? (
+                  <>
+                    <Text style={styles.priceDollarSign}>$</Text>
+                    <Text style={styles.priceDollars}>{priceDollars}</Text>
+                    <View style={styles.priceRight}>
+                      <Text style={styles.priceCents}>.{priceCents}</Text>
+                      {showPerMonthSuffix ? <Text style={styles.pricePer}>/mo</Text> : null}
+                      {showPerYearSuffix ? <Text style={styles.pricePer}>/yr</Text> : null}
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.priceDollars}>{displayPrice}</Text>
+                    <View style={styles.priceRight}>
+                      {showPerMonthSuffix ? <Text style={styles.pricePer}>/mo</Text> : null}
+                      {showPerYearSuffix ? <Text style={styles.pricePer}>/yr</Text> : null}
+                    </View>
+                  </>
+                )}
               </View>
               <Text style={styles.priceDesc}>{pricePeriodDesc}</Text>
               {period === "lifetime" ? (

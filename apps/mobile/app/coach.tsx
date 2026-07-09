@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
-import { monthlyAmount, monthlyAmountIn } from "@zeno/shared";
+import { createSpendSummary, monthlyAmount, monthlyAmountIn } from "@zeno/shared";
 import { Screen, Surface } from "../src/components/ui";
 import { getAiCoaching, type AiCoaching } from "../src/api/client";
 import { useBudgetStore } from "../src/data/budget-store";
@@ -74,18 +74,24 @@ export default function CoachScreen() {
       billingCycle: subscription.billingCycle
     }));
     const shareableTotalMinor = shareableSubscriptions.reduce((sum, subscription) => sum + (subscription.monthlyMinor ?? 0), 0);
+    // Insights are recomputed over the SAME shareable set — the store's
+    // spendSummary.insights is built from the full portfolio and its titles/
+    // bodies embed subscription names and amounts (e.g. "Check annual pricing
+    // for Netflix"), which would re-introduce Gmail-derived data into the
+    // transmitted payload that payload.subscriptions above just excluded.
+    const shareableSummary = createSpendSummary(shareable, new Date(), fx);
     const payload = {
       totalMonthlyMinor: shareableTotalMinor,
       currency: homeCurrency,
       subscriptions: shareableSubscriptions,
-      insights: spendSummary.insights.map((insight) => ({ title: insight.title, body: insight.body })),
+      insights: shareableSummary.insights.map((insight) => ({ title: insight.title, body: insight.body })),
       ...(budgetConfig.capMinor != null ? { budgetCapMinor: budgetConfig.capMinor } : {})
     };
     void getAiCoaching(payload)
       .then((result) => { if (active) setAi(result); })
       .finally(() => { if (active) setLoadingAi(false); });
     return () => { active = false; };
-  }, [aiConsented, subscriptions, homeCurrency, spendSummary.insights, budgetConfig.capMinor]);
+  }, [aiConsented, subscriptions, homeCurrency, fx, budgetConfig.capMinor]);
 
   const aiActive = ai?.source === "ai";
 

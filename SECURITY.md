@@ -15,8 +15,9 @@ Last reviewed: 2026-06-15
    (see "Before scale" below). The in-app limiter is the second line, not the only one.
 3. **Application** — CORS allowlist, security headers, per-route rate limits,
    schema validation, authn/authz, no secret exposure.
-4. **Data** — sensitive financial data encrypted on-device; cloud sync is
-   end-to-end-encrypted ciphertext the server can't read.
+4. **Data** — sensitive financial data encrypted on-device (SQLCipher). Cloud
+   sync is disabled at launch; its payloads are stored opaque but are NOT yet
+   client-side (end-to-end) encrypted — real E2E encryption is deferred to P6.
 
 ---
 
@@ -105,17 +106,17 @@ Real secrets (Groq/Anthropic, Plaid, RevenueCat *secret* key, Resend) live in th
 
 ## Backup & recovery (server Postgres)
 
-**What the server stores.** The Postgres `kv_store` table holds only: encrypted
-cloud-sync blobs (client-side ciphertext the server cannot read), entitlement
-cache, households, auth sessions (refresh tokens + magic links), and
-AES-256-GCM-sealed Plaid tokens. **No plaintext financial data ever lands on the
-server.** The client device's SQLCipher DB is the source of truth for a user's
-subscriptions.
+**What the server stores.** The Postgres `kv_store` table holds: sync payloads
+(opaque blobs — but NOT yet client-side end-to-end encrypted; real E2E is
+deferred to P6, and cloud sync is disabled at launch), entitlement cache,
+households, auth sessions (refresh tokens + magic links), and AES-256-GCM-sealed
+Plaid tokens. The client device's SQLCipher DB is the source of truth for a
+user's subscriptions, and no subscription data is uploaded while sync is off.
 
 **Recovery model — the server DB is *disposable*.** If `kv_store` is lost:
-- **Sync/subscription data**: no server-side loss of user financial data — each
-  client re-pushes its encrypted changes on next sync (the device holds the
-  authoritative copy).
+- **Sync/subscription data**: no server-side loss of user financial data — the
+  device holds the authoritative copy and re-pushes its changes on next sync
+  (once sync is enabled in P6).
 - **Auth sessions**: users are logged out and re-authenticate via magic link /
   Apple / Google. Annoying, not data loss.
 - **Plaid tokens**: users re-link their bank (one tap). Entitlements re-fetch
