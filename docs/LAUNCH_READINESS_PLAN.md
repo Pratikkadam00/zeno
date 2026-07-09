@@ -72,6 +72,10 @@ Rule applied throughout (standards §14): the copy must describe what the code d
 - **P4.6 api/client error taxonomy** — replace swallow-to-`null` with the discriminated result of standards §7; update call sites to render true states (offline vs error vs empty). (Biggest single UX-quality lever in the app.)
 - **P4.7 Production logger config** — explicit level from env, pretty-print off, redaction list reviewed.
 
+> **P4 completion note (2026-07-09).** Landed: P4.1 (diff-based reschedule keyed on a content.data.key + `_layout` effect split into debounced-reschedule / widget-refresh / register-once AppState listener), P4.3 (FlatList + `React.memo` row + debounced search), P4.4, P4.5 (via extracting `getApiBaseUrl` to a zero-import `api/config.ts`), P4.6 (family + coach converted to the §7 `ApiResult`; dead sync exports deleted), P4.7.
+> - **P4.2 re-scoped:** did the identity-stabilization subset (hoisted `displaySubscriptions`/`fx`/`widgetSnapshot` to stable-identity memos, which is what lets the split `_layout` effects stop firing on unrelated changes). **Deferred the full "granular selector hooks" context-split** — the store is a single React Context consumed by 18 screens, so real per-slice subscription needs splitting the Provider (or moving to `useSyncExternalStore`), which touches the P0-hardened refs-mirror mutation layer for marginal gain now that the debounce+diff and memoization already remove the hot-path waste. Revisit if profiling shows re-render cost on a specific screen.
+> - **P4.6 partial scope (intentional):** converted the calls whose null-collapse produced a FALSE state (family) or where the reason is useful (coach). Left `getServerEntitlement` (null → client-SDK plan is the designed server-optional fallback, not a lie) and `getMobileBackendStatus` (dev-only diagnostic already carries an HTTP-vs-thrown message) as-is.
+
 ## Phase 5 — Testing & CI depth (~2 days)
 
 - **P5.1 React-Native testing infra** — add `@testing-library/react-native` + jest-expo or vitest-compatible RN preset (evaluate; DECISION: stay on vitest if the RN preset works cleanly, else isolated jest project for RN component tests only).
