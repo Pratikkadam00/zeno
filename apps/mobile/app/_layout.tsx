@@ -197,19 +197,46 @@ function RootStack() {
     void hydrateLock();
   }, [canUseApp, hydrateLock]);
 
+  // Latest reschedule inputs mirrored into a ref so the AppState listener (below,
+  // registered ONCE) can reconcile reminders on foreground from live values
+  // without being re-registered on every data change.
+  const rescheduleInputsRef = useRef({ notificationSubscriptions, notificationSettings, quietHours });
+  useEffect(() => {
+    rescheduleInputsRef.current = { notificationSubscriptions, notificationSettings, quietHours };
+  }, [notificationSubscriptions, notificationSettings, quietHours]);
+
+  // Debounced reminder reconcile (P4.1). Coalesce a burst of store recomputes in
+  // one tick into a single trailing rescheduleAllNotifications, and depend ONLY on
+  // the reminder-relevant inputs (never widgetSnapshot / app-lifecycle), so it no
+  // longer re-fires on unrelated store changes. rescheduleAllNotifications diffs
+  // against the pending queue, so a settled no-op does zero native writes. The
+  // hydrated gate avoids scheduling from seed data during the launch window.
+  useEffect(() => {
+    if (!canUseApp || !hydrated) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      void rescheduleAllNotifications(notificationSubscriptions, notificationSettings, quietHours);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [canUseApp, hydrated, notificationSubscriptions, notificationSettings, quietHours]);
+
+  // Push the home-screen/watch widget snapshot when its (now identity-stable)
+  // content changes — separated from the reminder + lifecycle work.
+  useEffect(() => {
+    if (!canUseApp || !hydrated) {
+      return;
+    }
+    void refreshWidgetSnapshot(widgetSnapshot);
+  }, [canUseApp, hydrated, widgetSnapshot]);
+
+  // App-lifecycle listener registered ONCE per auth state (keyed on canUseApp +
+  // lockNow), never re-added on data churn. On background→active it re-engages
+  // the lock and reconciles reminders from the live ref above.
   useEffect(() => {
     if (!canUseApp) {
       return;
     }
-
-    // Wait for the store to hydrate from SQLite before (re)scheduling, otherwise
-    // we'd cancel all reminders and reschedule from seed data with the wrong
-    // per-subscription settings during the launch window.
-    if (hydrated) {
-      void rescheduleAllNotifications(notificationSubscriptions, notificationSettings, quietHours);
-      void refreshWidgetSnapshot(widgetSnapshot);
-    }
-
     const subscription = AppState.addEventListener("change", (nextState) => {
       const wasBackgrounded = appState.current === "background" || appState.current === "inactive";
       appState.current = nextState;
@@ -219,12 +246,13 @@ function RootStack() {
       if (wasBackgrounded && nextState === "active" && liveCanUseApp) {
         // Re-engage the lock every time the app returns to the foreground.
         lockNow();
-        void rescheduleAllNotifications(notificationSubscriptions, notificationSettings, quietHours);
+        const inputs = rescheduleInputsRef.current;
+        void rescheduleAllNotifications(inputs.notificationSubscriptions, inputs.notificationSettings, inputs.quietHours);
       }
     });
 
     return () => subscription.remove();
-  }, [canUseApp, hydrated, notificationSubscriptions, notificationSettings, quietHours, widgetSnapshot, lockNow]);
+  }, [canUseApp, lockNow]);
 
   if (status === "loading") {
     return (

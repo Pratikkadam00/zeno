@@ -239,6 +239,16 @@ export function buildRenewalTriggers(
   return triggers;
 }
 
+// A deterministic natural key for one reminder — subscription + reminder kind +
+// fire time to the minute. rescheduleAllNotifications diffs the desired set
+// against what's pending by this key, and stamps it into content.data so the
+// existing side reads a field instead of re-deriving from the native trigger
+// shape. Minute granularity tolerates sub-minute jitter between the built fireAt
+// and the value the OS reports back.
+function triggerKey(subscriptionId: string, action: string, fireAt: Date): string {
+  return `${subscriptionId}|${action}|${fireAt.toISOString().slice(0, 16)}`;
+}
+
 async function scheduleTrigger(trigger: BuiltTrigger): Promise<void> {
   await Notifications.scheduleNotificationAsync({
     content: {
@@ -246,7 +256,8 @@ async function scheduleTrigger(trigger: BuiltTrigger): Promise<void> {
       body: trigger.body,
       data: {
         subscriptionId: trigger.subscriptionId,
-        action: trigger.action
+        action: trigger.action,
+        key: triggerKey(trigger.subscriptionId, trigger.action, trigger.fireAt)
       }
     },
     trigger: {
@@ -275,8 +286,6 @@ export async function rescheduleAllNotifications(
   preferencesById: Record<string, RenewalNotificationPreferences> = {},
   quietHours?: QuietHours
 ): Promise<void> {
-  await Notifications.cancelAllScheduledNotificationsAsync();
-
   const now = Date.now();
   // Build every candidate trigger across ALL subscriptions first, then keep the
   // soonest MAX_SCHEDULED_NOTIFICATIONS — otherwise, past ~21 subscriptions
@@ -295,10 +304,36 @@ export async function rescheduleAllNotifications(
       now
     );
   });
-
   allTriggers.sort((a, b) => a.fireAt.getTime() - b.fireAt.getTime());
-  for (const trigger of allTriggers.slice(0, MAX_SCHEDULED_NOTIFICATIONS)) {
-    await scheduleTrigger(trigger);
+  const desired = allTriggers.slice(0, MAX_SCHEDULED_NOTIFICATIONS);
+
+  // Reconcile the desired set against what's already pending instead of a blind
+  // cancel-all + reschedule-all (P4.1): a reschedule whose set is unchanged does
+  // ZERO native writes, and there is never a window where every reminder is
+  // cancelled (a crash mid-reschedule used to lose them all). Match by the
+  // deterministic content.data.key; cancel only what's no longer wanted and
+  // schedule only what's new, leaving matched reminders untouched.
+  const desiredByKey = new Map(desired.map((trigger) => [triggerKey(trigger.subscriptionId, trigger.action, trigger.fireAt), trigger] as const));
+  const existing = await Notifications.getAllScheduledNotificationsAsync();
+  const keptKeys = new Set<string>();
+  const toCancel: string[] = [];
+  for (const notification of existing) {
+    const data = notification.content.data as { key?: string } | undefined;
+    const key = typeof data?.key === "string" ? data.key : undefined;
+    if (key && desiredByKey.has(key)) {
+      keptKeys.add(key);
+    } else {
+      // Not wanted, or a pre-upgrade notification with no key — cancel it. A
+      // pre-upgrade one is re-created below with a key (a one-time migration).
+      toCancel.push(notification.identifier);
+    }
+  }
+
+  await Promise.all(toCancel.map((identifier) => Notifications.cancelScheduledNotificationAsync(identifier)));
+  for (const trigger of desired) {
+    if (!keptKeys.has(triggerKey(trigger.subscriptionId, trigger.action, trigger.fireAt))) {
+      await scheduleTrigger(trigger);
+    }
   }
 }
 

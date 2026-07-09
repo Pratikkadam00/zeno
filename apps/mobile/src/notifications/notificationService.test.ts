@@ -85,9 +85,10 @@ describe("buildRenewalTriggers — day-of fires ON the renewal day (P1.5)", () =
 });
 
 describe("rescheduleAllNotifications — global iOS cap (P1.10)", () => {
-  it("schedules at most 55 notifications, keeping the soonest, after one cancel-all", async () => {
+  it("schedules at most 55 notifications, keeping the soonest, on a fresh queue", async () => {
     vi.mocked(Notifications.scheduleNotificationAsync).mockClear();
-    vi.mocked(Notifications.cancelAllScheduledNotificationsAsync).mockClear();
+    vi.mocked(Notifications.cancelScheduledNotificationAsync).mockClear();
+    vi.mocked(Notifications.getAllScheduledNotificationsAsync).mockResolvedValue([]);
 
     // 30 subs × 3 reminders = 90 future candidates (renewals spaced 30+ days
     // out so all ladder entries are future). The cap must keep 55, not 90.
@@ -104,8 +105,45 @@ describe("rescheduleAllNotifications — global iOS cap (P1.10)", () => {
     await rescheduleAllNotifications(subs);
     spy.mockRestore();
 
-    expect(vi.mocked(Notifications.cancelAllScheduledNotificationsAsync)).toHaveBeenCalledTimes(1);
+    // Nothing pending → nothing to cancel; exactly the nearest 55 scheduled.
+    expect(vi.mocked(Notifications.cancelScheduledNotificationAsync).mock.calls.length).toBe(0);
     expect(vi.mocked(Notifications.scheduleNotificationAsync).mock.calls.length).toBe(55);
+  });
+
+  it("does zero native writes when the desired set already matches what's pending (P4.1 diff)", async () => {
+    const subs = Array.from({ length: 5 }, (_, i) => ({
+      id: `s${i}`,
+      name: `Sub ${i}`,
+      amount: 10,
+      nextRenewalDate: daysFromNow(30 + i),
+      billingCycle: "monthly" as const
+    }));
+
+    // First pass against an empty queue: capture exactly what got scheduled,
+    // including the content.data.key the diff will match on next time.
+    vi.mocked(Notifications.scheduleNotificationAsync).mockClear();
+    vi.mocked(Notifications.cancelScheduledNotificationAsync).mockClear();
+    vi.mocked(Notifications.getAllScheduledNotificationsAsync).mockResolvedValue([]);
+    const spy = vi.spyOn(Date, "now").mockReturnValue(NOW);
+    await rescheduleAllNotifications(subs);
+
+    const scheduled = vi.mocked(Notifications.scheduleNotificationAsync).mock.calls.map(([request], index) => ({
+      identifier: `n${index}`,
+      content: request.content,
+      trigger: request.trigger
+    }));
+    expect(scheduled.length).toBeGreaterThan(0);
+
+    // Second pass with the OS now reporting those exact notifications as pending
+    // and identical inputs → the reconcile must schedule nothing and cancel nothing.
+    vi.mocked(Notifications.scheduleNotificationAsync).mockClear();
+    vi.mocked(Notifications.cancelScheduledNotificationAsync).mockClear();
+    vi.mocked(Notifications.getAllScheduledNotificationsAsync).mockResolvedValue(scheduled as never);
+    await rescheduleAllNotifications(subs);
+    spy.mockRestore();
+
+    expect(vi.mocked(Notifications.scheduleNotificationAsync).mock.calls.length).toBe(0);
+    expect(vi.mocked(Notifications.cancelScheduledNotificationAsync).mock.calls.length).toBe(0);
   });
 });
 

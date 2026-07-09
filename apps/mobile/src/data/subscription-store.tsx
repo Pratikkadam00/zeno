@@ -333,6 +333,33 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
     }
   };
 
+  // Identity-stable derivations (P4.2). The store's `value` object below is a
+  // fresh literal on every recompute (a single Context Provider has no per-field
+  // subscription), but giving these three stable identities means the effects in
+  // _layout keyed on them — the notification reschedule and the widget-snapshot
+  // refresh — stop firing on UNRELATED store changes (quiet hours, AI consent,
+  // price-history writes, exchange-rate fetches). displaySubscriptions rolls
+  // overdue active renewals forward for display and is memoized on `subscriptions`
+  // alone; its internal roll therefore refreshes on any subscription change and on
+  // every app launch (when the store re-hydrates). The only staleness window is a
+  // long single foreground session across a renewal boundary — cosmetic.
+  const displaySubscriptions = useMemo(
+    () => subscriptions.map((subscription) =>
+      subscription.status === "active" && subscription.nextRenewalDate
+        ? { ...subscription, nextRenewalDate: rollRenewalForward(subscription.nextRenewalDate, subscription.billingCycle) }
+        : subscription
+    ),
+    [subscriptions]
+  );
+  const fx: FxContext | undefined = useMemo(
+    () => (exchangeRates ? { homeCurrency, rates: exchangeRates } : undefined),
+    [exchangeRates, homeCurrency]
+  );
+  const widgetSnapshot = useMemo(
+    () => createWidgetSnapshot(displaySubscriptions, new Date(), fx),
+    [displaySubscriptions, fx]
+  );
+
   const value = useMemo<SubscriptionStore>(() => {
     const applyChange = (id: string, mutate: (subscription: Subscription) => Subscription) => {
       // Compute the next value from the ref mirror, never inside the setState
@@ -348,20 +375,11 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
       persistSubscription(updated);
     };
 
-    // Display set: roll overdue active renewals forward to their next cycle so
-    // a date that has already passed never shows as "TODAY". Mutations still
-    // operate on the raw state by id, so persistence is unaffected.
-    const displaySubscriptions = subscriptions.map((subscription) =>
-      subscription.status === "active" && subscription.nextRenewalDate
-        ? { ...subscription, nextRenewalDate: rollRenewalForward(subscription.nextRenewalDate, subscription.billingCycle) }
-        : subscription
-    );
-
-    // fx is undefined until a rate table exists (first successful fetch or a
-    // cached one from a prior session) — every aggregate below already treats
-    // "no fx" as "fall back to native-currency-only totals," identical to
-    // pre-5.2 behavior, never a fabricated converted number.
-    const fx: FxContext | undefined = exchangeRates ? { homeCurrency, rates: exchangeRates } : undefined;
+    // displaySubscriptions (overdue active renewals rolled forward for display)
+    // and fx are hoisted above for stable identity; mutations still operate on
+    // the raw state by id, so persistence is unaffected. fx stays undefined until
+    // a rate table exists — every aggregate treats that as "native-currency-only
+    // totals", identical to pre-5.2 behavior, never a fabricated converted number.
     const totalMonthlyMinor = displaySubscriptions.reduce((sum, subscription) => {
       const amount = fx ? monthlyAmountIn(subscription, fx.homeCurrency, fx.rates) : monthlyAmount(subscription);
       return amount === null ? sum : sum + amount;
@@ -382,7 +400,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
       spendTwin: createSpendTwin(totalMonthlyMinor, homeCurrency, exchangeRates),
       familyVault: createFamilyVaultSummary(demoFamilyMembers, displaySubscriptions, homeCurrency, exchangeRates),
       analytics: createAnalyticsSnapshot(displaySubscriptions, new Date(), fx),
-      widgetSnapshot: createWidgetSnapshot(displaySubscriptions, new Date(), fx),
+      widgetSnapshot,
       businessSummary: createBusinessSummary(demoBusinessWorkspace, displaySubscriptions, new Date(), homeCurrency, exchangeRates),
       yearInReview: buildYearInReview(displaySubscriptions, new Date(), fx),
       partnerIntegrations: partnerIntegrationManifests,
@@ -617,7 +635,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         return searchServices(query, 8);
       }
     };
-  }, [hydrated, notificationSettings, priceHistory, quietHours, subscriptions, homeCurrency, coachAiConsent, exchangeRates, ratesLastFetchedAt]);
+  }, [hydrated, notificationSettings, priceHistory, quietHours, displaySubscriptions, fx, widgetSnapshot, homeCurrency, coachAiConsent, exchangeRates, ratesLastFetchedAt]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
