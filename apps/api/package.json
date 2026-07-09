@@ -12,7 +12,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "tsx src/server.ts",
     "test": "vitest run --root ../.. apps/api",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.69.0",
