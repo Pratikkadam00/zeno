@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { monthlyAmount, monthlyAmountIn } from "@zeno/shared";
 import { Screen, Surface } from "../src/components/ui";
 import { getAiCoaching, type AiCoaching } from "../src/api/client";
@@ -11,9 +11,10 @@ import { useZenoTheme } from "../src/theme/theme-provider";
 
 export default function CoachScreen() {
   const { theme } = useZenoTheme();
-  const { spendSummary, subscriptions, totalMonthlyMinor, homeCurrency, fx } = useSubscriptionStore();
+  const { spendSummary, subscriptions, totalMonthlyMinor, homeCurrency, fx, coachAiConsent, setCoachAiConsent } = useSubscriptionStore();
   const { config: budgetConfig } = useBudgetStore();
   const money = (minor: number) => formatMoney(minor, homeCurrency);
+  const aiConsented = coachAiConsent === "granted";
 
   const [ai, setAi] = useState<AiCoaching | null>(null);
   const [loadingAi, setLoadingAi] = useState(true);
@@ -48,21 +49,35 @@ export default function CoachScreen() {
 
   useEffect(() => {
     let active = true;
+    // Consent gate (P2.2): the coach must never transmit the subscription list
+    // to the server until the user has explicitly opted in. Until then, clear
+    // any stale AI result and show only the on-device deterministic sections.
+    if (!aiConsented) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAi(null);
+      setLoadingAi(false);
+      return () => { active = false; };
+    }
     // Deliberate: this kicks off an async fetch, so the loading flag must
     // flip synchronously at the start of the effect, not in a derived value.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingAi(true);
+    // Gmail-derived data must not flow to a third-party AI model (Google API
+    // Services User Data Policy, Limited Use). Exclude email-sourced items from
+    // the transmitted payload — and recompute the total from the same filtered
+    // set so the transmitted aggregate can't leak a Gmail-derived amount either.
+    // The on-device sections below still use the full portfolio.
+    const shareable = subscriptions.filter((subscription) => subscription.status === "active" && subscription.source !== "email");
+    const shareableSubscriptions = shareable.map((subscription) => ({
+      name: subscription.name,
+      category: subscription.category,
+      monthlyMinor: monthlyAmount(subscription),
+      billingCycle: subscription.billingCycle
+    }));
+    const shareableTotalMinor = shareableSubscriptions.reduce((sum, subscription) => sum + (subscription.monthlyMinor ?? 0), 0);
     const payload = {
-      totalMonthlyMinor,
+      totalMonthlyMinor: shareableTotalMinor,
       currency: homeCurrency,
-      subscriptions: subscriptions
-        .filter((subscription) => subscription.status === "active")
-        .map((subscription) => ({
-          name: subscription.name,
-          category: subscription.category,
-          monthlyMinor: monthlyAmount(subscription),
-          billingCycle: subscription.billingCycle
-        })),
+      subscriptions: shareableSubscriptions,
       insights: spendSummary.insights.map((insight) => ({ title: insight.title, body: insight.body })),
       ...(budgetConfig.capMinor != null ? { budgetCapMinor: budgetConfig.capMinor } : {})
     };
@@ -70,7 +85,7 @@ export default function CoachScreen() {
       .then((result) => { if (active) setAi(result); })
       .finally(() => { if (active) setLoadingAi(false); });
     return () => { active = false; };
-  }, [subscriptions, totalMonthlyMinor, homeCurrency, spendSummary.insights, budgetConfig.capMinor]);
+  }, [aiConsented, subscriptions, homeCurrency, spendSummary.insights, budgetConfig.capMinor]);
 
   const aiActive = ai?.source === "ai";
 
@@ -80,11 +95,49 @@ export default function CoachScreen() {
         <View>
           <Text style={{ color: theme.text, fontSize: 30, lineHeight: 36, fontWeight: "900" }}>AI spend coach</Text>
           <Text style={{ color: theme.mutedText, marginTop: 6, fontSize: 16 }}>
-            {aiActive
-              ? "Personalized coaching from your configured AI model, grounded in your subscriptions."
-              : "Deterministic insights computed on-device. Add an AI key on the server to unlock personalized coaching."}
+            {!aiConsented
+              ? "Deterministic insights, computed entirely on your device."
+              : aiActive
+                ? "Personalized coaching from your configured AI model, grounded in your subscriptions."
+                : "Deterministic insights computed on-device. Add an AI key on the server to unlock personalized coaching."}
+          </Text>
+          <Text style={{ color: theme.quietText, marginTop: 6, fontSize: 12 }}>
+            General information, not financial advice.
           </Text>
         </View>
+
+        {!aiConsented ? (
+          <Surface>
+            <Text style={{ color: theme.text, fontSize: 17, fontWeight: "900" }}>
+              {coachAiConsent === "declined" ? "AI coaching is off" : "Turn on AI coaching?"}
+            </Text>
+            <Text style={{ color: theme.mutedText, marginTop: 8, lineHeight: 21 }}>
+              To write personalized savings advice, Zeno sends your subscription names, categories and amounts to our
+              server, which passes them to an AI model. We never send your bank login, card numbers, balances, or
+              anything found in your email — and nothing is shared until you tap Enable.
+            </Text>
+            <View style={{ flexDirection: "row", gap: 12, marginTop: 14 }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Enable AI coaching"
+                onPress={() => setCoachAiConsent("granted")}
+                style={{ backgroundColor: theme.primary, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 18 }}
+              >
+                <Text style={{ color: theme.onPrimary, fontWeight: "800" }}>Enable AI coaching</Text>
+              </Pressable>
+              {coachAiConsent === "unset" ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Not now, keep insights on-device"
+                  onPress={() => setCoachAiConsent("declined")}
+                  style={{ borderRadius: 12, paddingVertical: 12, paddingHorizontal: 18, justifyContent: "center" }}
+                >
+                  <Text style={{ color: theme.mutedText, fontWeight: "700" }}>Not now</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          </Surface>
+        ) : null}
 
         <Surface>
           <Text style={{ color: theme.text, fontSize: 24, fontWeight: "900" }}>{money(totalMonthlyMinor)}</Text>

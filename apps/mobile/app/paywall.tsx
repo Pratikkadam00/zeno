@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { Bell, Check, Infinity as InfinityIcon, Lightbulb, Link2, Search, ShieldCheck, Sparkles, Users, X } from "lucide-react-native";
+import { Check, Infinity as InfinityIcon, PieChart, ShieldCheck, Sparkles, Users, Wallet, X } from "lucide-react-native";
 import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, ToastAndroid, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useEffect, useMemo, useState, type ComponentType } from "react";
@@ -33,12 +33,16 @@ type PaywallSelection = ProBillingPeriod | "lifetime";
 
 type IconCmp = ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
 
+// These are the features Zeno Pro actually unlocks beyond the free tier — every
+// item here is gated behind `plan === "pro"` in code (unlimited tracking past
+// the 10-sub cap, category budgets, and envelope budgeting). Renewal alerts,
+// cancel guides, insights and the AI coach ship free to everyone, so they are
+// deliberately NOT listed as Pro unlocks (standards §14 — sell what's real).
 const VALUE_PROPS: readonly { Icon: IconCmp; title: string; sub: string }[] = [
-  { Icon: Search,      title: "Ongoing auto-discovery",     sub: "Repeat email & statement scans, automatically" },
-  { Icon: Bell,        title: "7 and 3-day renewal alerts", sub: "Never get surprised by a charge again" },
-  { Icon: Link2,       title: "Direct cancel deep-links",   sub: "400+ services with step-by-step guides" },
-  { Icon: Lightbulb,   title: "Full insights & AI coach",   sub: "Finds savings and unused subscriptions" },
-  { Icon: ShieldCheck, title: "No bank login, ever",        sub: "On-device & encrypted — your data stays yours" }
+  { Icon: InfinityIcon, title: "Unlimited subscriptions", sub: "Track past the 10-subscription free limit" },
+  { Icon: PieChart,     title: "Category budgets",         sub: "Set a spending cap for each category" },
+  { Icon: Wallet,       title: "Envelope budgeting",       sub: "Fund envelopes and track what's left" },
+  { Icon: ShieldCheck,  title: "No bank login, ever",      sub: "On-device & encrypted — your data stays yours" }
 ];
 
 // ─── Helpers (logic unchanged) ────────────────────────────────────────────────
@@ -199,7 +203,7 @@ export default function PaywallScreen() {
           <Text style={styles.headline}>Unlock everything.</Text>
           <Text style={styles.headlineMuted}>Save more.</Text>
           <Text style={styles.heroBody}>
-            Ongoing auto-discovery, 7 and 3-day alerts, cancel guides for 400+ services — and we never see your bank.
+            Unlimited tracking, per-category budgets, and envelope budgeting — and we never see your bank.
           </Text>
         </View>
 

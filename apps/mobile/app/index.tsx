@@ -14,7 +14,7 @@ type IconCmp = ComponentType<{ size?: number; color?: string; strokeWidth?: numb
 
 const BEATS: { Icon: IconCmp; title: string; body: string }[] = [
   { Icon: ShieldCheck, title: "No bank login. Ever.", body: "Zeno never asks for your banking credentials — and never sees them." },
-  { Icon: Smartphone, title: "Your data stays on your device", body: "We find subscriptions from email receipts and statements you control, processed on-device and encrypted." },
+  { Icon: Smartphone, title: "Your data stays on your device", body: "Your subscriptions live on your phone, encrypted. Nothing leaves it unless you turn on a cloud feature like the AI coach — and we ask first." },
   { Icon: BellRing, title: "Warned before you're charged", body: "A heads-up 7 and 3 days before any renewal or trial conversion — never a surprise." }
 ];
 

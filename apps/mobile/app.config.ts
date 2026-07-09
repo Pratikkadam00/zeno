@@ -13,7 +13,16 @@ const config: ExpoConfig = {
     supportsTablet: true,
     bundleIdentifier: "app.zeno.mobile",
     config: {
-      usesNonExemptEncryption: false
+      // Accurate export-compliance posture (P2.12). The app bundles SQLCipher
+      // (OpenSSL AES-256) to encrypt the local database at rest — that is
+      // non-exempt encryption beyond the HTTPS/TLS carve-out, so a blanket
+      // `false` here would be a false declaration. We declare encryption use and
+      // rely on the mass-market exemption for standard algorithms (ECCN 5D992.c,
+      // EAR 740.17(b)(1)); this requires filing an annual self-classification
+      // report to BIS/NSA before shipping — tracked as a release-checklist owner
+      // action. Once Apple issues an ITSEncryptionExportComplianceCode from that
+      // filing, add it under infoPlist to skip the per-submission questionnaire.
+      usesNonExemptEncryption: true
     },
     infoPlist: {
       NSFaceIDUsageDescription: "Allow Zeno to unlock your private subscription dashboard with Face ID."

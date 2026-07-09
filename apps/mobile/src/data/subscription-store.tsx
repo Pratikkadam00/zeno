@@ -41,6 +41,11 @@ export type SubscriptionNotificationSettings = {
   dayOf: boolean;
 };
 
+// AI-coach data-sharing consent. "unset" until the user makes a first decision,
+// so the coach can distinguish "never asked" (show the consent prompt) from a
+// deliberate "declined" (stay on-device, don't re-nag as if unasked).
+export type CoachAiConsent = "unset" | "granted" | "declined";
+
 type SubscriptionStore = {
   subscriptions: Subscription[];
   hydrated: boolean;
@@ -86,6 +91,12 @@ type SubscriptionStore = {
   // undefined until a rate table exists — every consumer already treats that
   // as "fall back to native-currency-only totals."
   fx: FxContext | undefined;
+  // AI-coach data-sharing consent (P2.2 / standards §14). "unset" until the user
+  // decides; the coach must NOT transmit the subscription list to the server
+  // until this is "granted". Persisted in the encrypted app_meta table and reset
+  // on data wipe / account cancel. Revocable from Settings → Data & privacy.
+  coachAiConsent: CoachAiConsent;
+  setCoachAiConsent: (next: "granted" | "declined") => void;
   clearAllData: () => Promise<void>;
   suggestions: (query: string) => ReturnType<typeof searchServices>;
 };
@@ -102,6 +113,7 @@ const quietHoursMetaKey = "notification.quietHours.v1";
 const priceHistoryMetaKey = "price.history.v1";
 const homeCurrencyMetaKey = "fx.homeCurrency.v1";
 const exchangeRatesMetaKey = "fx.rates.v1";
+const coachAiConsentMetaKey = "coach.aiConsent.v1";
 
 const defaultQuietHours: QuietHours = { enabled: false, startHour: 22, endHour: 8 };
 const defaultHomeCurrency: CurrencyCode = "USD";
@@ -121,6 +133,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
   ));
   const [quietHours, setQuietHoursState] = useState<QuietHours>(defaultQuietHours);
   const [homeCurrency, setHomeCurrencyState] = useState<CurrencyCode>(defaultHomeCurrency);
+  const [coachAiConsent, setCoachAiConsentState] = useState<CoachAiConsent>("unset");
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates | undefined>(undefined);
   const [ratesLastFetchedAt, setRatesLastFetchedAt] = useState<string | null>(null);
   const [priceHistory, setPriceHistory] = useState<Record<string, PriceHistoryEntry[]>>(() => Object.fromEntries(
@@ -168,6 +181,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         const storedPriceHistory = await readAppMeta(db, priceHistoryMetaKey);
         const storedHomeCurrency = await readAppMeta(db, homeCurrencyMetaKey);
         const storedRates = await readAppMeta(db, exchangeRatesMetaKey);
+        const storedCoachConsent = await readAppMeta(db, coachAiConsentMetaKey);
         if (cancelled) {
           return;
         }
@@ -185,6 +199,13 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         // that would break every downstream conversion.
         if (isCurrencyCode(storedHomeCurrency)) {
           setHomeCurrencyState(storedHomeCurrency);
+        }
+
+        // Only "granted"/"declined" are meaningful persisted decisions; anything
+        // else (missing row, corrupt value) leaves consent at the "unset" default
+        // so the coach shows the prompt rather than silently transmitting.
+        if (storedCoachConsent === "granted" || storedCoachConsent === "declined") {
+          setCoachAiConsentState(storedCoachConsent);
         }
 
         if (storedRates) {
@@ -352,6 +373,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
       notificationSettings,
       quietHours,
       homeCurrency,
+      coachAiConsent,
       exchangeRatesAvailable: Boolean(exchangeRates),
       ratesLastFetchedAt,
       fx,
@@ -551,6 +573,15 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
           });
         }
       },
+      setCoachAiConsent(next) {
+        setCoachAiConsentState(next);
+        const db = dbRef.current;
+        if (db) {
+          void writeAppMeta(db, coachAiConsentMetaKey, next).catch((error) => {
+            console.warn("Failed to persist AI-coach consent.", error);
+          });
+        }
+      },
       async clearAllData() {
         // (a) empty in-memory subscriptions and (b) per-subscription notification settings.
         subscriptionsRef.current = [];
@@ -559,6 +590,8 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         setNotificationSettings({});
         priceHistoryRef.current = {};
         setPriceHistory({});
+        // A wiped/deleted account must re-consent before any future transmit.
+        setCoachAiConsentState("unset");
         // (c) clear the SQLite rows and the persisted notification-settings blob.
         const db = dbRef.current;
         if (db) {
@@ -571,6 +604,9 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
           await writeAppMeta(db, notificationSettingsMetaKey, JSON.stringify({})).catch((error) => {
             console.warn("Failed to clear notification settings.", error);
           });
+          await writeAppMeta(db, coachAiConsentMetaKey, "unset").catch((error) => {
+            console.warn("Failed to reset AI-coach consent.", error);
+          });
         }
         // (d) cancel every scheduled renewal notification.
         await cancelAllNotifications().catch((error) => {
@@ -581,7 +617,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         return searchServices(query, 8);
       }
     };
-  }, [hydrated, notificationSettings, priceHistory, quietHours, subscriptions, homeCurrency, exchangeRates, ratesLastFetchedAt]);
+  }, [hydrated, notificationSettings, priceHistory, quietHours, subscriptions, homeCurrency, coachAiConsent, exchangeRates, ratesLastFetchedAt]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

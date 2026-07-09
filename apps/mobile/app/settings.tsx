@@ -92,7 +92,7 @@ export default function SettingsScreen() {
     }))
   );
   const isLocalOnly = status === "local_only";
-  const { subscriptions, clearAllData, quietHours, setQuietHours, homeCurrency, setHomeCurrency, exchangeRatesAvailable } = useSubscriptionStore();
+  const { subscriptions, clearAllData, quietHours, setQuietHours, homeCurrency, setHomeCurrency, exchangeRatesAvailable, coachAiConsent, setCoachAiConsent } = useSubscriptionStore();
   const { reset: resetBudget } = useBudgetStore();
   const lockEnabled = useLockStore((s) => s.enabled);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -223,6 +223,14 @@ export default function SettingsScreen() {
     {
       title: "Data & privacy",
       rows: [
+        {
+          id: "ai-coach-consent", Icon: Sparkles, iconBg: palette.category.violet, label: "AI coaching",
+          sub: coachAiConsent === "granted"
+            ? "On · subscription names & amounts sent to the AI model"
+            : "Off · insights stay on your device",
+          isSwitch: true, switchValue: coachAiConsent === "granted",
+          onToggle: (value: boolean) => setCoachAiConsent(value ? "granted" : "declined")
+        },
         { id: "connected", Icon: MailSearch, iconBg: palette.category.blue, label: "Connected inboxes", value: "None connected", chevron: true, onPress: () => router.push("/discover") },
         { id: "export", Icon: Download, iconBg: palette.category.slate, label: "Export my data", sub: "Download everything as CSV", chevron: true, onPress: exportData },
         { id: "delete", Icon: Trash2, iconBg: palette.semantic.danger, label: "Delete all my data", sub: "Erase everything from this device", chevron: true, onPress: confirmDelete }
@@ -265,7 +273,7 @@ export default function SettingsScreen() {
         <View style={styles.privacyNote}>
           <ShieldCheck size={17} color={theme.success} strokeWidth={2} />
           <Text style={styles.privacyNoteText}>
-            Your financial data is encrypted on this device. We never see your bank login or your data.
+            Your subscriptions are encrypted on this device. We never ask for your bank login, and nothing is shared unless you turn on a cloud feature.
           </Text>
         </View>
 
