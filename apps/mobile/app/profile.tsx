@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -12,7 +13,7 @@ import { palette } from "../src/theme/zeno";
 
 export default function ProfileScreen() {
   const { theme } = useZenoTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { plan, accountId, status, logout } = useAuthStore(
     useShallow((state) => ({
       plan: state.plan,

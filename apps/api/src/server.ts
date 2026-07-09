@@ -13,7 +13,34 @@ assertConfigOrExit();
 // for local dev. Host must be 0.0.0.0 in the cloud (set API_HOST=0.0.0.0 there).
 const port = Number.parseInt(process.env.PORT ?? process.env.API_PORT ?? "8787", 10);
 const host = process.env.API_HOST ?? "127.0.0.1";
-const app = await buildApp({ logger: true });
+
+// Deliberate production logger config (standards §5/§6) instead of a bare
+// `logger: true`: an explicit level from env (defaults info in prod, debug in
+// dev), NO pino-pretty transport (JSON is the intentional prod format), and a
+// redaction list covering every field that could carry a secret. Fastify's
+// default serializers don't log headers/body, so these paths are defensive —
+// they also cover any future custom serializer or an error object that embeds a
+// request — and pino silently ignores paths that aren't present.
+const inProduction = process.env.NODE_ENV === "production";
+const app = await buildApp({
+  logger: {
+    level: process.env.LOG_LEVEL ?? (inProduction ? "info" : "debug"),
+    redact: {
+      paths: [
+        "req.headers.authorization",
+        "req.headers.cookie",
+        'req.headers["x-webhook-authorization"]',
+        "req.body.refreshToken",
+        "req.body.publicToken",
+        "req.body.identityToken",
+        "req.body.idToken",
+        "req.body.token",
+        "req.body.code"
+      ],
+      remove: true
+    }
+  }
+});
 
 // Rehydrate the in-memory stores (sync, billing, family, auth sessions) from
 // Postgres before accepting traffic. No-op without DATABASE_URL; tolerant of a

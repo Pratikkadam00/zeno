@@ -1,7 +1,7 @@
 import type { BillingCycle, CurrencyCode, SubscriptionCategory } from "@zeno/shared";
 import { router, Stack } from "expo-router";
 import { AlarmClock, AlertTriangle, Bell, ChevronRight, CircleCheck, Plus, Radar, Search, Target, TrendingUp, User } from "lucide-react-native";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthStore } from "../../src/auth/authStore";
@@ -40,14 +40,18 @@ export default function DashboardScreen() {
   const { subscriptions, totalMonthlyMinor, upcoming, endingTrials, priceHikes, homeCurrency, fx, spendSummary } = useSubscriptionStore();
   const { plan, setPlan } = useAuthStore();
 
-  const allInsights = generateInsights(subscriptions, fx);
-  const savingOpportunity = getTotalSavingOpportunity(allInsights);
-  const previewInsights = allInsights
-    .filter((i) => i.type !== "spend_summary")
-    .slice(0, 2);
+  // Memoized so insight generation and budget forecasting only re-run when the
+  // subscriptions/fx inputs actually change, not on every unrelated re-render
+  // (P4.4). Fully effective once the store hands these stable identities (P4.2).
+  const allInsights = useMemo(() => generateInsights(subscriptions, fx), [subscriptions, fx]);
+  const savingOpportunity = useMemo(() => getTotalSavingOpportunity(allInsights), [allInsights]);
+  const previewInsights = useMemo(
+    () => allInsights.filter((i) => i.type !== "spend_summary").slice(0, 2),
+    [allInsights]
+  );
 
   const { config: budgetConfig } = useBudgetStore();
-  const budgetForecast = computeBudgetForecast(subscriptions, undefined, fx);
+  const budgetForecast = useMemo(() => computeBudgetForecast(subscriptions, undefined, fx), [subscriptions, fx]);
   const attentionSubs = subscriptions.filter((s) => s.status === "attention");
   const trackedCount = subscriptions.filter((s) => s.status !== "cancelled").length;
   const renewingThisWeek = upcoming.filter((s) => {

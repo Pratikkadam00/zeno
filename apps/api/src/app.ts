@@ -3,7 +3,7 @@ import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import { findServiceBySlug, searchServices, services } from "@zeno/service-catalog";
 import { createBusinessSummary, createMockOpenBankingAdapter, createPublicApiKeyPreview, demoBusinessWorkspace, fail, listPartnerIntegrations, ok, syncPullSchema, syncPushSchema, type CurrencyCode, type OpenBankingProvider, type PublicApiKey } from "@zeno/shared";
-import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
+import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest, type FastifyServerOptions } from "fastify";
 import { pingStorage } from "./storage/pg";
 import Redis from "ioredis";
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
@@ -18,7 +18,9 @@ import { registerAuthGuard } from "./auth-guard";
 import { markRequestStart, recordProductEvent, recordRequest, renderMetrics } from "./metrics";
 
 export type BuildAppOptions = {
-  logger?: boolean;
+  // boolean for tests (true/false), or a full pino config for production
+  // (explicit level + redaction) — see server.ts.
+  logger?: FastifyServerOptions["logger"];
 };
 
 const DEFAULT_SERVICES_LIMIT = 25;
