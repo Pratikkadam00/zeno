@@ -180,14 +180,26 @@ function RootStack() {
     }
   }, [canUseApp, segments, status]);
 
+  // App-lifecycle setup, deliberately SEPARATE from the data effect below:
+  // when this lived in one effect with data deps, every store mutation re-ran
+  // hydrateLock() and threw the PIN overlay up after each add/edit/delete.
+  // Keyed on canUseApp ONLY so it still re-runs on auth transitions — that is
+  // what re-engages the lock after sign-out → continue-local-only (the PIN
+  // bypass regression covered in lock-store.test.ts). hydrate() itself must
+  // stay non-idempotent for the same reason.
   useEffect(() => {
     if (!canUseApp) {
       return;
     }
-
     void registerForPushNotifications();
     // Load the app-lock config; if a PIN is set this engages the lock overlay.
     void hydrateLock();
+  }, [canUseApp, hydrateLock]);
+
+  useEffect(() => {
+    if (!canUseApp) {
+      return;
+    }
 
     // Wait for the store to hydrate from SQLite before (re)scheduling, otherwise
     // we'd cancel all reminders and reschedule from seed data with the wrong
@@ -211,7 +223,7 @@ function RootStack() {
     });
 
     return () => subscription.remove();
-  }, [canUseApp, hydrated, notificationSubscriptions, notificationSettings, quietHours, widgetSnapshot, hydrateLock, lockNow]);
+  }, [canUseApp, hydrated, notificationSubscriptions, notificationSettings, quietHours, widgetSnapshot, lockNow]);
 
   if (status === "loading") {
     return (

@@ -1,4 +1,4 @@
-import { findServiceBySlug, getServiceBySlug, toSubscriptionCategory, type ServiceCategory } from "@zeno/service-catalog";
+import { findServiceBySlug } from "@zeno/service-catalog";
 import type { BillingCycle, Subscription } from "@zeno/shared";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { ActionSheetIOS, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
@@ -9,7 +9,7 @@ import { cancelNotificationsForSubscription, scheduleRenewalNotificationsWithPre
 import { currencySymbol, formatMoney } from "../../src/utils/format";
 import { formatDaysLabel, formatShortDate, getDaysRemaining } from "../../src/utils/subscription-ui";
 import { AlertTriangle, Bell, BellOff, ChevronLeft, CircleCheck, Clock, MoreHorizontal } from "lucide-react-native";
-import { ServiceAvatar } from "../../src/components/zeno";
+import { Button, Card, Input, ServiceAvatar } from "../../src/components/zeno";
 import { useZenoTheme } from "../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
@@ -69,10 +69,6 @@ function buildChargeHistory(sub: Subscription): { date: string; amountMinor: num
   return entries;
 }
 
-function formatServiceCategory(category: ServiceCategory): string {
-  return category.replace("_", " ");
-}
-
 function toNotificationSubscription(subscription: { id: string; name: string; price: { amountMinor: number; currency: string }; nextRenewalDate?: string }) {
   return { id: subscription.id, name: subscription.name, amount: subscription.price.amountMinor / 100, currency: subscription.price.currency, nextRenewalDate: subscription.nextRenewalDate ?? "" };
 }
@@ -93,8 +89,7 @@ export default function SubscriptionDetailScreen() {
     deleteSubscription,
     pauseSubscription,
     markVerifiedCancelled,
-    markStillCharging,
-    suggestions
+    markStillCharging
   } = useSubscriptionStore();
 
   const subscription = subscriptions.find((item) => item.id === id);
@@ -102,14 +97,10 @@ export default function SubscriptionDetailScreen() {
   const [isEditing, setIsEditing]             = useState(false);
   const [notesModalVisible, setNotesModal]    = useState(false);
   const [draftNote, setDraftNote]             = useState("");
-  const [query, setQuery]                     = useState(subscription?.name ?? "");
+  const [editedName, setEditedName]           = useState(subscription?.name ?? "");
   const [amount, setAmount]                   = useState(subscription ? (subscription.price.amountMinor / 100).toFixed(2) : "0.00");
   const [billingCycle, setBillingCycle]       = useState<BillingCycle>(subscription?.billingCycle ?? "monthly");
   const [renewalDate, setRenewalDate]         = useState(subscription?.nextRenewalDate?.slice(0, 10) ?? "");
-  const [selectedSlug, setSelectedSlug]       = useState<string | undefined>(subscription?.serviceSlug);
-
-  const matches = useMemo(() => suggestions(query), [query, suggestions]);
-  const selectedService = matches.find((s) => s.slug === selectedSlug) ?? (subscription?.serviceSlug ? getServiceBySlug(subscription.serviceSlug) : undefined);
 
   // ── Not found ──
   if (!subscription) {
@@ -189,13 +180,24 @@ export default function SubscriptionDetailScreen() {
       Alert.alert("Enter a price", "The monthly/renewal amount must be greater than $0.");
       return;
     }
+    let nextRenewalDate = sub.nextRenewalDate;
+    if (renewalDate) {
+      // A renewal date carries day-of-intent only, so store it as a UTC day:
+      // every consumer (roll-forward, reminders, trial guardian) does UTC-day
+      // math, and the previous local `T09:00:00` serialization shifted the
+      // stored day back by one for users in UTC+10..+14.
+      const parsed = Date.parse(`${renewalDate}T00:00:00.000Z`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(renewalDate) || Number.isNaN(parsed)) {
+        Alert.alert("Check the renewal date", "Use the YYYY-MM-DD format, e.g. 2026-08-01.");
+        return;
+      }
+      nextRenewalDate = new Date(parsed).toISOString();
+    }
     updateSubscription(sub.id, {
-      name: selectedService?.name ?? (query.trim() || sub.name),
-      serviceSlug: selectedService?.slug ?? selectedSlug,
-      category: selectedService ? toSubscriptionCategory(selectedService.category) : sub.category,
+      name: editedName.trim() || sub.name,
       amountMinor: amountMinorValue,
       billingCycle,
-      nextRenewalDate: renewalDate ? new Date(`${renewalDate}T09:00:00`).toISOString() : sub.nextRenewalDate
+      nextRenewalDate
     });
     setIsEditing(false);
   }
@@ -235,9 +237,9 @@ export default function SubscriptionDetailScreen() {
             </Pressable>
             <Text style={styles.navTitle} numberOfLines={1}>{isEditing ? "Edit subscription" : sub.name}</Text>
             {isEditing ? (
-              <Pressable accessibilityRole="button" accessibilityLabel="Save changes" hitSlop={8} onPress={saveEdit}>
-                <Text style={styles.saveText}>Save</Text>
-              </Pressable>
+              // Spacer balancing the back button so the title stays centered —
+              // the single save affordance is the button at the form's end.
+              <View style={{ minWidth: 60 }} />
             ) : (
               <Pressable accessibilityRole="button" accessibilityLabel="More options" hitSlop={8} onPress={openMenu} style={{ minWidth: 60, alignItems: "flex-end" }}>
                 <MoreHorizontal size={22} color={theme.primary} strokeWidth={2} />
@@ -246,52 +248,33 @@ export default function SubscriptionDetailScreen() {
           </View>
 
           {isEditing ? (
-            /* ── Edit mode ── */
-            <View style={{ paddingBottom: 40 }}>
-              <View style={styles.formCard}>
-                <Text style={styles.formSectionLabel}>Smart search</Text>
-                <TextInput
-                  value={query}
-                  onChangeText={setQuery}
-                  placeholder="Try Midjourney, Adobe, Netflix"
-                  placeholderTextColor={theme.quietText}
-                  style={styles.editInput}
-                  selectionColor={theme.primary}
-                  accessibilityLabel="Search services"
+            /* ── Edit mode — assembled from the Zeno design-system primitives.
+                 Catalog smart-search deliberately absent: the service link is
+                 fixed at creation; editing changes this subscription's own
+                 fields only. ── */
+            <View style={{ paddingHorizontal: 16, paddingBottom: 40, rowGap: 12 }}>
+              <Card>
+                <Input
+                  label="Name"
+                  value={editedName}
+                  onChangeText={setEditedName}
+                  placeholder="Subscription name"
                 />
-                {matches.slice(0, 4).map((opt) => (
-                  <Pressable
-                    key={opt.slug}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: selectedSlug === opt.slug }}
-                    accessibilityLabel={opt.name}
-                    onPress={() => {
-                      setSelectedSlug(opt.slug);
-                      setQuery(opt.name);
-                      setAmount((opt.defaultMonthlyPrice ?? sub.price.amountMinor / 100).toFixed(2));
-                    }}
-                    style={[styles.suggRow, selectedSlug === opt.slug && styles.suggRowActive]}
-                  >
-                    <Text style={styles.suggName}>{opt.name}</Text>
-                    <Text style={styles.suggMeta}>{formatServiceCategory(opt.category)}</Text>
-                  </Pressable>
-                ))}
-              </View>
+              </Card>
 
-              <View style={styles.formCard}>
-                <Text style={styles.formSectionLabel}>Price</Text>
-                <TextInput
+              <Card>
+                <Input
+                  label="Price"
+                  prefix={currencySymbol(sub.price.currency)}
+                  mono
+                  keyboardType="decimal-pad"
                   value={amount}
                   onChangeText={setAmount}
-                  keyboardType="decimal-pad"
-                  style={styles.editInput}
-                  selectionColor={theme.primary}
-                  accessibilityLabel="Price"
                 />
-              </View>
+              </Card>
 
-              <View style={styles.formCard}>
-                <Text style={styles.formSectionLabel}>Billing cycle</Text>
+              <Card>
+                <Text style={styles.editLabel}>Billing cycle</Text>
                 <View style={styles.cycleRow}>
                   {billingCycleOptions.map((option) => (
                     <Pressable
@@ -306,24 +289,21 @@ export default function SubscriptionDetailScreen() {
                     </Pressable>
                   ))}
                 </View>
-              </View>
+              </Card>
 
-              <View style={styles.formCard}>
-                <Text style={styles.formSectionLabel}>Next renewal (YYYY-MM-DD)</Text>
-                <TextInput
+              <Card>
+                <Input
+                  label="Next renewal"
+                  hint="YYYY-MM-DD"
                   value={renewalDate}
                   onChangeText={setRenewalDate}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={theme.quietText}
-                  style={styles.editInput}
-                  selectionColor={theme.primary}
-                  accessibilityLabel="Next renewal date"
+                  placeholder="2026-08-01"
                 />
-              </View>
+              </Card>
 
-              <Pressable accessibilityRole="button" style={styles.primaryBtn} onPress={saveEdit}>
-                <Text style={styles.primaryBtnText}>Save changes</Text>
-              </Pressable>
+              <Button variant="primary" size="lg" fullWidth onPress={saveEdit}>
+                Save changes
+              </Button>
             </View>
           ) : (
             /* ── Detail view ── */
@@ -658,7 +638,6 @@ function createStyles(theme: ThemeTokens) {
       left: 60, right: 60,
       textAlign: "center"
     },
-    saveText: { fontSize: 17, fontWeight: "600", color: theme.primary, textAlign: "right", minWidth: 60 },
     dotsText: { fontSize: 22, color: theme.primary, letterSpacing: 2, textAlign: "right", minWidth: 60 },
 
     // Not found
@@ -773,18 +752,9 @@ function createStyles(theme: ThemeTokens) {
     primaryBtn: { flex: 1, borderRadius: 14, paddingVertical: 12, alignItems: "center", backgroundColor: theme.primary },
     primaryBtnText: { ...typography.callout, fontWeight: "600", color: theme.onPrimary },
 
-    // Edit mode
-    formCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: theme.card, borderRadius: 16, padding: 16 },
-    formSectionLabel: { ...typography.sectionHeader, color: theme.mutedText, marginBottom: 10 },
-    editInput: {
-      ...typography.subheadline, color: theme.text,
-      backgroundColor: theme.surfaceAlt, borderRadius: 12,
-      paddingHorizontal: 14, paddingVertical: 12, marginBottom: 8
-    },
-    suggRow: { paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10 },
-    suggRowActive: { backgroundColor: theme.surfaceAlt },
-    suggName: { ...typography.subheadline, color: theme.text },
-    suggMeta: { ...typography.caption1, color: theme.mutedText, marginTop: 2 },
+    // Edit mode — matches the design-system Input's own label typography so
+    // the billing-cycle section reads like the Input-labelled sections.
+    editLabel: { fontFamily: fonts.sans.semibold, fontSize: 14, color: theme.mutedText, marginBottom: 10 },
     cycleRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     cyclePill: { borderRadius: 20, borderWidth: 0.5, borderColor: theme.border, paddingHorizontal: 12, paddingVertical: 8 },
     cyclePillActive: { borderColor: theme.primary, backgroundColor: theme.primarySurface },

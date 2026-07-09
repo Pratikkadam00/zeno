@@ -8,6 +8,7 @@ import { cancelAllNotifications, type QuietHours } from "../notifications/notifi
 import { openZenoDatabase, readAppMeta, writeAppMeta, type ZenoDatabase } from "../storage/database";
 import { clearAllSubscriptions, listSubscriptions, softDeleteSubscription, upsertSubscription } from "../storage/subscription-repository";
 import { rollRenewalForward } from "../utils/subscription-ui";
+import { applySubscriptionChange, withNotificationSettingsEntry, withUpdatedNotificationSettings, withoutNotificationSettingsEntry } from "./subscription-mutations";
 import { seedSubscriptions } from "./seed-subscriptions";
 
 type CreateSubscriptionInput = {
@@ -127,6 +128,18 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
   ));
   const dbRef = useRef<ZenoDatabase | null>(null);
 
+  // Event-time mirrors of the three mutated slices. Mutations read and write
+  // these (never values captured inside setState updaters — React skips eager
+  // updater evaluation after the first dispatch in an event, which silently
+  // skipped persistence for price edits and wiped notification settings on
+  // delete). Refs, not render closures, so same-event batches — discover's
+  // bulk-import loop, runCancellationVerification's resolve loop — each see
+  // the previous iteration's writes. Written only from event handlers and the
+  // hydration effect, never during render.
+  const subscriptionsRef = useRef(subscriptions);
+  const notificationSettingsRef = useRef(notificationSettings);
+  const priceHistoryRef = useRef(priceHistory);
+
   useEffect(() => {
     if (!persistenceEnabled) {
       return;
@@ -181,6 +194,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
           }
         }
 
+        subscriptionsRef.current = persisted;
         setSubscriptions(persisted);
         // Restore saved per-subscription settings, then ensure every persisted
         // subscription has an entry (defaults for any added before this blob was
@@ -193,9 +207,11 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
             console.warn("Corrupt notification settings in database; using defaults.", error);
           }
         }
-        setNotificationSettings(Object.fromEntries(
+        const hydratedSettings = Object.fromEntries(
           persisted.map((subscription) => [subscription.id, restored[subscription.id] ?? defaultNotificationSettings])
-        ));
+        );
+        notificationSettingsRef.current = hydratedSettings;
+        setNotificationSettings(hydratedSettings);
 
         // Restore price history; seed any subscription without one with a single
         // baseline point (current price) so future changes can be detected as hikes.
@@ -207,12 +223,14 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
             console.warn("Corrupt price history in database; reseeding.", error);
           }
         }
-        setPriceHistory(Object.fromEntries(
+        const hydratedHistory = Object.fromEntries(
           persisted.map((subscription) => [
             subscription.id,
             restoredHistory[subscription.id] ?? [{ at: subscription.createdAt, amountMinor: subscription.price.amountMinor }]
           ])
-        ));
+        );
+        priceHistoryRef.current = hydratedHistory;
+        setPriceHistory(hydratedHistory);
 
         setHydrated(true);
       } catch (error) {
@@ -293,19 +311,17 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
 
   const value = useMemo<SubscriptionStore>(() => {
     const applyChange = (id: string, mutate: (subscription: Subscription) => Subscription) => {
-      // Persist outside the updater: React may invoke updaters more than once,
-      // so the DB write must not be a side effect of the reducer.
-      let updated: Subscription | null = null;
-      setSubscriptions((current) => current.map((subscription) => {
-        if (subscription.id !== id) {
-          return subscription;
-        }
-        updated = mutate(subscription);
-        return updated;
-      }));
-      if (updated) {
-        persistSubscription(updated);
+      // Compute the next value from the ref mirror, never inside the setState
+      // updater (see the ref declarations above for why capture-in-updater
+      // silently lost writes). The persisted value is exactly the value handed
+      // to setState.
+      const { next, updated } = applySubscriptionChange(subscriptionsRef.current, id, mutate);
+      if (!updated) {
+        return;
       }
+      subscriptionsRef.current = next;
+      setSubscriptions(next);
+      persistSubscription(updated);
     };
 
     // Display set: roll overdue active renewals forward to their next cycle so
@@ -370,15 +386,16 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
           ownerProfileId: "profile_local",
           source: input.source ?? "manual"
         };
-        let nextSettings: Record<string, SubscriptionNotificationSettings> = {};
-        setNotificationSettings((current) => {
-          nextSettings = { ...current, [id]: defaultNotificationSettings };
-          return nextSettings;
-        });
+        const nextSettings = withNotificationSettingsEntry(notificationSettingsRef.current, id, defaultNotificationSettings);
+        notificationSettingsRef.current = nextSettings;
+        setNotificationSettings(nextSettings);
         persistNotificationSettings(nextSettings);
-        setSubscriptions((current) => [subscription, ...current]);
+        const nextSubscriptions = [subscription, ...subscriptionsRef.current];
+        subscriptionsRef.current = nextSubscriptions;
+        setSubscriptions(nextSubscriptions);
         persistSubscription(subscription);
-        const nextHistory = { ...priceHistory, [id]: [{ at: now, amountMinor: input.amountMinor }] };
+        const nextHistory = { ...priceHistoryRef.current, [id]: [{ at: now, amountMinor: input.amountMinor }] };
+        priceHistoryRef.current = nextHistory;
         setPriceHistory(nextHistory);
         persistPriceHistory(nextHistory);
         return id;
@@ -387,10 +404,11 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         // Record a price-history point when the amount actually changes, so the
         // Price-Hike Radar can detect increases over time.
         if (changes.amountMinor !== undefined) {
-          const current = subscriptions.find((s) => s.id === id);
+          const current = subscriptionsRef.current.find((s) => s.id === id);
           if (current && changes.amountMinor !== current.price.amountMinor) {
-            const prior = priceHistory[id] ?? [{ at: current.createdAt, amountMinor: current.price.amountMinor }];
-            const nextHistory = { ...priceHistory, [id]: [...prior, { at: new Date().toISOString(), amountMinor: changes.amountMinor }] };
+            const prior = priceHistoryRef.current[id] ?? [{ at: current.createdAt, amountMinor: current.price.amountMinor }];
+            const nextHistory = { ...priceHistoryRef.current, [id]: [...prior, { at: new Date().toISOString(), amountMinor: changes.amountMinor }] };
+            priceHistoryRef.current = nextHistory;
             setPriceHistory(nextHistory);
             persistPriceHistory(nextHistory);
           }
@@ -412,13 +430,12 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         }));
       },
       deleteSubscription(id) {
-        setSubscriptions((current) => current.filter((subscription) => subscription.id !== id));
-        let nextSettings: Record<string, SubscriptionNotificationSettings> = {};
-        setNotificationSettings((current) => {
-          nextSettings = { ...current };
-          delete nextSettings[id];
-          return nextSettings;
-        });
+        const nextSubscriptions = subscriptionsRef.current.filter((subscription) => subscription.id !== id);
+        subscriptionsRef.current = nextSubscriptions;
+        setSubscriptions(nextSubscriptions);
+        const nextSettings = withoutNotificationSettingsEntry(notificationSettingsRef.current, id);
+        notificationSettingsRef.current = nextSettings;
+        setNotificationSettings(nextSettings);
         persistNotificationSettings(nextSettings);
         const db = dbRef.current;
         if (db) {
@@ -448,7 +465,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         // re-check for a charge: the NEXT real renewal, rolled forward so an
         // overdue date can't put verifyBy in the past (which would auto-resolve
         // to "verified" on the next launch with no actual verification).
-        const current = subscriptions.find((s) => s.id === id);
+        const current = subscriptionsRef.current.find((s) => s.id === id);
         const now = new Date();
         const rolled = rollRenewalForward(current?.nextRenewalDate, current?.billingCycle ?? "monthly", now);
         const verifyBy = rolled && Date.parse(rolled) > now.getTime()
@@ -486,7 +503,9 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         // → Needs attention. Otherwise no charge was detected → Verified cancelled.
         // (The manual "I was charged again" control is the other path to attention.)
         const nowMs = Date.now();
-        for (const subscription of subscriptions) {
+        // Snapshot: applyChange rewrites the ref inside the loop, and each
+        // resolved subscription must be persisted individually.
+        for (const subscription of [...subscriptionsRef.current]) {
           if (subscription.status !== "pending" || !subscription.cancellationVerifyBy) {
             continue;
           }
@@ -505,17 +524,9 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         }
       },
       updateNotificationSettings(id, changes) {
-        let nextSettings: Record<string, SubscriptionNotificationSettings> = {};
-        setNotificationSettings((current) => {
-          nextSettings = {
-            ...current,
-            [id]: {
-              ...(current[id] ?? defaultNotificationSettings),
-              ...changes
-            }
-          };
-          return nextSettings;
-        });
+        const nextSettings = withUpdatedNotificationSettings(notificationSettingsRef.current, id, changes, defaultNotificationSettings);
+        notificationSettingsRef.current = nextSettings;
+        setNotificationSettings(nextSettings);
         persistNotificationSettings(nextSettings);
       },
       setQuietHours(changes) {
@@ -539,8 +550,11 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
       },
       async clearAllData() {
         // (a) empty in-memory subscriptions and (b) per-subscription notification settings.
+        subscriptionsRef.current = [];
         setSubscriptions([]);
+        notificationSettingsRef.current = {};
         setNotificationSettings({});
+        priceHistoryRef.current = {};
         setPriceHistory({});
         // (c) clear the SQLite rows and the persisted notification-settings blob.
         const db = dbRef.current;

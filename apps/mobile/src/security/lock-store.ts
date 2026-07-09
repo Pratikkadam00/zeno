@@ -43,6 +43,13 @@ export const useLockStore = create<LockStore>((set, get) => ({
   lockedUntil: null,
 
   hydrate: async () => {
+    // Deliberately NOT idempotent: hydrate re-derives `locked` from whether a
+    // PIN exists every time it runs, because re-entering the app through the
+    // auth boundary (sign out → "continue without an account") must re-engage
+    // the lock — see lock-store.test.ts's PIN-bypass regression test. The UX
+    // side (don't re-lock on data mutations) is enforced at the CALLER:
+    // _layout.tsx only invokes hydrate from an effect keyed on auth
+    // transitions, never on store data changes.
     const [enabled, biometricAvailable, lockState] = await Promise.all([
       hasPinStored(),
       canUseBiometrics(),
