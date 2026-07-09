@@ -69,6 +69,17 @@ function splitPrice(priceStr: string): { dollars: string; cents: string } {
   return { dollars: match[1], cents: match[2] };
 }
 
+// Derive the annual plan's monthly-equivalent big number from the LIVE annual
+// price, but only when it's a plain "$<d>.<dd>" (or "$<d>") string. A localized
+// or other-currency price (e.g. "29,99 €") returns null, so we show the annual
+// figure as-is rather than mis-dividing a comma-decimal into a wrong number.
+function perMonthFromAnnual(annualPriceString: string): string | null {
+  const match = annualPriceString.match(/^\$(\d+)(?:\.(\d{2}))?$/);
+  if (!match) return null;
+  const value = Number(match[1]) + (match[2] ? Number(match[2]) / 100 : 0);
+  return `$${(value / 12).toFixed(2)}`;
+}
+
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function PaywallScreen() {
@@ -91,17 +102,29 @@ export default function PaywallScreen() {
     return () => { mounted = false; };
   }, []);
 
+  // Live store prices are primary; the hardcoded fallbacks are only used before
+  // offerings load or when RevenueCat isn't configured (P2.10).
   const familyPrice = getPackagePrice(offerings?.familyMonthly ?? null, fallbackPrices.familyMonthly);
   const lifetimePrice = getPackagePrice(offerings?.proLifetime ?? null, fallbackPrices.proLifetime);
+  const proMonthlyPrice = getPackagePrice(offerings?.proMonthly ?? null, fallbackPrices.proMonthly);
+  const proAnnualPrice = getPackagePrice(offerings?.proAnnual ?? null, fallbackPrices.proAnnual);
+  const annualPerMonth = perMonthFromAnnual(proAnnualPrice);
 
-  // Annual is billed yearly; show the monthly-equivalent in the big number.
+  // Annual shows a monthly-equivalent big number when we can derive one from the
+  // live annual price; otherwise the annual price itself (never a stale hardcode).
   // Lifetime shows its one-time price directly (never a "/mo" figure).
-  const displayPrice = period === "lifetime" ? lifetimePrice : period === "annual" ? "$2.50" : "$3.99";
+  const displayPrice = period === "lifetime"
+    ? lifetimePrice
+    : period === "annual"
+      ? (annualPerMonth ?? proAnnualPrice)
+      : proMonthlyPrice;
   const { dollars: priceDollars, cents: priceCents } = splitPrice(displayPrice);
+  const showPerMonthSuffix = period === "monthly" || (period === "annual" && annualPerMonth !== null);
+  const showPerYearSuffix = period === "annual" && annualPerMonth === null;
   const pricePeriodDesc = period === "lifetime"
     ? "one payment · yours forever, no trial needed"
     : period === "annual"
-      ? "billed as $29.99/year"
+      ? (annualPerMonth ? `billed as ${proAnnualPrice}/year` : "billed annually · cancel anytime")
       : "billed monthly · cancel anytime";
 
   async function handlePurchasePro() {
@@ -212,18 +235,18 @@ export default function PaywallScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ selected: period === "monthly" }}
-            accessibilityLabel="Monthly plan, $3.99 per month"
+            accessibilityLabel={`Monthly plan, ${proMonthlyPrice} per month`}
             onPress={() => setPeriod("monthly")}
             style={[styles.toggleOption, period === "monthly" && styles.toggleOptionActive]}
           >
             <Text style={[styles.toggleTitle, period === "monthly" ? styles.toggleTitleActive : styles.toggleTitleInactive]}>Monthly</Text>
-            <Text style={[styles.togglePrice, period === "monthly" ? styles.togglePriceActive : styles.togglePriceInactive]}>$3.99/mo</Text>
+            <Text style={[styles.togglePrice, period === "monthly" ? styles.togglePriceActive : styles.togglePriceInactive]}>{proMonthlyPrice}/mo</Text>
           </Pressable>
 
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ selected: period === "annual" }}
-            accessibilityLabel="Annual plan, $29.99 per year, save 37 percent"
+            accessibilityLabel={`Annual plan, ${proAnnualPrice} per year, save 37 percent`}
             onPress={() => setPeriod("annual")}
             style={[styles.toggleOption, period === "annual" && styles.toggleOptionActive]}
           >
@@ -233,7 +256,7 @@ export default function PaywallScreen() {
                 <Text style={styles.saveBadgeText}>Save 37%</Text>
               </View>
             </View>
-            <Text style={[styles.togglePrice, period === "annual" ? styles.togglePriceActive : styles.togglePriceInactive]}>$29.99/yr</Text>
+            <Text style={[styles.togglePrice, period === "annual" ? styles.togglePriceActive : styles.togglePriceInactive]}>{proAnnualPrice}/yr</Text>
           </Pressable>
 
           <Pressable
@@ -262,7 +285,8 @@ export default function PaywallScreen() {
                 <Text style={styles.priceDollars}>{priceDollars}</Text>
                 <View style={styles.priceRight}>
                   <Text style={styles.priceCents}>.{priceCents}</Text>
-                  {period !== "lifetime" ? <Text style={styles.pricePer}>/mo</Text> : null}
+                  {showPerMonthSuffix ? <Text style={styles.pricePer}>/mo</Text> : null}
+                  {showPerYearSuffix ? <Text style={styles.pricePer}>/yr</Text> : null}
                 </View>
               </View>
               <Text style={styles.priceDesc}>{pricePeriodDesc}</Text>
