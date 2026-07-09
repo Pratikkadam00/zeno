@@ -1,5 +1,6 @@
 import type { CurrencyCode } from "@zeno/shared";
 import { useMemo, useState, type ComponentType } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { deleteAccountOnServer } from "../src/api/client";
 import { useAuthStore } from "../src/auth/authStore";
 import { useBudgetStore } from "../src/data/budget-store";
@@ -82,12 +83,14 @@ function formatHour(hour: number): string {
 export default function SettingsScreen() {
   const { theme, scheme, toggleScheme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { plan, accountId, status, logout } = useAuthStore((state) => ({
-    plan: state.plan,
-    accountId: state.accountId,
-    status: state.status,
-    logout: state.logout
-  }));
+  const { plan, accountId, status, logout } = useAuthStore(
+    useShallow((state) => ({
+      plan: state.plan,
+      accountId: state.accountId,
+      status: state.status,
+      logout: state.logout
+    }))
+  );
   const isLocalOnly = status === "local_only";
   const { subscriptions, clearAllData, quietHours, setQuietHours, homeCurrency, setHomeCurrency, exchangeRatesAvailable } = useSubscriptionStore();
   const { reset: resetBudget } = useBudgetStore();

@@ -2,6 +2,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { CreditCard, LogOut, ShieldCheck } from "lucide-react-native";
+import { useShallow } from "zustand/react/shallow";
 import { useAuthStore } from "../src/auth/authStore";
 import { useLockStore } from "../src/security/lock-store";
 import { ServiceAvatar } from "../src/components/zeno";
@@ -12,12 +13,14 @@ import { palette } from "../src/theme/zeno";
 export default function ProfileScreen() {
   const { theme } = useZenoTheme();
   const styles = createStyles(theme);
-  const { plan, accountId, status, logout } = useAuthStore((state) => ({
-    plan: state.plan,
-    accountId: state.accountId,
-    status: state.status,
-    logout: state.logout
-  }));
+  const { plan, accountId, status, logout } = useAuthStore(
+    useShallow((state) => ({
+      plan: state.plan,
+      accountId: state.accountId,
+      status: state.status,
+      logout: state.logout
+    }))
+  );
   const lockEnabled = useLockStore((s) => s.enabled);
   const isLocalOnly = status === "local_only";
 
