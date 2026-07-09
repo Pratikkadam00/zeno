@@ -431,7 +431,16 @@ async function requestMagicLink(emailInput: string, requestId: string, reply: Fa
   await kvPersistAwait("auth_legacy", email, record);
 
   const link = `${defaultMagicLinkRedirect}?token=${encodeURIComponent(token)}`;
-  await deliverMagicLink(email, link, code, requestId);
+  try {
+    await deliverMagicLink(email, link, code, requestId);
+  } catch (error) {
+    // Never surface the upstream (Resend) failure detail to the client — log it
+    // server-side and return a clean 502. deliverMagicLink already keeps the
+    // recipient address and API key out of its own thrown message.
+    console.error({ requestId, err: error instanceof Error ? error.message : String(error) }, "Magic-link delivery failed.");
+    reply.code(502);
+    return fail("UPSTREAM_ERROR", "Could not send the sign-in email right now. Please try again shortly.", requestId);
+  }
 
   const response: MagicLinkResponse = {
     delivered: true,

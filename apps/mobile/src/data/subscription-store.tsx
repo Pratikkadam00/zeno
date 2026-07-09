@@ -1,5 +1,5 @@
 import { searchServices } from "@zeno/service-catalog";
-import { buildYearInReview, createAnalyticsSnapshot, createBusinessSummary, createFamilyVaultSummary, createRenewalReminderPlan, createSpendSummary, createSpendTwin, createWidgetSnapshot, demoBusinessWorkspace, demoFamilyMembers, detectPriceHikes, getEndingTrials, monthlyAmount, monthlyAmountIn, partnerIntegrationManifests, type AnalyticsSnapshot, type BillingCycle, type BusinessSubscriptionSummary, type CurrencyCode, type EndingTrial, type ExchangeRates, type FamilyVaultSummary, type FxContext, type PartnerIntegrationManifest, type PriceHike, type PriceHistoryEntry, type RenewalReminderPlan, type SpendSummary, type SpendTwinComparison, type Subscription, type SubscriptionCategory, type SubscriptionStatus, type WidgetSnapshot, type YearInReview } from "@zeno/shared";
+import { buildYearInReview, createAnalyticsSnapshot, createBusinessSummary, createFamilyVaultSummary, createRenewalReminderPlan, createSpendSummary, createSpendTwin, createWidgetSnapshot, demoBusinessWorkspace, demoFamilyMembers, detectPriceHikes, getEndingTrials, isCurrencyCode, monthlyAmount, monthlyAmountIn, partnerIntegrationManifests, type AnalyticsSnapshot, type BillingCycle, type BusinessSubscriptionSummary, type CurrencyCode, type EndingTrial, type ExchangeRates, type FamilyVaultSummary, type FxContext, type PartnerIntegrationManifest, type PriceHike, type PriceHistoryEntry, type RenewalReminderPlan, type SpendSummary, type SpendTwinComparison, type Subscription, type SubscriptionCategory, type SubscriptionStatus, type WidgetSnapshot, type YearInReview } from "@zeno/shared";
 import * as Crypto from "expo-crypto";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform } from "react-native";
@@ -180,8 +180,11 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
           }
         }
 
-        if (storedHomeCurrency) {
-          setHomeCurrencyState(storedHomeCurrency as CurrencyCode);
+        // Validate the persisted value against the enum rather than trusting a
+        // raw cast — a corrupt/legacy row must not inject an unsupported code
+        // that would break every downstream conversion.
+        if (isCurrencyCode(storedHomeCurrency)) {
+          setHomeCurrencyState(storedHomeCurrency);
         }
 
         if (storedRates) {

@@ -6,7 +6,7 @@ import { createBusinessSummary, createMockOpenBankingAdapter, createPublicApiKey
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import { pingStorage } from "./storage/pg";
 import Redis from "ioredis";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { z, ZodError } from "zod";
 import { authRoutes, revokeAllSessionsForAccount } from "./routes/auth";
 import { createLinkToken, deletePlaidItem, exchangePublicToken, getRecentTransactions, getStoredPlaidItem, plaidConfigured, sandboxPublicToken, storePlaidItem } from "./plaid";
@@ -278,15 +278,17 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   app.get("/api/v1/health/ready", readiness);
 
   // Prometheus metrics (request counts, latency, in-flight). Public route in the
-  // auth guard, but gated here by METRICS_TOKEN when set — so production can lock
-  // scraping to its collector while dev/local stays open. Aggregate counters only.
+  // auth guard, but gated here by METRICS_TOKEN. In production the token is
+  // REQUIRED (fail closed — an unset token returns 401, never an open scrape
+  // surface); dev/local stays open when unset. Aggregate counters only.
   app.get("/metrics", async (request, reply) => {
     const token = process.env.METRICS_TOKEN;
-    if (token) {
+    const inProduction = process.env.NODE_ENV === "production";
+    if (token || inProduction) {
       const provided = request.headers.authorization?.startsWith("Bearer ")
         ? request.headers.authorization.slice(7).trim()
         : null;
-      if (provided !== token) {
+      if (!token || !provided || !constantTimeEquals(provided, token)) {
         reply.code(401);
         return fail("UNAUTHORIZED", "Invalid metrics token.", request.id);
       }
@@ -706,6 +708,15 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   });
 
   return app;
+}
+
+// Length-safe constant-time string comparison — timingSafeEqual throws on
+// unequal-length buffers, so compare a fixed-size digest of each side to avoid
+// both the throw and leaking the token length via early return.
+function constantTimeEquals(a: string, b: string): boolean {
+  const ha = createHash("sha256").update(a).digest();
+  const hb = createHash("sha256").update(b).digest();
+  return timingSafeEqual(ha, hb);
 }
 
 type RateLimitEnvelopeError = Error & {

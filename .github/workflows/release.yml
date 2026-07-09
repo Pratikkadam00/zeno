@@ -1,0 +1,45 @@
+name: Release gate
+
+# Full pre-release verification. Unlike ci.yml (which runs on every PR and only
+# *reports* dependency advisories), this workflow is the BLOCKING gate: a fresh
+# high/critical advisory must stop a release from going out even if no code
+# changed (standards §11). Trigger it by pushing a v* tag or running it manually
+# from the Actions tab before cutting a release.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  release-gate:
+    name: verify & audit (blocking)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build web
+        run: npm run build --workspace @zeno/web
+
+      # BLOCKING: a high/critical advisory fails the release. Moderate/low
+      # (e.g. current Expo transitive advisories) are surfaced but don't block.
+      - name: Dependency audit (blocking)
+        run: npm audit --audit-level=high

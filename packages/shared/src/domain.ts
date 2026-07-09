@@ -1,4 +1,10 @@
-export type CurrencyCode = "USD" | "EUR" | "GBP" | "INR" | "CAD" | "AUD";
+export const CURRENCY_CODES = ["USD", "EUR", "GBP", "INR", "CAD", "AUD"] as const;
+export type CurrencyCode = (typeof CURRENCY_CODES)[number];
+
+/** Runtime guard for values crossing a trust boundary (DB reads, API payloads). */
+export function isCurrencyCode(value: unknown): value is CurrencyCode {
+  return typeof value === "string" && (CURRENCY_CODES as readonly string[]).includes(value);
+}
 
 export type Money = {
   amountMinor: number;
