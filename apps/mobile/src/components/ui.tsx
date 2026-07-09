@@ -1,6 +1,6 @@
 import type { ThemePreference } from "@zeno/shared";
 import { Link } from "expo-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Animated, Pressable, StyleSheet, Text, View, type PressableProps, type StyleProp, type ViewProps, type ViewStyle } from "react-native";
 import { themeOrder } from "../theme/tokens";
 import { useZenoTheme } from "../theme/theme-provider";
@@ -58,7 +58,10 @@ export function TextLink({ href, children }: { href: string; children: string })
 
 export function ThemeToggle() {
   const { theme, themeId, setThemeId } = useZenoTheme();
-  const fade = useRef(new Animated.Value(1)).current;
+  // useState (not useRef): reading a ref's .current during render is unsafe
+  // under the React Compiler; Animated.Value mutates via its own setValue()
+  // outside React's render cycle regardless, so this is a drop-in swap.
+  const [fade] = useState(() => new Animated.Value(1));
 
   useEffect(() => {
     fade.setValue(0.72);
@@ -67,7 +70,7 @@ export function ThemeToggle() {
       duration: 300,
       useNativeDriver: true
     }).start();
-  }, [themeId]);
+  }, [fade, themeId]);
 
   return (
     <Animated.View

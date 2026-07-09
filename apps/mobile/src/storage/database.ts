@@ -30,7 +30,7 @@ export async function writeAppMeta(db: ZenoDatabase, key: string, value: string)
 // renaming changes a real, versioned path. v1 is the entire original body and is
 // FULLY IDEMPOTENT (CREATE TABLE IF NOT EXISTS + table_info-checked column adds),
 // so existing installs (user_version 0) re-run it once harmlessly, then advance.
-const MIGRATIONS: Array<{ version: number; up: (db: ZenoDatabase) => Promise<void> }> = [
+const MIGRATIONS: { version: number; up: (db: ZenoDatabase) => Promise<void> }[] = [
   { version: 1, up: migrationV1 }
 ];
 

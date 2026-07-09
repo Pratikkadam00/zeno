@@ -3,7 +3,7 @@ import type { BillingCycle, CancellationDifficulty } from "@zeno/shared";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { Alert, Animated, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, ToastAndroid, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSubscriptionStore } from "../../../src/data/subscription-store";
 import { cancelNotificationsForSubscription } from "../../../src/notifications/notificationService";
 import { formatMoney } from "../../../src/utils/format";
@@ -82,8 +82,11 @@ export default function SubscriptionCancelScreen() {
   const [cancelSuccess, setCancelSuccess] = useState(false);
   const [supportOpen, setSupportOpen]     = useState(false);
 
-  const confirmAnim   = useRef(new Animated.Value(0)).current;
-  const confirmSlide  = useRef(new Animated.Value(-10)).current;
+  // useState (not useRef): reading a ref's .current during render is unsafe
+  // under the React Compiler; Animated.Value mutates via its own setValue()
+  // outside React's render cycle regardless, so this is a drop-in swap.
+  const [confirmAnim]  = useState(() => new Animated.Value(0));
+  const [confirmSlide] = useState(() => new Animated.Value(-10));
 
   useEffect(() => {
     if (showConfirm) {
@@ -280,7 +283,7 @@ export default function SubscriptionCancelScreen() {
               style={styles.markCancelledBtn}
               onPress={() => void handleConfirmedCancel()}
             >
-              <Text style={styles.markCancelledText}>I've already cancelled — mark as cancelled</Text>
+              <Text style={styles.markCancelledText}>I&apos;ve already cancelled — mark as cancelled</Text>
             </Pressable>
           ) : null}
 
@@ -291,7 +294,7 @@ export default function SubscriptionCancelScreen() {
                 <CircleCheck size={32} color={theme.success} strokeWidth={2} />
                 <Text style={[styles.successTitle, { marginTop: 8 }]}>Pending verification</Text>
                 <Text style={styles.successBody}>
-                  We'll confirm there's no charge around {formatShortDate(sub.nextRenewalDate)}. If it stops, you save {formatMoney(annualMinor, sub.price.currency)}/year.
+                  We&apos;ll confirm there&apos;s no charge around {formatShortDate(sub.nextRenewalDate)}. If it stops, you save {formatMoney(annualMinor, sub.price.currency)}/year.
                 </Text>
               </View>
             ) : (

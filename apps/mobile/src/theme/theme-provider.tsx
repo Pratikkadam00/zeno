@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { ThemePreference } from "@zeno/shared";
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Animated, StyleSheet } from "react-native";
 import { zenoDark, zenoLight, type ThemeTokens } from "./tokens";
 
@@ -39,7 +39,10 @@ function normalizeThemePreference(value: string | null): ThemePreference | null 
 export function ZenoThemeProvider({ children }: { children: ReactNode }) {
   const [themeId, setThemeIdState] = useState<ThemePreference>("millennial");
   const [scheme, setSchemeState] = useState<ColorSchemeName>("light");
-  const fade = useRef(new Animated.Value(1)).current;
+  // useState (not useRef): reading a ref's .current during render is unsafe
+  // under the React Compiler; Animated.Value mutates via its own setValue()
+  // outside React's render cycle regardless, so this is a drop-in swap.
+  const [fade] = useState(() => new Animated.Value(1));
 
   useEffect(() => {
     void AsyncStorage.getItem(themeStorageKey)

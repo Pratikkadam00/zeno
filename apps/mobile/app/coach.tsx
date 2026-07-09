@@ -48,6 +48,9 @@ export default function CoachScreen() {
 
   useEffect(() => {
     let active = true;
+    // Deliberate: this kicks off an async fetch, so the loading flag must
+    // flip synchronously at the start of the effect, not in a derived value.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingAi(true);
     const payload = {
       totalMonthlyMinor,
@@ -67,7 +70,7 @@ export default function CoachScreen() {
       .then((result) => { if (active) setAi(result); })
       .finally(() => { if (active) setLoadingAi(false); });
     return () => { active = false; };
-  }, [subscriptions, totalMonthlyMinor, spendSummary.insights, budgetConfig.capMinor]);
+  }, [subscriptions, totalMonthlyMinor, homeCurrency, spendSummary.insights, budgetConfig.capMinor]);
 
   const aiActive = ai?.source === "ai";
 

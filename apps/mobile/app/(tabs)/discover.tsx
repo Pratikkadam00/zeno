@@ -297,7 +297,7 @@ export default function DiscoverScreen() {
               <Text style={styles.foundMoneyAmount}>
                 {formatMoney(Math.round(foundMoney.annualTotal * 100), foundMoney.currency)}/year
               </Text>
-              <Text style={styles.foundMoneySub}>in subscriptions you'd forgotten about</Text>
+              <Text style={styles.foundMoneySub}>in subscriptions you&apos;d forgotten about</Text>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Share what Zeno found"
@@ -662,6 +662,11 @@ function EditSubscriptionModal({ candidate, onClose, onSave }: {
   const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [draft, setDraft] = useState<DetectedSubscription | null>(candidate);
+  // Deliberate: re-sync the edit draft whenever a different candidate is
+  // opened. This component stays mounted across edits (the Modal's `visible`
+  // prop toggles instead), so a key-based remount would also unmount the
+  // Modal on close and cut its slide-out animation short.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setDraft(candidate); }, [candidate]);
   if (!draft) return null;
 

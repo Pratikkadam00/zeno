@@ -31,6 +31,7 @@ import { useBudgetStore } from "../src/data/budget-store";
 import { useSubscriptionStore } from "../src/data/subscription-store";
 import { budgetStatus, computeBudgetForecast, computeCategoryForecast, suggestedCapMinor, type BudgetStatus } from "../src/finance/budget";
 import { useZenoTokens } from "../src/theme/useZenoTokens";
+import type { ZenoTokens } from "../src/theme/zeno";
 import { currencySymbol, formatMoney } from "../src/utils/format";
 import { formatShortDate } from "../src/utils/subscription-ui";
 
@@ -38,6 +39,19 @@ function categoryLabel(category: SubscriptionCategory): string {
   if (category === "ai_tools") return "AI tools";
   const spaced = category.replace(/_/g, " ");
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+function BudgetHeader({ t, right }: { t: ZenoTokens; right?: ReactNode }) {
+  const c = t.color;
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingTop: 6, paddingBottom: 8 }}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Go back" hitSlop={8} onPress={() => router.back()} style={{ width: 60 }}>
+        <ChevronLeft size={24} color={c.accent} strokeWidth={2} />
+      </Pressable>
+      <Text style={{ flex: 1, textAlign: "center", fontFamily: t.fonts.sans.semibold, fontSize: 17, color: c.textPrimary }}>Budget</Text>
+      <View style={{ width: 60, alignItems: "flex-end" }}>{right}</View>
+    </View>
+  );
 }
 
 export default function BudgetScreen() {
@@ -69,23 +83,13 @@ export default function BudgetScreen() {
     over: { soft: c.dangerSoft, main: c.danger }
   };
 
-  const Header = ({ right }: { right?: ReactNode }) => (
-    <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingTop: 6, paddingBottom: 8 }}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Go back" hitSlop={8} onPress={() => router.back()} style={{ width: 60 }}>
-        <ChevronLeft size={24} color={c.accent} strokeWidth={2} />
-      </Pressable>
-      <Text style={{ flex: 1, textAlign: "center", fontFamily: t.fonts.sans.semibold, fontSize: 17, color: c.textPrimary }}>Budget</Text>
-      <View style={{ width: 60, alignItems: "flex-end" }}>{right}</View>
-    </View>
-  );
-
   // ── No budget set: invite + zero-data setup ───────────────────────────────
   if (config.capMinor == null) {
     const headroom = setupCapMinor - projectedMinor;
     return (
       <View style={{ flex: 1, backgroundColor: c.bgApp, paddingTop: insets.top }}>
         <Stack.Screen options={{ headerShown: false }} />
-        <Header />
+        <BudgetHeader t={t} />
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 + insets.bottom }}>
           <View style={{ width: 52, height: 52, borderRadius: t.radius.lg, backgroundColor: c.accentSoft, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
             <Target size={26} color={c.accentText} strokeWidth={2} />
@@ -160,7 +164,7 @@ export default function BudgetScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp, paddingTop: insets.top }}>
       <Stack.Screen options={{ headerShown: false }} />
-      <Header right={<IconButton variant="ghost" size={40} label="Edit budget" onPress={() => setCap(null)}><Pencil size={20} color={c.textSecondary} strokeWidth={2} /></IconButton>} />
+      <BudgetHeader t={t} right={<IconButton variant="ghost" size={40} label="Edit budget" onPress={() => setCap(null)}><Pencil size={20} color={c.textSecondary} strokeWidth={2} /></IconButton>} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 28 + insets.bottom }}>
         {/* Hero — forward-looking status */}
@@ -334,7 +338,7 @@ export default function BudgetScreen() {
           <Card padding="none">
             {config.envelopes.length > 0 ? (
               <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: 12, color: c.textTertiary, paddingHorizontal: 14, paddingTop: 12 }}>
-                Envelopes track total funded vs. spent — they don't reset automatically. Remove one to start it fresh.
+                Envelopes track total funded vs. spent — they don&apos;t reset automatically. Remove one to start it fresh.
               </Text>
             ) : null}
             {config.envelopes.map((e, i) => {

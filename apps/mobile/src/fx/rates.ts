@@ -10,7 +10,7 @@ const RATES_URL = "https://open.er-api.com/v6/latest/USD";
 // time_next_update_utc) — refetching more often than that buys nothing.
 export const RATES_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
-const SUPPORTED_CURRENCIES: Array<keyof ExchangeRates> = ["USD", "EUR", "GBP", "INR", "CAD", "AUD"];
+const SUPPORTED_CURRENCIES: (keyof ExchangeRates)[] = ["USD", "EUR", "GBP", "INR", "CAD", "AUD"];
 
 type OpenErApiResponse = {
   result: string;

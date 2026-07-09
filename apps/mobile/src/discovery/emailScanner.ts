@@ -35,7 +35,7 @@ export type GmailMessage = {
 };
 
 type GmailListResponse = {
-  messages?: Array<{ id: string; threadId?: string }>;
+  messages?: { id: string; threadId?: string }[];
   nextPageToken?: string;
   resultSizeEstimate?: number;
 };
@@ -50,7 +50,7 @@ type GmailApiMessage = {
 
 type GmailPayload = {
   mimeType?: string;
-  headers?: Array<{ name: string; value: string }>;
+  headers?: { name: string; value: string }[];
   body?: { data?: string };
   parts?: GmailPayload[];
 };
@@ -179,8 +179,8 @@ export async function listConnectedGmailAccounts(): Promise<GmailAccount[]> {
   return accounts.filter((account): account is GmailAccount => account !== null);
 }
 
-async function listBillingMessageRefs(accessToken: string): Promise<Array<{ id: string; threadId?: string }>> {
-  const refs: Array<{ id: string; threadId?: string }> = [];
+async function listBillingMessageRefs(accessToken: string): Promise<{ id: string; threadId?: string }[]> {
+  const refs: { id: string; threadId?: string }[] = [];
   let pageToken: string | undefined;
 
   do {

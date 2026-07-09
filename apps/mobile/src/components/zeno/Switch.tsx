@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Animated, Pressable, type StyleProp, type ViewStyle } from "react-native";
 import { useZenoTokens } from "../../theme/useZenoTokens";
 
@@ -16,7 +16,11 @@ export function Switch({ checked = false, onChange, disabled = false, size = "md
   const t = useZenoTokens();
   const dims = size === "sm" ? { w: 40, h: 24, k: 18 } : { w: 50, h: 30, k: 24 };
   const pad = (dims.h - dims.k) / 2;
-  const anim = useRef(new Animated.Value(checked ? 1 : 0)).current;
+  // useState (not useRef) for the same stable-across-renders Animated.Value:
+  // reading a ref's .current during render is unsafe under the React
+  // Compiler, and Animated.Value mutates via its own setValue()/interpolate()
+  // outside React's render cycle either way, so this is a drop-in swap.
+  const [anim] = useState(() => new Animated.Value(checked ? 1 : 0));
 
   useEffect(() => {
     Animated.spring(anim, {

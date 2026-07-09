@@ -366,7 +366,7 @@ export default function SubscriptionDetailScreen() {
                     <Clock size={20} color={theme.secondary} strokeWidth={2} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.verifyTitle}>Cancellation pending verification</Text>
-                      <Text style={styles.verifyBody}>We'll confirm there's no charge around {formatShortDate(sub.cancellationVerifyBy ?? sub.nextRenewalDate)}.</Text>
+                      <Text style={styles.verifyBody}>We&apos;ll confirm there&apos;s no charge around {formatShortDate(sub.cancellationVerifyBy ?? sub.nextRenewalDate)}.</Text>
                     </View>
                   </View>
                   <View style={styles.verifyActions}>

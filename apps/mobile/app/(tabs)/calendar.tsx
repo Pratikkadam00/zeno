@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Calendar, type DateData } from "react-native-calendars";
@@ -84,8 +84,11 @@ function DayPanel({
 }) {
   const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const slideAnim = useRef(new Animated.Value(-20)).current;
-  const opacityAnim = useRef(new Animated.Value(0)).current;
+  // useState (not useRef): reading a ref's .current during render is unsafe
+  // under the React Compiler; Animated.Value mutates via its own setValue()
+  // outside React's render cycle regardless, so this is a drop-in swap.
+  const [slideAnim] = useState(() => new Animated.Value(-20));
+  const [opacityAnim] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     slideAnim.setValue(-20);
@@ -231,9 +234,11 @@ export default function CalendarScreen() {
     [activeSubscriptions, selectedDate]
   );
   const groups = useMemo(() => getWeeklyGroups(activeSubscriptions), [activeSubscriptions]);
+  const nowYear = now.getFullYear();
+  const nowMonth = now.getMonth() + 1;
   const monthlyTotal = useMemo(() =>
-    getMonthlyTotal(activeSubscriptions, now.getFullYear(), now.getMonth() + 1, fx),
-    [activeSubscriptions, fx]
+    getMonthlyTotal(activeSubscriptions, nowYear, nowMonth, fx),
+    [activeSubscriptions, nowYear, nowMonth, fx]
   );
   const projectedAnnual = useMemo(() => getProjectedAnnual(activeSubscriptions), [activeSubscriptions]);
 

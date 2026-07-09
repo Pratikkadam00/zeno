@@ -71,10 +71,6 @@ const CATEGORIES: { value: SubscriptionCategory; label: string }[] = [
   { value: "other",           label: "Other" }
 ];
 
-function categoryLabel(value: SubscriptionCategory): string {
-  return CATEGORIES.find((entry) => entry.value === value)?.label ?? "Other";
-}
-
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function AddSubscriptionScreen() {

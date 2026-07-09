@@ -5,8 +5,7 @@ import Purchases, {
   type CustomerInfo,
   type PurchasesOffering,
   type PurchasesOfferings,
-  type PurchasesPackage,
-  type PurchasesStoreProduct
+  type PurchasesPackage
 } from "react-native-purchases";
 
 export type BillingPlan = "free" | "pro" | "family";

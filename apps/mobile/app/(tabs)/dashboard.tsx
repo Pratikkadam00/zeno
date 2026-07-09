@@ -39,7 +39,7 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { subscriptions, totalMonthlyMinor, upcoming, endingTrials, priceHikes, homeCurrency, fx } = useSubscriptionStore();
   const { plan, setPlan } = useAuthStore();
-  const [dismissed, setDismissed] = useState<string[]>([]);
+  const [dismissed] = useState<string[]>([]);
 
   const allInsights = generateInsights(subscriptions, fx);
   const savingOpportunity = getTotalSavingOpportunity(allInsights);
@@ -101,7 +101,7 @@ export default function DashboardScreen() {
             <Radar size={30} color={c.accentText} strokeWidth={2} />
           </View>
           <Text style={{ fontFamily: t.fonts.display.bold, fontSize: 22, color: c.textPrimary, marginBottom: 6, textAlign: "center" }}>
-            Let's find what you're paying for
+            Let&apos;s find what you&apos;re paying for
           </Text>
           <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: 15, color: c.textSecondary, lineHeight: 22, textAlign: "center", marginBottom: 24 }}>
             Nothing tracked yet. Run your first free scan — no bank login, processed on your device.

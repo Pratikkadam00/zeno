@@ -33,7 +33,7 @@ type PaywallSelection = ProBillingPeriod | "lifetime";
 
 type IconCmp = ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
 
-const VALUE_PROPS: ReadonlyArray<{ Icon: IconCmp; title: string; sub: string }> = [
+const VALUE_PROPS: readonly { Icon: IconCmp; title: string; sub: string }[] = [
   { Icon: Search,      title: "Ongoing auto-discovery",     sub: "Repeat email & statement scans, automatically" },
   { Icon: Bell,        title: "7 and 3-day renewal alerts", sub: "Never get surprised by a charge again" },
   { Icon: Link2,       title: "Direct cancel deep-links",   sub: "400+ services with step-by-step guides" },

@@ -137,7 +137,7 @@ export default function WrappedScreen() {
 
         {review.excludedCurrencyCount ? (
           <Text style={{ color: theme.mutedText, fontSize: 12, textAlign: "center" }}>
-            {review.excludedCurrencyCount} subscription{review.excludedCurrencyCount > 1 ? "s" : ""} in other currencies aren't included above.
+            {review.excludedCurrencyCount} subscription{review.excludedCurrencyCount > 1 ? "s" : ""} in other currencies aren&apos;t included above.
           </Text>
         ) : null}
 

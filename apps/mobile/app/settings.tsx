@@ -48,7 +48,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ServiceAvatar } from "../src/components/zeno";
 import { useZenoTheme } from "../src/theme/theme-provider";
 import type { ThemeTokens } from "../src/theme/tokens";
-import { withAlpha } from "../src/utils/subscription-ui";
 
 const APP_STORE_REVIEW_URL = "https://apps.apple.com/";
 const TERMS_URL = "https://zeno.app/legal/terms";
@@ -96,7 +95,7 @@ export default function SettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const quietWindowLabel = `${formatHour(quietHours.startHour)} – ${formatHour(quietHours.endHour)}`;
-  const QUIET_PRESETS: Array<{ label: string; startHour: number; endHour: number }> = [
+  const QUIET_PRESETS: { label: string; startHour: number; endHour: number }[] = [
     { label: "10 PM – 8 AM", startHour: 22, endHour: 8 },
     { label: "11 PM – 7 AM", startHour: 23, endHour: 7 },
     { label: "9 PM – 9 AM", startHour: 21, endHour: 9 },
@@ -169,7 +168,7 @@ export default function SettingsScreen() {
     );
   }
 
-  const sections: Array<{ title: string; rows: SettingsRow[] }> = [
+  const sections: { title: string; rows: SettingsRow[] }[] = [
     {
       title: "Account",
       rows: [
