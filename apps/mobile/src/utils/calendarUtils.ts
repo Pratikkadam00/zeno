@@ -187,7 +187,7 @@ export function getWeeklyGroups(subscriptions: Subscription[]): {
   };
 }
 
-export function getProjectedAnnual(subscriptions: Subscription[]): number {
+export function getProjectedAnnual(subscriptions: Subscription[], fx?: FxContext): number {
   const now = new Date();
   const currentYear = now.getFullYear();
   let projected = 0;
@@ -197,7 +197,13 @@ export function getProjectedAnnual(subscriptions: Subscription[]): number {
       continue;
     }
 
-    const amount = subscription.price.amountMinor / 100;
+    // Convert into the home currency (or skip, never fabricate) so a
+    // mixed-currency portfolio isn't silently summed in raw minor units.
+    const amountMinor = fx ? convertMinor(subscription.price.amountMinor, subscription.price.currency, fx.homeCurrency, fx.rates) : subscription.price.amountMinor;
+    if (amountMinor === null) {
+      continue;
+    }
+    const amount = amountMinor / 100;
     const nextRenewal = new Date(subscription.nextRenewalDate);
     if (Number.isNaN(nextRenewal.getTime())) {
       continue;

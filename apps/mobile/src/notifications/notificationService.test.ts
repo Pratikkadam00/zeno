@@ -22,7 +22,92 @@ vi.mock("expo-notifications", () => ({
 vi.mock("expo-secure-store", () => ({ setItemAsync: vi.fn(), WHEN_UNLOCKED_THIS_DEVICE_ONLY: "WHEN_UNLOCKED_THIS_DEVICE_ONLY" }));
 vi.mock("react-native", () => ({ Platform: { OS: "ios" } }));
 
-const { getNineAmTriggerDate, shiftOutOfQuietHours } = await import("./notificationService");
+const Notifications = await import("expo-notifications");
+const { getNineAmTriggerDate, shiftOutOfQuietHours, buildRenewalTriggers, rescheduleAllNotifications } = await import("./notificationService");
+
+const ALL_ON = { sevenDay: true, threeDay: true, dayOf: true };
+// A fixed "now" with renewals far enough out that every ladder entry is future.
+const NOW = Date.UTC(2026, 5, 1, 8, 0, 0);
+const daysFromNow = (n: number) => new Date(NOW + n * 24 * 60 * 60 * 1000).toISOString();
+
+describe("buildRenewalTriggers — weekly ladder (P1.6)", () => {
+  it("returns only the day-of reminder for a weekly subscription", () => {
+    const triggers = buildRenewalTriggers(
+      { id: "w", name: "Weekly", amount: 5, nextRenewalDate: daysFromNow(10), billingCycle: "weekly" },
+      ALL_ON,
+      undefined,
+      NOW
+    );
+    expect(triggers).toHaveLength(1);
+    expect(triggers[0]?.title).toContain("charged today");
+  });
+
+  it("keeps the full 3-reminder ladder for a monthly subscription", () => {
+    const triggers = buildRenewalTriggers(
+      { id: "m", name: "Monthly", amount: 5, nextRenewalDate: daysFromNow(10), billingCycle: "monthly" },
+      ALL_ON,
+      undefined,
+      NOW
+    );
+    expect(triggers).toHaveLength(3);
+  });
+});
+
+describe("buildRenewalTriggers — day-of fires ON the renewal day (P1.5)", () => {
+  it("fires the day-of at 9 AM local on the renewal's calendar day for a date-only (UTC-midnight) renewal", () => {
+    // Regression: an earlier clamp compared the 9-AM-local instant against the
+    // UTC-midnight renewal and dragged the reminder to the previous evening.
+    const triggers = buildRenewalTriggers(
+      { id: "d", name: "DateOnly", amount: 9.99, nextRenewalDate: "2026-06-20T00:00:00.000Z", billingCycle: "monthly" },
+      ALL_ON,
+      undefined,
+      NOW
+    );
+    const dayOf = triggers.find((t) => t.title.includes("charged today"));
+    expect(dayOf).toBeDefined();
+    expect(dayOf!.fireAt.getDate()).toBe(20); // the renewal day, not the 19th
+    expect(dayOf!.fireAt.getHours()).toBe(9);
+  });
+
+  it("keeps the day-of on the renewal day even when a wrapping quiet window would roll it to the next day", () => {
+    // Quiet 08:00→06:00 (awake only 06:00-08:00) puts 9 AM in the late-night
+    // portion, which shiftOutOfQuietHours would push to the next day's 06:00.
+    const triggers = buildRenewalTriggers(
+      { id: "q", name: "Quiet", amount: 5, nextRenewalDate: "2026-06-20T00:00:00.000Z", billingCycle: "monthly" },
+      ALL_ON,
+      { enabled: true, startHour: 8, endHour: 6 },
+      NOW
+    );
+    const dayOf = triggers.find((t) => t.title.includes("charged today"));
+    expect(dayOf).toBeDefined();
+    expect(dayOf!.fireAt.getDate()).toBe(20); // clamped back to the renewal day
+  });
+});
+
+describe("rescheduleAllNotifications — global iOS cap (P1.10)", () => {
+  it("schedules at most 55 notifications, keeping the soonest, after one cancel-all", async () => {
+    vi.mocked(Notifications.scheduleNotificationAsync).mockClear();
+    vi.mocked(Notifications.cancelAllScheduledNotificationsAsync).mockClear();
+
+    // 30 subs × 3 reminders = 90 future candidates (renewals spaced 30+ days
+    // out so all ladder entries are future). The cap must keep 55, not 90.
+    const subs = Array.from({ length: 30 }, (_, i) => ({
+      id: `s${i}`,
+      name: `Sub ${i}`,
+      amount: 10,
+      nextRenewalDate: daysFromNow(30 + i),
+      billingCycle: "monthly" as const
+    }));
+
+    // Pin Date.now so "future" is evaluated against NOW.
+    const spy = vi.spyOn(Date, "now").mockReturnValue(NOW);
+    await rescheduleAllNotifications(subs);
+    spy.mockRestore();
+
+    expect(vi.mocked(Notifications.cancelAllScheduledNotificationsAsync)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(Notifications.scheduleNotificationAsync).mock.calls.length).toBe(55);
+  });
+});
 
 describe("shiftOutOfQuietHours", () => {
   it("returns the date unchanged when quiet hours are disabled or unset", () => {

@@ -45,6 +45,56 @@ describe("parseEmailBody", () => {
     expect(parseEmailBody("Amount: 8.99 GBP charged for your monthly plan.", "unknown-uk.example")!.currency).toBe("GBP");
   });
 
+  it("parses an amount with a thousands separator (annual plan)", () => {
+    // Regression: the old /\$(\d+(?:\.\d{2})?)/ captured "$1" from "$1,299.00".
+    const result = parseEmailBody("Total: $1,299.00 for your annual plan.", "unknown-merchant.example");
+    expect(result).not.toBeNull();
+    expect(result!.amount).toBe(1299);
+    expect(result!.currency).toBe("USD");
+  });
+
+  it("parses a euro amount written with a decimal comma and € symbol", () => {
+    // Regression: the old patterns anchored on $/keyword and returned null.
+    const result = parseEmailBody("Amount charged: €10,99", "unknown-eu.example");
+    expect(result).not.toBeNull();
+    expect(result!.amount).toBe(10.99);
+    expect(result!.currency).toBe("EUR");
+  });
+
+  it("parses a pound amount with the £ symbol", () => {
+    const result = parseEmailBody("You were charged £9.99 monthly.", "unknown-uk.example");
+    expect(result).not.toBeNull();
+    expect(result!.amount).toBe(9.99);
+    expect(result!.currency).toBe("GBP");
+  });
+
+  it("maps INR, CAD, and AUD currency codes", () => {
+    expect(parseEmailBody("Total: 499.00 INR for your monthly plan.", "x.example")!.currency).toBe("INR");
+    expect(parseEmailBody("Amount: 12.00 CAD charged.", "x.example")!.currency).toBe("CAD");
+    expect(parseEmailBody("Amount: 15.00 AUD charged.", "x.example")!.currency).toBe("AUD");
+  });
+
+  it("stays USD when a USD receipt merely mentions a foreign symbol in passing", () => {
+    // Regression: an ordered non-USD-first check returned EUR for this body.
+    const result = parseEmailBody("You were charged $9.99 this month. Prices for EU users shown in €.", "x.example");
+    expect(result!.amount).toBe(9.99);
+    expect(result!.currency).toBe("USD");
+  });
+
+  it("parses a European dot-grouped integer amount (no decimal comma) correctly", () => {
+    // Regression: "€2.500" was read as 2.5 instead of 2500.
+    const result = parseEmailBody("Your annual plan: €2.500 charged today.", "x.example");
+    expect(result!.amount).toBe(2500);
+    expect(result!.currency).toBe("EUR");
+  });
+
+  it("does not mistake a stray year before a currency code for the amount", () => {
+    // Regression: "2026 USD" matched the number-before-code pattern and, being
+    // larger, won the tie-break over the real 9.99 charge.
+    const result = parseEmailBody("You were charged 9.99.\nInvoice period 2026 USD annual plan.", "x.example");
+    expect(result!.amount).toBe(9.99);
+  });
+
   it("picks the most frequently-mentioned amount when a body has more than one dollar figure", () => {
     // $15.49 appears twice (total + charged-line); $2.00 (a shipping-style aside) appears once.
     const body = "Total: $15.49\nA small $2.00 processing note.\nYou were charged $15.49 today. Monthly plan.";

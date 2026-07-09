@@ -1,5 +1,5 @@
 import { getServiceBySlug, searchServices, services, type Service } from "@zeno/service-catalog";
-import { extractStoreAppName } from "@zeno/shared";
+import { extractStoreAppName, type CurrencyCode } from "@zeno/shared";
 import { exchangeCodeAsync, type AuthRequest, type AuthSessionResult } from "expo-auth-session";
 import { discovery as googleDiscovery } from "expo-auth-session/providers/google";
 import { timedFetch } from "../api/http";
@@ -566,21 +566,58 @@ function detectStoreBiller(senderDomain: string, body: string): BilledThrough | 
   return null;
 }
 
+// Normalize a raw money token to a major-unit number, disambiguating grouping
+// vs decimal separators so "$1,299.00" -> 1299 (not 1) and "€10,99" -> 10.99.
+function parseAmountToken(raw: string): number | null {
+  const cleaned = raw.replace(/[^\d.,]/g, "");
+  if (!/\d/.test(cleaned)) {
+    return null;
+  }
+  const lastComma = cleaned.lastIndexOf(",");
+  const lastDot = cleaned.lastIndexOf(".");
+  let normalized: string;
+  if (lastComma === -1 && lastDot === -1) {
+    normalized = cleaned;
+  } else if (lastComma > lastDot) {
+    // Comma is right-most. Three trailing digits with no dot = thousands
+    // grouping ("1,299"); otherwise it's a decimal comma ("10,99" / "1.299,00").
+    const decimals = cleaned.length - lastComma - 1;
+    normalized = lastDot === -1 && decimals === 3
+      ? cleaned.replace(/,/g, "")
+      : cleaned.replace(/\./g, "").replace(",", ".");
+  } else {
+    // Dot is right-most. Three trailing digits with no comma = European
+    // thousands grouping ("2.500" -> 2500); otherwise the dot is the decimal
+    // separator and any commas group thousands ("1,299.00" -> 1299.00).
+    const decimals = cleaned.length - lastDot - 1;
+    normalized = lastComma === -1 && decimals === 3
+      ? cleaned.replace(/\./g, "")
+      : cleaned.replace(/,/g, "");
+  }
+  const value = Number.parseFloat(normalized);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+// Returns a MAJOR-unit amount (e.g. 15.49), consistent with ParsedSubscription.amount
+// and the CSV importer — NOT integer minor units.
 function extractAmount(body: string): number | null {
+  // The number sub-pattern starts and ends on a digit so it never captures a
+  // stray leading/trailing separator, but tolerates internal "," and ".".
   const patterns = [
-    /\$\s*(\d+(?:\.\d{2})?)/g,
-    /USD\s*(\d+(?:\.\d{2})?)/gi,
-    /total[:\s]+\$?(\d+(?:\.\d{2})?)/gi,
-    /amount[:\s]+\$?(\d+(?:\.\d{2})?)/gi,
-    /charged[:\s]+\$?(\d+(?:\.\d{2})?)/gi,
-    /payment of \$?(\d+(?:\.\d{2})?)/gi
+    /[$€£₹]\s*(\d[\d.,]*\d|\d)/gi,
+    /\b(?:USD|EUR|GBP|INR|CAD|AUD)\s*(\d[\d.,]*\d|\d)/gi,
+    // A bare number followed by a currency CODE must carry a 2-digit decimal
+    // group so a stray integer (e.g. an order number or "2026 USD" year) can't
+    // be mistaken for an amount; symbol/keyword patterns still catch integers.
+    /(\d[\d.,]*[.,]\d{2})\s*(?:USD|EUR|GBP|INR|CAD|AUD)\b/gi,
+    /(?:total|amount|charged|price|payment of)[:\s]+[$€£₹]?\s*(\d[\d.,]*\d|\d)/gi
   ];
   const counts = new Map<string, { amount: number; count: number }>();
 
   for (const pattern of patterns) {
     for (const match of body.matchAll(pattern)) {
-      const amount = Number.parseFloat(match[1]);
-      if (!Number.isFinite(amount) || amount <= 0) {
+      const amount = parseAmountToken(match[1]);
+      if (amount === null) {
         continue;
       }
       const key = amount.toFixed(2);
@@ -595,17 +632,35 @@ function extractAmount(body: string): number | null {
   return ranked[0]?.amount ?? null;
 }
 
-function detectCurrency(body: string): string {
-  if (/\bUSD\b|\$/i.test(body)) {
-    return "USD";
+function countMatches(body: string, pattern: RegExp): number {
+  return (body.match(pattern) ?? []).length;
+}
+
+// Pick the currency whose markers appear MOST in the body, so a genuinely-USD
+// receipt that merely mentions a foreign symbol in passing (e.g. "also shown in
+// €") stays USD. USD is the app default and wins ties. "C$"/"A$" contain "$",
+// so those hits are subtracted from the raw "$" count before scoring USD.
+function detectCurrency(body: string): CurrencyCode {
+  const cadAud = countMatches(body, /[CA]\$/g);
+  const counts: Record<CurrencyCode, number> = {
+    USD: Math.max(0, countMatches(body, /\$/g) - cadAud) + countMatches(body, /\bUSD\b/gi),
+    EUR: countMatches(body, /€/g) + countMatches(body, /\bEUR\b/gi),
+    GBP: countMatches(body, /£/g) + countMatches(body, /\bGBP\b/gi),
+    INR: countMatches(body, /₹/g) + countMatches(body, /\bINR\b/gi) + countMatches(body, /\bRs\.?/gi),
+    CAD: countMatches(body, /\bCAD\b/gi) + countMatches(body, /C\$/g),
+    AUD: countMatches(body, /\bAUD\b/gi) + countMatches(body, /A\$/g)
+  };
+
+  // USD seeded as the default; only a STRICTLY greater non-USD count wins.
+  let best: CurrencyCode = "USD";
+  let bestCount = counts.USD;
+  for (const currency of ["EUR", "GBP", "INR", "CAD", "AUD"] as const) {
+    if (counts[currency] > bestCount) {
+      best = currency;
+      bestCount = counts[currency];
+    }
   }
-  if (/\bEUR\b|€/i.test(body)) {
-    return "EUR";
-  }
-  if (/\bGBP\b|£/i.test(body)) {
-    return "GBP";
-  }
-  return "USD";
+  return best;
 }
 
 function detectBillingCycle(body: string, amount: number, service?: Service): ParsedSubscription["billingCycle"] {

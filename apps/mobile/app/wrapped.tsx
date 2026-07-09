@@ -33,10 +33,16 @@ export default function WrappedScreen() {
   const { yearInReview: review, homeCurrency } = useSubscriptionStore();
   const money = (minor: number) => formatMoney(minor, homeCurrency);
 
+  // Truthful period phrasing: the total only covers spend since the user began
+  // tracking each sub, so a new user must not see "over the last 12 months".
+  const coveragePhrase = review.coversFullTrailingYear || !review.coverageStartLabel
+    ? "over the last 12 months"
+    : `since I started tracking in ${review.coverageStartLabel}`;
+
   const shareSummary = async () => {
     const lines = [
-      "My subscriptions this year:",
-      `· ${money(review.totalSpentMinor)} spent over 12 months`,
+      "My subscriptions, wrapped:",
+      `· ${money(review.totalSpentMinor)} spent ${coveragePhrase}`,
       review.mostExpensive ? `· Priciest: ${review.mostExpensive.name} (${money(review.mostExpensive.monthlyMinor)}/mo)` : null,
       review.topCategory ? `· Most spent on: ${labelCategory(review.topCategory.category)}` : null,
       review.cancelledCount > 0 ? `· Cancelled ${review.cancelledCount} I didn't need` : null,
@@ -51,18 +57,18 @@ export default function WrappedScreen() {
   const shareTotal = () => {
     recordFunnelEvent("share_card_generated", "wrapped_total");
     return shareText(
-      `I spent ${money(review.totalSpentMinor)} on subscriptions this year — and I'm on pace for ${money(review.projectedAnnualMinor)} next year.`
+      `I spent ${money(review.totalSpentMinor)} on subscriptions ${coveragePhrase} — and I'm on pace for ${money(review.projectedAnnualMinor)} next year.`
     );
   };
   const shareMostExpensive = () => {
     if (!review.mostExpensive) return undefined;
     recordFunnelEvent("share_card_generated", "wrapped_most_expensive");
-    return shareText(`My priciest subscription this year: ${review.mostExpensive.name} at ${money(review.mostExpensive.monthlyMinor)}/month.`);
+    return shareText(`My priciest subscription right now: ${review.mostExpensive.name} at ${money(review.mostExpensive.monthlyMinor)}/month.`);
   };
   const shareTopCategory = () => {
     if (!review.topCategory) return undefined;
     recordFunnelEvent("share_card_generated", "wrapped_top_category");
-    return shareText(`${labelCategory(review.topCategory.category)} was where most of my subscription money went this year — ${money(review.topCategory.monthlyMinor)}/month.`);
+    return shareText(`${labelCategory(review.topCategory.category)} is where most of my subscription money goes — ${money(review.topCategory.monthlyMinor)}/month.`);
   };
   const shareBusiestMonth = () => {
     if (!review.busiestMonth) return undefined;
@@ -82,7 +88,9 @@ export default function WrappedScreen() {
               You spent {money(review.totalSpentMinor)}
             </Text>
             <Text style={{ color: theme.mutedText, marginTop: 6, fontSize: 15 }}>
-              on subscriptions over the last 12 months.
+              {review.coversFullTrailingYear || !review.coverageStartLabel
+                ? "on subscriptions over the last 12 months."
+                : `on subscriptions since you started tracking in ${review.coverageStartLabel}.`}
             </Text>
           </View>
           <ShareIconButton label="Share total spend" onPress={shareTotal} theme={theme} />

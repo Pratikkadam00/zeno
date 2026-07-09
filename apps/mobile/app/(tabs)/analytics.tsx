@@ -152,6 +152,11 @@ export default function AnalyticsScreen() {
         <View style={styles.chartCard}>
           <Text style={styles.chartTotal}>{formatMoney(totalMonthlyMinor, homeCurrency)}</Text>
           <Text style={styles.chartTotalSub}>this month</Text>
+          {spendSummary.excludedCurrencyCount ? (
+            <Text style={styles.excludedNote}>
+              {spendSummary.excludedCurrencyCount} subscription{spendSummary.excludedCurrencyCount > 1 ? "s" : ""} in other currencies not included.
+            </Text>
+          ) : null}
           <View style={styles.barRow}>
             {chartData.map((entry, i) => {
               const barH = Math.max(4, Math.round((entry.amountMinor / maxBarAmount) * 80));
@@ -357,6 +362,7 @@ function createStyles(theme: ThemeTokens) {
     chartCard: { marginHorizontal: 16, backgroundColor: theme.card, borderRadius: 16, padding: 20, marginBottom: 8 },
     chartTotal: { fontSize: 34, fontFamily: fonts.mono.bold, color: theme.text, letterSpacing: -1.0, fontVariant: ["tabular-nums"] },
     chartTotalSub: { fontSize: 13, color: theme.mutedText, marginTop: 2 },
+    excludedNote: { fontSize: 12, color: theme.mutedText, marginTop: 8 },
     barRow: { flexDirection: "row", alignItems: "flex-end", gap: 6, height: 80, marginTop: 20 },
     barColumn: { flex: 1, alignItems: "center" },
     bar: { width: "100%", borderRadius: 4 },

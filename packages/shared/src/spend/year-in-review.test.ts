@@ -40,5 +40,24 @@ describe("buildYearInReview", () => {
     expect(r.totalSpentMinor).toBe(0);
     expect(r.mostExpensive).toBeNull();
     expect(r.topCategory).toBeNull();
+    expect(r.coverageStartLabel).toBeNull();
+    expect(r.coversFullTrailingYear).toBe(false);
+  });
+
+  it("reports a full trailing year for a long-time tracker", () => {
+    // createdAt Jan 2025 is before the window start (Jul 2025), so the total
+    // genuinely spans 12 months.
+    const r = buildYearInReview([sub({ id: "a", name: "Netflix" })], NOW);
+    expect(r.coversFullTrailingYear).toBe(true);
+    expect(r.coverageStartLabel).toBe("Jul 2025");
+  });
+
+  it("reports the tracking-start month for a new user (not a full year)", () => {
+    const r = buildYearInReview(
+      [sub({ id: "x", name: "New", createdAt: "2026-03-01T00:00:00.000Z" })],
+      NOW
+    );
+    expect(r.coversFullTrailingYear).toBe(false);
+    expect(r.coverageStartLabel).toBe("Mar 2026");
   });
 });

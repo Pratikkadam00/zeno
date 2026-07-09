@@ -32,11 +32,17 @@ export function createRenewalReminderPlan(
       continue;
     }
 
-    const specs: Array<{ kind: RenewalReminderKind; offsetDays: number }> = [
-      { kind: "seven_day", offsetDays: 7 },
-      { kind: "three_day", offsetDays: 3 },
-      { kind: "day_of", offsetDays: 0 }
-    ];
+    // Weekly subscriptions renew every 7 days, so a 7-day and 3-day heads-up
+    // would land inside the *previous* cycle and stack three overlapping
+    // reminders every week — for weekly cadence only the day-of reminder is
+    // useful. Monthly+ keep the full ladder.
+    const specs: Array<{ kind: RenewalReminderKind; offsetDays: number }> = subscription.billingCycle === "weekly"
+      ? [{ kind: "day_of", offsetDays: 0 }]
+      : [
+          { kind: "seven_day", offsetDays: 7 },
+          { kind: "three_day", offsetDays: 3 },
+          { kind: "day_of", offsetDays: 0 }
+        ];
 
     for (const spec of specs) {
       const preference = preferences[spec.kind];
@@ -50,7 +56,16 @@ export function createRenewalReminderPlan(
         continue;
       }
 
-      const adjustedTrigger = applyQuietHours(trigger, preference);
+      // The day-of reminder must never be pushed PAST the renewal instant by
+      // quiet hours (a "renews today" alert firing after the charge is
+      // useless) — bound it by the renewal date.
+      const adjustedTrigger = applyQuietHours(trigger, preference, spec.kind === "day_of" ? renewalDate : undefined);
+      // Re-check after adjustment: the day-of clamp can move a trigger EARLIER
+      // (to the same-day window end or the renewal instant), so a value that
+      // passed the pre-adjustment guard can end up in the past.
+      if (adjustedTrigger.getTime() < nowMs) {
+        continue;
+      }
       plans.push({
         kind: spec.kind,
         subscriptionId: subscription.id,
@@ -97,7 +112,14 @@ function actionFor(kind: RenewalReminderKind): RenewalReminderPlan["action"] {
   return "view";
 }
 
-function applyQuietHours(trigger: Date, preference: ReminderPreferenceLookup[RenewalReminderKind]): Date {
+// `noLaterThan` bounds the shifted time (used for day-of reminders so quiet
+// hours can never push the alert past the renewal instant). When present, the
+// next-day wrap is suppressed and the result is clamped to the bound.
+function applyQuietHours(
+  trigger: Date,
+  preference: ReminderPreferenceLookup[RenewalReminderKind],
+  noLaterThan?: Date
+): Date {
   if (!preference?.quietHoursStart || !preference.quietHoursEnd) {
     return trigger;
   }
@@ -123,7 +145,16 @@ function applyQuietHours(trigger: Date, preference: ReminderPreferenceLookup[Ren
   const adjusted = new Date(trigger);
   adjusted.setUTCHours(end, 0, 0, 0);
   if (start > end && hour >= start) {
-    adjusted.setUTCDate(adjusted.getUTCDate() + 1);
+    // Late-night portion of a wrapping window (e.g. 22:00 with a 22:00–06:00
+    // window) would shift to the NEXT day's window end. That is fine for an
+    // early heads-up, but for a bounded (day-of) reminder it would land after
+    // the renewal — so only wrap when unbounded.
+    if (!noLaterThan) {
+      adjusted.setUTCDate(adjusted.getUTCDate() + 1);
+    }
+  }
+  if (noLaterThan && adjusted.getTime() > noLaterThan.getTime()) {
+    return new Date(noLaterThan);
   }
   return adjusted;
 }

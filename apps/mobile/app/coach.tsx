@@ -89,6 +89,11 @@ export default function CoachScreen() {
         <Surface>
           <Text style={{ color: theme.text, fontSize: 24, fontWeight: "900" }}>{money(totalMonthlyMinor)}</Text>
           <Text style={{ color: theme.mutedText, marginTop: 4 }}>Estimated monthly subscription spend</Text>
+          {spendSummary.excludedCurrencyCount ? (
+            <Text style={{ color: theme.mutedText, marginTop: 6, fontSize: 12 }}>
+              {spendSummary.excludedCurrencyCount} subscription{spendSummary.excludedCurrencyCount > 1 ? "s" : ""} in other currencies not included.
+            </Text>
+          ) : null}
         </Surface>
 
         {budgetAdvice ? (

@@ -106,7 +106,7 @@ export default function BudgetScreen() {
           {/* Live forecast preview */}
           <View style={{ backgroundColor: t.palette.ink[900], borderRadius: t.radius.xl, padding: 20, marginBottom: 18 }}>
             <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: 12.5, color: t.palette.ink[300], letterSpacing: t.letterSpacing.wide, textTransform: "uppercase" }}>Forecast this month</Text>
-            <View style={{ marginTop: 8 }}><AmountDisplay amount={projectedMinor / 100} size="lg" color="#FFFFFF" /></View>
+            <View style={{ marginTop: 8 }}><AmountDisplay amount={projectedMinor / 100} currency={currencySymbol(homeCurrency)} size="lg" color="#FFFFFF" /></View>
             <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: 12.5, color: t.palette.ink[400], marginTop: 4 }}>
               {money(committedMinor)} charged · {money(projectedMinor - committedMinor)} still to renew
             </Text>
@@ -117,7 +117,7 @@ export default function BudgetScreen() {
             <IconButton variant="secondary" size={44} label="Lower cap" onPress={() => setSetupCapMinor((m) => Math.max(500, m - 500))}>
               <Minus size={20} color={c.textPrimary} strokeWidth={2} />
             </IconButton>
-            <View style={{ minWidth: 120, alignItems: "center" }}><AmountDisplay amount={setupCapMinor / 100} size="lg" /></View>
+            <View style={{ minWidth: 120, alignItems: "center" }}><AmountDisplay amount={setupCapMinor / 100} currency={currencySymbol(homeCurrency)} size="lg" /></View>
             <IconButton variant="secondary" size={44} label="Raise cap" onPress={() => setSetupCapMinor((m) => m + 500)}>
               <Plus size={20} color={c.textPrimary} strokeWidth={2} />
             </IconButton>
@@ -177,7 +177,7 @@ export default function BudgetScreen() {
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8, marginTop: 10 }}>
-            <AmountDisplay amount={projectedMinor / 100} size="xl" color="#FFFFFF" />
+            <AmountDisplay amount={projectedMinor / 100} currency={currencySymbol(homeCurrency)} size="xl" color="#FFFFFF" />
             <Text style={{ fontFamily: t.fonts.mono.regular, fontSize: 15, color: t.palette.ink[400] }}>/ {dollarsRound(capMinor)}</Text>
           </View>
           <View style={{ height: 8, backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 4, marginTop: 16, overflow: "hidden" }}>

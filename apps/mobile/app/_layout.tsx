@@ -86,7 +86,8 @@ function RootStack() {
       amount: subscription.price.amountMinor / 100,
       currency: subscription.price.currency,
       nextRenewalDate: subscription.nextRenewalDate ?? "",
-      isTrial: subscription.billingCycle === "trial"
+      isTrial: subscription.billingCycle === "trial",
+      billingCycle: subscription.billingCycle
     })), [subscriptions]);
 
   useEffect(() => {

@@ -69,8 +69,8 @@ function buildChargeHistory(sub: Subscription): { date: string; amountMinor: num
   return entries;
 }
 
-function toNotificationSubscription(subscription: { id: string; name: string; price: { amountMinor: number; currency: string }; nextRenewalDate?: string }) {
-  return { id: subscription.id, name: subscription.name, amount: subscription.price.amountMinor / 100, currency: subscription.price.currency, nextRenewalDate: subscription.nextRenewalDate ?? "" };
+function toNotificationSubscription(subscription: { id: string; name: string; price: { amountMinor: number; currency: string }; nextRenewalDate?: string; billingCycle?: BillingCycle }) {
+  return { id: subscription.id, name: subscription.name, amount: subscription.price.amountMinor / 100, currency: subscription.price.currency, nextRenewalDate: subscription.nextRenewalDate ?? "", billingCycle: subscription.billingCycle };
 }
 
 const billingCycleOptions: BillingCycle[] = ["weekly", "monthly", "quarterly", "annual", "trial", "unknown"];

@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Calendar, type DateData } from "react-native-calendars";
@@ -156,11 +156,12 @@ function DayPanel({
 }
 
 function RenewalGroup({
-  title, subscriptions, total
+  title, subscriptions, total, homeCurrency
 }: {
   title: string;
   subscriptions: Subscription[];
   total: number;
+  homeCurrency: CurrencyCode;
 }) {
   const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -169,7 +170,7 @@ function RenewalGroup({
     <View>
       <View style={styles.groupHeaderRow}>
         <Text style={styles.groupTitle}>{title}</Text>
-        <Text style={styles.groupTotal}>{formatMoney(Math.round(total * 100))}</Text>
+        <Text style={styles.groupTotal}>{formatMoney(Math.round(total * 100), homeCurrency)}</Text>
       </View>
       <View style={styles.groupCard}>
         {subscriptions.map((sub, index) => {
@@ -213,7 +214,14 @@ export default function CalendarScreen() {
   const { theme, scheme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const calendarTheme = useMemo(() => getCalendarTheme(theme), [theme]);
-  const { subscriptions, homeCurrency, fx } = useSubscriptionStore();
+  const { subscriptions, homeCurrency, fx, spendSummary } = useSubscriptionStore();
+
+  // Sum a subscription list in the home currency, converting each amount (or
+  // skipping when no rate is available) — never raw-sum across currencies.
+  const sumInHome = useCallback((subs: Subscription[]) => subs.reduce((total, sub) => {
+    const amountMinor = fx ? convertMinor(sub.price.amountMinor, sub.price.currency, fx.homeCurrency, fx.rates) : sub.price.amountMinor;
+    return amountMinor === null ? total : total + amountMinor / 100;
+  }, 0), [fx]);
   const now = new Date();
   const thisMonthKey = getThisMonthKey(now);
 
@@ -240,7 +248,7 @@ export default function CalendarScreen() {
     getMonthlyTotal(activeSubscriptions, nowYear, nowMonth, fx),
     [activeSubscriptions, nowYear, nowMonth, fx]
   );
-  const projectedAnnual = useMemo(() => getProjectedAnnual(activeSubscriptions), [activeSubscriptions]);
+  const projectedAnnual = useMemo(() => getProjectedAnnual(activeSubscriptions, fx), [activeSubscriptions, fx]);
 
   const next7DaysList = useMemo(() =>
     activeSubscriptions.filter((sub) => {
@@ -249,10 +257,7 @@ export default function CalendarScreen() {
     }),
     [activeSubscriptions]
   );
-  const next7Total = useMemo(() =>
-    next7DaysList.reduce((sum, sub) => sum + sub.price.amountMinor / 100, 0),
-    [next7DaysList]
-  );
+  const next7Total = useMemo(() => sumInHome(next7DaysList), [next7DaysList, sumInHome]);
   const hasDueSoon = next7DaysList.some((s) => {
     const d = getDaysRemaining(s.nextRenewalDate);
     return d !== null && d <= 3;
@@ -288,10 +293,10 @@ export default function CalendarScreen() {
     : theme.text;
 
   const groupTotals = useMemo(() => ({
-    thisWeek:       groups.thisWeek.reduce((s, sub) => s + sub.price.amountMinor / 100, 0),
-    nextWeek:       groups.nextWeek.reduce((s, sub) => s + sub.price.amountMinor / 100, 0),
-    laterThisMonth: groups.laterThisMonth.reduce((s, sub) => s + sub.price.amountMinor / 100, 0)
-  }), [groups]);
+    thisWeek:       sumInHome(groups.thisWeek),
+    nextWeek:       sumInHome(groups.nextWeek),
+    laterThisMonth: sumInHome(groups.laterThisMonth)
+  }), [groups, sumInHome]);
 
   function onDayPress(day: DateData) {
     setSelectedDate(day.dateString);
@@ -316,17 +321,23 @@ export default function CalendarScreen() {
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>NEXT 7 DAYS</Text>
             <Text style={[styles.statValue, { color: next7ValueColor }]}>
-              {formatMoney(Math.round(next7Total * 100))}
+              {formatMoney(Math.round(next7Total * 100), homeCurrency)}
             </Text>
             <Text style={styles.statSub}>{next7DaysList.length} due soon</Text>
           </View>
 
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>THIS YEAR</Text>
-            <Text style={styles.statValue}>{formatMoney(Math.round(projectedAnnual * 100))}</Text>
+            <Text style={styles.statValue}>{formatMoney(Math.round(projectedAnnual * 100), homeCurrency)}</Text>
             <Text style={styles.statSub}>projected</Text>
           </View>
         </View>
+
+        {spendSummary.excludedCurrencyCount ? (
+          <Text style={styles.excludedNote}>
+            {spendSummary.excludedCurrencyCount} subscription{spendSummary.excludedCurrencyCount > 1 ? "s" : ""} in other currencies not included in these totals.
+          </Text>
+        ) : null}
 
         {/* Calendar */}
         <View style={styles.calendarCard}>
@@ -365,9 +376,9 @@ export default function CalendarScreen() {
           </View>
         ) : (
           <>
-            <RenewalGroup title="This week"       subscriptions={groups.thisWeek}        total={groupTotals.thisWeek} />
-            <RenewalGroup title="Next week"       subscriptions={groups.nextWeek}        total={groupTotals.nextWeek} />
-            <RenewalGroup title="Later this month"subscriptions={groups.laterThisMonth}  total={groupTotals.laterThisMonth} />
+            <RenewalGroup title="This week"       subscriptions={groups.thisWeek}        total={groupTotals.thisWeek}       homeCurrency={homeCurrency} />
+            <RenewalGroup title="Next week"       subscriptions={groups.nextWeek}        total={groupTotals.nextWeek}       homeCurrency={homeCurrency} />
+            <RenewalGroup title="Later this month"subscriptions={groups.laterThisMonth}  total={groupTotals.laterThisMonth} homeCurrency={homeCurrency} />
           </>
         )}
 
@@ -421,6 +432,7 @@ function createStyles(theme: ThemeTokens) {
 
     // Section label
     sectionLabel: { ...typography.sectionHeader, color: theme.mutedText, paddingHorizontal: spacing.screenH, paddingBottom: 8, paddingTop: 20 },
+    excludedNote: { ...typography.caption1, color: theme.mutedText, paddingHorizontal: spacing.screenH, paddingTop: 8 },
 
     // Group
     groupHeaderRow: { paddingHorizontal: spacing.screenH, paddingBottom: 6, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },

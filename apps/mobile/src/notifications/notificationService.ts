@@ -1,3 +1,4 @@
+import type { BillingCycle } from "@zeno/shared";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
@@ -5,6 +6,11 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { themes } from "../theme/tokens";
 import { formatMoney } from "../utils/format";
+
+// iOS silently caps pending local notifications at 64; schedule the nearest
+// triggers only (with headroom) so distant reminders never crowd out imminent
+// ones. Applied globally in rescheduleAllNotifications.
+const MAX_SCHEDULED_NOTIFICATIONS = 55;
 
 const pushTokenKey = "zeno_push_token";
 const notificationChannelId = "zeno-renewals";
@@ -21,6 +27,16 @@ export type RenewalNotificationSubscription = {
   nextRenewalDate: string;
   /** When true, nextRenewalDate is a free-trial conversion date → trial copy. */
   isTrial?: boolean;
+  /** Weekly cadence collapses the reminder ladder to day-of only (see below). */
+  billingCycle?: BillingCycle;
+};
+
+type BuiltTrigger = {
+  subscriptionId: string;
+  fireAt: Date;
+  title: string;
+  body: string;
+  action: string;
 };
 
 export type RenewalNotificationPreferences = {
@@ -34,6 +50,12 @@ export type QuietHours = {
   startHour: number; // 0-23, local time
   endHour: number;   // 0-23, local time
 };
+
+function isSameLocalDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear()
+    && a.getMonth() === b.getMonth()
+    && a.getDate() === b.getDate();
+}
 
 // If a trigger lands inside the user's quiet window, push it to the window's end
 // (local wall-clock). Handles windows that wrap past midnight (e.g. 22:00-08:00).
@@ -107,9 +129,24 @@ export async function scheduleRenewalNotificationsWithPreferences(
 ): Promise<void> {
   await cancelNotificationsForSubscription(subscription.id);
 
+  for (const trigger of buildRenewalTriggers(subscription, preferences, quietHours)) {
+    await scheduleTrigger(trigger);
+  }
+}
+
+// Pure(ish) plan builder: resolves the reminder ladder for one subscription,
+// applies quiet hours, drops past triggers, and returns the concrete triggers
+// WITHOUT scheduling — so rescheduleAllNotifications can sort/cap across all
+// subscriptions before hitting the (iOS-capped) native scheduler.
+export function buildRenewalTriggers(
+  subscription: RenewalNotificationSubscription,
+  preferences: RenewalNotificationPreferences,
+  quietHours?: QuietHours,
+  now: number = Date.now()
+): BuiltTrigger[] {
   const renewalDate = new Date(subscription.nextRenewalDate);
   if (Number.isNaN(renewalDate.getTime())) {
-    return;
+    return [];
   }
 
   const amount = formatAmount(subscription.amount, subscription.currency);
@@ -163,32 +200,61 @@ export async function scheduleRenewalNotificationsWithPreferences(
         }
       ] as const;
 
-  for (const plan of notificationPlan) {
+  // Weekly subscriptions renew every 7 days, so 7-day and 3-day heads-ups fall
+  // in the previous cycle and stack three overlapping reminders every week —
+  // keep only the day-of for weekly cadence. Monthly+ keep the full ladder.
+  const laddered = subscription.billingCycle === "weekly"
+    ? notificationPlan.filter((plan) => plan.daysBefore === 0)
+    : notificationPlan;
+
+  const triggers: BuiltTrigger[] = [];
+  for (const plan of laddered) {
     if (!plan.enabled) {
       continue;
     }
 
-    const triggerDate = shiftOutOfQuietHours(getNineAmTriggerDate(renewalDate, plan.daysBefore), quietHours);
-    if (triggerDate.getTime() <= Date.now()) {
+    // 9 AM in the device's LOCAL time on the renewal day — the intended slot.
+    const baseTrigger = getNineAmTriggerDate(renewalDate, plan.daysBefore);
+    let triggerDate = shiftOutOfQuietHours(baseTrigger, quietHours);
+    // P1.5: a day-of reminder must fire ON the renewal day, never rolled to a
+    // later day by a wrapping quiet window (that would land after the charge).
+    // Compare LOCAL calendar days — not raw instants against the renewal, which
+    // for a date-only (UTC-midnight) renewal is always numerically earlier than
+    // 9 AM local and would wrongly drag the reminder to the previous evening.
+    if (plan.daysBefore === 0 && !isSameLocalDay(triggerDate, baseTrigger)) {
+      triggerDate = baseTrigger;
+    }
+    if (triggerDate.getTime() <= now) {
       continue;
     }
 
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: plan.title,
-        body: plan.body,
-        data: {
-          subscriptionId: subscription.id,
-          action: plan.action
-        }
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: triggerDate,
-        channelId: notificationChannelId
-      }
+    triggers.push({
+      subscriptionId: subscription.id,
+      fireAt: triggerDate,
+      title: plan.title,
+      body: plan.body,
+      action: plan.action
     });
   }
+  return triggers;
+}
+
+async function scheduleTrigger(trigger: BuiltTrigger): Promise<void> {
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: trigger.title,
+      body: trigger.body,
+      data: {
+        subscriptionId: trigger.subscriptionId,
+        action: trigger.action
+      }
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: trigger.fireAt,
+      channelId: notificationChannelId
+    }
+  });
 }
 
 export async function cancelAllNotifications(): Promise<void> {
@@ -212,17 +278,27 @@ export async function rescheduleAllNotifications(
   await Notifications.cancelAllScheduledNotificationsAsync();
 
   const now = Date.now();
-  for (const subscription of subscriptions) {
+  // Build every candidate trigger across ALL subscriptions first, then keep the
+  // soonest MAX_SCHEDULED_NOTIFICATIONS — otherwise, past ~21 subscriptions
+  // (3 reminders each) later subs silently exhaust iOS's 64-slot budget and the
+  // surviving ones are whichever happened to be processed first, not the
+  // nearest. Sorting by fire date makes the imminent reminders win.
+  const allTriggers = subscriptions.flatMap((subscription) => {
     const renewalTime = Date.parse(subscription.nextRenewalDate);
     if (Number.isNaN(renewalTime) || renewalTime <= now) {
-      continue;
+      return [];
     }
-
-    await scheduleRenewalNotificationsWithPreferences(
+    return buildRenewalTriggers(
       subscription,
       preferencesById[subscription.id] ?? { sevenDay: true, threeDay: true, dayOf: true },
-      quietHours
+      quietHours,
+      now
     );
+  });
+
+  allTriggers.sort((a, b) => a.fireAt.getTime() - b.fireAt.getTime());
+  for (const trigger of allTriggers.slice(0, MAX_SCHEDULED_NOTIFICATIONS)) {
+    await scheduleTrigger(trigger);
   }
 }
 

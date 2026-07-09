@@ -37,7 +37,7 @@ export default function DashboardScreen() {
   const t = useZenoTokens();
   const c = t.color;
   const insets = useSafeAreaInsets();
-  const { subscriptions, totalMonthlyMinor, upcoming, endingTrials, priceHikes, homeCurrency, fx } = useSubscriptionStore();
+  const { subscriptions, totalMonthlyMinor, upcoming, endingTrials, priceHikes, homeCurrency, fx, spendSummary } = useSubscriptionStore();
   const { plan, setPlan } = useAuthStore();
 
   const allInsights = generateInsights(subscriptions, fx);
@@ -134,8 +134,13 @@ export default function DashboardScreen() {
               ) : null}
             </View>
             <View style={{ marginTop: 10 }}>
-              <AmountDisplay amount={totalMonthlyMinor / 100} size="xl" color="#FFFFFF" />
+              <AmountDisplay amount={totalMonthlyMinor / 100} currency={currencySymbol(homeCurrency)} size="xl" color="#FFFFFF" />
             </View>
+            {spendSummary.excludedCurrencyCount ? (
+              <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: t.fontSize.caption, color: t.palette.ink[400], marginTop: 6 }}>
+                {spendSummary.excludedCurrencyCount} subscription{spendSummary.excludedCurrencyCount > 1 ? "s" : ""} in other currencies not included above.
+              </Text>
+            ) : null}
             {plan === "free" ? (
               <>
                 <View style={{ height: 6, backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 3, marginTop: 16, overflow: "hidden" }}>
