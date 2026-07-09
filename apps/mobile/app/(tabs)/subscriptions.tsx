@@ -1,13 +1,12 @@
 import { monthlyAmount, monthlyAmountIn, type Subscription, type SubscriptionStatus } from "@zeno/shared";
 import { router } from "expo-router";
 import { Inbox, Plus, Search } from "lucide-react-native";
-import { useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { FlatList, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Badge,
   Button,
-  Card,
   IconButton,
   Input,
   ListRow,
@@ -56,6 +55,53 @@ function statusBadge(status: SubscriptionStatus): { tone: BadgeTone; label: stri
   }
 }
 
+// Memoized row (P4.3): with a stable subscription identity (the store memoizes
+// its display list), a stable onPress, and a stable isLast, an unchanged row
+// skips re-rendering when the screen re-renders for unrelated reasons (typing in
+// search, a filter-chip tap). All per-row derivation lives here.
+const SubscriptionRow = memo(function SubscriptionRow({
+  subscription,
+  isLast,
+  onPress
+}: {
+  subscription: Subscription;
+  isLast: boolean;
+  onPress: (id: string) => void;
+}) {
+  const t = useZenoTokens();
+  const c = t.color;
+  const badge = statusBadge(subscription.status);
+  const dimmed = subscription.status === "paused" || subscription.status === "cancelled";
+  const sub =
+    subscription.status === "active" || subscription.status === "trial"
+      ? formatShortDate(subscription.nextRenewalDate, "—")
+      : subscription.status === "paused"
+        ? "Paused"
+        : "";
+  return (
+    <ListRow
+      divider={!isLast}
+      leading={<ServiceAvatar name={subscription.name} />}
+      title={subscription.name}
+      onPress={() => onPress(subscription.id)}
+      style={dimmed ? { opacity: 0.6 } : undefined}
+      trailing={
+        <View style={{ alignItems: "flex-end", rowGap: 3 }}>
+          <Badge tone={badge.tone} dot={badge.dot}>
+            {badge.label}
+          </Badge>
+          <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: t.fontSize.body, color: c.textPrimary }}>
+            {formatMoney(subscription.price.amountMinor, subscription.price.currency)}
+          </Text>
+          {sub ? (
+            <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: t.fontSize.micro, color: c.textTertiary }}>{sub}</Text>
+          ) : null}
+        </View>
+      }
+    />
+  );
+});
+
 export default function SubscriptionsScreen() {
   const t = useZenoTokens();
   const c = t.color;
@@ -63,23 +109,37 @@ export default function SubscriptionsScreen() {
   const { subscriptions, homeCurrency, fx } = useSubscriptionStore();
   const [filter, setFilter] = useState<FilterKey>("All");
   const [query, setQuery] = useState("");
+  // The Input stays bound to `query` for a responsive field; the filtering uses a
+  // debounced copy so we don't re-filter + re-render the list on every keystroke
+  // (P4.3). Only the trailing value after 200ms of idle drives the list.
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 200);
+    return () => clearTimeout(timer);
+  }, [query]);
+
   // Aggregate total (summed across all billing subscriptions) — shown in the
-  // home-currency setting, converted via fx when a rate table is available.
-  // The per-item row below uses formatMoney with that subscription's own
-  // stored currency instead.
+  // home-currency setting, converted via fx when a rate table is available. The
+  // per-item row uses formatMoney with that subscription's own stored currency.
   const money = (minor: number) => formatMoney(minor, homeCurrency);
 
-  const billing = subscriptions.filter((s) => s.status === "active" || s.status === "trial");
-  const totalMinor = billing.reduce((sum, s) => {
-    const amount = fx ? monthlyAmountIn(s, fx.homeCurrency, fx.rates) : monthlyAmount(s);
-    return amount === null ? sum : sum + amount;
-  }, 0);
+  const { billingCount, totalMinor } = useMemo(() => {
+    const billing = subscriptions.filter((s) => s.status === "active" || s.status === "trial");
+    const total = billing.reduce((sum, s) => {
+      const amount = fx ? monthlyAmountIn(s, fx.homeCurrency, fx.rates) : monthlyAmount(s);
+      return amount === null ? sum : sum + amount;
+    }, 0);
+    return { billingCount: billing.length, totalMinor: total };
+  }, [subscriptions, fx]);
 
-  const active = FILTERS.find((f) => f.key === filter) ?? FILTERS[0];
-  let list = subscriptions.filter(active.match);
-  if (query.trim()) {
-    list = list.filter((s) => s.name.toLowerCase().includes(query.trim().toLowerCase()));
-  }
+  const list = useMemo(() => {
+    const active = FILTERS.find((f) => f.key === filter) ?? FILTERS[0];
+    const base = subscriptions.filter(active.match);
+    const q = debouncedQuery.trim().toLowerCase();
+    return q ? base.filter((s) => s.name.toLowerCase().includes(q)) : base;
+  }, [subscriptions, filter, debouncedQuery]);
+
+  const handleRowPress = useCallback((id: string) => router.push(`/subscription/${id}`), []);
 
   const empty = EMPTY_COPY[filter];
 
@@ -98,7 +158,7 @@ export default function SubscriptionsScreen() {
       {/* Billing total */}
       <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
         <Text style={{ fontFamily: t.fonts.mono.regular, fontSize: t.fontSize.bodySm, color: c.textTertiary }}>
-          {billing.length} billing ·{" "}
+          {billingCount} billing ·{" "}
           <Text style={{ fontFamily: t.fonts.mono.semibold, color: c.textSecondary }}>{money(totalMinor)}/mo</Text>
         </Text>
       </View>
@@ -151,57 +211,47 @@ export default function SubscriptionsScreen() {
         </ScrollView>
       </View>
 
-      {/* List */}
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 + insets.bottom }}>
-        {list.length === 0 ? (
-          <View style={{ alignItems: "center", paddingVertical: 60, paddingHorizontal: 30, rowGap: 4 }}>
-            <Inbox size={30} color={c.textTertiary} strokeWidth={2} />
-            <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: t.fontSize.body, color: c.textSecondary, marginTop: 8 }}>{empty[0]}</Text>
-            <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: t.fontSize.bodySm, color: c.textTertiary, textAlign: "center" }}>{empty[1]}</Text>
-            {filter === "All" ? (
-              <Button variant="secondary" onPress={() => router.push("/subscription/add")} style={{ marginTop: 16 }}>
-                Add a subscription
-              </Button>
-            ) : null}
-          </View>
-        ) : (
-          <Card padding="none">
-            {list.map((s, i) => {
-              const badge = statusBadge(s.status);
-              const dimmed = s.status === "paused" || s.status === "cancelled";
-              const sub =
-                s.status === "active" || s.status === "trial"
-                  ? formatShortDate(s.nextRenewalDate, "—")
-                  : s.status === "paused"
-                    ? "Paused"
-                    : "";
-              return (
-                <ListRow
-                  key={s.id}
-                  divider={i < list.length - 1}
-                  leading={<ServiceAvatar name={s.name} />}
-                  title={s.name}
-                  onPress={() => router.push(`/subscription/${s.id}`)}
-                  style={dimmed ? { opacity: 0.6 } : undefined}
-                  trailing={
-                    <View style={{ alignItems: "flex-end", rowGap: 3 }}>
-                      <Badge tone={badge.tone} dot={badge.dot}>
-                        {badge.label}
-                      </Badge>
-                      <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: t.fontSize.body, color: c.textPrimary }}>
-                        {formatMoney(s.price.amountMinor, s.price.currency)}
-                      </Text>
-                      {sub ? (
-                        <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: t.fontSize.micro, color: c.textTertiary }}>{sub}</Text>
-                      ) : null}
-                    </View>
-                  }
-                />
-              );
-            })}
-          </Card>
-        )}
-      </ScrollView>
+      {/* List — virtualized (P4.3). The rounded surface + hairline border
+          replicate the Card="none" chrome the rows used to sit inside, while the
+          FlatList windows rows for a long (paid) portfolio and skips re-rendering
+          unchanged rows. */}
+      {list.length === 0 ? (
+        <View style={{ alignItems: "center", paddingVertical: 60, paddingHorizontal: 30, rowGap: 4 }}>
+          <Inbox size={30} color={c.textTertiary} strokeWidth={2} />
+          <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: t.fontSize.body, color: c.textSecondary, marginTop: 8 }}>{empty[0]}</Text>
+          <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: t.fontSize.bodySm, color: c.textTertiary, textAlign: "center" }}>{empty[1]}</Text>
+          {filter === "All" ? (
+            <Button variant="secondary" onPress={() => router.push("/subscription/add")} style={{ marginTop: 16 }}>
+              Add a subscription
+            </Button>
+          ) : null}
+        </View>
+      ) : (
+        <View
+          style={{
+            flex: 1,
+            marginHorizontal: 16,
+            backgroundColor: c.surfaceCard,
+            borderWidth: 1,
+            borderColor: c.borderSubtle,
+            borderRadius: t.radius.lg,
+            overflow: "hidden"
+          }}
+        >
+          <FlatList
+            data={list}
+            keyExtractor={(s) => s.id}
+            renderItem={({ item, index }) => (
+              <SubscriptionRow subscription={item} isLast={index === list.length - 1} onPress={handleRowPress} />
+            )}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}
+            initialNumToRender={12}
+            windowSize={11}
+            removeClippedSubviews
+          />
+        </View>
+      )}
     </View>
   );
 }
