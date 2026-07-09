@@ -37,7 +37,11 @@ jobs:
       - name: Build web
         run: npm run build --workspace @zeno/web
 
-      # Surface and gate on high/critical dependency advisories. Moderate/low
-      # (e.g. current Expo transitive advisories) are reported but don't fail.
-      - name: Dependency audit
+      # Report dependency advisories on every PR/push, but DO NOT fail the build:
+      # nothing deploys from a PR, so a fresh upstream advisory shouldn't redden
+      # unrelated work (standards §11). The BLOCKING high/critical gate lives in
+      # release.yml, which runs before a release actually ships — that's where a
+      # new advisory must stop us.
+      - name: Dependency audit (report only)
+        continue-on-error: true
         run: npm audit --audit-level=high
