@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="design_doc_mode" content="canvas">
+<title>Zeno — App Store Kit</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; background: #E8E8E4; font-family: var(--font-sans); }
+  a { color: var(--accent-text); } a:hover { color: var(--accent-hover); }
+  .fr { position: absolute; overflow: hidden; box-shadow: 0 10px 40px rgba(16,20,30,.15); display: flex; flex-direction: column; }
+  /* ---- shot layout ---- */
+  .shot { width: 1188px; height: 2576px; padding: 96px 88px 0; box-sizing: border-box; }
+  .kick { font-family: var(--font-mono); font-size: 25px; font-weight: 700; letter-spacing: .22em; }
+  .shot h1 { font-family: var(--font-display); font-weight: 700; font-size: 92px; line-height: 1.04; letter-spacing: -.03em; margin: 26px 0 0; text-wrap: balance; }
+  .shot .sub { font-size: 34px; line-height: 1.45; margin: 26px 0 0; max-width: 26ch; }
+  .devwrap { margin: 72px auto 0; }
+  .dev { width: 746px; background: #0c0e12; border-radius: 104px; padding: 22px; box-shadow: 0 30px 80px rgba(0,0,0,.30); position: relative; }
+  .isl { position: absolute; top: 42px; left: 50%; transform: translateX(-50%); width: 220px; height: 62px; background: #07090c; border-radius: 40px; z-index: 5; }
+  .scr { width: 702px; height: 1519px; border-radius: 84px; overflow: hidden; background: var(--bg-app); }
+  .rep { width: 390px; height: 844px; transform: scale(1.8); transform-origin: top left; background: var(--bg-app); display: flex; flex-direction: column; overflow: hidden; }
+  /* ---- replica shared ---- */
+  .sb { height: 48px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; font-weight: 700; font-size: 14px; color: var(--text-primary); }
+  .ml { font-family: var(--font-mono); font-weight: 700; letter-spacing: .16em; color: var(--text-tertiary); font-size: 10px; text-transform: uppercase; }
+  .ll { display: flex; align-items: baseline; gap: 9px; padding: 7px 0; }
+  .ll .lb { font-size: 14px; font-weight: 500; color: var(--text-secondary); }
+  .ll .dots, .dots { flex: 1; border-bottom: 2px dotted var(--rule-strong); transform: translateY(-3px); min-width: 12px; }
+  .ll .vl { font-family: var(--font-mono); font-size: 15px; font-weight: 700; color: var(--text-primary); font-feature-settings: 'tnum' 1; }
+  .sh { display: flex; align-items: center; gap: 9px; padding: 20px 0 8px; }
+  .sh i.rule { flex: 1; border-bottom: 1px solid var(--rule); }
+  .av { width: 34px; height: 34px; border-radius: 9px; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 700; font-size: 15px; flex: none; }
+  .row { display: flex; align-items: center; gap: 11px; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+  .row .nm { font-weight: 650; font-size: 14px; color: var(--text-primary); }
+  .row .mt { font-family: var(--font-mono); font-size: 9px; letter-spacing: .08em; color: var(--text-tertiary); margin-top: 2px; }
+  .amt { font-family: var(--font-mono); font-weight: 700; font-size: 14px; color: var(--text-primary); font-feature-settings: 'tnum' 1; }
+  .tick { width: 3px; align-self: stretch; border-radius: 2px; flex: none; }
+  .stamp { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 20px; border: 3px solid var(--stamp-verified); outline: 1px solid var(--stamp-verified); outline-offset: 3px; border-radius: 7px; color: var(--stamp-verified); transform: rotate(-6deg); font-family: var(--font-mono); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+  .tabs { margin-top: auto; flex: none; height: 74px; border-top: 1px solid var(--rule-strong); background: var(--surface-card); display: flex; align-items: center; }
+  .tabs > div { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; font-family: var(--font-mono); font-size: 8px; font-weight: 700; letter-spacing: .1em; color: var(--text-tertiary); }
+  .tabs .on { color: var(--text-primary); }
+  .tabs .plus { width: 44px; height: 44px; border-radius: 50%; background: var(--ink-panel); display: flex; align-items: center; justify-content: center; outline: 1px solid var(--rule-strong); outline-offset: 3px; }
+  .btn { height: 46px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-weight: 650; font-size: 15px; }
+  .tear { height: 8px; background: linear-gradient(-45deg, var(--surface-card) 5px, transparent 0), linear-gradient(45deg, var(--surface-card) 5px, transparent 0); background-size: 12px 12px; background-repeat: repeat-x; }
+  .chk { width: 18px; height: 18px; border-radius: 4px; background: var(--accent); display: inline-flex; align-items: center; justify-content: center; color: var(--text-on-accent); font-weight: 800; font-size: 12px; flex: none; }
+  .ml, .ll .lb, .row .mt, .row .nm, .stamp span, .kick { white-space: nowrap; }
+  .stamp { gap: 6px; }
+  /* wordmark frames */
+  .wm { width: 1400px; height: 360px; display: flex; align-items: center; justify-content: center; gap: 34px; }
+  .wm .word { font-family: var(--font-display); font-weight: 700; font-size: 150px; letter-spacing: -.045em; }
+</style>
+</head>
+<body>
+
+<!-- ================= SHOT 1 · paper · Home ================= -->
+<section class="fr shot" id="f1" data-w="1188" data-h="2576" style="left:0; top:0; background:var(--paper);">
+  <div class="kick" style="color:var(--accent-text)">THE HONEST LEDGER</div>
+  <h1 style="color:var(--text-primary)">Every subscription. One honest ledger.</h1>
+  <p class="sub" style="color:var(--text-secondary)">Netflix to iCloud — tracked, dated, totalled in tabular mono.</p>
+  <div class="devwrap"><div class="dev"><div class="isl"></div><div class="scr"><div class="rep">
+    <div class="sb"><span>9:41</span><span style="letter-spacing:2px">▮▮▮</span></div>
+    <div style="padding:6px 20px 0; display:flex; align-items:center; gap:11px;">
+      <span class="av" style="background:var(--cat-teal); border-radius:50%">A</span>
+      <div style="flex:1"><div class="ml">THE LEDGER · THU JUL 10</div>
+      <div style="font-family:var(--font-display); font-weight:700; font-size:21px; color:var(--text-primary); margin-top:2px">Morning, Alex</div></div>
+      <i data-lucide="bell" style="width:19px;height:19px;color:var(--text-secondary)"></i>
+    </div>
+    <div style="border-bottom:1px solid var(--rule); margin:10px 20px 0"></div>
+    <div style="padding:18px 20px 0">
+      <div style="display:flex; align-items:baseline; gap:9px"><span class="ml">COMMITTED THIS MONTH</span><span class="dots"></span><span class="ml" style="color:var(--text-tertiary)">8/10 FREE</span></div>
+      <div style="font-family:var(--font-mono); font-weight:700; font-size:54px; letter-spacing:-.045em; color:var(--text-primary); margin-top:8px">$61<span style="font-size:26px; opacity:.55">.97</span></div>
+      <div style="display:flex; gap:2px; height:4px; margin-top:13px">
+        <div style="flex:46; background:var(--cat-violet)"></div><div style="flex:32; background:var(--cat-blue)"></div><div style="flex:11; background:var(--cat-coral)"></div><div style="flex:3; background:var(--cat-amber)"></div>
+      </div>
+      <div style="border-bottom:1px solid var(--rule-strong); margin-top:13px">
+        <div class="ll"><span class="lb">Charged so far</span><span class="dots"></span><span class="vl">$49.97</span></div>
+        <div class="ll"><span class="lb">Still to renew</span><span class="dots"></span><span class="vl">$25.99</span></div>
+      </div>
+      <div class="ll"><span class="lb" style="font-weight:700;color:var(--text-primary)">Budget <span class="ml" style="margin-left:6px">CAP $80</span></span><span class="dots"></span><span class="vl" style="color:var(--stamp-verified)">ON PACE</span></div>
+      <div class="sh"><span class="ml">NEEDS ATTENTION</span><i class="rule"></i></div>
+      <div class="row"><span class="tick" style="background:var(--stamp-alert)"></span><i data-lucide="triangle-alert" style="width:16px;height:16px;color:var(--stamp-alert)"></i><div style="flex:1"><div class="nm">Adobe CC is still charging you</div><div class="mt">CANCELLED JUN 8 · CHARGE FOUND JUL 08</div></div></div>
+      <div class="row" style="border-bottom:none"><span class="tick" style="background:var(--warning)"></span><i data-lucide="alarm-clock" style="width:16px;height:16px;color:var(--warning)"></i><div style="flex:1"><div class="nm">Disney+ trial ends in 2 days</div><div class="mt">CONVERTS TO $13.99/MO ON JUL 12</div></div></div>
+      <div class="sh"><span class="ml">UPCOMING</span><i class="rule"></i><span class="ml" style="color:var(--accent-text)">ALL ↗</span></div>
+      <div class="row"><span class="av" style="background:#E50914">N</span><div style="flex:1"><div class="nm">Netflix</div><div class="mt">JUN 28 · ENTERTAINMENT</div></div><span class="dots"></span><span class="amt">$15.99</span></div>
+      <div class="row" style="border-bottom:none"><span class="av" style="background:#1DB954">S</span><div style="flex:1"><div class="nm">Spotify</div><div class="mt">JUL 2 · MUSIC</div></div><span class="dots"></span><span class="amt">$10.99</span></div>
+    </div>
+    <div class="tabs">
+      <div class="on"><i data-lucide="book-open" style="width:19px;height:19px"></i>LEDGER</div>
+      <div><i data-lucide="layers" style="width:19px;height:19px"></i>SUBS</div>
+      <div><span class="plus"><i data-lucide="plus" style="width:20px;height:20px;color:var(--accent)"></i></span></div>
+      <div><i data-lucide="calendar" style="width:19px;height:19px"></i>CALENDAR</div>
+      <div><i data-lucide="chart-no-axes-column" style="width:19px;height:19px"></i>INSIGHTS</div>
+    </div>
+  </div></div></div></div>
+</section>
+
+<!-- ================= SHOT 2 · navy · Receipt ================= -->
+<section class="fr shot" id="f2" data-w="1188" data-h="2576" style="left:1300px; top:0; background:#0A0F2C;">
+  <div class="kick" style="color:#1ED47F">PRIVACY FIRST</div>
+  <h1 style="color:#F2F1EA">No bank login required.</h1>
+  <p class="sub" style="color:rgba(242,241,234,.66)">Scan email receipts or import a statement you export yourself. Zeno scans only when you tap scan.</p>
+  <div class="devwrap"><div class="dev" style="background:#05070d"><div class="isl"></div><div class="scr"><div class="rep">
+    <div class="sb"><span>9:41</span><span style="letter-spacing:2px">▮▮▮</span></div>
+    <div style="text-align:center; padding:6px 0 10px"><span class="ml" style="color:var(--text-primary)">SCAN RESULTS</span></div>
+    <div style="padding:0 16px">
+      <div class="tear" style="transform:scaleY(-1)"></div>
+      <div style="background:var(--surface-card); border-left:1px solid var(--rule); border-right:1px solid var(--rule); padding:14px 14px 14px">
+        <div style="text-align:center" class="ml">ZENO · STATEMENT SCAN · JUL 10</div>
+        <div style="text-align:center; font-size:12px; color:var(--text-secondary); margin:6px 0 10px">6 recurring charges found. Untick anything that isn't real.</div>
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--rule-strong); padding-bottom:5px"><span class="ml" style="font-size:8.5px">✓ SERVICE</span><span class="ml" style="font-size:8.5px">CONF / AMOUNT</span></div>
+        <div class="row"><span class="chk">✓</span><span class="av" style="background:#E50914; width:30px;height:30px; font-size:13px">N</span><div style="flex:1"><div class="nm" style="font-size:13px">Netflix</div><div class="mt" style="color:var(--stamp-verified)">HIGH CONFIDENCE</div></div><span class="amt">$15.99</span></div>
+        <div class="row"><span class="chk">✓</span><span class="av" style="background:#1DB954; width:30px;height:30px; font-size:13px">S</span><div style="flex:1"><div class="nm" style="font-size:13px">Spotify</div><div class="mt" style="color:var(--stamp-verified)">HIGH CONFIDENCE</div></div><span class="amt">$10.99</span></div>
+        <div class="row"><span class="chk">✓</span><span class="av" style="background:#10A37F; width:30px;height:30px; font-size:13px">C</span><div style="flex:1"><div class="nm" style="font-size:13px">ChatGPT Plus</div><div class="mt" style="color:var(--stamp-verified)">HIGH CONFIDENCE</div></div><span class="amt">$20.00</span></div>
+        <div class="row"><span class="chk">✓</span><span class="av" style="background:#3B82F6; width:30px;height:30px; font-size:13px">I</span><div style="flex:1"><div class="nm" style="font-size:13px">iCloud+</div><div class="mt" style="color:#A36A0B">MED CONFIDENCE</div></div><span class="amt">$2.99</span></div>
+        <div class="row"><span class="chk">✓</span><span class="av" style="background:#A259FF; width:30px;height:30px; font-size:13px">F</span><div style="flex:1"><div class="nm" style="font-size:13px">Figma</div><div class="mt" style="color:#A36A0B">MED CONFIDENCE</div></div><span class="amt">$12.00</span></div>
+        <div class="row" style="border-bottom:none; opacity:.45"><span class="chk" style="background:transparent; border:1.5px solid var(--border-strong)"></span><span class="av" style="background:#F8991C; width:30px;height:30px; font-size:13px">A</span><div style="flex:1"><div class="nm" style="font-size:13px">Audible</div><div class="mt">LOW CONFIDENCE</div></div><span class="amt">$14.95</span></div>
+        <div style="border-bottom:2px dashed var(--rule-strong); margin:5px 0"></div>
+        <div class="ll"><span class="lb" style="font-weight:700; color:var(--text-primary)">Selected total</span><span class="dots"></span><span class="vl" style="color:var(--accent-text)">$61.97 /mo</span></div>
+      </div>
+      <div class="tear"></div>
+      <div class="btn" style="background:var(--accent); color:var(--text-on-accent); margin-top:18px">Add 5 · $61.97/mo</div>
+      <div style="text-align:center; margin-top:12px" class="ml">READ ON THIS PHONE · FIRST SCAN FREE</div>
+    </div>
+  </div></div></div></div>
+</section>
+
+<!-- ================= SHOT 3 · paper · Stamp ================= -->
+<section class="fr shot" id="f3" data-w="1188" data-h="2576" style="left:2600px; top:0; background:var(--paper);">
+  <div class="kick" style="color:var(--accent-text)">PROOF, NOT PROMISES</div>
+  <h1 style="color:var(--text-primary)">Cancelled means verified.</h1>
+  <p class="sub" style="color:var(--text-secondary)">Zeno re-checks your next receipt and statement — and only then stamps it.</p>
+  <div class="devwrap"><div class="dev"><div class="isl"></div><div class="scr"><div class="rep">
+    <div class="sb"><span>9:41</span><span style="letter-spacing:2px">▮▮▮</span></div>
+    <div style="flex:1; display:flex; flex-direction:column; padding:0 24px">
+      <div style="display:flex; flex-direction:column; align-items:center; padding:74px 0 0">
+        <span class="stamp"><span style="font-size:17px">VERIFIED CANCELLED</span><span style="font-size:9px; letter-spacing:.2em; opacity:.75">NETFLIX · JUL 10 2026</span></span>
+      </div>
+      <p style="font-size:14px; color:var(--text-secondary); text-align:center; line-height:1.5; margin:26px auto 22px; max-width:30ch">No charge on your latest statement. It's real. Back in your pocket:</p>
+      <div style="border-top:1px solid var(--rule-strong)">
+        <div class="ll"><span class="lb">Every month</span><span class="dots"></span><span class="vl" style="color:var(--stamp-verified)">+$15.99</span></div>
+        <div class="ll"><span class="lb" style="font-weight:700; color:var(--text-primary)">Every year</span><span class="dots"></span><span class="vl" style="color:var(--stamp-verified); font-size:17px">+$191.88</span></div>
+      </div>
+      <div style="margin-top:auto; padding-bottom:26px"><div class="btn" style="background:var(--accent); color:var(--text-on-accent)">Done</div></div>
+    </div>
+  </div></div></div></div>
+</section>
+
+<!-- ================= SHOT 4 · ink · Alerts ================= -->
+<section class="fr shot" id="f4" data-w="1188" data-h="2576" style="left:3900px; top:0; background:var(--ink-panel);">
+  <div class="kick" style="color:#1ED47F">FREE-TRIAL GUARDIAN</div>
+  <h1 style="color:#F2F1EA">Warned before every charge.</h1>
+  <p class="sub" style="color:rgba(242,241,234,.66)">7 days out, 3 days out, day of. Trials get flagged before they convert.</p>
+  <div class="devwrap"><div class="dev" style="background:#05070d"><div class="isl"></div><div class="scr"><div class="rep">
+    <div class="sb"><span>9:41</span><span style="letter-spacing:2px">▮▮▮</span></div>
+    <div style="text-align:center; padding:6px 0 2px"><span class="ml" style="color:var(--text-primary)">ALERTS</span></div>
+    <div style="padding:0 20px">
+      <div style="font-size:12px; color:var(--text-tertiary); margin-top:6px">Quiet hours respected: 10 PM – 8 AM.</div>
+      <div class="sh"><span class="ml">TODAY</span><i class="rule"></i></div>
+      <div class="row"><span class="tick" style="background:var(--stamp-alert)"></span><i data-lucide="triangle-alert" style="width:16px;height:16px;color:var(--stamp-alert)"></i><div style="flex:1"><div class="nm">Adobe CC is still charging you</div><div class="mt">$54.99 FOUND ON JUL 08 — DIDN'T STICK</div></div></div>
+      <div class="row" style="border-bottom:none"><span class="tick" style="background:var(--warning)"></span><i data-lucide="alarm-clock" style="width:16px;height:16px;color:var(--warning)"></i><div style="flex:1"><div class="nm">Disney+ trial ends in 2 days</div><div class="mt">CONVERTS TO $13.99/MO ON JUL 12</div></div></div>
+      <div class="sh"><span class="ml">THIS WEEK</span><i class="rule"></i></div>
+      <div class="row"><span class="tick" style="background:var(--info)"></span><i data-lucide="trending-up" style="width:16px;height:16px;color:var(--info)"></i><div style="flex:1"><div class="nm">Netflix raised its price</div><div class="mt">$13.99 → $15.99 /MO · +14%</div></div></div>
+      <div class="row"><span class="tick" style="background:var(--ink-400)"></span><i data-lucide="bell" style="width:16px;height:16px;color:var(--text-tertiary)"></i><div style="flex:1"><div class="nm">Figma renews Jul 9</div><div class="mt">$12.00 · 3-DAY REMINDER</div></div></div>
+      <div class="row" style="border-bottom:none"><span class="tick" style="background:var(--stamp-verified)"></span><i data-lucide="check-check" style="width:16px;height:16px;color:var(--stamp-verified)"></i><div style="flex:1"><div class="nm">Hulu verified cancelled</div><div class="mt">NO CHARGE FOUND · SAVING $95.88/YR</div></div></div>
+    </div>
+  </div></div></div></div>
+</section>
+
+<!-- ================= SHOT 5 · paper · Budget ================= -->
+<section class="fr shot" id="f5" data-w="1188" data-h="2576" style="left:5200px; top:0; background:var(--paper);">
+  <div class="kick" style="color:var(--accent-text)">SUBSCRIPTION-FIRST BUDGETING</div>
+  <h1 style="color:var(--text-primary)">A budget that reads your renewals.</h1>
+  <p class="sub" style="color:var(--text-secondary)">Forecast month-end spend from renewal dates — no bank feed, none needed.</p>
+  <div class="devwrap"><div class="dev"><div class="isl"></div><div class="scr"><div class="rep">
+    <div class="sb"><span>9:41</span><span style="letter-spacing:2px">▮▮▮</span></div>
+    <div style="text-align:center; padding:6px 0 2px"><span class="ml" style="color:var(--text-primary)">BUDGET</span></div>
+    <div style="padding:8px 20px 0">
+      <div class="ml">FORECAST · 9 DAYS LEFT</div>
+      <div style="display:flex; align-items:baseline; gap:7px; margin-top:6px">
+        <span style="font-family:var(--font-mono); font-weight:700; font-size:42px; letter-spacing:-.035em; color:var(--text-primary)">$75.96</span>
+        <span style="font-family:var(--font-mono); font-size:13px; color:var(--text-tertiary)">/ $80</span>
+        <span style="margin-left:auto" class="stamp"><span style="font-size:10px; padding:0">ON PACE</span></span>
+      </div>
+      <div style="position:relative; margin-top:16px">
+        <div style="display:flex; height:6px; background:var(--surface-sunken)">
+          <div style="width:62%; background:var(--stamp-verified)"></div>
+          <div style="width:33%; background:var(--stamp-verified); opacity:.38"></div>
+        </div>
+        <div style="position:absolute; top:-4px; bottom:-4px; right:0; width:2px; background:var(--ink-panel)"></div>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-top:7px"><span class="ml" style="font-size:9px">$49.97 CHARGED</span><span class="ml" style="font-size:9px">$4.04 HEADROOM</span></div>
+      <div class="sh"><span class="ml">STILL TO RENEW</span><i class="rule"></i></div>
+      <div class="ll"><span class="lb">Figma <span class="ml" style="margin-left:6px; font-size:8.5px">JUL 9</span></span><span class="dots"></span><span class="vl">+$12.00 → $61.97</span></div>
+      <div class="ll"><span class="lb">Disney+ <span class="ml" style="margin-left:6px; font-size:8.5px">JUL 12 · TRIAL CONVERTS</span></span><span class="dots"></span><span class="vl">+$13.99 → $75.96</span></div>
+      <div class="sh"><span class="ml">PRO BUDGETING</span><i class="rule"></i></div>
+      <div class="row"><i data-lucide="chart-pie" style="width:16px;height:16px;color:var(--text-tertiary)"></i><div style="flex:1"><div class="nm">Category budgets</div><div class="mt">A CAP PER CATEGORY</div></div><span class="ml" style="font-size:9px">🔒 PRO</span></div>
+      <div class="row" style="border-bottom:none"><i data-lucide="wallet" style="width:16px;height:16px;color:var(--text-tertiary)"></i><div style="flex:1"><div class="nm">Envelope budgeting</div><div class="mt">FUND &amp; LOG BY HAND</div></div><span class="ml" style="font-size:9px">🔒 PRO</span></div>
+      <div class="sh"><span class="ml">HISTORY</span><i class="rule"></i></div>
+      <div class="ll"><span class="lb">May recap <span class="ml" style="margin-left:6px; font-size:8.5px">STREAK ×3</span></span><span class="dots"></span><span class="vl" style="color:var(--stamp-verified)">UNDER BY $5.80</span></div>
+    </div>
+  </div></div></div></div>
+</section>
+
+<!-- ================= SHOT 6 · navy · Dark home ================= -->
+<section class="fr shot" id="f6" data-w="1188" data-h="2576" style="left:6500px; top:0; background:#0A0F2C;">
+  <div class="kick" style="color:#1ED47F">THE 11PM LEDGER</div>
+  <h1 style="color:#F2F1EA">Made for the late-night money check.</h1>
+  <p class="sub" style="color:rgba(242,241,234,.66)">Light and dark, both first-class. Green ink that glows.</p>
+  <div class="devwrap"><div class="dev" style="background:#05070d"><div class="isl"></div><div class="scr" data-theme="dark" style="background:var(--bg-app)"><div class="rep" data-theme="dark">
+    <div class="sb"><span>9:41</span><span style="letter-spacing:2px">▮▮▮</span></div>
+    <div style="padding:6px 20px 0; display:flex; align-items:center; gap:11px;">
+      <span class="av" style="background:var(--cat-teal); border-radius:50%">A</span>
+      <div style="flex:1"><div class="ml">THE LEDGER · THU JUL 10</div>
+      <div style="font-family:var(--font-display); font-weight:700; font-size:21px; color:var(--text-primary); margin-top:2px">Evening, Alex</div></div>
+      <i data-lucide="bell" style="width:19px;height:19px;color:var(--text-secondary)"></i>
+    </div>
+    <div style="border-bottom:1px solid var(--rule); margin:10px 20px 0"></div>
+    <div style="padding:18px 20px 0">
+      <div style="display:flex; align-items:baseline; gap:9px"><span class="ml">COMMITTED THIS MONTH</span><span class="dots"></span><span class="ml">8/10 FREE</span></div>
+      <div style="font-family:var(--font-mono); font-weight:700; font-size:54px; letter-spacing:-.045em; color:var(--text-primary); margin-top:8px">$61<span style="font-size:26px; opacity:.55">.97</span></div>
+      <div style="display:flex; gap:2px; height:4px; margin-top:13px">
+        <div style="flex:46; background:var(--cat-violet)"></div><div style="flex:32; background:var(--cat-blue)"></div><div style="flex:11; background:var(--cat-coral)"></div><div style="flex:3; background:var(--cat-amber)"></div>
+      </div>
+      <div style="border-bottom:1px solid var(--rule-strong); margin-top:13px">
+        <div class="ll"><span class="lb">Charged so far</span><span class="dots"></span><span class="vl">$49.97</span></div>
+        <div class="ll"><span class="lb">Still to renew</span><span class="dots"></span><span class="vl">$25.99</span></div>
+      </div>
+      <div class="ll"><span class="lb" style="font-weight:700;color:var(--text-primary)">Budget <span class="ml" style="margin-left:6px">CAP $80</span></span><span class="dots"></span><span class="vl" style="color:var(--stamp-verified)">ON PACE</span></div>
+      <div class="sh"><span class="ml">NEEDS ATTENTION</span><i class="rule"></i></div>
+      <div class="row"><span class="tick" style="background:var(--stamp-alert)"></span><i data-lucide="triangle-alert" style="width:16px;height:16px;color:var(--stamp-alert)"></i><div style="flex:1"><div class="nm">Adobe CC is still charging you</div><div class="mt">CANCELLED JUN 8 · CHARGE FOUND JUL 08</div></div></div>
+      <div class="row" style="border-bottom:none"><span class="tick" style="background:var(--warning)"></span><i data-lucide="alarm-clock" style="width:16px;height:16px;color:var(--warning)"></i><div style="flex:1"><div class="nm">Disney+ trial ends in 2 days</div><div class="mt">CONVERTS TO $13.99/MO ON JUL 12</div></div></div>
+      <div class="sh"><span class="ml">UPCOMING</span><i class="rule"></i><span class="ml" style="color:var(--accent-text)">ALL ↗</span></div>
+      <div class="row"><span class="av" style="background:#E50914">N</span><div style="flex:1"><div class="nm">Netflix</div><div class="mt">JUN 28 · ENTERTAINMENT</div></div><span class="dots"></span><span class="amt">$15.99</span></div>
+      <div class="row" style="border-bottom:none"><span class="av" style="background:#1DB954">S</span><div style="flex:1"><div class="nm">Spotify</div><div class="mt">JUL 2 · MUSIC</div></div><span class="dots"></span><span class="amt">$10.99</span></div>
+    </div>
+    <div class="tabs">
+      <div class="on"><i data-lucide="book-open" style="width:19px;height:19px"></i>LEDGER</div>
+      <div><i data-lucide="layers" style="width:19px;height:19px"></i>SUBS</div>
+      <div><span class="plus"><i data-lucide="plus" style="width:20px;height:20px;color:var(--accent)"></i></span></div>
+      <div><i data-lucide="calendar" style="width:19px;height:19px"></i>CALENDAR</div>
+      <div><i data-lucide="chart-no-axes-column" style="width:19px;height:19px"></i>INSIGHTS</div>
+    </div>
+  </div></div></div></div>
+</section>
+
+<!-- ================= WORDMARK LOCKUPS ================= -->
+<section class="fr wm" id="f7" data-w="1400" data-h="360" style="left:0; top:2700px; background:var(--paper); color:var(--ink-900);">
+  <svg width="170" height="170" viewBox="0 0 120 120" fill="none"><circle cx="60" cy="60" r="51" stroke="currentColor" stroke-width="5.5"/><circle cx="60" cy="60" r="43" stroke="currentColor" stroke-width="2"/><path d="M43 45 H77 L43 75 H77" stroke="currentColor" stroke-width="9.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <span class="word">zeno</span>
+</section>
+<section class="fr wm" id="f8" data-w="1400" data-h="360" style="left:1500px; top:2700px; background:#0A0F2C; color:#F2F1EA;">
+  <svg width="170" height="170" viewBox="0 0 120 120" fill="none"><circle cx="60" cy="60" r="51" stroke="#1ED47F" stroke-width="5.5"/><circle cx="60" cy="60" r="43" stroke="#1ED47F" stroke-width="2"/><path d="M43 45 H77 L43 75 H77" stroke="#1ED47F" stroke-width="9.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <span class="word">zeno</span>
+</section>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+  lucide.createIcons();
+  /* capture isolation: showFrame('f1') pins one frame at 0,0 and sizes the body to it */
+  window.showFrame = function (id) {
+    document.querySelectorAll('.fr').forEach(f => { f.style.display = 'none'; });
+    const f = document.getElementById(id);
+    f.style.display = 'flex'; f.style.position = 'fixed'; f.style.left = '0'; f.style.top = '0'; f.style.boxShadow = 'none';
+    document.documentElement.style.width = document.body.style.width = f.dataset.w + 'px';
+    document.documentElement.style.height = document.body.style.height = f.dataset.h + 'px';
+    document.body.style.overflow = 'hidden'; document.body.style.background = 'transparent';
+  };
+</script>
+</body>
+</html>

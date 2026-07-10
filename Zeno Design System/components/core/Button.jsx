@@ -1,9 +1,10 @@
 import React from "react";
 
 /**
- * Zeno Button — the primary action primitive.
- * Variants: primary (Zeno green), secondary (outline), ghost, danger.
- * Sizes: sm | md | lg. Supports leftIcon / rightIcon and fullWidth.
+ * Zeno Button — ledger-language action primitive.
+ * primary = solid ink (paper text). Green is reserved for money-positive
+ * moments, never generic CTAs. Press = stamp-down (scale 0.97 + settle).
+ * RN: withSpring(scale, { damping: 22, stiffness: 260 }); haptic impactAsync(Medium) on primary.
  */
 export function Button({
   variant = "primary",
@@ -30,36 +31,25 @@ export function Button({
 
   const variants = {
     primary: {
-      bg: "var(--accent)",
-      bgHover: "var(--accent-hover)",
-      bgActive: "var(--accent-pressed)",
-      color: "var(--text-on-accent)",
-      border: "transparent",
+      bg: "var(--ink-panel)", bgHover: "var(--ink-800)", bgActive: "var(--ink-700)",
+      color: "var(--paper)", border: "transparent", shadow: "var(--shadow-xs)",
+    },
+    money: { // money-positive action — the only green button
+      bg: "var(--accent)", bgHover: "var(--accent-hover)", bgActive: "var(--accent-pressed)",
+      color: "var(--text-on-accent)", border: "transparent",
       shadow: hover ? "var(--shadow-accent)" : "var(--shadow-xs)",
     },
     secondary: {
-      bg: "var(--surface-card)",
-      bgHover: "var(--surface-sunken)",
-      bgActive: "var(--ink-75)",
-      color: "var(--text-primary)",
-      border: "var(--border-default)",
-      shadow: "var(--shadow-xs)",
+      bg: "var(--surface-card)", bgHover: "var(--surface-sunken)", bgActive: "var(--ink-75)",
+      color: "var(--text-primary)", border: "var(--border-default)", shadow: "none",
     },
     ghost: {
-      bg: hover ? "var(--surface-sunken)" : "transparent",
-      bgHover: "var(--surface-sunken)",
-      bgActive: "var(--ink-75)",
-      color: "var(--text-primary)",
-      border: "transparent",
-      shadow: "none",
+      bg: hover ? "var(--surface-sunken)" : "transparent", bgHover: "var(--surface-sunken)",
+      bgActive: "var(--ink-75)", color: "var(--text-primary)", border: "transparent", shadow: "none",
     },
-    danger: {
-      bg: "var(--danger)",
-      bgHover: "#E11D48",
-      bgActive: "#BE123C",
-      color: "#fff",
-      border: "transparent",
-      shadow: "var(--shadow-xs)",
+    danger: { // outlined red — real alerts only, never solid panic
+      bg: hover ? "var(--danger-soft)" : "var(--surface-card)", bgHover: "var(--danger-soft)",
+      bgActive: "var(--danger-soft)", color: "var(--danger)", border: "color-mix(in srgb, var(--danger) 45%, transparent)", shadow: "none",
     },
   };
   const v = variants[variant] || variants.primary;
@@ -93,7 +83,7 @@ export function Button({
         borderRadius: s.radius,
         boxShadow: disabled ? "none" : v.shadow,
         cursor: disabled ? "not-allowed" : "pointer",
-        transform: active && !disabled ? "translateY(0.5px) scale(0.985)" : "none",
+        transform: active && !disabled ? "translateY(0.5px) scale(0.97)" : "none",
         transition: "background var(--dur-fast) var(--ease-out), box-shadow var(--dur) var(--ease-out), transform var(--dur-fast) var(--ease-out)",
         whiteSpace: "nowrap",
         ...style,

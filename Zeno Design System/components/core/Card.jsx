@@ -1,8 +1,9 @@
 import React from "react";
 
 /**
- * Zeno Card — the base surface. Hairline border + soft shadow.
- * padding: none | sm | md | lg. interactive adds a hover lift.
+ * Zeno Card — a document, not a floating tile. Hairline rule frame on paper,
+ * no default shadow (delete-a-card test: use only when the content IS a
+ * distinct document — statements, receipts, grouped ledgers).
  */
 export function Card({
   padding = "md",
@@ -23,12 +24,12 @@ export function Card({
       onMouseLeave={() => interactive && setHover(false)}
       style={{
         background: "var(--surface-card)",
-        border: "1px solid var(--border-subtle)",
-        borderRadius: "var(--radius-lg)",
+        border: `1px solid ${hover ? "var(--border-default)" : "var(--rule)"}`,
+        borderRadius: "var(--radius-md)",
         padding: pads[padding],
-        boxShadow: hover ? "var(--shadow-md)" : elevated ? "var(--shadow-sm)" : "var(--shadow-xs)",
-        transform: hover ? "translateY(-2px)" : "none",
-        transition: "box-shadow var(--dur) var(--ease-out), transform var(--dur) var(--ease-out)",
+        boxShadow: elevated ? "var(--shadow-sm)" : "none",
+        transform: hover ? "translateY(-1px)" : "none",
+        transition: "border-color var(--dur-fast) var(--ease-out), transform var(--dur) var(--ease-out)",
         cursor: interactive ? "pointer" : "default",
         ...style,
       }}

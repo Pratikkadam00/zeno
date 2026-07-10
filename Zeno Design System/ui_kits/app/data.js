@@ -38,14 +38,15 @@ window.ZENO = {
     { id: "annual",  icon: "calendar",    title: "Switch Spotify to annual", body: "Save ~16% paying yearly", save: 21 },
     { id: "dupe",    icon: "copy",        title: "Two video services overlap", body: "Netflix + Max — keep one?", save: 192 },
   ],
-  freeLimit: 8,
+  freeLimit: 10,
   catalog: ["Netflix","Spotify","YouTube Premium","Disney+","ChatGPT Plus","Notion","iCloud+","Figma","Amazon Prime","Hulu","Max","Audible","Dropbox","Adobe CC","Headspace","Duolingo","NordVPN","Patreon","Twitch","Apple Music"],
 };
 
 // Active = anything currently billing (active/trial). Used for "monthly total".
 window.ZENO.activeSubs = window.ZENO.subscriptions.filter(s => s.status === "active");
 window.ZENO.monthlyTotal = window.ZENO.activeSubs.reduce((a, s) => a + s.amount, 0);
-window.ZENO.trackedCount = window.ZENO.subscriptions.filter(s => ["active","trial","paused","pending","attention"].includes(s.status)).length;
+// Counts toward the free-tier limit: anything being tracked for billing (paused excluded).
+window.ZENO.trackedCount = window.ZENO.subscriptions.filter(s => ["active","trial","pending","attention"].includes(s.status)).length;
 
 /* ---- Budgeting ----
    committed   = recurring spend already charged this month (from renewal dates passed)

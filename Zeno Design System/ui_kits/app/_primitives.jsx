@@ -53,9 +53,10 @@ function Icon({ name, size = 20, color = "currentColor", strokeWidth = 2, style,
 
 // ===== Button =====
 /**
- * Zeno Button — the primary action primitive.
- * Variants: primary (Zeno green), secondary (outline), ghost, danger.
- * Sizes: sm | md | lg. Supports leftIcon / rightIcon and fullWidth.
+ * Zeno Button — ledger-language action primitive.
+ * primary = solid ink (paper text). Green is reserved for money-positive
+ * moments, never generic CTAs. Press = stamp-down (scale 0.97 + settle).
+ * RN: withSpring(scale, { damping: 22, stiffness: 260 }); haptic impactAsync(Medium) on primary.
  */
 function Button({
   variant = "primary",
@@ -82,36 +83,25 @@ function Button({
 
   const variants = {
     primary: {
-      bg: "var(--accent)",
-      bgHover: "var(--accent-hover)",
-      bgActive: "var(--accent-pressed)",
-      color: "var(--text-on-accent)",
-      border: "transparent",
+      bg: "var(--ink-panel)", bgHover: "var(--ink-800)", bgActive: "var(--ink-700)",
+      color: "var(--paper)", border: "transparent", shadow: "var(--shadow-xs)",
+    },
+    money: { // money-positive action — the only green button
+      bg: "var(--accent)", bgHover: "var(--accent-hover)", bgActive: "var(--accent-pressed)",
+      color: "var(--text-on-accent)", border: "transparent",
       shadow: hover ? "var(--shadow-accent)" : "var(--shadow-xs)",
     },
     secondary: {
-      bg: "var(--surface-card)",
-      bgHover: "var(--surface-sunken)",
-      bgActive: "var(--ink-75)",
-      color: "var(--text-primary)",
-      border: "var(--border-default)",
-      shadow: "var(--shadow-xs)",
+      bg: "var(--surface-card)", bgHover: "var(--surface-sunken)", bgActive: "var(--ink-75)",
+      color: "var(--text-primary)", border: "var(--border-default)", shadow: "none",
     },
     ghost: {
-      bg: hover ? "var(--surface-sunken)" : "transparent",
-      bgHover: "var(--surface-sunken)",
-      bgActive: "var(--ink-75)",
-      color: "var(--text-primary)",
-      border: "transparent",
-      shadow: "none",
+      bg: hover ? "var(--surface-sunken)" : "transparent", bgHover: "var(--surface-sunken)",
+      bgActive: "var(--ink-75)", color: "var(--text-primary)", border: "transparent", shadow: "none",
     },
-    danger: {
-      bg: "var(--danger)",
-      bgHover: "#E11D48",
-      bgActive: "#BE123C",
-      color: "#fff",
-      border: "transparent",
-      shadow: "var(--shadow-xs)",
+    danger: { // outlined red — real alerts only, never solid panic
+      bg: hover ? "var(--danger-soft)" : "var(--surface-card)", bgHover: "var(--danger-soft)",
+      bgActive: "var(--danger-soft)", color: "var(--danger)", border: "color-mix(in srgb, var(--danger) 45%, transparent)", shadow: "none",
     },
   };
   const v = variants[variant] || variants.primary;
@@ -145,7 +135,7 @@ function Button({
         borderRadius: s.radius,
         boxShadow: disabled ? "none" : v.shadow,
         cursor: disabled ? "not-allowed" : "pointer",
-        transform: active && !disabled ? "translateY(0.5px) scale(0.985)" : "none",
+        transform: active && !disabled ? "translateY(0.5px) scale(0.97)" : "none",
         transition: "background var(--dur-fast) var(--ease-out), box-shadow var(--dur) var(--ease-out), transform var(--dur-fast) var(--ease-out)",
         whiteSpace: "nowrap",
         ...style,
@@ -220,8 +210,9 @@ function IconButton({
 
 // ===== Card =====
 /**
- * Zeno Card — the base surface. Hairline border + soft shadow.
- * padding: none | sm | md | lg. interactive adds a hover lift.
+ * Zeno Card — a document, not a floating tile. Hairline rule frame on paper,
+ * no default shadow (delete-a-card test: use only when the content IS a
+ * distinct document — statements, receipts, grouped ledgers).
  */
 function Card({
   padding = "md",
@@ -242,12 +233,12 @@ function Card({
       onMouseLeave={() => interactive && setHover(false)}
       style={{
         background: "var(--surface-card)",
-        border: "1px solid var(--border-subtle)",
-        borderRadius: "var(--radius-lg)",
+        border: `1px solid ${hover ? "var(--border-default)" : "var(--rule)"}`,
+        borderRadius: "var(--radius-md)",
         padding: pads[padding],
-        boxShadow: hover ? "var(--shadow-md)" : elevated ? "var(--shadow-sm)" : "var(--shadow-xs)",
-        transform: hover ? "translateY(-2px)" : "none",
-        transition: "box-shadow var(--dur) var(--ease-out), transform var(--dur) var(--ease-out)",
+        boxShadow: elevated ? "var(--shadow-sm)" : "none",
+        transform: hover ? "translateY(-1px)" : "none",
+        transition: "border-color var(--dur-fast) var(--ease-out), transform var(--dur) var(--ease-out)",
         cursor: interactive ? "pointer" : "default",
         ...style,
       }}
@@ -260,46 +251,32 @@ function Card({
 
 // ===== Badge =====
 /**
- * Zeno Badge — compact status / metadata pill.
- * tone: neutral | accent | success | warning | danger | info
- * Soft (tinted) by default; solid for strong emphasis.
+ * Zeno Badge — ledger tick-tag. Caps-mono micro text with a colored status
+ * tick, no pill chrome (identical pills everywhere is banned). `solid`
+ * renders an inverse ink chip for the rare urgent tag.
  */
-function Badge({ tone = "neutral", solid = false, dot = false, children, style, ...rest }) {
+function Badge({ tone = "neutral", solid = false, dot = false, hollow = false, children, style, ...rest }) {
   const tones = {
-    neutral: { soft: "var(--surface-sunken)", softText: "var(--text-secondary)", solid: "var(--ink-700)", dot: "var(--ink-400)" },
-    accent: { soft: "var(--accent-soft)", softText: "var(--accent-text)", solid: "var(--accent)", dot: "var(--accent)" },
-    success: { soft: "var(--success-soft)", softText: "var(--success)", solid: "var(--success)", dot: "var(--success)" },
-    warning: { soft: "var(--warning-soft)", softText: "#B45309", solid: "var(--warning)", dot: "var(--warning)" },
-    danger: { soft: "var(--danger-soft)", softText: "var(--danger)", solid: "var(--danger)", dot: "var(--danger)" },
-    info: { soft: "var(--info-soft)", softText: "var(--info)", solid: "var(--info)", dot: "var(--info)" },
+    neutral: { text: "var(--text-tertiary)", tick: "var(--ink-300)" },
+    accent: { text: "var(--accent-text)", tick: "var(--accent)" },
+    success: { text: "var(--stamp-verified)", tick: "var(--stamp-verified)" },
+    warning: { text: "#A36A0B", tick: "var(--warning)" },
+    danger: { text: "var(--stamp-alert)", tick: "var(--stamp-alert)" },
+    info: { text: "var(--info)", tick: "var(--info)" },
+    pro: { text: "var(--text-secondary)", tick: "var(--ink-400)" },
   };
   const t = tones[tone] || tones.neutral;
-  const isSolidGreen = solid && tone === "accent";
 
+  if (solid) {
+    return (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, height: 20, padding: "0 8px", fontFamily: "var(--font-mono)", fontSize: 9.5, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--paper)", background: tone === "danger" ? "var(--stamp-alert)" : "var(--ink-panel)", borderRadius: 4, whiteSpace: "nowrap", ...style }} {...rest}>
+        {children}
+      </span>
+    );
+  }
   return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 5,
-        height: 22,
-        padding: "0 9px",
-        fontFamily: "var(--font-sans)",
-        fontSize: "var(--fs-micro)",
-        fontWeight: "var(--fw-semibold)",
-        letterSpacing: "var(--ls-snug)",
-        lineHeight: 1,
-        color: solid ? (tone === "warning" || isSolidGreen ? "var(--ink-900)" : "#fff") : t.softText,
-        background: solid ? t.solid : t.soft,
-        borderRadius: "var(--radius-pill)",
-        whiteSpace: "nowrap",
-        ...style,
-      }}
-      {...rest}
-    >
-      {dot && (
-        <span style={{ width: 6, height: 6, borderRadius: "50%", background: solid ? "currentColor" : t.dot, flex: "none" }} />
-      )}
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "var(--font-mono)", fontSize: 9.5, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: t.text, whiteSpace: "nowrap", ...style }} {...rest}>
+      <span style={{ width: 10, height: 3, background: hollow ? "transparent" : t.tick, border: hollow ? `1px solid ${t.tick}` : "none", flex: "none" }}></span>
       {children}
     </span>
   );
@@ -556,9 +533,10 @@ function ProgressBar({ value = 0, max = 100, color, height = 8, showLabel = fals
 
 // ===== ListRow =====
 /**
- * Zeno ListRow — a single subscription line: brand tile, name + meta,
- * trailing amount/cadence and an optional chevron. The core building
- * block of the dashboard and lists.
+ * Zeno ListRow — a ledger entry. Signature: the Ledger Line — a dotted
+ * leader running from the text block to the mono amount, like a receipt.
+ * Rows sit on paper separated by hairline rules; no card nesting.
+ * RN: press = impactAsync(Light); entrance = FadeInDown stagger 45ms.
  */
 function ListRow({
   leading,
@@ -567,6 +545,7 @@ function ListRow({
   amount,
   cadence,
   trailing,
+  leader = true,
   chevron = false,
   onClick,
   divider = false,
@@ -586,9 +565,9 @@ function ListRow({
         alignItems: "center",
         gap: 12,
         padding: "12px 14px",
+        minHeight: 44,
         background: clickable && hover ? "var(--surface-sunken)" : "transparent",
-        borderBottom: divider ? "1px solid var(--border-subtle)" : "none",
-        borderRadius: "var(--radius-md)",
+        borderBottom: divider ? "1px solid var(--rule)" : "none",
         cursor: clickable ? "pointer" : "default",
         transition: "background var(--dur-fast) var(--ease-out)",
         ...style,
@@ -596,21 +575,27 @@ function ListRow({
       {...rest}
     >
       {leading && <span style={{ flex: "none" }}>{leading}</span>}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: "none", minWidth: 0, maxWidth: "58%" }}>
         <div style={{ fontSize: "var(--fs-body)", fontWeight: "var(--fw-semibold)", color: "var(--text-primary)", letterSpacing: "var(--ls-snug)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</div>
         {subtitle && (
-          <div style={{ fontSize: "var(--fs-body-sm)", color: "var(--text-tertiary)", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{subtitle}</div>
+          <div style={{ fontSize: 11, fontFamily: "var(--font-mono)", letterSpacing: "0.02em", color: "var(--text-tertiary)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{subtitle}</div>
         )}
       </div>
+      {/* The Ledger Line — dotted leader */}
+      {leader && (amount != null || trailing != null) ? (
+        <span aria-hidden="true" style={{ flex: 1, borderBottom: "2px dotted var(--rule-strong)", transform: "translateY(3px)", minWidth: 12 }}></span>
+      ) : (
+        <span style={{ flex: 1 }}></span>
+      )}
       {trailing != null ? (
         <span style={{ flex: "none" }}>{trailing}</span>
       ) : amount != null ? (
         <div style={{ flex: "none", textAlign: "right" }}>
-          <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-body)", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "var(--ls-snug)" }}>{amount}</div>
-          {cadence && <div style={{ fontSize: "var(--fs-caption)", color: "var(--text-tertiary)" }}>/{cadence}</div>}
+          <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-body)", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "var(--ls-snug)", fontFeatureSettings: "'tnum' 1" }}>{amount}</div>
+          {cadence && <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-tertiary)", marginTop: 1 }}>/{cadence}</div>}
         </div>
       ) : null}
-      {chevron && <Icon name="chevron-right" size={18} color="var(--text-tertiary)" />}
+      {chevron && <Icon name="chevron-right" size={16} color="var(--text-tertiary)" />}
     </div>
   );
 }

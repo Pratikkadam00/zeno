@@ -1,4 +1,6 @@
-/* Zeno — Add subscription (CHANGE 5: renewal date is user-editable) */
+/* Zeno — Add subscription (ledger restyle, editable renewal date kept).
+   SLOP AUDIT — ① Zeno: caps section heads, rule-framed date stepper.
+   ② Tempted by: chip-grid overload → text ticks. ③ Lazy: long form card. */
 function AddSubscriptionScreen({ onClose }) {
   const popular = [
     { name: "Netflix", color: "#E50914" }, { name: "Spotify", color: "#1DB954" },
@@ -6,98 +8,70 @@ function AddSubscriptionScreen({ onClose }) {
     { name: "ChatGPT", color: "#10A37F" }, { name: "Notion", color: "#111111" },
     { name: "iCloud+", color: "#3B82F6" }, { name: "Figma", color: "#A259FF" },
   ];
-  const cats = [["Entertainment","violet"],["Music","coral"],["Productivity","blue"],["Shopping","pink"],["Utilities","amber"],["Health","teal"]];
+  const cats = [["Entertainment", "violet"], ["Music", "coral"], ["Productivity", "blue"], ["Shopping", "pink"], ["Utilities", "amber"], ["Health", "teal"]];
   const [picked, setPicked] = React.useState("Netflix");
   const [cat, setCat] = React.useState("Entertainment");
   const [cadence, setCadence] = React.useState("Monthly");
   const [remind, setRemind] = React.useState(true);
-  const [days, setDays] = React.useState(14); // days until next renewal — editable
-
-  const renewalLabel = () => {
-    const d = new Date(); d.setDate(d.getDate() + days);
-    return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-  };
+  const [days, setDays] = React.useState(14);
+  const renewalLabel = () => { const d = new Date(2026, 6, 10); d.setDate(d.getDate() + days); return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }); };
 
   return (
-    <Sheet title="Add subscription" onClose={onClose}
-      footer={<Button variant="primary" size="lg" fullWidth onClick={onClose}>Add subscription</Button>}>
-      <Label>Popular</Label>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 18 }}>
+    <Sheet title="NEW ENTRY" onClose={onClose}
+      footer={<Button variant="primary" size="lg" fullWidth onClick={onClose}>Write it in</Button>}>
+      <SectionHead pad="8px 0 10px">From the catalog · 600+</SectionHead>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 16 }}>
         {popular.map(p => {
           const on = picked === p.name;
           return (
-            <button key={p.name} onClick={() => setPicked(p.name)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, padding: "10px 4px", background: "var(--surface-card)", border: `1.5px solid ${on ? "var(--accent)" : "var(--border-subtle)"}`, borderRadius: "var(--radius-md)", cursor: "pointer", boxShadow: on ? "0 0 0 3px var(--focus-ring)" : "none" }}>
-              <ServiceAvatar name={p.name} color={p.color} size={36} />
-              <span style={{ fontFamily: "var(--font-sans)", fontSize: 11, fontWeight: 500, color: "var(--text-secondary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>{p.name}</span>
+            <button key={p.name} onClick={() => setPicked(p.name)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, padding: "10px 4px", background: on ? "var(--surface-card)" : "none", border: `1px solid ${on ? "var(--ink-400)" : "var(--rule)"}`, borderRadius: "var(--radius-sm)", cursor: "pointer" }}>
+              <ServiceAvatar name={p.name} color={p.color} size={34} />
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.04em", color: on ? "var(--text-primary)" : "var(--text-tertiary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>{p.name.toUpperCase()}</span>
             </button>
           );
         })}
       </div>
-
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <Input label="Name" value={picked} onChange={e => setPicked(e.target.value)} />
         <Input label="Cost" prefix="$" mono placeholder="0.00" suffix={`/ ${cadence === "Monthly" ? "mo" : "yr"}`} />
-
         <div>
-          <Label>Billing cycle</Label>
-          <SegmentedControl options={["Monthly","Yearly"]} value={cadence} onChange={setCadence} />
+          <SectionHead pad="0 0 8px">Billing cycle</SectionHead>
+          <SegmentedControl options={["Monthly", "Yearly"]} value={cadence} onChange={setCadence} />
         </div>
-
-        {/* Editable next-renewal date (was locked to +30 days) */}
         <div>
-          <Label>Next renews</Label>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--surface-card)", border: "1.5px solid var(--border-default)", borderRadius: "var(--radius-md)", padding: "10px 12px" }}>
-            <div style={{ width: 38, height: 38, flex: "none", borderRadius: "var(--radius-sm)", background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Icon name="calendar" size={19} color="var(--accent-text)" />
-            </div>
+          <SectionHead pad="4px 0 8px">Next renews — you set it</SectionHead>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, border: "1px solid var(--rule-strong)", borderRadius: "var(--radius-sm)", padding: "10px 12px" }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: "var(--font-sans)", fontWeight: 650, fontSize: 15, color: "var(--text-primary)" }}>{renewalLabel()}</div>
-              <div style={{ fontFamily: "var(--font-sans)", fontSize: 12, color: "var(--text-tertiary)" }}>in {days} day{days === 1 ? "" : "s"}</div>
+              <div style={{ fontFamily: "var(--font-sans)", fontWeight: 700, fontSize: 15 }}>{renewalLabel()}</div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, letterSpacing: "0.1em", color: "var(--text-tertiary)", marginTop: 2 }}>IN {days} DAY{days === 1 ? "" : "S"}</div>
             </div>
-            <div style={{ display: "flex", gap: 6 }}>
-              <IconButton variant="secondary" size={34} label="Earlier" onClick={() => setDays(d => Math.max(0, d - 1))}><Icon name="minus" size={16} /></IconButton>
-              <IconButton variant="secondary" size={34} label="Later" onClick={() => setDays(d => d + 1)}><Icon name="plus" size={16} /></IconButton>
-            </div>
+            <IconButton variant="secondary" size={36} label="Earlier" onClick={() => setDays(d => Math.max(0, d - 1))}><Icon name="minus" size={15} /></IconButton>
+            <IconButton variant="secondary" size={36} label="Later" onClick={() => setDays(d => d + 1)}><Icon name="plus" size={15} /></IconButton>
           </div>
           <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-            {[["Tomorrow",1],["In a week",7],["In 2 weeks",14],["In a month",30]].map(([lbl,d]) => (
-              <button key={lbl} onClick={() => setDays(d)} style={{ flex: 1, height: 30, borderRadius: "var(--radius-pill)", border: `1px solid ${days === d ? "transparent" : "var(--border-default)"}`, background: days === d ? "var(--ink-900)" : "transparent", color: days === d ? "#fff" : "var(--text-secondary)", fontFamily: "var(--font-sans)", fontSize: 11.5, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>{lbl}</button>
+            {[["TMRW", 1], ["1 WK", 7], ["2 WK", 14], ["1 MO", 30]].map(([lbl, d]) => (
+              <button key={lbl} onClick={() => setDays(d)} style={{ flex: 1, height: 30, border: "none", borderBottom: `2px solid ${days === d ? "var(--accent)" : "var(--rule)"}`, background: "none", color: days === d ? "var(--text-primary)" : "var(--text-tertiary)", fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer" }}>{lbl}</button>
             ))}
           </div>
         </div>
-
         <div>
-          <Label>Category</Label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <SectionHead pad="4px 0 8px">Category</SectionHead>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px" }}>
             {cats.map(([name, c]) => {
               const on = cat === name;
               return (
-                <button key={name} onClick={() => setCat(name)} style={{ display: "inline-flex", alignItems: "center", gap: 7, height: 34, padding: "0 12px", borderRadius: "var(--radius-pill)", border: `1.5px solid ${on ? `var(--cat-${c})` : "var(--border-default)"}`, background: on ? "var(--surface-card)" : "transparent", cursor: "pointer" }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: `var(--cat-${c})` }} />
-                  <span style={{ fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: on ? 600 : 500, color: on ? "var(--text-primary)" : "var(--text-secondary)" }}>{name}</span>
+                <button key={name} onClick={() => setCat(name)} style={{ display: "inline-flex", alignItems: "center", gap: 7, height: 34, background: "none", border: "none", borderBottom: `2px solid ${on ? `var(--cat-${c})` : "transparent"}`, cursor: "pointer", padding: 0 }}>
+                  <span style={{ width: 8, height: 3, background: `var(--cat-${c})` }}></span>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: on ? 700 : 500, letterSpacing: "0.08em", color: on ? "var(--text-primary)" : "var(--text-secondary)" }}>{name.toUpperCase()}</span>
                 </button>
               );
             })}
           </div>
         </div>
-
-        <Card padding="md">
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text-primary)" }}>Remind me before renewal</div>
-              <div style={{ fontSize: 13, color: "var(--text-tertiary)", marginTop: 1 }}>7 and 3 days ahead</div>
-            </div>
-            <Switch checked={remind} onChange={setRemind} />
-          </div>
-        </Card>
+        <LedgerLine label="Remind me" sub="7D · 3D · DAY OF" value={<Switch checked={remind} onChange={setRemind} size="sm" />} />
       </div>
     </Sheet>
   );
 }
-
-function Label({ children }) {
-  return <div style={{ fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-tertiary)", margin: "0 0 8px 2px" }}>{children}</div>;
-}
-
 window.AddSubscriptionScreen = AddSubscriptionScreen;
-window.Label = Label;
+window.Label = function Label({ children }) { return <SectionHead pad="0 0 8px">{children}</SectionHead>; };

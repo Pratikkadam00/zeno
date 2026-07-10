@@ -17,20 +17,27 @@
   --green-800: #0A5634;
   --green-900: #073A24;
 
-  /* --- Ink neutrals --- */
-  --ink-900: #12151B; /* primary text / near-black */
-  --ink-800: #1B1F27;
-  --ink-700: #2A2F3A;
-  --ink-600: #3C4250;
-  --ink-500: #5A6172; /* secondary text */
-  --ink-400: #818897; /* tertiary text / icons */
-  --ink-300: #AAB0BC;
-  --ink-200: #D3D7DF; /* strong border */
-  --ink-100: #E7E9EE; /* default border / divider */
-  --ink-75:  #EFF1F4;
-  --ink-50:  #F4F5F7; /* sunken surface */
-  --paper:   #F8F8F6; /* app background, warm white */
+  /* --- Ink neutrals (navy-cast — brand #0A0F2C heritage) --- */
+  --ink-900: #14161F; /* primary text / near-black ink */
+  --ink-800: #1C1F2B;
+  --ink-700: #2A2E3D;
+  --ink-600: #3C4152;
+  --ink-500: #5A6072; /* secondary text */
+  --ink-400: #808698; /* tertiary text / icons */
+  --ink-300: #A9AEBC;
+  --ink-200: #D2D5DE;
+  --ink-100: #E7E8EE;
+  --ink-75:  #EFF0F4;
+  --ink-50:  #F3F3F1; /* sunken surface */
+  --paper:   #FAF9F5; /* warm paper — the app background */
   --white:   #FFFFFF;
+
+  /* --- Ledger rules & stamps (signature tokens) --- */
+  --rule:        #E5E3D9; /* hairline — replaces most card chrome */
+  --rule-strong: #C9C7BA; /* leader dots, column rules */
+  --ink-panel:   #10131F; /* navy-ink statement blocks */
+  --stamp-verified: #0B8A54;
+  --stamp-alert:    #C63B49;
 
   /* --- Category palette (subscriptions / charts) --- */
   --cat-green:  #00C26E;
@@ -62,8 +69,8 @@
   --text-on-accent:  var(--ink-900);   /* dark ink on green = the Zeno look */
   --text-inverse:    var(--white);
 
-  --border-subtle:   var(--ink-100);
-  --border-default:  var(--ink-200);
+  --border-subtle:   var(--rule);
+  --border-default:  var(--rule-strong);
   --border-strong:   var(--ink-300);
 
   --accent:          var(--green-500);
@@ -82,31 +89,39 @@
   --overlay:      rgba(18, 21, 27, 0.55);
 }
 
-/* ===== Dark theme ===== */
+/* ===== Dark theme — art-directed: "the ledger at 11pm".
+   The desk goes navy-black, paper becomes lit documents, green ink gains
+   luminescence, rules glow faintly. Not an inversion — a different room. ===== */
 [data-theme="dark"] {
-  --bg-app:          #0B0D11;
-  --surface-card:    #15181F;
-  --surface-sunken:  #101319;
-  --surface-raised:  #1B1F27;
-  --surface-inverse: #F8F8F6;
+  --bg-app:          #0A0C13; /* the desk */
+  --surface-card:    #141721; /* lit paper */
+  --surface-sunken:  #10121B;
+  --surface-raised:  #1B1E2B;
+  --surface-inverse: #FAF9F5;
 
-  --text-primary:    #F2F3F6;
-  --text-secondary:  #9AA1AF;
-  --text-tertiary:   #6B7280;
-  --text-disabled:   #4B515E;
-  --text-on-accent:  #0B0D11;
-  --text-inverse:    #12151B;
+  --rule:        #262A38;
+  --rule-strong: #3A3F50;
+  --ink-panel:   #171B2A;
+  --stamp-verified: #2FD98A;
+  --stamp-alert:    #F2687A;
 
-  --border-subtle:   #232831;
-  --border-default:  #2E343F;
-  --border-strong:   #3C4350;
+  --text-primary:    #F2F1EA; /* warm paper-white */
+  --text-secondary:  #9BA0AF;
+  --text-tertiary:   #6C7180;
+  --text-disabled:   #4B505E;
+  --text-on-accent:  #0A0C13;
+  --text-inverse:    #14161F;
 
-  --accent:          #14D17E;
-  --accent-hover:    #2BD089;
+  --border-subtle:   var(--rule);
+  --border-default:  var(--rule-strong);
+  --border-strong:   #4A5064;
+
+  --accent:          #1ED47F; /* luminous green ink */
+  --accent-hover:    #2FD98A;
   --accent-pressed:  #5FE0A6;
-  --accent-soft:     rgba(0, 194, 110, 0.14);
-  --accent-soft-2:   rgba(0, 194, 110, 0.22);
-  --accent-text:     #5FE0A6;
+  --accent-soft:     rgba(30, 212, 127, 0.13);
+  --accent-soft-2:   rgba(30, 212, 127, 0.22);
+  --accent-text:     #4ADE97;
 
   --success-soft: rgba(2, 168, 95, 0.16);
   --warning-soft: rgba(245, 165, 36, 0.16);

@@ -1,14 +1,18 @@
-/* Zeno — Cancel + verification flow (CHANGE 4)
-   Guided → Pending verification → Verified cancelled OR Still being charged.
-   A demo control on the pending step lets you see both resolutions. */
+/* Zeno — Cancel + verification. The Stamp is THE celebration of the app
+   (the one big moment — no confetti anywhere).
+   SLOP AUDIT — ① Zeno: difficulty as ink ticks; "AWAITING PROOF" watermark;
+   verified = stamp thunk + savings printed as receipt lines. ② Tempted by:
+   confetti + green check circle → the stamp IS the celebration. ③ Lazy version:
+   modal with "Are you sure?" and a party popper.
+   MOTION: stamp zn-stamp (RN: spring d14 s420 + Haptics Success);
+   savings lines print in after the stamp (300ms delay, 45ms stagger). */
 function CancelFlowScreen({ id, onClose, onDone }) {
   const s = window.ZENO.subscriptions.find(x => x.id === id) || window.ZENO.subscriptions[0];
   const yearly = (s.amount * 12).toFixed(2);
-  const [stage, setStage] = React.useState("guided"); // guided | pending | verified | charged
+  const [stage, setStage] = React.useState("guided");
 
-  // Difficulty varies by service (demo): Adobe hard, others medium/easy
-  const difficulty = s.id === "adobe" ? ["Hard", 3, "var(--danger)"] : s.id === "hbo" ? ["Medium", 2, "var(--warning)"] : ["Easy", 1, "var(--success)"];
-
+  const diff = s.id === "adobe" ? ["HARD", 3] : s.id === "hbo" ? ["MEDIUM", 2] : ["EASY", 1];
+  const diffColor = diff[1] === 3 ? "var(--stamp-alert)" : diff[1] === 2 ? "var(--warning)" : "var(--stamp-verified)";
   const steps = [
     `Sign in to ${s.name} in a browser`,
     "Open Account → Subscription or Plan",
@@ -18,71 +22,61 @@ function CancelFlowScreen({ id, onClose, onDone }) {
 
   if (stage === "guided") {
     return (
-      <Sheet title={`Cancel ${s.name}`} onClose={onClose}
+      <Sheet title={`CANCEL ${s.name.toUpperCase()}`} onClose={onClose}
         footer={<Button variant="primary" size="lg" fullWidth onClick={() => setStage("pending")}>I cancelled it</Button>}>
-        {/* Difficulty */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--surface-card)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "14px 16px", marginBottom: 14, boxShadow: "var(--shadow-xs)" }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-tertiary)" }}>Cancellation difficulty</div>
-            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 20, color: difficulty[2], marginTop: 2 }}>{difficulty[0]}</div>
-          </div>
-          <div style={{ display: "flex", gap: 4 }}>
-            {[1,2,3].map(n => <span key={n} style={{ width: 10, height: 24, borderRadius: 3, background: n <= difficulty[1] ? difficulty[2] : "var(--surface-sunken)" }} />)}
-          </div>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "6px 0 10px", borderBottom: "1px solid var(--rule-strong)" }}>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 700, letterSpacing: "0.16em", color: "var(--text-tertiary)" }}>DIFFICULTY</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ display: "flex", gap: 3 }}>
+              {[1, 2, 3].map(n => <span key={n} style={{ width: 14, height: 4, background: n <= diff[1] ? diffColor : "var(--rule-strong)" }}></span>)}
+            </span>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 700, color: diffColor, letterSpacing: "0.1em" }}>{diff[0]}</span>
+          </span>
         </div>
 
-        {/* Steps */}
-        <div style={{ fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-tertiary)", margin: "4px 2px 10px" }}>Step by step</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {steps.map((st, i) => (
-            <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "8px 0" }}>
-              <span style={{ width: 24, height: 24, flex: "none", borderRadius: "50%", background: "var(--ink-900)", color: "#fff", fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</span>
-              <span style={{ fontFamily: "var(--font-sans)", fontSize: 14, color: "var(--text-secondary)", paddingTop: 2 }}>{st}</span>
-            </div>
-          ))}
-        </div>
+        {steps.map((st, i) => (
+          <div key={i} className="zn-print" style={{ animationDelay: `${i * 60}ms`, display: "flex", gap: 14, alignItems: "baseline", padding: "13px 0", borderBottom: "1px solid var(--rule)" }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 700, color: "var(--text-tertiary)" }}>{String(i + 1).padStart(2, "0")}</span>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: 14.5, color: "var(--text-primary)", lineHeight: 1.45 }}>{st}</span>
+          </div>
+        ))}
 
-        <Button variant="secondary" size="lg" fullWidth onClick={() => {}} leftIcon={<Icon name="external-link" size={18} />} style={{ marginTop: 16 }}>
-          Open {s.name} cancellation page
+        <Button variant="secondary" size="lg" fullWidth leftIcon={<Icon name="external-link" size={17} />} style={{ marginTop: 18 }}>
+          {`Open ${s.name}'s cancellation page`}
         </Button>
-        <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 16, fontFamily: "var(--font-sans)", fontSize: 12.5, color: "var(--text-tertiary)", lineHeight: 1.45 }}>
-          <Icon name="info" size={15} color="var(--text-tertiary)" style={{ marginTop: 1 }} />
-          <span>We'll never mark this cancelled until we've confirmed the charge actually stopped.</span>
-        </div>
+        <p style={{ fontFamily: "var(--font-sans)", fontSize: 12.5, color: "var(--text-tertiary)", lineHeight: 1.5, marginTop: 14 }}>
+          Zeno won't mark this cancelled until the next receipt or statement shows the charge actually stopped.
+        </p>
       </Sheet>
     );
   }
 
   if (stage === "pending") {
     return (
-      <Sheet title="Pending verification" onClose={onDone}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "30px 14px 10px" }}>
-          <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--info-soft)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18 }}>
-            <Icon name="clock" size={30} color="var(--info)" />
+      <Sheet title="AWAITING PROOF" onClose={onDone}>
+        {/* watermark */}
+        <div style={{ position: "relative", padding: "26px 0 6px", textAlign: "center" }}>
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 34, letterSpacing: "0.18em", color: "var(--text-primary)", opacity: 0.05, transform: "rotate(-12deg)", whiteSpace: "nowrap" }}>AWAITING PROOF</span>
           </div>
-          <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 21, color: "var(--text-primary)" }}>We're verifying it stopped</div>
-          <p style={{ fontFamily: "var(--font-sans)", fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.5, margin: "8px 0 0", maxWidth: "32ch" }}>
-            {s.name} is marked <b>pending verification</b>. Zeno will re-check your next receipt and statement around {s.next}. We won't call it cancelled until we're sure.
-          </p>
+          <Stamp tone="neutral" angle={-4} sub={`REPORTED ${"JUL 10"}`}>Pending</Stamp>
         </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, background: "var(--surface-card)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "14px 16px", margin: "20px 0", boxShadow: "var(--shadow-xs)" }}>
-          {[["Cancellation reported", true],["Re-check next receipt", false],["Confirm no charge", false]].map(([t, done]) => (
-            <div key={t} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <Icon name={done ? "check-circle" : "circle"} size={18} color={done ? "var(--success)" : "var(--border-strong)"} />
-              <span style={{ fontFamily: "var(--font-sans)", fontSize: 13.5, color: done ? "var(--text-primary)" : "var(--text-tertiary)", fontWeight: done ? 600 : 400 }}>{t}</span>
-            </div>
+        <p style={{ fontFamily: "var(--font-sans)", fontSize: 14.5, color: "var(--text-secondary)", lineHeight: 1.55, textAlign: "center", margin: "18px auto 22px", maxWidth: "32ch" }}>
+          {s.name} is marked pending. Around {s.next}, Zeno re-checks your receipts and statement for a charge — then stamps it, one way or the other.
+        </p>
+        <div style={{ borderTop: "1px solid var(--rule-strong)" }}>
+          {[["Cancellation reported", "JUL 10", true], ["Re-check next receipt", `~${s.next.toUpperCase()}`, false], ["Stamp the outcome", "", false]].map(([t, d, done], i) => (
+            <LedgerLine key={i}
+              label={<span style={{ color: done ? "var(--text-primary)" : "var(--text-tertiary)", fontWeight: done ? 650 : 500 }}>{t}</span>}
+              value={done ? <Icon name="check" size={15} color="var(--stamp-verified)" /> : <span style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-tertiary)" }}>{d}</span>} />
           ))}
         </div>
-
-        <Button variant="primary" size="lg" fullWidth onClick={onDone}>Got it</Button>
-
-        {/* Demo affordance to preview both resolutions */}
-        <div style={{ marginTop: 22, padding: "12px 14px", border: "1px dashed var(--border-default)", borderRadius: "var(--radius-md)" }}>
-          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 8 }}>Demo · preview the outcome</div>
+        <Button variant="primary" size="lg" fullWidth onClick={onDone} style={{ marginTop: 20 }}>Got it</Button>
+        <div style={{ marginTop: 22, padding: "12px 14px", border: "1px dashed var(--rule-strong)", borderRadius: "var(--radius-md)" }}>
+          <div style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, letterSpacing: "0.14em", color: "var(--text-tertiary)", marginBottom: 8 }}>DEMO · PREVIEW THE OUTCOME</div>
           <div style={{ display: "flex", gap: 8 }}>
-            <Button variant="secondary" size="sm" onClick={() => setStage("verified")} style={{ flex: 1 }}>✓ No charge</Button>
-            <Button variant="secondary" size="sm" onClick={() => setStage("charged")} style={{ flex: 1 }}>✕ Charged again</Button>
+            <Button variant="secondary" size="sm" onClick={() => setStage("verified")} style={{ flex: 1 }}>No charge found</Button>
+            <Button variant="secondary" size="sm" onClick={() => setStage("charged")} style={{ flex: 1 }}>Charged again</Button>
           </div>
         </div>
       </Sheet>
@@ -91,37 +85,38 @@ function CancelFlowScreen({ id, onClose, onDone }) {
 
   if (stage === "verified") {
     return (
-      <Sheet title="" onClose={onDone}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "40px 18px" }}>
-          <div style={{ width: 76, height: 76, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20, boxShadow: "var(--shadow-accent)" }}>
-            <Icon name="check" size={38} color="var(--text-on-accent)" strokeWidth={3} />
-          </div>
-          <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 24, color: "var(--text-primary)" }}>Verified cancelled</div>
-          <p style={{ fontFamily: "var(--font-sans)", fontSize: 14.5, color: "var(--text-secondary)", lineHeight: 1.5, margin: "8px 0 22px", maxWidth: "30ch" }}>
-            No charge from {s.name} on your latest statement. It's confirmed — and you're saving:
-          </p>
-          <AmountDisplay amount={Number(yearly)} cadence="yr" size="lg" color="var(--accent-text)" />
+      <Sheet title="" onClose={onDone}
+        footer={<Button variant="money" size="lg" fullWidth onClick={onDone}>Done</Button>}>
+        {/* THE moment — stamp thunks down, savings print beneath */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "44px 0 10px" }}>
+          <Stamp animate size="lg" angle={-6} sub={`${s.name.toUpperCase()} · JUL 10 2026`}>Verified cancelled</Stamp>
         </div>
-        <Button variant="primary" size="lg" fullWidth onClick={onDone}>Done</Button>
+        <p style={{ fontFamily: "var(--font-sans)", fontSize: 14.5, color: "var(--text-secondary)", textAlign: "center", lineHeight: 1.5, margin: "16px auto 26px", maxWidth: "30ch" }}>
+          No charge on your latest statement. It's real. Back in your pocket:
+        </p>
+        <div style={{ borderTop: "1px solid var(--rule-strong)", margin: "0 8px" }}>
+          <div className="zn-print" style={{ animationDelay: "300ms" }}>
+            <LedgerLine label="Every month" value={`+$${s.amount.toFixed(2)}`} valueColor="var(--stamp-verified)" />
+          </div>
+          <div className="zn-print" style={{ animationDelay: "345ms" }}>
+            <LedgerLine label="Every year" strong value={`+$${yearly}`} valueColor="var(--stamp-verified)" size={16} />
+          </div>
+        </div>
       </Sheet>
     );
   }
 
-  // charged
   return (
     <Sheet title="" onClose={onDone}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "40px 18px 18px" }}>
-        <div style={{ width: 76, height: 76, borderRadius: "50%", background: "var(--danger-soft)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
-          <Icon name="triangle-alert" size={36} color="var(--danger)" />
-        </div>
-        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 23, color: "var(--text-primary)" }}>Still being charged</div>
-        <p style={{ fontFamily: "var(--font-sans)", fontSize: 14.5, color: "var(--text-secondary)", lineHeight: 1.5, margin: "8px 0 22px", maxWidth: "32ch" }}>
-          We spotted another {s.name} charge of <b>${s.amount.toFixed(2)}</b> after you cancelled. The cancellation didn't go through — let's try again.
-        </p>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "44px 0 10px" }}>
+        <Stamp animate tone="alert" size="lg" angle={4} sub={`$${s.amount.toFixed(2)} ON JUL 08`}>Still charging</Stamp>
       </div>
+      <p style={{ fontFamily: "var(--font-sans)", fontSize: 14.5, color: "var(--text-secondary)", textAlign: "center", lineHeight: 1.55, margin: "16px auto 26px", maxWidth: "32ch" }}>
+        A {s.name} charge appeared after you cancelled. That's on them, not you — let's make it stick this time.
+      </p>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <Button variant="primary" size="lg" fullWidth onClick={() => setStage("guided")} leftIcon={<Icon name="rotate-ccw" size={18} />}>Try cancelling again</Button>
-        <Button variant="secondary" size="lg" fullWidth onClick={onDone} leftIcon={<Icon name="life-buoy" size={18} />}>Get escalation help</Button>
+        <Button variant="primary" size="lg" fullWidth onClick={() => setStage("guided")} leftIcon={<Icon name="rotate-ccw" size={17} />}>Run the steps again</Button>
+        <Button variant="secondary" size="lg" fullWidth onClick={onDone} leftIcon={<Icon name="life-buoy" size={17} />}>Escalation help — chargeback guide</Button>
       </div>
     </Sheet>
   );

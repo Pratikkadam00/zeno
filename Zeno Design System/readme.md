@@ -13,6 +13,26 @@ This repository is the design system: brand, foundations (color, type, spacing, 
 
 ---
 
+## THE HONEST LEDGER — committed design direction (v2)
+
+**Direction exploration:** three candidates were written — *The Honest Ledger* (app as a typeset financial document), *Subscription Radar* (dark instrument, sweep/blip motion — killed as aestheticized surveillance, wrong for a privacy brand), and *Modern Fintech Mint* (killed: the generic clone; fails the logo-removal test by definition). **Committed: The Honest Ledger** — the brand ethic (honesty, receipts, accountability) IS the aesthetic. Mono-for-money is weaponized app-wide.
+
+**Named signature elements** (each on 3+ screens — see `guidelines/signatures.card.html`):
+1. **The Ledger Line** — dotted leader connecting label ↔ tabular-mono amount. (Home, Subs, Detail history, Budget, Paywall pricing, Family, Recap.)
+2. **The Zeno Stamp** — inked, rotated, double-ruled stamp; thunks down on verified moments. The app's ONE celebration — no confetti anywhere. (Cancel-verified, recap, Wrapped, paywall success, onboarding beat 3.)
+3. **Column Heads** — caps-mono table headers structuring lists (SERVICE … AMOUNT). (Subs, Detail history, scan receipt.)
+4. **Print-in** — rows print top-to-bottom (45ms stagger, transform+opacity only); scan results arrive as a tear-edge receipt. (Onboarding, lists, Discover, Wrapped.)
+
+**Motion in one sentence:** *"Everything settles like paper — rows print in, stamps thunk down."* Tokens + keyframes + Reanimated/haptics map live in `tokens/motion.css`. Reduced motion collapses to fades.
+
+**Surfaces:** warm paper `#FAF9F5`, hairline rules (`--rule`) replace card chrome (delete-a-card test applied); ink is navy-cast (`#14161F`, panels `#10131F` from brand `#0A0F2C`); primary buttons are INK — green (`--accent`) is reserved for money-positive/verified moments only. Dark mode is art-directed ("the ledger at 11pm"): navy-black desk, lit-paper cards, luminous green ink.
+
+**Taste risks (defended):** dotted leaders everywhere (the most information-dense honest pattern in typography); ALL-CAPS mono micro-labels as the only section headers (editorial, ownable); a skeuomorphic stamp in a flat era (physical proof-of-work); ink CTAs in a category addicted to green buttons.
+
+**Truthfulness rails (legally reviewed — do not undo):** no "100% on-device"/"we never see your data"/"auto-discovery" claims; required phrasings kept verbatim ("No bank login required"; the Settings privacy pull-quote; coach consent + "General information, not financial advice."). Paywall sells ONLY real Pro gates (unlimited past 10 free, category budgets, envelopes) and lists the free tier first. No dark patterns: equal-weight consent buttons, plain "Not now", one-tap account cancel.
+
+---
+
 ## CONTENT FUNDAMENTALS — how Zeno talks
 
 **Voice:** A calm, capable friend who's good with money and never makes you feel bad about it. Plain-spoken, warm, lightly optimistic. Never corporate, never finance-jargon, never alarmist.

@@ -1,46 +1,32 @@
 import React from "react";
 
 /**
- * Zeno Badge — compact status / metadata pill.
- * tone: neutral | accent | success | warning | danger | info
- * Soft (tinted) by default; solid for strong emphasis.
+ * Zeno Badge — ledger tick-tag. Caps-mono micro text with a colored status
+ * tick, no pill chrome (identical pills everywhere is banned). `solid`
+ * renders an inverse ink chip for the rare urgent tag.
  */
-export function Badge({ tone = "neutral", solid = false, dot = false, children, style, ...rest }) {
+export function Badge({ tone = "neutral", solid = false, dot = false, hollow = false, children, style, ...rest }) {
   const tones = {
-    neutral: { soft: "var(--surface-sunken)", softText: "var(--text-secondary)", solid: "var(--ink-700)", dot: "var(--ink-400)" },
-    accent: { soft: "var(--accent-soft)", softText: "var(--accent-text)", solid: "var(--accent)", dot: "var(--accent)" },
-    success: { soft: "var(--success-soft)", softText: "var(--success)", solid: "var(--success)", dot: "var(--success)" },
-    warning: { soft: "var(--warning-soft)", softText: "#B45309", solid: "var(--warning)", dot: "var(--warning)" },
-    danger: { soft: "var(--danger-soft)", softText: "var(--danger)", solid: "var(--danger)", dot: "var(--danger)" },
-    info: { soft: "var(--info-soft)", softText: "var(--info)", solid: "var(--info)", dot: "var(--info)" },
+    neutral: { text: "var(--text-tertiary)", tick: "var(--ink-300)" },
+    accent: { text: "var(--accent-text)", tick: "var(--accent)" },
+    success: { text: "var(--stamp-verified)", tick: "var(--stamp-verified)" },
+    warning: { text: "#A36A0B", tick: "var(--warning)" },
+    danger: { text: "var(--stamp-alert)", tick: "var(--stamp-alert)" },
+    info: { text: "var(--info)", tick: "var(--info)" },
+    pro: { text: "var(--text-secondary)", tick: "var(--ink-400)" },
   };
   const t = tones[tone] || tones.neutral;
-  const isSolidGreen = solid && tone === "accent";
 
+  if (solid) {
+    return (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, height: 20, padding: "0 8px", fontFamily: "var(--font-mono)", fontSize: 9.5, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--paper)", background: tone === "danger" ? "var(--stamp-alert)" : "var(--ink-panel)", borderRadius: 4, whiteSpace: "nowrap", ...style }} {...rest}>
+        {children}
+      </span>
+    );
+  }
   return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 5,
-        height: 22,
-        padding: "0 9px",
-        fontFamily: "var(--font-sans)",
-        fontSize: "var(--fs-micro)",
-        fontWeight: "var(--fw-semibold)",
-        letterSpacing: "var(--ls-snug)",
-        lineHeight: 1,
-        color: solid ? (tone === "warning" || isSolidGreen ? "var(--ink-900)" : "#fff") : t.softText,
-        background: solid ? t.solid : t.soft,
-        borderRadius: "var(--radius-pill)",
-        whiteSpace: "nowrap",
-        ...style,
-      }}
-      {...rest}
-    >
-      {dot && (
-        <span style={{ width: 6, height: 6, borderRadius: "50%", background: solid ? "currentColor" : t.dot, flex: "none" }} />
-      )}
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "var(--font-mono)", fontSize: 9.5, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: t.text, whiteSpace: "nowrap", ...style }} {...rest}>
+      <span style={{ width: 10, height: 3, background: hollow ? "transparent" : t.tick, border: hollow ? `1px solid ${t.tick}` : "none", flex: "none" }}></span>
       {children}
     </span>
   );
