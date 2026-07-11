@@ -78,3 +78,40 @@ window.ZENO.budget = {
   recap: { month: "May", cap: 80, actual: 74.20, prevActual: 79.40, streak: 3 },
   trend: [["Feb",61.94],["Mar",61.94],["Apr",73.94],["May",74.20],["Jun",78.96],["Jul",75.96]],
 };
+
+/* ---- Alerts inbox (NotificationsScreen) ---- */
+window.ZENO.alerts = {
+  quietHours: "10 PM – 8 AM",
+  flags: [
+    { id: "adobe",   icon: "triangle-alert", tone: "alert", title: "Adobe CC is still charging you",   meta: "$54.99 FOUND JUL 08 — CANCELLATION DIDN'T STICK" },
+    { id: "disney",  icon: "alarm-clock",    tone: "warn",  title: "Disney+ trial ends in 2 days",     meta: "CONVERTS TO $13.99/MO ON JUL 12" },
+    { id: "netflix", icon: "trending-up",    tone: "info",  title: "Netflix raised its price",         meta: "$13.99 → $15.99 /MO · +14%" },
+  ],
+  reminders: [
+    { id: "figma",   name: "Figma",    date: "Jul 9",  kind: "3-day reminder",     amount: 12.00 },
+    { id: "figma",   name: "Figma",    date: "Jul 12", kind: "Day-of reminder",    amount: 12.00 },
+    { id: "disney",  name: "Disney+",  date: "Jul 12", kind: "Trial converts",     amount: 13.99 },
+    { id: "hbo",     name: "Max",      date: "Jul 14", kind: "Verification check", amount: 15.99 },
+    { id: "netflix", name: "Netflix",  date: "Jul 21", kind: "7-day reminder",     amount: 15.99 },
+    { id: "netflix", name: "Netflix",  date: "Jul 25", kind: "3-day reminder",     amount: 15.99 },
+    { id: "spotify", name: "Spotify",  date: "Jul 26", kind: "7-day reminder",     amount: 10.99 },
+    { id: "icloud",  name: "iCloud+",  date: "Aug 2",  kind: "3-day reminder",     amount: 2.99 },
+  ],
+};
+
+/* ---- Spend Twin: STATIC illustrative benchmarks — never live user data ---- */
+window.ZENO.twin = [
+  { qty: "17",  label: "oat lattes",            desc: "At $4.50 a cup — a latte every weekday, roughly." },
+  { qty: "1.6", label: "tanks of gas",          desc: "About $48 to fill a mid-size sedan." },
+  { qty: "3.8", label: "movie tickets",         desc: "At the $19.89 big-city average, popcorn not included." },
+  { qty: "0.9", label: "monthly transit passes", desc: "An unlimited city pass runs about $86." },
+];
+
+/* ---- Year in Review (Wrapped) ---- */
+window.ZENO.wrapped = { year: 2026, sinceMonth: "March", months: 10, total: 818.44, top: { name: "Adobe CC", amount: 54.99 }, tracked: 10, cancelled: 3, savedYr: 427 };
+
+/* ---- Widgets preview ---- */
+window.ZENO.widgets = { next: { name: "Figma", amount: 12.00, days: 1 } };
+
+/* ---- Profile (email null = local-only mode) ---- */
+window.ZENO.profile = { name: "Alex Rivera", email: null, plan: "Free" };

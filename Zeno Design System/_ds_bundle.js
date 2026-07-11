@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"ZenoDesignSystem_12971a","components":[{"name":"AmountDisplay","sourcePath":"components/core/AmountDisplay.jsx"},{"name":"Badge","sourcePath":"components/core/Badge.jsx"},{"name":"Button","sourcePath":"components/core/Button.jsx"},{"name":"Card","sourcePath":"components/core/Card.jsx"},{"name":"CategoryTag","sourcePath":"components/core/CategoryTag.jsx"},{"name":"Icon","sourcePath":"components/core/Icon.jsx"},{"name":"IconButton","sourcePath":"components/core/IconButton.jsx"},{"name":"Input","sourcePath":"components/core/Input.jsx"},{"name":"ListRow","sourcePath":"components/core/ListRow.jsx"},{"name":"ProgressBar","sourcePath":"components/core/ProgressBar.jsx"},{"name":"SegmentedControl","sourcePath":"components/core/SegmentedControl.jsx"},{"name":"ServiceAvatar","sourcePath":"components/core/ServiceAvatar.jsx"},{"name":"Switch","sourcePath":"components/core/Switch.jsx"}],"sourceHashes":{"components/core/AmountDisplay.jsx":"de3965052ce1","components/core/Badge.jsx":"0f8918d18afc","components/core/Button.jsx":"5666cd5adb8c","components/core/Card.jsx":"9d94dd84555e","components/core/CategoryTag.jsx":"9961526a7a31","components/core/Icon.jsx":"3c10804cd886","components/core/IconButton.jsx":"009df706edb3","components/core/Input.jsx":"e16e4a18f1eb","components/core/ListRow.jsx":"8b12c8298acc","components/core/ProgressBar.jsx":"054e8ce3fffe","components/core/SegmentedControl.jsx":"78e579f2fc0a","components/core/ServiceAvatar.jsx":"65891a22381b","components/core/Switch.jsx":"4b6eae1dbd19","ui_kits/app/AddSubscriptionScreen.jsx":"49b14763f85c","ui_kits/app/BudgetRecapScreen.jsx":"f894cc15c512","ui_kits/app/BudgetScreen.jsx":"6b9db97ed9b4","ui_kits/app/CalendarScreen.jsx":"26074ee2c9b9","ui_kits/app/CancelFlowScreen.jsx":"de452c69f9d5","ui_kits/app/Chrome.jsx":"1a059a457f14","ui_kits/app/CoachScreen.jsx":"b8e13d83b178","ui_kits/app/DiscoverScreen.jsx":"ef1bcc8602dc","ui_kits/app/FamilyScreen.jsx":"78598e20c649","ui_kits/app/HomeScreen.jsx":"48ab4cec0475","ui_kits/app/InsightsScreen.jsx":"3738a04b4418","ui_kits/app/Ledger.jsx":"4a4d94029e2f","ui_kits/app/OnboardingScreen.jsx":"159d3aa68a35","ui_kits/app/PaywallScreen.jsx":"c7e016ed37df","ui_kits/app/SettingsScreen.jsx":"c2f810fe7e99","ui_kits/app/SubscriptionDetailScreen.jsx":"e0f4352a5119","ui_kits/app/SubscriptionsScreen.jsx":"5e154b81fd3e","ui_kits/app/data.js":"e5cfa79a0162"},"inlinedExternals":[],"unexposedExports":[]} */
+/* @ds-bundle: {"format":4,"namespace":"ZenoDesignSystem_12971a","components":[{"name":"AmountDisplay","sourcePath":"components/core/AmountDisplay.jsx"},{"name":"Badge","sourcePath":"components/core/Badge.jsx"},{"name":"Button","sourcePath":"components/core/Button.jsx"},{"name":"Card","sourcePath":"components/core/Card.jsx"},{"name":"CategoryTag","sourcePath":"components/core/CategoryTag.jsx"},{"name":"Icon","sourcePath":"components/core/Icon.jsx"},{"name":"IconButton","sourcePath":"components/core/IconButton.jsx"},{"name":"Input","sourcePath":"components/core/Input.jsx"},{"name":"ListRow","sourcePath":"components/core/ListRow.jsx"},{"name":"ProgressBar","sourcePath":"components/core/ProgressBar.jsx"},{"name":"SegmentedControl","sourcePath":"components/core/SegmentedControl.jsx"},{"name":"ServiceAvatar","sourcePath":"components/core/ServiceAvatar.jsx"},{"name":"Switch","sourcePath":"components/core/Switch.jsx"}],"sourceHashes":{"components/core/AmountDisplay.jsx":"de3965052ce1","components/core/Badge.jsx":"0f8918d18afc","components/core/Button.jsx":"5666cd5adb8c","components/core/Card.jsx":"9d94dd84555e","components/core/CategoryTag.jsx":"9961526a7a31","components/core/Icon.jsx":"3c10804cd886","components/core/IconButton.jsx":"009df706edb3","components/core/Input.jsx":"e16e4a18f1eb","components/core/ListRow.jsx":"8b12c8298acc","components/core/ProgressBar.jsx":"054e8ce3fffe","components/core/SegmentedControl.jsx":"78e579f2fc0a","components/core/ServiceAvatar.jsx":"65891a22381b","components/core/Switch.jsx":"4b6eae1dbd19","ui_kits/app/AddSubscriptionScreen.jsx":"49b14763f85c","ui_kits/app/BudgetRecapScreen.jsx":"f894cc15c512","ui_kits/app/BudgetScreen.jsx":"6b9db97ed9b4","ui_kits/app/CalendarScreen.jsx":"26074ee2c9b9","ui_kits/app/CancelFlowScreen.jsx":"de452c69f9d5","ui_kits/app/Chrome.jsx":"7f618d7eb62c","ui_kits/app/CoachScreen.jsx":"b8e13d83b178","ui_kits/app/DiscoverScreen.jsx":"ef1bcc8602dc","ui_kits/app/FamilyScreen.jsx":"78598e20c649","ui_kits/app/HomeScreen.jsx":"52e5cb4c77d9","ui_kits/app/InsightsScreen.jsx":"b98f58ec841d","ui_kits/app/Ledger.jsx":"21437da03075","ui_kits/app/LoginScreen.jsx":"c601afb7c1c2","ui_kits/app/NotificationsScreen.jsx":"019439d70769","ui_kits/app/OnboardingScreen.jsx":"159d3aa68a35","ui_kits/app/PaywallScreen.jsx":"c7e016ed37df","ui_kits/app/ProfileScreen.jsx":"d0b964cfc4c7","ui_kits/app/SecurityScreen.jsx":"26907569d5ad","ui_kits/app/SettingsScreen.jsx":"23a493902577","ui_kits/app/SpendTwinScreen.jsx":"15f07cbbbddb","ui_kits/app/SubscriptionDetailScreen.jsx":"e0f4352a5119","ui_kits/app/SubscriptionsScreen.jsx":"5e154b81fd3e","ui_kits/app/WidgetsScreen.jsx":"3e76f1aceae2","ui_kits/app/WrappedScreen.jsx":"e4fb466f63c8","ui_kits/app/data.js":"de5fc7ea180b","website-v3-book.js":"33d7bf4383b2"},"inlinedExternals":[],"unexposedExports":[]} */
 
 (() => {
 
@@ -2605,10 +2605,99 @@ const TABS = [{
   icon: "chart-no-axes-column",
   label: "Insights"
 }];
+
+/* Quick-pick arc for the ⊕ long-press — three seals fanned within thumb sweep.
+   Top = recommended. tx/ty are offsets from the FAB center. */
+const QUICK_ACTIONS = [{
+  id: "manual",
+  icon: "pencil-line",
+  label: "ADD BY HAND",
+  tx: -96,
+  ty: -94
+}, {
+  id: "csv",
+  icon: "file-spreadsheet",
+  label: "IMPORT CSV",
+  tx: 0,
+  ty: -134
+}, {
+  id: "email",
+  icon: "mail-search",
+  label: "SCAN EMAIL",
+  tx: 96,
+  ty: -94
+}];
+
+/* TabBar — tap ⊕ opens the Discover hub; HOLD ⊕ (300ms) fans three seals in
+   an arc above the thumb while the page behind blurs: sweep onto one,
+   release to pick. Release anywhere else cancels. The plus rotates 45°
+   while open (release-to-cancel cue).
+   MOTION: seals pop out along their vectors (0.24s thunk ease, 40ms stagger;
+   RN: withSpring d16 s380 per seal), scrim blur fades in 180ms; hot seal
+   inks green + scales 1.12 in 110ms. HAPTICS: impactAsync(Medium) on open,
+   selectionAsync() when the hot seal changes, impactAsync(Light) on pick.
+   RN: Gesture.LongPress(300) + pan; BlurView for the scrim; reduced motion
+   → seals appear in place, scrim opacity only. */
 function TabBar({
   active,
-  onTab
+  onTab,
+  onQuick
 }) {
+  const [menu, setMenu] = React.useState(false);
+  const [held, setHeld] = React.useState(false);
+  const [hot, setHot] = React.useState(null);
+  const timer = React.useRef(null);
+  const opened = React.useRef(false);
+  const rowRefs = React.useRef({});
+  const hitTest = (x, y) => {
+    for (const q of QUICK_ACTIONS) {
+      const el = rowRefs.current[q.id];
+      if (!el) continue;
+      const r = el.getBoundingClientRect();
+      if (x >= r.left - 6 && x <= r.right + 6 && y >= r.top - 5 && y <= r.bottom + 5) return q.id;
+    }
+    return null;
+  };
+  const down = e => {
+    e.preventDefault();
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (err) {}
+    setHeld(true);
+    opened.current = false;
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      opened.current = true;
+      setMenu(true);
+      setHot(null);
+    }, 300);
+  };
+  const move = e => {
+    if (opened.current) setHot(hitTest(e.clientX, e.clientY));
+  };
+  const up = e => {
+    clearTimeout(timer.current);
+    setHeld(false);
+    if (opened.current) {
+      const pick = hitTest(e.clientX, e.clientY);
+      opened.current = false;
+      setMenu(false);
+      setHot(null);
+      if (pick) {
+        onQuick ? onQuick(pick) : onTab("discover");
+      }
+    } else {
+      setMenu(false);
+      onTab("discover"); // short tap → full Discover hub (unchanged)
+    }
+  };
+  const cancel = () => {
+    clearTimeout(timer.current);
+    setHeld(false);
+    setMenu(false);
+    setHot(null);
+    opened.current = false;
+  };
   return /*#__PURE__*/React.createElement("div", {
     style: {
       flex: "none",
@@ -2617,9 +2706,23 @@ function TabBar({
       background: "var(--surface-card)",
       display: "flex",
       alignItems: "flex-start",
-      paddingTop: 0
+      paddingTop: 0,
+      position: "relative"
     }
-  }, TABS.map(t => {
+  }, menu && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: "100%",
+      height: 860,
+      background: "color-mix(in srgb, var(--bg-app) 45%, transparent)",
+      backdropFilter: "blur(7px)",
+      WebkitBackdropFilter: "blur(7px)",
+      animation: "qaScrim 0.18s var(--ease-out) both",
+      pointerEvents: "none"
+    }
+  }), TABS.map(t => {
     if (t.id === "discover") {
       return /*#__PURE__*/React.createElement("div", {
         key: t.id,
@@ -2627,11 +2730,83 @@ function TabBar({
           flex: 1,
           display: "flex",
           justifyContent: "center",
-          paddingTop: 11
+          paddingTop: 11,
+          position: "relative"
         }
-      }, /*#__PURE__*/React.createElement("button", {
-        onClick: () => onTab("discover"),
-        "aria-label": "Discover subscriptions",
+      }, menu && /*#__PURE__*/React.createElement("div", {
+        style: {
+          position: "absolute",
+          left: "50%",
+          top: 29,
+          width: 0,
+          height: 0,
+          zIndex: 30
+        }
+      }, QUICK_ACTIONS.map((q, i) => {
+        const on = hot === q.id;
+        return /*#__PURE__*/React.createElement("div", {
+          key: q.id,
+          ref: el => {
+            rowRefs.current[q.id] = el;
+          },
+          style: {
+            position: "absolute",
+            left: -34,
+            top: -28,
+            width: 68,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 6,
+            transform: `translate(${q.tx}px, ${q.ty}px)`,
+            "--tx": `${q.tx}px`,
+            "--ty": `${q.ty}px`,
+            animation: `qaPop 0.24s var(--ease-thunk) ${i * 40}ms both`
+          }
+        }, /*#__PURE__*/React.createElement("span", {
+          style: {
+            width: 56,
+            height: 56,
+            borderRadius: "50%",
+            background: on ? "var(--accent)" : "var(--ink-panel)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "var(--shadow-md)",
+            outline: `1px solid ${on ? "var(--accent)" : "var(--rule-strong)"}`,
+            outlineOffset: 3,
+            transform: on ? "scale(1.12)" : "scale(1)",
+            transition: "transform 110ms var(--ease-out), background 90ms linear"
+          }
+        }, /*#__PURE__*/React.createElement(Icon, {
+          name: q.icon,
+          size: 22,
+          color: on ? "var(--ink-panel)" : "#1ED47F",
+          strokeWidth: 2.2
+        })), /*#__PURE__*/React.createElement("span", {
+          style: {
+            fontFamily: "var(--font-mono)",
+            fontSize: 8,
+            fontWeight: 700,
+            letterSpacing: "0.12em",
+            whiteSpace: "nowrap",
+            color: on ? "var(--paper)" : "var(--text-primary)",
+            background: on ? "var(--ink-panel)" : "color-mix(in srgb, var(--surface-card) 88%, transparent)",
+            border: "1px solid var(--rule)",
+            padding: "3px 8px",
+            borderRadius: 5
+          }
+        }, q.label));
+      })), /*#__PURE__*/React.createElement("button", {
+        onPointerDown: down,
+        onPointerMove: move,
+        onPointerUp: up,
+        onPointerCancel: cancel,
+        onContextMenu: e => e.preventDefault(),
+        onKeyDown: e => {
+          if (e.key === "Enter" || e.key === " ") onTab("discover");
+        },
+        "aria-label": "Discover subscriptions \u2014 hold for quick add",
         style: {
           width: 52,
           height: 52,
@@ -2645,14 +2820,23 @@ function TabBar({
           boxShadow: "var(--shadow-md)",
           cursor: "pointer",
           outline: "1px solid var(--rule-strong)",
-          outlineOffset: 3
+          outlineOffset: 3,
+          touchAction: "none",
+          transform: held ? "scale(0.93)" : "scale(1)",
+          transition: "transform var(--dur-fast) var(--ease-out)"
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          display: "inline-flex",
+          transform: menu ? "rotate(45deg)" : "rotate(0deg)",
+          transition: "transform 0.2s var(--ease-out)"
         }
       }, /*#__PURE__*/React.createElement(Icon, {
         name: "plus",
         size: 26,
         color: "var(--accent)",
         strokeWidth: 2.4
-      })));
+      }))));
     }
     const on = active === t.id;
     return /*#__PURE__*/React.createElement("button", {
@@ -2673,12 +2857,13 @@ function TabBar({
         position: "relative"
       }
     }, /*#__PURE__*/React.createElement("span", {
+      key: on ? "on" : "off",
       style: {
         width: 18,
         height: 2.5,
         background: on ? "var(--accent)" : "transparent",
         marginBottom: 7,
-        transition: "background var(--dur-fast) var(--ease-out)"
+        animation: on ? "zn-grow-x 0.24s var(--ease-out) both" : "none"
       }
     }), /*#__PURE__*/React.createElement(Icon, {
       name: t.icon,
@@ -4519,28 +4704,15 @@ function HomeScreen({
     style: {
       marginTop: 8
     }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontFamily: "var(--font-mono)",
-      fontWeight: 700,
-      fontSize: 58,
-      lineHeight: 1,
-      letterSpacing: "-0.045em",
-      color: "var(--text-primary)",
-      fontFeatureSettings: "'tnum' 1"
-    }
-  }, "$", Math.floor(total), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 28,
-      fontWeight: 600,
-      opacity: 0.55
-    }
-  }, ".", (total % 1).toFixed(2).slice(2)))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement(TallyNumber, {
+    value: total
+  })), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 2,
       height: 4,
-      marginTop: 14
+      marginTop: 14,
+      animation: "zn-wipe 0.55s var(--ease-out) 0.25s both"
     }
   }, segs.map(([cat, val]) => /*#__PURE__*/React.createElement("div", {
     key: cat,
@@ -4554,21 +4726,36 @@ function HomeScreen({
       borderBottom: "1px solid var(--rule-strong)",
       marginTop: 14
     }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "zn-print",
+    style: {
+      animationDelay: "180ms"
+    }
   }, /*#__PURE__*/React.createElement(LedgerLine, {
     label: "Charged so far",
     value: `$${B.committed.toFixed(2)}`
-  }), /*#__PURE__*/React.createElement(LedgerLine, {
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "zn-print",
+    style: {
+      animationDelay: "240ms"
+    }
+  }, /*#__PURE__*/React.createElement(LedgerLine, {
     label: "Still to renew",
     sub: "2 RENEWALS",
     value: `$${(B.projected - B.committed).toFixed(2)}`
-  })), /*#__PURE__*/React.createElement(LedgerLine, {
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "zn-print",
+    style: {
+      animationDelay: "300ms"
+    }
+  }, /*#__PURE__*/React.createElement(LedgerLine, {
     onClick: onBudget,
     label: "Budget",
     sub: `CAP $${B.cap}`,
     value: over ? `$${(B.projected - B.cap).toFixed(2)} OVER` : approaching ? `$${(B.cap - B.projected).toFixed(2)} LEFT` : "ON PACE",
     valueColor: over ? "var(--stamp-alert)" : approaching ? "#A36A0B" : "var(--stamp-verified)",
     strong: true
-  })), attention.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SectionHead, null, "Needs attention"), /*#__PURE__*/React.createElement("div", {
+  }))), attention.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SectionHead, null, "Needs attention"), /*#__PURE__*/React.createElement("div", {
     style: {
       padding: "0 20px"
     }
@@ -4817,7 +5004,9 @@ function InsightsScreen({
         gap: 6
       }
     }, last && /*#__PURE__*/React.createElement("span", {
+      className: "zn-print",
       style: {
+        animationDelay: `${i * 55 + 340}ms`,
         fontFamily: "var(--font-mono)",
         fontSize: 10.5,
         fontWeight: 700,
@@ -4830,7 +5019,8 @@ function InsightsScreen({
         height: `${v / max * 80}px`,
         background: last ? "var(--text-primary)" : "var(--rule-strong)",
         borderRadius: "3px 3px 0 0",
-        transition: "height var(--dur-slow) var(--ease-out)"
+        transformOrigin: "bottom",
+        animation: `zn-rise 0.5s var(--ease-out) ${i * 55}ms both`
       }
     }), /*#__PURE__*/React.createElement("span", {
       style: {
@@ -4854,7 +5044,7 @@ function InsightsScreen({
     style: {
       padding: "0 20px"
     }
-  }, Z.categories.map(c => /*#__PURE__*/React.createElement("div", {
+  }, Z.categories.map((c, i) => /*#__PURE__*/React.createElement("div", {
     key: c.category,
     style: {
       padding: "2px 0 8px",
@@ -4888,7 +5078,9 @@ function InsightsScreen({
     style: {
       width: `${c.spent / catTotal * 100}%`,
       height: "100%",
-      background: `var(--cat-${c.cat})`
+      background: `var(--cat-${c.cat})`,
+      transformOrigin: "left",
+      animation: `zn-grow-x 0.5s var(--ease-out) ${i * 70 + 150}ms both`
     }
   }))))), /*#__PURE__*/React.createElement(SectionHead, null, "Ways to save"), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -5352,6 +5544,62 @@ function CodeBoxes({
     }
   }, c.trim() || "·")));
 }
+
+/* TallyNumber — adding-machine count-up for hero money. 600ms cubic ease-out,
+   tabular mono so digits don't jitter. RN: Reanimated derived value + ReText.
+   Reduced motion: renders the final value immediately. */
+function TallyNumber({
+  value,
+  dur = 600,
+  big = 58,
+  small = 28,
+  color = "var(--text-primary)"
+}) {
+  const reduced = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const [v, setV] = React.useState(reduced ? value : 0);
+  React.useEffect(() => {
+    if (reduced) {
+      setV(value);
+      return;
+    }
+    let raf;
+    const t0 = performance.now();
+    const tick = t => {
+      const p = Math.min(1, (t - t0) / dur);
+      const e = 1 - Math.pow(1 - p, 3);
+      setV(value * e);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    // rAF can be suspended entirely (capture contexts, backgrounded webviews) —
+    // guarantee the ledger never sits at $0.00: force the final value shortly
+    // after the animation window regardless.
+    const failsafe = setTimeout(() => setV(value), dur + 300);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(failsafe);
+    };
+  }, [value]);
+  const d = Math.floor(v);
+  const c = (v - d).toFixed(2).slice(2);
+  return /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontWeight: 700,
+      fontSize: big,
+      lineHeight: 1,
+      letterSpacing: "-0.045em",
+      color,
+      fontFeatureSettings: "'tnum' 1"
+    }
+  }, "$", d, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: small,
+      fontWeight: 600,
+      opacity: 0.55
+    }
+  }, ".", c));
+}
 Object.assign(window, {
   SectionHead,
   ColumnHeads,
@@ -5360,9 +5608,603 @@ Object.assign(window, {
   TearEdge,
   SkeletonRow,
   BottomSheetLite,
-  CodeBoxes
+  CodeBoxes,
+  TallyNumber
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/app/Ledger.jsx", error: String((e && e.message) || e) }); }
+
+// ui_kits/app/LoginScreen.jsx
+try { (() => {
+/* Zeno — Login (standalone screen; onboarding keeps its own inline flow).
+   The age + consent gate is designed as "you sign the ledger before opening
+   it" — a dignified consent line, not legal debris. Local-only mode keeps
+   equal billing with the account paths (privacy-first differentiator).
+   SLOP AUDIT — ① Zeno: consent as a signed line that unlocks the page; errors
+   as margin-tick corrections in plain language; local-only under its own
+   section head, same visual weight. ② Tempted by: social-buttons-first with a
+   buried "continue as guest" → gate first, guest celebrated. ③ Lazy version:
+   email+password form, red toast errors, guest link in the footer.
+   MOTION: methods unlock = opacity settle 220ms (RN: withSpring d22); sent
+   state prints in (FadeInDown); error tick settles + Haptics Warning.
+   Reduced motion: opacity only. ≥44pt targets throughout. */
+function LoginScreen({
+  onClose,
+  onDone
+}) {
+  const [age, setAge] = React.useState(false);
+  const [email, setEmail] = React.useState("");
+  const [sent, setSent] = React.useState(false);
+  const [err, setErr] = React.useState(null); // 'offline' | 'server'
+
+  const errors = {
+    offline: ["wifi-off", "You're offline", "Reconnect and try again — nothing was sent."],
+    server: ["cloud-alert", "Couldn't send the email right now", "That one's on our end, not yours. Try again in a minute."]
+  };
+  const e = err && errors[err];
+  const GoogleG = () => /*#__PURE__*/React.createElement("svg", {
+    width: "17",
+    height: "17",
+    viewBox: "0 0 48 48",
+    "aria-hidden": "true"
+  }, /*#__PURE__*/React.createElement("path", {
+    fill: "#EA4335",
+    d: "M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+  }), /*#__PURE__*/React.createElement("path", {
+    fill: "#4285F4",
+    d: "M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+  }), /*#__PURE__*/React.createElement("path", {
+    fill: "#FBBC05",
+    d: "M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+  }), /*#__PURE__*/React.createElement("path", {
+    fill: "#34A853",
+    d: "M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+  }));
+  return /*#__PURE__*/React.createElement(Sheet, {
+    title: "SIGN IN",
+    onClose: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontSize: 10,
+      fontWeight: 700,
+      letterSpacing: "0.18em",
+      color: "var(--text-tertiary)",
+      margin: "8px 0 6px"
+    }
+  }, "ZENO / ACCOUNT"), /*#__PURE__*/React.createElement("h1", {
+    style: {
+      fontFamily: "var(--font-display)",
+      fontWeight: 700,
+      fontSize: 27,
+      letterSpacing: "-0.022em",
+      margin: "0 0 18px"
+    }
+  }, "Open your ledger"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      setAge(a => !a);
+    },
+    style: {
+      display: "flex",
+      gap: 11,
+      alignItems: "flex-start",
+      textAlign: "left",
+      width: "100%",
+      minHeight: 48,
+      background: "none",
+      border: "1px solid var(--rule-strong)",
+      borderRadius: "var(--radius-md)",
+      padding: "12px 14px",
+      cursor: "pointer",
+      marginBottom: 6
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 22,
+      height: 22,
+      flex: "none",
+      borderRadius: 5,
+      border: `1.5px solid ${age ? "var(--accent)" : "var(--border-strong)"}`,
+      background: age ? "var(--accent)" : "transparent",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 1,
+      transition: "background var(--dur-fast) var(--ease-out)"
+    }
+  }, age && /*#__PURE__*/React.createElement(Icon, {
+    name: "check",
+    size: 15,
+    color: "var(--text-on-accent)",
+    strokeWidth: 3
+  })), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "var(--font-sans)",
+      fontSize: 13.5,
+      color: "var(--text-secondary)",
+      lineHeight: 1.45
+    }
+  }, "I'm ", /*#__PURE__*/React.createElement("b", {
+    style: {
+      color: "var(--text-primary)"
+    }
+  }, "16 or older"), " and accept the Terms & Privacy Policy.")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontSize: 9,
+      letterSpacing: "0.12em",
+      color: "var(--text-tertiary)",
+      margin: "0 0 14px 2px"
+    }
+  }, "SIGN THE LINE TO CONTINUE"), e && /*#__PURE__*/React.createElement("div", {
+    className: "zn-print",
+    style: {
+      display: "flex",
+      gap: 12,
+      alignItems: "flex-start",
+      borderLeft: "3px solid var(--stamp-alert)",
+      paddingLeft: 12,
+      margin: "0 0 16px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 7
+    }
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: e[0],
+    size: 15,
+    color: "var(--stamp-alert)"
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "var(--font-sans)",
+      fontWeight: 700,
+      fontSize: 14,
+      color: "var(--text-primary)"
+    }
+  }, e[1])), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-sans)",
+      fontSize: 13,
+      color: "var(--text-secondary)",
+      marginTop: 3,
+      lineHeight: 1.5
+    }
+  }, e[2]))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 10,
+      opacity: age ? 1 : 0.5,
+      pointerEvents: age ? "auto" : "none",
+      transition: "opacity var(--dur) var(--ease-out)"
+    }
+  }, !sent ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Input, {
+    label: "Email",
+    type: "email",
+    placeholder: "you@example.com",
+    value: email,
+    onChange: ev => setEmail(ev.target.value)
+  }), /*#__PURE__*/React.createElement(Button, {
+    variant: "primary",
+    size: "lg",
+    fullWidth: true,
+    onClick: () => {
+      setErr(null);
+      setSent(true);
+    },
+    leftIcon: /*#__PURE__*/React.createElement(Icon, {
+      name: "mail",
+      size: 18
+    })
+  }, "Send sign-in link")) :
+  /*#__PURE__*/
+  /* Sent — a calm printed receipt of the action, not a success modal */
+  React.createElement("div", {
+    className: "zn-print",
+    style: {
+      borderTop: "1px solid var(--rule-strong)",
+      paddingTop: 4
+    }
+  }, /*#__PURE__*/React.createElement(LedgerLine, {
+    label: "Sign-in link",
+    sub: (email || "you@example.com").toUpperCase(),
+    value: "SENT",
+    valueColor: "var(--stamp-verified)"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-sans)",
+      fontSize: 13,
+      color: "var(--text-secondary)",
+      lineHeight: 1.5,
+      margin: "6px 0 12px"
+    }
+  }, "Check your email on this phone and tap the link. It expires in 15 minutes."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement(Button, {
+    variant: "secondary",
+    size: "md",
+    onClick: () => setSent(false),
+    style: {
+      flex: 1
+    }
+  }, "Change email"), /*#__PURE__*/React.createElement(Button, {
+    variant: "ghost",
+    size: "md",
+    onClick: () => {},
+    style: {
+      flex: 1
+    }
+  }, "Resend"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onDone,
+    style: {
+      flex: 1,
+      height: 50,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      background: "#000",
+      color: "#fff",
+      border: "none",
+      borderRadius: "var(--radius-md)",
+      fontFamily: "var(--font-sans)",
+      fontSize: 14.5,
+      fontWeight: 600,
+      cursor: "pointer"
+    }
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "apple",
+    size: 18,
+    color: "#fff"
+  }), " Apple"), /*#__PURE__*/React.createElement("button", {
+    onClick: onDone,
+    style: {
+      flex: 1,
+      height: 50,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      background: "#fff",
+      color: "#1F1F1F",
+      border: "1px solid #DADCE0",
+      borderRadius: "var(--radius-md)",
+      fontFamily: "var(--font-sans)",
+      fontSize: 14.5,
+      fontWeight: 600,
+      cursor: "pointer"
+    }
+  }, /*#__PURE__*/React.createElement(GoogleG, null), " Google")), /*#__PURE__*/React.createElement(SectionHead, {
+    pad: "12px 0 8px"
+  }, "Or keep it on this phone"), /*#__PURE__*/React.createElement(Button, {
+    variant: "secondary",
+    size: "lg",
+    fullWidth: true,
+    onClick: onDone,
+    leftIcon: /*#__PURE__*/React.createElement(Icon, {
+      name: "smartphone",
+      size: 18
+    }),
+    style: {
+      borderColor: "var(--ink-400)",
+      borderWidth: 1.5
+    }
+  }, "Continue without an account"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-sans)",
+      fontSize: 12.5,
+      color: "var(--text-tertiary)",
+      textAlign: "center",
+      lineHeight: 1.5
+    }
+  }, "No email, no sync \u2014 your ledger exists only here.")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 22,
+      padding: "12px 14px",
+      border: "1px dashed var(--rule-strong)",
+      borderRadius: "var(--radius-md)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontSize: 9.5,
+      letterSpacing: "0.14em",
+      color: "var(--text-tertiary)",
+      marginBottom: 8
+    }
+  }, "DEMO \xB7 PREVIEW ERROR STATES"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement(Button, {
+    variant: "secondary",
+    size: "sm",
+    onClick: () => {
+      setAge(true);
+      setErr("offline");
+      setSent(false);
+    },
+    style: {
+      flex: 1
+    }
+  }, "Offline"), /*#__PURE__*/React.createElement(Button, {
+    variant: "secondary",
+    size: "sm",
+    onClick: () => {
+      setAge(true);
+      setErr("server");
+      setSent(false);
+    },
+    style: {
+      flex: 1
+    }
+  }, "Server error"), /*#__PURE__*/React.createElement(Button, {
+    variant: "secondary",
+    size: "sm",
+    onClick: () => setErr(null),
+    style: {
+      flex: 1
+    }
+  }, "Clear"))));
+}
+window.LoginScreen = LoginScreen;
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/app/LoginScreen.jsx", error: String((e && e.message) || e) }); }
+
+// ui_kits/app/NotificationsScreen.jsx
+try { (() => {
+/* Zeno — Notifications inbox: FLAGS (needs attention now) + the upcoming
+   reminder feed (what Zeno will say, when). Overrides the earlier inline
+   version (this file loads later); data now lives in data.js.
+   SLOP AUDIT — ① Zeno: two-zone register with margin ticks for flags and a
+   WHEN … AMOUNT reminder table; quiet-hours as a printed schedule note.
+   ② Tempted by: one infinite feed with unread-dot chrome → zoned ledger with
+   column heads. ③ Lazy version: iOS notification list clone, relative
+   timestamps, red badges.
+   MOTION: rows print in (45ms stagger; RN FadeInDown); tapping a row =
+   impactAsync(Light); no unread pulsing. Reduced motion: fades.
+   Light + dark via tokens. All rows ≥48pt. */
+function NotificationsScreen({
+  onClose,
+  onOpen
+}) {
+  const A = window.ZENO.alerts;
+  const [demoEmpty, setDemoEmpty] = React.useState(false);
+  const toneColor = {
+    alert: "var(--stamp-alert)",
+    warn: "var(--warning)",
+    info: "var(--info)"
+  };
+  const flags = demoEmpty ? [] : A.flags;
+  const reminders = demoEmpty ? [] : A.reminders.slice(0, 12);
+  return /*#__PURE__*/React.createElement(Sheet, {
+    title: "ALERTS",
+    onClose: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-sans)",
+      fontSize: 12.5,
+      color: "var(--text-tertiary)",
+      margin: "6px 0 0",
+      lineHeight: 1.5
+    }
+  }, "Quiet hours ", A.quietHours, " \u2014 anything due overnight shifts to morning."), /*#__PURE__*/React.createElement(SectionHead, {
+    pad: "20px 0 8px"
+  }, "Flags"), flags.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-sans)",
+      fontSize: 13.5,
+      color: "var(--text-tertiary)",
+      lineHeight: 1.5,
+      padding: "2px 0 6px"
+    }
+  }, "Nothing needs your attention. That's the goal.") : flags.map((n, i) => /*#__PURE__*/React.createElement("button", {
+    key: n.id + i,
+    onClick: () => onOpen(n.id),
+    className: "zn-print",
+    style: {
+      animationDelay: `${i * 45}ms`,
+      display: "flex",
+      gap: 12,
+      alignItems: "center",
+      width: "100%",
+      textAlign: "left",
+      background: "none",
+      border: "none",
+      borderBottom: "1px solid var(--rule)",
+      padding: "12px 0",
+      minHeight: 52,
+      cursor: "pointer"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 3,
+      alignSelf: "stretch",
+      background: toneColor[n.tone],
+      flex: "none",
+      borderRadius: 2
+    }
+  }), /*#__PURE__*/React.createElement(Icon, {
+    name: n.icon,
+    size: 17,
+    color: toneColor[n.tone],
+    style: {
+      flex: "none"
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      flex: 1,
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "block",
+      fontFamily: "var(--font-sans)",
+      fontWeight: 650,
+      fontSize: 14,
+      color: "var(--text-primary)"
+    }
+  }, n.title), /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "block",
+      fontFamily: "var(--font-mono)",
+      fontSize: 9,
+      letterSpacing: "0.08em",
+      color: "var(--text-tertiary)",
+      marginTop: 3
+    }
+  }, n.meta)), /*#__PURE__*/React.createElement(Icon, {
+    name: "chevron-right",
+    size: 15,
+    color: "var(--text-tertiary)"
+  }))), /*#__PURE__*/React.createElement(SectionHead, {
+    pad: "22px 0 8px",
+    right: reminders.length > 0 && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontFamily: "var(--font-mono)",
+        fontSize: 9,
+        letterSpacing: "0.12em",
+        color: "var(--text-tertiary)"
+      }
+    }, "NEXT ", reminders.length)
+  }, "Coming up"), reminders.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-sans)",
+      fontSize: 13.5,
+      color: "var(--text-tertiary)",
+      lineHeight: 1.5,
+      padding: "2px 0"
+    }
+  }, "No reminders scheduled \u2014 add a subscription and Zeno fills these in.") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(ColumnHeads, {
+    left: "WHEN \xB7 SERVICE",
+    right: "AMOUNT",
+    style: {
+      padding: "0 0 6px"
+    }
+  }), reminders.map((r, i) => /*#__PURE__*/React.createElement("div", {
+    key: r.name + r.date,
+    className: "zn-print",
+    style: {
+      animationDelay: `${Math.min(i, 8) * 45}ms`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: () => onOpen(r.id),
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      padding: "10px 0",
+      borderBottom: "1px solid var(--rule)",
+      minHeight: 48,
+      cursor: "pointer"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 44,
+      flex: "none",
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "block",
+      fontFamily: "var(--font-mono)",
+      fontWeight: 700,
+      fontSize: 15,
+      color: "var(--text-primary)",
+      lineHeight: 1
+    }
+  }, r.date.split(" ")[1]), /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "block",
+      fontFamily: "var(--font-mono)",
+      fontSize: 8.5,
+      letterSpacing: "0.14em",
+      color: "var(--text-tertiary)",
+      marginTop: 2
+    }
+  }, r.date.split(" ")[0].toUpperCase())), /*#__PURE__*/React.createElement("span", {
+    style: {
+      flex: "none",
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "block",
+      fontFamily: "var(--font-sans)",
+      fontWeight: 650,
+      fontSize: 14,
+      color: "var(--text-primary)"
+    }
+  }, r.name), /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "block",
+      fontFamily: "var(--font-mono)",
+      fontSize: 9,
+      letterSpacing: "0.1em",
+      color: "var(--text-tertiary)",
+      marginTop: 2
+    }
+  }, r.kind.toUpperCase())), /*#__PURE__*/React.createElement("span", {
+    "aria-hidden": "true",
+    style: {
+      flex: 1,
+      borderBottom: "2px dotted var(--rule-strong)",
+      transform: "translateY(3px)",
+      minWidth: 12
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      flex: "none",
+      fontFamily: "var(--font-mono)",
+      fontSize: 14,
+      fontWeight: 700,
+      color: "var(--text-primary)",
+      fontFeatureSettings: "'tnum' 1"
+    }
+  }, "$", r.amount.toFixed(2)))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 22,
+      padding: "12px 14px",
+      border: "1px dashed var(--rule-strong)",
+      borderRadius: "var(--radius-md)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontSize: 9.5,
+      letterSpacing: "0.14em",
+      color: "var(--text-tertiary)",
+      marginBottom: 8
+    }
+  }, "DEMO \xB7 PREVIEW EMPTY STATE"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement(Button, {
+    variant: "secondary",
+    size: "sm",
+    onClick: () => setDemoEmpty(e => !e),
+    style: {
+      flex: 1
+    }
+  }, demoEmpty ? "Show populated" : "Show empty"))));
+}
+window.NotificationsScreen = NotificationsScreen;
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/app/NotificationsScreen.jsx", error: String((e && e.message) || e) }); }
 
 // ui_kits/app/OnboardingScreen.jsx
 try { (() => {
@@ -6123,6 +6965,581 @@ function PaywallScreen({
 window.PaywallScreen = PaywallScreen;
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/app/PaywallScreen.jsx", error: String((e && e.message) || e) }); }
 
+// ui_kits/app/ProfileScreen.jsx
+try { (() => {
+/* Zeno — Profile: identity, plan, plan & billing, and the exits. Sibling of
+   Settings — same ledger list language, deliberately small. Local-only mode
+   is stated with pride, and leaving it says plainly that data is NOT deleted.
+   SLOP AUDIT — ① Zeno: identity as a ledger entry (LOCAL-ONLY MODE · NO
+   ACCOUNT), exits printed in full sentences, no retention maze. ② Tempted
+   by: big avatar hero + achievement chips → a quiet register. ③ Lazy
+   version: settings-clone list with a giant edit-profile form.
+   MOTION: rows print in on entry; exit confirm uses BottomSheetLite (spring
+   d24). RN: rows = Pressable + impactAsync(Light). Light + dark via tokens. */
+function ProfileScreen({
+  onClose,
+  onBilling,
+  onLogin,
+  onExit
+}) {
+  const P = window.ZENO.profile;
+  const localOnly = !P.email;
+  const [sheet, setSheet] = React.useState(false);
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      display: "flex",
+      flexDirection: "column",
+      overflow: "hidden",
+      position: "relative"
+    }
+  }, /*#__PURE__*/React.createElement(Sheet, {
+    title: "PROFILE",
+    onClose: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 13,
+      padding: "12px 0 16px",
+      borderBottom: "1px solid var(--rule-strong)"
+    }
+  }, /*#__PURE__*/React.createElement(ServiceAvatar, {
+    name: P.name,
+    color: "var(--cat-teal)",
+    size: 48,
+    shape: "circle"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-display)",
+      fontWeight: 700,
+      fontSize: 19,
+      letterSpacing: "-0.015em",
+      color: "var(--text-primary)"
+    }
+  }, P.name), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontSize: 9.5,
+      letterSpacing: "0.1em",
+      color: "var(--text-tertiary)",
+      marginTop: 3
+    }
+  }, localOnly ? "LOCAL-ONLY MODE · NO ACCOUNT" : P.email.toUpperCase()))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      paddingTop: 6
+    }
+  }, /*#__PURE__*/React.createElement(LedgerLine, {
+    label: "Plan",
+    strong: true,
+    value: P.plan.toUpperCase()
+  }), /*#__PURE__*/React.createElement("div", {
+    onClick: onBilling,
+    style: {
+      cursor: "pointer"
+    }
+  }, /*#__PURE__*/React.createElement(LedgerLine, {
+    label: "Plan & billing",
+    value: "MANAGE \u2197",
+    valueColor: "var(--accent-text)"
+  })), localOnly && /*#__PURE__*/React.createElement("div", {
+    onClick: onLogin,
+    style: {
+      cursor: "pointer"
+    }
+  }, /*#__PURE__*/React.createElement(LedgerLine, {
+    label: "Sign in / create account",
+    sub: "ADDS ENCRYPTED SYNC",
+    value: "\u2197",
+    valueColor: "var(--accent-text)"
+  }))), localOnly && /*#__PURE__*/React.createElement("blockquote", {
+    style: {
+      margin: "16px 0 0",
+      padding: "2px 0 2px 14px",
+      borderLeft: "3px solid var(--accent)",
+      fontFamily: "var(--font-sans)",
+      fontSize: 13.5,
+      lineHeight: 1.6,
+      color: "var(--text-primary)"
+    }
+  }, "This ledger exists only on this phone. No account, no server copy \u2014 that's a feature, not a gap."), /*#__PURE__*/React.createElement(SectionHead, {
+    pad: "22px 0 8px"
+  }, "Leaving"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setSheet(true),
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      width: "100%",
+      textAlign: "left",
+      background: "none",
+      border: "none",
+      borderBottom: "1px solid var(--rule)",
+      padding: "13px 0",
+      minHeight: 48,
+      cursor: "pointer"
+    }
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "log-out",
+    size: 17,
+    color: "var(--text-secondary)"
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "block",
+      fontFamily: "var(--font-sans)",
+      fontWeight: 650,
+      fontSize: 14.5,
+      color: "var(--text-primary)"
+    }
+  }, localOnly ? "Exit local-only mode" : "Sign out"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "block",
+      fontFamily: "var(--font-sans)",
+      fontSize: 12.5,
+      color: "var(--text-tertiary)",
+      marginTop: 2,
+      lineHeight: 1.45
+    }
+  }, localOnly ? "Your data is not deleted — it stays encrypted on this phone." : "Your synced data stays encrypted in your account."))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-sans)",
+      fontSize: 12,
+      color: "var(--text-tertiary)",
+      marginTop: 12,
+      lineHeight: 1.5
+    }
+  }, "Want everything gone instead? Settings \u2192 Data & privacy \u2192 Delete all my data.")), sheet && /*#__PURE__*/React.createElement(BottomSheetLite, {
+    title: localOnly ? "EXIT LOCAL-ONLY MODE?" : "SIGN OUT?",
+    onClose: () => setSheet(false),
+    destructive: localOnly ? "You'll return to the start screen. Your ledger is not deleted — it stays encrypted on this phone and reopens when you come back." : "You can sign back in with the same email any time.",
+    options: [{
+      label: localOnly ? "Exit — keep my data" : "Sign out",
+      value: "go"
+    }],
+    onPick: () => {
+      setSheet(false);
+      onExit();
+    }
+  }));
+}
+window.ProfileScreen = ProfileScreen;
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/app/ProfileScreen.jsx", error: String((e && e.message) || e) }); }
+
+// ui_kits/app/SecurityScreen.jsx
+try { (() => {
+/* Zeno — Security (setup) + LockOverlay (every foreground). One file, two views.
+   The lock is the ledger's COVER, not a police checkpoint: navy paper, the
+   seal, calm mono copy — and an honest countdown when locked out.
+   SLOP AUDIT — ① Zeno: "THIS LEDGER IS SEALED" cover language, CodeBoxes as
+   the PIN register, lockout as a printed fact with a countdown — no red
+   flashing. ② Tempted by: shaking input + police-red error screen → a quiet
+   margin-tick correction and a patient timer. ③ Lazy version: system-style
+   passcode screen clone with a generic shield icon.
+   MOTION: PIN digits fill = selectionAsync() haptic per digit; wrong PIN =
+   boxes settle-nudge 2px (spring d22, no shake theatrics) + Haptics Warning;
+   unlock = cover fades 200ms (the tear is reserved for launch). Lockout
+   countdown ticks once per second, mono. Reduced motion: opacity only. */
+
+function ZKeypad({
+  onKey,
+  disabled
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "repeat(3, 68px)",
+      gap: 12,
+      justifyContent: "center",
+      opacity: disabled ? 0.35 : 1,
+      pointerEvents: disabled ? "none" : "auto",
+      transition: "opacity var(--dur) var(--ease-out)"
+    }
+  }, [1, 2, 3, 4, 5, 6, 7, 8, 9, "", 0, "⌫"].map((k, i) => /*#__PURE__*/React.createElement("button", {
+    key: i,
+    disabled: k === "",
+    onClick: () => onKey(k),
+    style: {
+      height: 58,
+      borderRadius: "50%",
+      border: "1px solid rgba(255,255,255,0.18)",
+      background: "none",
+      color: "#F2F1EA",
+      fontFamily: "var(--font-mono)",
+      fontSize: 20,
+      fontWeight: 600,
+      cursor: k === "" ? "default" : "pointer",
+      visibility: k === "" ? "hidden" : "visible"
+    }
+  }, k)));
+}
+
+/* The cover. Correct demo PIN: 1234. 3 misses → 30s lockout with countdown. */
+function LockOverlay({
+  onUnlock
+}) {
+  const [pin, setPin] = React.useState("");
+  const [fails, setFails] = React.useState(0);
+  const [wrong, setWrong] = React.useState(false);
+  const [lockedFor, setLockedFor] = React.useState(0);
+  React.useEffect(() => {
+    if (lockedFor <= 0) return;
+    const t = setTimeout(() => setLockedFor(s => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [lockedFor]);
+  const key = k => {
+    if (k === "⌫") {
+      setPin(p => p.slice(0, -1));
+      setWrong(false);
+      return;
+    }
+    const next = (pin + k).slice(0, 4);
+    setPin(next);
+    setWrong(false);
+    if (next.length === 4) {
+      if (next === "1234") {
+        setTimeout(onUnlock, 220);
+      } else {
+        setTimeout(() => {
+          setPin("");
+          setWrong(true);
+          setFails(f => {
+            const n = f + 1;
+            if (n >= 3) {
+              setLockedFor(30);
+              setWrong(false);
+            }
+            return n;
+          });
+        }, 240);
+      }
+    }
+  };
+  const mmss = `0:${String(lockedFor).padStart(2, "0")}`;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      background: "var(--ink-panel)",
+      padding: 32
+    }
+  }, /*#__PURE__*/React.createElement("svg", {
+    width: "46",
+    height: "46",
+    viewBox: "0 0 120 120",
+    fill: "none",
+    style: {
+      color: "#1ED47F"
+    }
+  }, /*#__PURE__*/React.createElement("circle", {
+    cx: "60",
+    cy: "60",
+    r: "51",
+    stroke: "currentColor",
+    strokeWidth: "5.5"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "60",
+    cy: "60",
+    r: "43",
+    stroke: "currentColor",
+    strokeWidth: "2"
+  }), /*#__PURE__*/React.createElement("path", {
+    d: "M43 45 H77 L43 75 H77",
+    stroke: "currentColor",
+    strokeWidth: "9.5",
+    strokeLinecap: "round",
+    strokeLinejoin: "round"
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontSize: 10,
+      fontWeight: 700,
+      letterSpacing: "0.22em",
+      color: "rgba(255,255,255,0.55)",
+      margin: "18px 0 4px"
+    }
+  }, "THIS LEDGER IS SEALED"), lockedFor > 0 ?
+  /*#__PURE__*/
+  /* Lockout — an honest, patient fact. No shame copy. */
+  React.createElement("div", {
+    style: {
+      textAlign: "center",
+      margin: "18px 0 22px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontWeight: 700,
+      fontSize: 40,
+      letterSpacing: "-0.02em",
+      color: "#F2F1EA"
+    }
+  }, mmss), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-sans)",
+      fontSize: 13,
+      color: "rgba(255,255,255,0.6)",
+      marginTop: 6,
+      maxWidth: "26ch",
+      lineHeight: 1.5
+    }
+  }, "Too many tries. The ledger stays sealed for a moment \u2014 it opens again when the clock runs out.")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      margin: "18px 0 6px"
+    }
+  }, /*#__PURE__*/React.createElement(CodeBoxes, {
+    code: "•".repeat(pin.length),
+    length: 4,
+    size: 40
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      minHeight: 18,
+      fontFamily: "var(--font-mono)",
+      fontSize: 9.5,
+      letterSpacing: "0.14em",
+      color: wrong ? "var(--stamp-alert)" : "rgba(255,255,255,0.4)",
+      marginBottom: 14
+    }
+  }, wrong ? `INCORRECT PIN · ${3 - fails} ${3 - fails === 1 ? "TRY" : "TRIES"} LEFT` : "ENTER YOUR PIN")), /*#__PURE__*/React.createElement(ZKeypad, {
+    onKey: key,
+    disabled: lockedFor > 0
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: onUnlock,
+    disabled: lockedFor > 0,
+    style: {
+      marginTop: 24,
+      background: "none",
+      border: "none",
+      color: lockedFor > 0 ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.6)",
+      fontFamily: "var(--font-mono)",
+      fontSize: 10,
+      fontWeight: 700,
+      letterSpacing: "0.16em",
+      cursor: lockedFor > 0 ? "default" : "pointer",
+      padding: 12
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 7
+    }
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "scan-face",
+    size: 15,
+    color: "currentColor"
+  }), " UNLOCK WITH FACE ID")));
+}
+function SecurityScreen({
+  onClose
+}) {
+  const [lockOn, setLockOn] = React.useState(false);
+  const [view, setView] = React.useState("setup"); // setup | confirm | manage | preview
+  const [pin1, setPin1] = React.useState("");
+  const [pin2, setPin2] = React.useState("");
+  const [error, setError] = React.useState(null);
+  if (view === "preview") {
+    return /*#__PURE__*/React.createElement(LockOverlay, {
+      onUnlock: () => setView(lockOn ? "manage" : "setup")
+    });
+  }
+  const Boxes = ({
+    val
+  }) => /*#__PURE__*/React.createElement(CodeBoxes, {
+    code: "•".repeat(val.length),
+    length: 8,
+    size: 32
+  });
+  const keyInto = (setter, val) => k => {
+    setError(null);
+    if (k === "⌫") setter(val.slice(0, -1));else setter((val + k).slice(0, 8));
+  };
+
+  /* Light-paper setup uses the same keypad on ink? Keypad is white-on-navy —
+     wrap it in an ink well so the register stays legible on paper. */
+  const KeypadWell = ({
+    onKey
+  }) => /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "var(--ink-panel)",
+      borderRadius: "var(--radius-lg)",
+      padding: "18px 12px",
+      margin: "16px 0 0"
+    }
+  }, /*#__PURE__*/React.createElement(ZKeypad, {
+    onKey: onKey
+  }));
+  return /*#__PURE__*/React.createElement(Sheet, {
+    title: "APP LOCK",
+    onClose: onClose
+  }, /*#__PURE__*/React.createElement("h2", {
+    style: {
+      fontFamily: "var(--font-display)",
+      fontWeight: 700,
+      fontSize: 23,
+      letterSpacing: "-0.02em",
+      margin: "12px 0 8px"
+    }
+  }, "Seal the ledger."), /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontFamily: "var(--font-sans)",
+      fontSize: 13.5,
+      color: "var(--text-secondary)",
+      lineHeight: 1.55,
+      margin: "0 0 14px"
+    }
+  }, "A 4\u20138 digit PIN locks Zeno whenever it leaves the foreground. Face ID or fingerprint is used when available \u2014 the PIN is the fallback."), /*#__PURE__*/React.createElement(LedgerLine, {
+    label: "App lock",
+    strong: true,
+    value: lockOn ? "ON" : "OFF",
+    valueColor: lockOn ? "var(--stamp-verified)" : "var(--text-tertiary)"
+  }), error && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      borderLeft: "3px solid var(--stamp-alert)",
+      paddingLeft: 12,
+      margin: "10px 0 2px"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "var(--font-sans)",
+      fontSize: 13,
+      fontWeight: 650,
+      color: "var(--stamp-alert)"
+    }
+  }, error)), !lockOn && view === "setup" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SectionHead, {
+    pad: "18px 0 10px"
+  }, "Choose a PIN \xB7 4\u20138 digits"), /*#__PURE__*/React.createElement(Boxes, {
+    val: pin1
+  }), /*#__PURE__*/React.createElement(KeypadWell, {
+    onKey: keyInto(setPin1, pin1)
+  }), /*#__PURE__*/React.createElement(Button, {
+    variant: "primary",
+    size: "lg",
+    fullWidth: true,
+    style: {
+      marginTop: 14
+    },
+    onClick: () => {
+      if (pin1.length < 4) {
+        setError("PIN must be at least 4 digits.");
+        return;
+      }
+      setError(null);
+      setView("confirm");
+    }
+  }, "Continue")), !lockOn && view === "confirm" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SectionHead, {
+    pad: "18px 0 10px"
+  }, "Enter it once more"), /*#__PURE__*/React.createElement(Boxes, {
+    val: pin2
+  }), /*#__PURE__*/React.createElement(KeypadWell, {
+    onKey: keyInto(setPin2, pin2)
+  }), /*#__PURE__*/React.createElement(Button, {
+    variant: "primary",
+    size: "lg",
+    fullWidth: true,
+    style: {
+      marginTop: 14
+    },
+    onClick: () => {
+      if (pin2 !== pin1) {
+        setError("PINs don't match.");
+        setPin2("");
+        return;
+      }
+      setLockOn(true);
+      setView("manage");
+      setError(null);
+    }
+  }, "Turn on app lock"), /*#__PURE__*/React.createElement(Button, {
+    variant: "ghost",
+    size: "md",
+    fullWidth: true,
+    onClick: () => {
+      setView("setup");
+      setPin2("");
+      setError(null);
+    },
+    style: {
+      marginTop: 6
+    }
+  }, "Back")), lockOn && view === "manage" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(LedgerLine, {
+    label: "Face ID",
+    value: "USED WHEN AVAILABLE"
+  }), /*#__PURE__*/React.createElement(LedgerLine, {
+    label: "Locks",
+    value: "ON LEAVING THE APP"
+  }), /*#__PURE__*/React.createElement(Button, {
+    variant: "secondary",
+    size: "lg",
+    fullWidth: true,
+    onClick: () => setView("preview"),
+    style: {
+      marginTop: 16
+    },
+    leftIcon: /*#__PURE__*/React.createElement(Icon, {
+      name: "lock",
+      size: 16
+    })
+  }, "Preview the lock screen"), /*#__PURE__*/React.createElement(SectionHead, {
+    pad: "20px 0 10px"
+  }, "Turn it off"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontFamily: "var(--font-sans)",
+      fontSize: 13,
+      color: "var(--text-secondary)",
+      margin: "0 0 10px"
+    }
+  }, "Enter your current PIN to remove the lock."), /*#__PURE__*/React.createElement(Boxes, {
+    val: pin2
+  }), /*#__PURE__*/React.createElement(KeypadWell, {
+    onKey: keyInto(setPin2, pin2)
+  }), /*#__PURE__*/React.createElement(Button, {
+    variant: "danger",
+    size: "lg",
+    fullWidth: true,
+    style: {
+      marginTop: 14
+    },
+    onClick: () => {
+      if (pin2 !== pin1) {
+        setError("Incorrect PIN.");
+        setPin2("");
+        return;
+      }
+      setLockOn(false);
+      setView("setup");
+      setPin1("");
+      setPin2("");
+      setError(null);
+    }
+  }, "Turn off app lock")), !lockOn && /*#__PURE__*/React.createElement(Button, {
+    variant: "ghost",
+    size: "md",
+    fullWidth: true,
+    onClick: () => setView("preview"),
+    style: {
+      marginTop: 10
+    }
+  }, "Preview the lock screen"));
+}
+window.SecurityScreen = SecurityScreen;
+window.LockOverlay = LockOverlay;
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/app/SecurityScreen.jsx", error: String((e && e.message) || e) }); }
+
 // ui_kits/app/SettingsScreen.jsx
 try { (() => {
 /* Zeno — Settings. Ledger groups, designed bottom sheets replacing system
@@ -6139,7 +7556,8 @@ function SettingsScreen({
   onBack,
   onSecurity,
   onFamily,
-  onWidgets
+  onWidgets,
+  onProfile
 }) {
   const [reminders, setReminders] = React.useState(true);
   const [sheet, setSheet] = React.useState(null); // 'currency' | 'quiet' | 'delete'
@@ -6228,12 +7646,14 @@ function SettingsScreen({
       padding: "14px 20px 0"
     }
   }, /*#__PURE__*/React.createElement("div", {
+    onClick: onProfile,
     style: {
       display: "flex",
       alignItems: "center",
       gap: 12,
       paddingBottom: 14,
-      borderBottom: "1px solid var(--rule-strong)"
+      borderBottom: "1px solid var(--rule-strong)",
+      cursor: "pointer"
     }
   }, /*#__PURE__*/React.createElement(ServiceAvatar, {
     name: "Alex Rivera",
@@ -6261,7 +7681,10 @@ function SettingsScreen({
   }, "LOCAL LEDGER \xB7 NO ACCOUNT")), /*#__PURE__*/React.createElement(Button, {
     variant: "secondary",
     size: "sm",
-    onClick: onUpgrade
+    onClick: e => {
+      e.stopPropagation();
+      onUpgrade();
+    }
   }, "Free \xB7 8/10"))), /*#__PURE__*/React.createElement(SectionHead, null, "Notifications"), /*#__PURE__*/React.createElement("div", {
     style: {
       padding: "0 20px"
@@ -6419,6 +7842,165 @@ function SettingsScreen({
 }
 window.SettingsScreen = SettingsScreen;
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/app/SettingsScreen.jsx", error: String((e && e.message) || e) }); }
+
+// ui_kits/app/SpendTwinScreen.jsx
+try { (() => {
+/* Zeno — Spend Twin: the monthly total translated into real-world tradeoffs.
+   STATIC illustrative benchmarks — the copy states this plainly and never
+   implies live cohorts or other users' data. Overrides the earlier inline
+   version (comparison-to-average is retired for benchmark tradeoffs).
+   SLOP AUDIT — ① Zeno: tradeoffs as ledger entries — big mono quantity,
+   label, one dry line; the honesty rail printed as a footer rule, not fine
+   print buried. ② Tempted by: emoji-coin illustrations + "people like you"
+   framing → type-only quantities and static-benchmark honesty. ③ Lazy
+   version: a card list with coffee emoji and a share button.
+   MOTION: rows print in (45ms stagger; RN FadeInDown); quantities count up
+   on entry (AnimatedNumber 500ms). Reduced motion: fades. Light + dark via
+   tokens. */
+function SpendTwinScreen({
+  onClose
+}) {
+  const total = window.ZENO.monthlyTotal;
+  const rows = window.ZENO.twin;
+  const [demoEmpty, setDemoEmpty] = React.useState(false);
+  return /*#__PURE__*/React.createElement(Sheet, {
+    title: "SPEND TWIN",
+    onClose: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontSize: 10,
+      fontWeight: 700,
+      letterSpacing: "0.18em",
+      color: "var(--text-tertiary)",
+      margin: "8px 0 6px"
+    }
+  }, "YOUR MONTH, TRANSLATED"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "baseline",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontWeight: 700,
+      fontSize: 40,
+      letterSpacing: "-0.03em",
+      color: "var(--text-primary)",
+      fontFeatureSettings: "'tnum' 1"
+    }
+  }, "$", total.toFixed(2)), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontSize: 12,
+      color: "var(--text-tertiary)"
+    }
+  }, "/mo is also\u2026")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      borderBottom: "1px solid var(--rule-strong)",
+      margin: "14px 0 4px"
+    }
+  }), demoEmpty ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "26px 0"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-sans)",
+      fontWeight: 650,
+      fontSize: 15,
+      color: "var(--text-secondary)"
+    }
+  }, "No comparison data yet."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-sans)",
+      fontSize: 13,
+      color: "var(--text-tertiary)",
+      marginTop: 4,
+      lineHeight: 1.5
+    }
+  }, "Benchmarks load with the app \u2014 check back after the next update.")) : rows.map((r, i) => /*#__PURE__*/React.createElement("div", {
+    key: r.label,
+    className: "zn-print",
+    style: {
+      animationDelay: `${i * 60}ms`,
+      display: "flex",
+      gap: 14,
+      alignItems: "baseline",
+      padding: "14px 0",
+      borderBottom: "1px solid var(--rule)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      flex: "none",
+      width: 74,
+      fontFamily: "var(--font-mono)",
+      fontWeight: 700,
+      fontSize: 30,
+      letterSpacing: "-0.03em",
+      color: "var(--text-primary)",
+      fontFeatureSettings: "'tnum' 1",
+      textAlign: "right"
+    }
+  }, r.qty), /*#__PURE__*/React.createElement("span", {
+    style: {
+      flex: 1,
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "block",
+      fontFamily: "var(--font-sans)",
+      fontWeight: 700,
+      fontSize: 15,
+      color: "var(--text-primary)",
+      letterSpacing: "-0.01em"
+    }
+  }, r.label), /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "block",
+      fontFamily: "var(--font-sans)",
+      fontSize: 12.5,
+      color: "var(--text-tertiary)",
+      marginTop: 2,
+      lineHeight: 1.45
+    }
+  }, r.desc)))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontSize: 9,
+      letterSpacing: "0.12em",
+      color: "var(--text-tertiary)",
+      marginTop: 18,
+      paddingTop: 12,
+      borderTop: "1px solid var(--rule)",
+      lineHeight: 1.7
+    }
+  }, "ILLUSTRATIVE BENCHMARKS AT STATIC PRICES \u2014 NOT OTHER USERS' DATA."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 20,
+      padding: "12px 14px",
+      border: "1px dashed var(--rule-strong)",
+      borderRadius: "var(--radius-md)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontSize: 9.5,
+      letterSpacing: "0.14em",
+      color: "var(--text-tertiary)",
+      marginBottom: 8
+    }
+  }, "DEMO \xB7 PREVIEW EMPTY STATE"), /*#__PURE__*/React.createElement(Button, {
+    variant: "secondary",
+    size: "sm",
+    fullWidth: true,
+    onClick: () => setDemoEmpty(e => !e)
+  }, demoEmpty ? "Show benchmarks" : "Show empty")));
+}
+window.SpendTwinScreen = SpendTwinScreen;
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/app/SpendTwinScreen.jsx", error: String((e && e.message) || e) }); }
 
 // ui_kits/app/SubscriptionDetailScreen.jsx
 try { (() => {
@@ -6919,6 +8501,430 @@ function SubscriptionsScreen({
 window.SubscriptionsScreen = SubscriptionsScreen;
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/app/SubscriptionsScreen.jsx", error: String((e && e.message) || e) }); }
 
+// ui_kits/app/WidgetsScreen.jsx
+try { (() => {
+/* Zeno — Widgets & Watch preview. Real widget-shaped frames (small + medium
+   home-screen, circular watch complication) so the preview feels real, with
+   the REQUIRED honest notice keeping it truthful. Overrides the earlier
+   inline version; data from data.js + live monthly total.
+   SLOP AUDIT — ① Zeno: the widgets themselves speak ledger — mono money,
+   caps kickers, ledger dots in the medium glance; honesty notice as a
+   margin-tick statement. ② Tempted by: glossy device mockup photos + "coming
+   soon ✨" → flat honest frames and a dated promise. ③ Lazy version: two gray
+   rectangles labeled "widget preview".
+   MOTION: frames print in (60ms stagger; RN FadeInDown); nothing loops.
+   Reduced motion: fades. Light + dark: widget frames are ink-stable, page
+   follows tokens. */
+function WidgetsScreen({
+  onClose
+}) {
+  const W = window.ZENO.widgets;
+  const total = window.ZENO.monthlyTotal;
+  const active = window.ZENO.subscriptions.filter(s => ["active", "trial"].includes(s.status)).length;
+  const days = W.next.days;
+  const daysLabel = days === 0 ? "TODAY" : days === 1 ? "TOMORROW" : `IN ${days} DAYS`;
+  return /*#__PURE__*/React.createElement(Sheet, {
+    title: "WIDGETS & WATCH",
+    onClose: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 12,
+      alignItems: "flex-start",
+      borderLeft: "3px solid var(--ink-300)",
+      paddingLeft: 12,
+      margin: "10px 0 4px"
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-sans)",
+      fontWeight: 700,
+      fontSize: 14,
+      color: "var(--text-primary)"
+    }
+  }, "Preview only, for now."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-sans)",
+      fontSize: 13,
+      color: "var(--text-secondary)",
+      marginTop: 3,
+      lineHeight: 1.5
+    }
+  }, "Adding a Zeno widget to your home screen or watch face isn't available yet \u2014 we'll let you know when it ships."))), /*#__PURE__*/React.createElement(SectionHead, {
+    pad: "20px 0 10px"
+  }, "Home screen"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "zn-print",
+    style: {
+      width: 148,
+      height: 148,
+      flex: "none",
+      background: "var(--ink-panel)",
+      borderRadius: 26,
+      padding: 15,
+      display: "flex",
+      flexDirection: "column",
+      boxShadow: "var(--shadow-sm)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontSize: 8,
+      fontWeight: 700,
+      letterSpacing: "0.16em",
+      color: "rgba(255,255,255,0.5)"
+    }
+  }, "NEXT RENEWAL"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "var(--font-sans)",
+      fontWeight: 700,
+      fontSize: 16,
+      color: "#F2F1EA",
+      marginTop: 9
+    }
+  }, W.next.name), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontWeight: 700,
+      fontSize: 21,
+      color: "var(--green-400)",
+      marginTop: 2,
+      fontFeatureSettings: "'tnum' 1"
+    }
+  }, "$", W.next.amount.toFixed(2)), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontSize: 9,
+      fontWeight: 700,
+      letterSpacing: "0.12em",
+      color: "rgba(255,255,255,0.55)",
+      marginTop: "auto"
+    }
+  }, daysLabel)), /*#__PURE__*/React.createElement("div", {
+    className: "zn-print",
+    style: {
+      animationDelay: "60ms",
+      flex: 1,
+      height: 148,
+      background: "var(--ink-panel)",
+      borderRadius: 26,
+      padding: 15,
+      display: "flex",
+      flexDirection: "column",
+      boxShadow: "var(--shadow-sm)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "baseline"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontSize: 8,
+      fontWeight: 700,
+      letterSpacing: "0.16em",
+      color: "rgba(255,255,255,0.5)"
+    }
+  }, "THIS MONTH"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontSize: 8,
+      fontWeight: 700,
+      letterSpacing: "0.12em",
+      color: "rgba(255,255,255,0.45)"
+    }
+  }, active, " ACTIVE")), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontWeight: 700,
+      fontSize: 24,
+      color: "#F2F1EA",
+      marginTop: 7,
+      fontFeatureSettings: "'tnum' 1"
+    }
+  }, "$", total.toFixed(2)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: "auto"
+    }
+  }, [["FIGMA", "JUL 9"], ["DISNEY+", "JUL 12"]].map(([n, d]) => /*#__PURE__*/React.createElement("div", {
+    key: n,
+    style: {
+      display: "flex",
+      alignItems: "baseline",
+      gap: 6,
+      padding: "2.5px 0"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontSize: 9.5,
+      fontWeight: 700,
+      color: "rgba(255,255,255,0.75)"
+    }
+  }, n), /*#__PURE__*/React.createElement("span", {
+    style: {
+      flex: 1,
+      borderBottom: "1.5px dotted rgba(255,255,255,0.25)",
+      transform: "translateY(-2px)"
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontSize: 9.5,
+      color: "rgba(255,255,255,0.55)"
+    }
+  }, d)))))), /*#__PURE__*/React.createElement(SectionHead, {
+    pad: "22px 0 10px"
+  }, "Watch"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 18
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "zn-print",
+    style: {
+      animationDelay: "120ms",
+      width: 104,
+      height: 104,
+      flex: "none",
+      borderRadius: "50%",
+      background: "var(--ink-panel)",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      border: "4px solid var(--ink-300)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontSize: 7.5,
+      fontWeight: 700,
+      letterSpacing: "0.14em",
+      color: "rgba(255,255,255,0.5)"
+    }
+  }, "NEXT"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontWeight: 700,
+      fontSize: 17,
+      color: "#F2F1EA"
+    }
+  }, "$", W.next.amount.toFixed(0)), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontSize: 7.5,
+      fontWeight: 700,
+      letterSpacing: "0.1em",
+      color: "var(--green-400)"
+    }
+  }, days === 1 ? "TMRW" : daysLabel)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-sans)",
+      fontSize: 13,
+      color: "var(--text-secondary)",
+      lineHeight: 1.55
+    }
+  }, "The complication shows your next renewal and how close it is \u2014 a glance, not a dashboard.")));
+}
+window.WidgetsScreen = WidgetsScreen;
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/app/WidgetsScreen.jsx", error: String((e && e.message) || e) }); }
+
+// ui_kits/app/WrappedScreen.jsx
+try { (() => {
+/* Zeno — Year in Review ("the year, audited"). Tap-through statement pages on
+   ink; REQUIRED coverage honesty ("since I started tracking in March") kept
+   verbatim; the Stamp closes it per the signature contract. Shared as TEXT
+   via the system share sheet — the button says exactly that, no fake
+   image-export UI. Overrides the earlier inline version.
+   SLOP AUDIT — ① Zeno: year-end statement pages with page ticks like a
+   document footer, numbers in tabular mono, tally of verified cancellations.
+   ② Tempted by: IG-story gradients + progress worms + share-as-image card →
+   ink pages, mono ticks, honest text share. ③ Lazy version: confetti recap
+   carousel with a "Wrapped" logo knockoff.
+   MOTION: page turn = crossfade + settle (RN: FadeInDown 240ms); numbers
+   count up on entry (AnimatedNumber 600ms); final stamp = spring d14 s420 +
+   Success haptic — the app's one celebration. Reduced motion: crossfades.
+   Ink-panel bg is theme-stable; light/dark both read. */
+function WrappedScreen({
+  onClose
+}) {
+  const W = window.ZENO.wrapped;
+  const [beat, setBeat] = React.useState(0);
+  const beats = [{
+    k: `01 · THE YEAR, AUDITED`,
+    big: String(W.year),
+    sub: `Your subscriptions, on the record — since I started tracking in ${W.sinceMonth}. Tap through.`
+  }, {
+    k: "02 · TOTAL COMMITTED",
+    big: `$${W.total.toFixed(2)}`,
+    sub: `Across ${W.tracked} tracked subscriptions in ${W.months} months on the books.`
+  }, {
+    k: "03 · THE HEAVYWEIGHT",
+    big: `$${W.top.amount.toFixed(2)}/mo`,
+    sub: `${W.top.name} was your most expensive line all year.`
+  }, {
+    k: "04 · PROOF OF WORK",
+    big: `$${W.savedYr}/yr`,
+    sub: `Back in your pocket from ${W.cancelled} verified cancellations. Not promised — proven.`
+  }];
+  const last = beat === beats.length;
+  return /*#__PURE__*/React.createElement("div", {
+    onClick: () => !last && setBeat(b => b + 1),
+    style: {
+      flex: 1,
+      display: "flex",
+      flexDirection: "column",
+      background: "var(--ink-panel)",
+      cursor: last ? "default" : "pointer",
+      position: "relative",
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: "14px 20px 0"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 5
+    }
+  }, [...beats, 0].map((_, i) => /*#__PURE__*/React.createElement("span", {
+    key: i,
+    style: {
+      width: 15,
+      height: 2.5,
+      background: i <= beat ? "var(--green-400)" : "rgba(255,255,255,0.2)"
+    }
+  }))), /*#__PURE__*/React.createElement("button", {
+    onClick: e => {
+      e.stopPropagation();
+      onClose();
+    },
+    "aria-label": "Close",
+    style: {
+      background: "none",
+      border: "none",
+      cursor: "pointer",
+      padding: 10,
+      minWidth: 44,
+      minHeight: 44
+    }
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "x",
+    size: 20,
+    color: "rgba(255,255,255,0.7)"
+  }))), !last ? /*#__PURE__*/React.createElement("div", {
+    key: beat,
+    className: "zn-print",
+    style: {
+      flex: 1,
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      padding: "0 28px 60px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontSize: 10,
+      fontWeight: 700,
+      letterSpacing: "0.22em",
+      color: "var(--green-400)"
+    }
+  }, beats[beat].k), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontWeight: 700,
+      fontSize: 62,
+      lineHeight: 1,
+      letterSpacing: "-0.045em",
+      color: "#F2F1EA",
+      margin: "16px 0",
+      fontFeatureSettings: "'tnum' 1"
+    }
+  }, beats[beat].big), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-sans)",
+      fontSize: 15.5,
+      color: "rgba(242,241,234,0.72)",
+      lineHeight: 1.55,
+      maxWidth: "28ch"
+    }
+  }, beats[beat].sub), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      bottom: 26,
+      left: 28,
+      fontFamily: "var(--font-mono)",
+      fontSize: 9,
+      letterSpacing: "0.18em",
+      color: "rgba(255,255,255,0.4)"
+    }
+  }, "TAP TO TURN THE PAGE")) : /*#__PURE__*/React.createElement("div", {
+    className: "zn-print",
+    style: {
+      flex: 1,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "0 28px 40px"
+    }
+  }, /*#__PURE__*/React.createElement(Stamp, {
+    animate: true,
+    size: "lg",
+    angle: -6,
+    sub: `${W.months} MONTHS · ${W.tracked} SUBSCRIPTIONS · $${W.savedYr} SAVED`,
+    style: {
+      color: "var(--green-400)",
+      borderColor: "var(--green-400)",
+      outlineColor: "var(--green-400)"
+    }
+  }, "Audited ", W.year), /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontFamily: "var(--font-sans)",
+      fontSize: 13.5,
+      color: "rgba(255,255,255,0.65)",
+      textAlign: "center",
+      margin: "26px 0 0",
+      maxWidth: "30ch",
+      lineHeight: 1.55
+    }
+  }, "Coverage note: since I started tracking in ", W.sinceMonth, " \u2014 ", W.months, " months, not the full year."), /*#__PURE__*/React.createElement(Button, {
+    variant: "money",
+    size: "lg",
+    onClick: e => e.stopPropagation(),
+    style: {
+      marginTop: 26
+    },
+    leftIcon: /*#__PURE__*/React.createElement(Icon, {
+      name: "share",
+      size: 16
+    })
+  }, "Share as text"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "var(--font-mono)",
+      fontSize: 8.5,
+      letterSpacing: "0.14em",
+      color: "rgba(255,255,255,0.35)",
+      marginTop: 10
+    }
+  }, "OPENS THE SYSTEM SHARE SHEET")));
+}
+window.WrappedScreen = WrappedScreen;
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/app/WrappedScreen.jsx", error: String((e && e.message) || e) }); }
+
 // ui_kits/app/data.js
 try { (() => {
 /* Sample data for the Zeno app UI kit (redesigned IA).
@@ -7176,7 +9182,1013 @@ window.ZENO.budget = {
   },
   trend: [["Feb", 61.94], ["Mar", 61.94], ["Apr", 73.94], ["May", 74.20], ["Jun", 78.96], ["Jul", 75.96]]
 };
+
+/* ---- Alerts inbox (NotificationsScreen) ---- */
+window.ZENO.alerts = {
+  quietHours: "10 PM – 8 AM",
+  flags: [{
+    id: "adobe",
+    icon: "triangle-alert",
+    tone: "alert",
+    title: "Adobe CC is still charging you",
+    meta: "$54.99 FOUND JUL 08 — CANCELLATION DIDN'T STICK"
+  }, {
+    id: "disney",
+    icon: "alarm-clock",
+    tone: "warn",
+    title: "Disney+ trial ends in 2 days",
+    meta: "CONVERTS TO $13.99/MO ON JUL 12"
+  }, {
+    id: "netflix",
+    icon: "trending-up",
+    tone: "info",
+    title: "Netflix raised its price",
+    meta: "$13.99 → $15.99 /MO · +14%"
+  }],
+  reminders: [{
+    id: "figma",
+    name: "Figma",
+    date: "Jul 9",
+    kind: "3-day reminder",
+    amount: 12.00
+  }, {
+    id: "figma",
+    name: "Figma",
+    date: "Jul 12",
+    kind: "Day-of reminder",
+    amount: 12.00
+  }, {
+    id: "disney",
+    name: "Disney+",
+    date: "Jul 12",
+    kind: "Trial converts",
+    amount: 13.99
+  }, {
+    id: "hbo",
+    name: "Max",
+    date: "Jul 14",
+    kind: "Verification check",
+    amount: 15.99
+  }, {
+    id: "netflix",
+    name: "Netflix",
+    date: "Jul 21",
+    kind: "7-day reminder",
+    amount: 15.99
+  }, {
+    id: "netflix",
+    name: "Netflix",
+    date: "Jul 25",
+    kind: "3-day reminder",
+    amount: 15.99
+  }, {
+    id: "spotify",
+    name: "Spotify",
+    date: "Jul 26",
+    kind: "7-day reminder",
+    amount: 10.99
+  }, {
+    id: "icloud",
+    name: "iCloud+",
+    date: "Aug 2",
+    kind: "3-day reminder",
+    amount: 2.99
+  }]
+};
+
+/* ---- Spend Twin: STATIC illustrative benchmarks — never live user data ---- */
+window.ZENO.twin = [{
+  qty: "17",
+  label: "oat lattes",
+  desc: "At $4.50 a cup — a latte every weekday, roughly."
+}, {
+  qty: "1.6",
+  label: "tanks of gas",
+  desc: "About $48 to fill a mid-size sedan."
+}, {
+  qty: "3.8",
+  label: "movie tickets",
+  desc: "At the $19.89 big-city average, popcorn not included."
+}, {
+  qty: "0.9",
+  label: "monthly transit passes",
+  desc: "An unlimited city pass runs about $86."
+}];
+
+/* ---- Year in Review (Wrapped) ---- */
+window.ZENO.wrapped = {
+  year: 2026,
+  sinceMonth: "March",
+  months: 10,
+  total: 818.44,
+  top: {
+    name: "Adobe CC",
+    amount: 54.99
+  },
+  tracked: 10,
+  cancelled: 3,
+  savedYr: 427
+};
+
+/* ---- Widgets preview ---- */
+window.ZENO.widgets = {
+  next: {
+    name: "Figma",
+    amount: 12.00,
+    days: 1
+  }
+};
+
+/* ---- Profile (email null = local-only mode) ---- */
+window.ZENO.profile = {
+  name: "Alex Rivera",
+  email: null,
+  plan: "Free"
+};
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/app/data.js", error: String((e && e.message) || e) }); }
+
+// website-v3-book.js
+try { (() => {
+/* ZENO — THE LEDGER BOOK engine, v2: a real page turn.
+   The sheet turns around its LEFT edge (the spine), right-to-left, with:
+   · a true paper BACK FACE (blank ruled stock) visible mid-turn
+   · paper BEND — the outer half of the sheet lags a few degrees (two hinged
+     segments, like real flipbook engines), so the page flexes, not a card
+   · moving light: the lifting face darkens, the back is lit from the spine,
+     a fold shadow sweeps across the page beneath, which brightens as it's
+     revealed
+   · a soft landing — smootherstep release, page fades onto the read stack
+   Rails: transform/opacity only · rAF-driven with a watchdog (the book can
+   never wedge) · gestures respect in-page scrolling · no-JS / reduced-motion
+   / no-WAAPI → plain scrolling document. */
+(function () {
+  "use strict";
+
+  var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var canBook = document.documentElement.classList.contains("book") && !reduced && "animate" in Element.prototype;
+  var live = document.getElementById("live");
+
+  /* ══════════════ shared page interactions (both modes) ═══════════════ */
+
+  document.querySelectorAll("form[data-wl]").forEach(function (form) {
+    form.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var rc = form.nextElementSibling;
+      rc.querySelector("[data-wl-time]").textContent = new Date().toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+      }).toUpperCase();
+      rc.classList.add("show");
+      form.querySelector("input").value = "";
+      live.textContent = "Waitlist entry logged.";
+    });
+  });
+  document.querySelectorAll(".qa .qq").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var qa = btn.parentElement,
+        open = qa.classList.toggle("open");
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+  });
+
+  /* ── the audit ledger: switches, totals, inline cancel flow ── */
+  var rows = Array.prototype.slice.call(document.querySelectorAll("#rows .aRow"));
+  var BASE = rows.reduce(function (a, r) {
+    return a + parseFloat(r.dataset.amt);
+  }, 0);
+  var current = {
+    total: BASE,
+    yearly: 0
+  };
+  function animateTo(id, target, prefix) {
+    var el = document.getElementById(id),
+      from = current[id];
+    current[id] = target;
+    if (!canBook) {
+      el.textContent = prefix + target.toFixed(2);
+      return;
+    }
+    var t0 = performance.now(),
+      dur = 380;
+    function tick(t) {
+      var p = Math.min(1, (t - t0) / dur),
+        e = 1 - Math.pow(1 - p, 3);
+      el.textContent = prefix + (from + (target - from) * e).toFixed(2);
+      if (p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+    setTimeout(function () {
+      el.textContent = prefix + target.toFixed(2);
+    }, dur + 200);
+  }
+  function update() {
+    var saved = rows.reduce(function (a, r) {
+      return a + (r.classList.contains("off") ? parseFloat(r.dataset.amt) : 0);
+    }, 0);
+    animateTo("total", BASE - saved, "$");
+    animateTo("yearly", saved * 12, "+$");
+    var n = rows.filter(function (r) {
+      return !r.classList.contains("off");
+    }).length;
+    document.getElementById("billing").textContent = n + " BILLING";
+    if (canBook && saved > 0) {
+      var y = document.getElementById("yearly");
+      y.classList.remove("pulse");
+      void y.offsetWidth;
+      y.classList.add("pulse");
+    }
+    chipRetally();
+  }
+  var FLOWS = {
+    "Netflix": [{
+      c: "run",
+      t: "OPENING NETFLIX \u2192 ACCOUNT \u2192 CANCEL MEMBERSHIP"
+    }, {
+      c: "ok",
+      t: "SUBMITTED \u2014 TWO TAPS, NO TRAPS"
+    }],
+    "Adobe CC": [{
+      c: "run",
+      t: "OPENING ADOBE \u2192 PLANS \u2192 MANAGE PLAN"
+    }, {
+      c: "fee",
+      t: "FEE CHECK \u00b7 TERM ENDS JUL 14 \u2014 CANCELLING TODAY COSTS $0"
+    }, {
+      c: "trap",
+      pre: "OFFER 1/3",
+      q: "\u201c50% OFF FOR 3 MONTHS\u201d"
+    }, {
+      c: "trap",
+      pre: "OFFER 2/3",
+      q: "\u201c2 MONTHS FREE\u201d"
+    }, {
+      c: "trap",
+      pre: "OFFER 3/3",
+      q: "\u201cSWITCH TO $9.99 PHOTOGRAPHY\u201d"
+    }, {
+      c: "ok",
+      t: "SUBMITTED \u2014 3 OFFERS DECLINED"
+    }],
+    "Spotify": [{
+      c: "run",
+      t: "OPENING SPOTIFY \u2192 ACCOUNT \u2192 YOUR PLAN"
+    }, {
+      c: "ok",
+      t: "SUBMITTED \u2014 ONE CONFIRM SCREEN"
+    }],
+    "Disney+": [{
+      c: "run",
+      t: "OPENING ACCOUNT \u2192 SUBSCRIPTION \u2192 CANCEL"
+    }, {
+      c: "trap",
+      pre: "OFFER 1/1",
+      q: "\u201cSTAY FOR $4.99/MO\u201d"
+    }, {
+      c: "ok",
+      t: "SUBMITTED \u2014 TRIAL ENDS JUL 12, $0"
+    }],
+    "iCloud+": [{
+      c: "run",
+      t: "SETTINGS \u2192 ICLOUD \u2192 MANAGE STORAGE"
+    }, {
+      c: "ok",
+      t: "SUBMITTED \u2014 DOWNGRADED TO 5 GB FREE"
+    }]
+  };
+  var GLYPH = {
+    run: "\u2192",
+    fee: "!",
+    trap: "\u2715",
+    ok: "\u2713"
+  };
+  function reveal2(el, cls, ms) {
+    var done = false;
+    function go() {
+      if (done) return;
+      done = true;
+      el.classList.add(cls);
+    }
+    requestAnimationFrame(function () {
+      requestAnimationFrame(go);
+    });
+    setTimeout(go, ms || 70);
+  }
+  function playFlow(row, name, sw, done) {
+    var lines = FLOWS[name];
+    var log = document.createElement("div");
+    log.className = "aLog";
+    var inner = document.createElement("div"),
+      wrap = document.createElement("div");
+    wrap.className = "flWrap";
+    inner.appendChild(wrap);
+    log.appendChild(inner);
+    row.parentNode.insertBefore(log, row.nextSibling);
+    reveal2(log, "open");
+    var i = 0;
+    function step() {
+      if (i >= lines.length) {
+        done();
+        setTimeout(function () {
+          log.classList.remove("open");
+          setTimeout(function () {
+            log.remove();
+            sw.disabled = false;
+          }, 260);
+        }, 1400);
+        return;
+      }
+      var L = lines[i++];
+      var fl = document.createElement("div");
+      fl.className = "fl " + L.c;
+      fl.innerHTML = "<b>" + GLYPH[L.c] + "</b><span>" + (L.c === "trap" ? L.pre + ' <span class="q">' + L.q + '<i></i></span> <span class="dcl">\u2014 DECLINED</span>' : L.t) + "</span>";
+      wrap.appendChild(fl);
+      reveal2(fl, "in");
+      if (L.c === "trap") setTimeout(function () {
+        fl.classList.add("dx");
+      }, 240);
+      setTimeout(step, L.c === "trap" ? 430 : 280);
+    }
+    setTimeout(step, 200);
+  }
+  function finishCancelled(row, name) {
+    row.querySelector(".aMeta").textContent = "CANCELLED \u2014 VERIFYING NEXT STATEMENT";
+    live.textContent = name + " cancelled \u2014 verifying next statement";
+    update();
+    row._vt = setTimeout(function () {
+      if (!row.classList.contains("off")) return;
+      row.querySelector(".aMeta").textContent = "VERIFIED CANCELLED \u2014 STATEMENT SHOWED NO CHARGE";
+      if (canBook) {
+        row.classList.remove("vflash");
+        void row.offsetWidth;
+        row.classList.add("vflash");
+      }
+      live.textContent = name + " verified cancelled \u2014 the charge stopped";
+    }, 4200);
+  }
+  rows.forEach(function (row) {
+    var sw = row.querySelector(".sw"),
+      name = row.querySelector(".aName").firstChild.textContent;
+    sw.addEventListener("click", function () {
+      if (sw.disabled) return;
+      if (row.classList.contains("off")) {
+        clearTimeout(row._vt);
+        row.classList.remove("off", "vflash");
+        sw.setAttribute("aria-checked", "true");
+        row.querySelector(".aMeta").textContent = row.dataset.meta;
+        live.textContent = name + " kept";
+        update();
+        return;
+      }
+      row.classList.add("off");
+      sw.setAttribute("aria-checked", "false");
+      if (canBook && FLOWS[name]) {
+        sw.disabled = true;
+        row.querySelector(".aMeta").textContent = "RUNNING THE CANCEL FLOW\u2026";
+        live.textContent = "Cancelling " + name;
+        playFlow(row, name, sw, function () {
+          finishCancelled(row, name);
+        });
+      } else {
+        finishCancelled(row, name);
+      }
+    });
+  });
+
+  /* ══════════════ the book ═════════════════════════════════════════════ */
+  var chipRetally = function () {};
+  if (!canBook) {
+    document.documentElement.classList.remove("book");
+    document.querySelectorAll("[data-goto]").forEach(function (el) {
+      el.addEventListener("click", function (ev) {
+        if (el.tagName === "BUTTON") {
+          ev.preventDefault();
+          location.hash = el.dataset.goto;
+        }
+      });
+    });
+    return;
+  }
+  var stage = document.getElementById("stage");
+  var pages = Array.prototype.slice.call(document.querySelectorAll("#stage .pg"));
+  var ids = pages.map(function (p) {
+    return p.id;
+  });
+  var LABELS = ["COVER", "THE CASE", "THE METHOD", "THE REFUSAL", "THE BILL", "QUESTIONS", "THE CLOSE"];
+  var N = pages.length;
+  var DUR = 760;
+  var cur = Math.max(0, ids.indexOf((location.hash || "").slice(1)));
+  var turning = false;
+
+  /* split headlines into printable words */
+  document.querySelectorAll(".a-words").forEach(function (h) {
+    var wd = 0,
+      nodes = Array.prototype.slice.call(h.childNodes);
+    nodes.forEach(function (nd) {
+      if (nd.nodeType !== 3) return;
+      var frag = document.createDocumentFragment();
+      nd.textContent.split(/(\s+)/).forEach(function (part) {
+        if (!part) return;
+        if (/^\s+$/.test(part)) {
+          frag.appendChild(document.createTextNode(part));
+          return;
+        }
+        var s = document.createElement("span");
+        s.className = "w";
+        s.textContent = part;
+        s.style.setProperty("--wd", wd * 50 + "ms");
+        wd++;
+        frag.appendChild(s);
+      });
+      h.replaceChild(frag, nd);
+    });
+  });
+  function runOdo(el) {
+    if (el.dataset.done) return;
+    el.dataset.done = "1";
+    var final = el.dataset.to,
+      strips = [];
+    el.textContent = "";
+    final.split("").forEach(function (ch) {
+      if (/\d/.test(ch)) {
+        var oc = document.createElement("span");
+        oc.className = "oc";
+        var os = document.createElement("span");
+        os.className = "os";
+        for (var i = 0; i <= 9; i++) {
+          var d = document.createElement("span");
+          d.textContent = i;
+          os.appendChild(d);
+        }
+        oc.appendChild(os);
+        el.appendChild(oc);
+        strips.push({
+          os: os,
+          d: +ch
+        });
+      } else {
+        var sp = document.createElement("span");
+        sp.textContent = ch;
+        el.appendChild(sp);
+      }
+    });
+    var went = false;
+    function roll() {
+      if (went) return;
+      went = true;
+      strips.forEach(function (o, i) {
+        o.os.style.transition = "transform " + (850 + i * 220) + "ms cubic-bezier(.22,.8,.26,1)";
+        o.os.style.transform = "translateY(-" + o.d + "em)";
+      });
+    }
+    requestAnimationFrame(function () {
+      requestAnimationFrame(roll);
+    });
+    setTimeout(roll, 90);
+    setTimeout(function () {
+      el.textContent = final;
+    }, 1900);
+  }
+
+  /* arm / disarm a sheet's entrance choreography (rAF raced vs timeout —
+     pages must never stay invisible in throttled tabs) */
+  function arm(page) {
+    var seen = page.dataset.seen === "1";
+    page.classList.toggle("instant", seen);
+    var els = page.querySelectorAll(".anim");
+    var armed = false;
+    function go() {
+      if (armed) return;
+      armed = true;
+      els.forEach(function (el) {
+        el.classList.add("in");
+      });
+    }
+    requestAnimationFrame(function () {
+      requestAnimationFrame(go);
+    });
+    setTimeout(go, 80);
+    if (!seen) {
+      page.querySelectorAll(".odo").forEach(function (o) {
+        var host = o.closest(".anim");
+        var ds = host ? parseFloat(host.style.getPropertyValue("--d") || "0") * 1000 : 0;
+        setTimeout(function () {
+          runOdo(o);
+        }, 350 + ds);
+      });
+    }
+    page.dataset.seen = "1";
+  }
+  function disarm(page) {
+    page.classList.add("instant");
+    page.querySelectorAll(".anim.in").forEach(function (el) {
+      el.classList.remove("in");
+    });
+  }
+
+  /* ── chrome: pen rule, pager, edge stacks, chip, hint, hash ── */
+  var rule = document.getElementById("penRule");
+  var pgCur = document.getElementById("pgCur"),
+    pgLabel = document.getElementById("pgLabel");
+  var btnPrev = document.getElementById("pgPrev"),
+    btnNext = document.getElementById("pgNext");
+  var edgeR = document.getElementById("edgeR"),
+    edgeL = document.getElementById("edgeL");
+  var hint = document.getElementById("hint");
+  var chip = document.getElementById("penTally"),
+    ptAmt = chip.querySelector(".ptAmt"),
+    ptFloat = chip.querySelector(".ptFloat");
+  var chipVal = 0,
+    chipRaf = 0,
+    chipSnap = 0;
+  function keptSum(nRows) {
+    var s = 0;
+    for (var i = 0; i < nRows && i < rows.length; i++) if (!rows[i].classList.contains("off")) s += parseFloat(rows[i].dataset.amt);
+    return s;
+  }
+  function chipTween(to) {
+    cancelAnimationFrame(chipRaf);
+    clearTimeout(chipSnap);
+    var from = chipVal,
+      t0 = performance.now(),
+      dur = 460;
+    function tick(t) {
+      var p = Math.min(1, (t - t0) / dur),
+        e = 1 - Math.pow(1 - p, 3);
+      chipVal = from + (to - from) * e;
+      ptAmt.textContent = "$" + chipVal.toFixed(2);
+      if (p < 1) chipRaf = requestAnimationFrame(tick);
+    }
+    chipRaf = requestAnimationFrame(tick);
+    chipSnap = setTimeout(function () {
+      cancelAnimationFrame(chipRaf);
+      chipVal = to;
+      ptAmt.textContent = "$" + to.toFixed(2);
+    }, dur + 200);
+  }
+  chipRetally = function () {
+    if (cur >= 1) chipTween(keptSum(Math.min(cur, 5)));
+  };
+  function updateChrome(prevIx, fwdFloatEligible) {
+    var progress = N > 1 ? cur / (N - 1) : 0;
+    rule.style.transform = "scaleX(" + progress + ")";
+    pgCur.textContent = String(cur + 1).padStart(2, "0");
+    pgLabel.textContent = LABELS[cur] || "";
+    btnPrev.disabled = cur === 0;
+    btnNext.disabled = cur === N - 1;
+    edgeR.style.width = (N - 1 - cur) * 3 + "px";
+    edgeL.style.width = cur * 3 + "px";
+    if (cur > 0) hint.classList.add("gone");
+    chip.classList.toggle("show", cur >= 1);
+    var w = chip.offsetWidth || 150;
+    var x = Math.min(Math.max(progress * innerWidth - w, 10), innerWidth - w - 10);
+    chip.style.transform = "translateX(" + x + "px)";
+    var target = keptSum(Math.min(cur, 5));
+    if (cur >= 1 && Math.abs(target - chipVal) > 0.005) {
+      chipTween(target);
+      chip.classList.remove("tick");
+      void chip.offsetWidth;
+      chip.classList.add("tick");
+      if (fwdFloatEligible && cur >= 1 && cur <= 5) {
+        var r = rows[cur - 1],
+          off = r.classList.contains("off");
+        ptFloat.textContent = off ? "CANCELLED \u00b7 $0.00" : "+ $" + parseFloat(r.dataset.amt).toFixed(2);
+        ptFloat.classList.toggle("ok", off);
+        ptFloat.classList.remove("go");
+        void ptFloat.offsetWidth;
+        ptFloat.classList.add("go");
+      }
+    }
+    if (history.replaceState) history.replaceState(null, "", "#" + ids[cur]);
+    live.textContent = "Page " + (cur + 1) + " of " + N + " \u2014 " + pages[cur].getAttribute("data-screen-label");
+  }
+
+  /* ── the turning sheet rig: two hinged segments, real back faces ── */
+  function buildFlip(page) {
+    var w = page.offsetWidth,
+      h = page.offsetHeight;
+    var flip = document.createElement("div");
+    flip.id = "flip";
+    ["segIn", "segOut"].forEach(function (segName) {
+      var seg = document.createElement("div");
+      seg.className = "seg " + segName;
+      var front = document.createElement("div");
+      front.className = "face front";
+      var back = document.createElement("div");
+      back.className = "face back";
+      var cl = page.cloneNode(true);
+      cl.className = "pg show clonePg";
+      cl.removeAttribute("id");
+      cl.querySelectorAll("[id]").forEach(function (n) {
+        n.removeAttribute("id");
+      });
+      cl.style.width = w + "px";
+      cl.style.height = h + "px";
+      cl.style.left = segName === "segIn" ? "0" : -(w / 2) + "px";
+      front.appendChild(cl);
+      var litF = document.createElement("div");
+      litF.className = "lit";
+      front.appendChild(litF);
+      var litB = document.createElement("div");
+      litB.className = "lit";
+      back.appendChild(litB);
+      seg.appendChild(front);
+      seg.appendChild(back);
+      flip.appendChild(seg);
+    });
+    stage.appendChild(flip);
+    var st = page.querySelector(".pgIn").scrollTop;
+    flip.querySelectorAll(".clonePg .pgIn").forEach(function (sc) {
+      sc.style.overflow = "hidden";
+      sc.scrollTop = st;
+    });
+    return {
+      el: flip,
+      w: w,
+      segOut: flip.querySelector(".segOut"),
+      lits: flip.querySelectorAll(".lit")
+    };
+  }
+  function smootherstep(p) {
+    return p * p * p * (p * (p * 6 - 15) + 10);
+  }
+  var RAD = Math.PI / 180;
+  function clampN(v, a, b) {
+    return Math.min(b, Math.max(a, v));
+  }
+
+  /* render one frame of a turn. prog: 0 = sheet flat on the book, 1 = folded left */
+  function renderTurn(ctx, prog) {
+    var theta = prog * 180,
+      arc = Math.sin(prog * Math.PI);
+    ctx.rig.el.style.transform = "translateZ(" + arc * 26 + "px) rotateY(" + -theta + "deg)";
+    ctx.rig.segOut.style.transform = "rotateY(" + arc * 13 + "deg)"; /* the paper flexes */
+    for (var i = 0; i < ctx.rig.lits.length; i++) ctx.rig.lits[i].style.opacity = String(arc);
+    ctx.veil.style.opacity = String((1 - prog) * 0.85);
+    var sx = ctx.rig.w * Math.cos(Math.min(theta, 90) * RAD);
+    ctx.shade.style.transform = "translateX(" + (sx - ctx.rig.w) + "px)";
+    ctx.shade.style.opacity = String(arc * (theta < 100 ? 1 : Math.max(0, 1 - (theta - 100) / 40)));
+    ctx.rig.el.style.opacity = theta > 150 ? String(Math.max(0, 1 - (theta - 150) / 28)) : "1";
+  }
+
+  /* set a turn up (both pages staged, rig built). Returns null if not possible. */
+  function beginTurn(n) {
+    if (turning || n === cur || n < 0 || n >= N) return null;
+    var fwd = n > cur;
+    var fromPg = pages[cur],
+      toPg = pages[n];
+    var beneath = fwd ? toPg : fromPg; /* the page being revealed / covered */
+    var turningPg = fwd ? fromPg : toPg; /* the sheet that physically turns */
+    var shade = beneath.querySelector(".shade"),
+      veil = beneath.querySelector(".veil");
+    toPg.classList.add("show");
+    arm(toPg);
+    if (fwd) toPg.querySelector(".pgIn").scrollTop = 0;
+    var rig = null;
+    try {
+      rig = buildFlip(turningPg);
+    } catch (e) {
+      rig = null;
+    }
+    if (!rig) {
+      /* emergency: instant switch, still consistent */
+      turning = true;
+      fromPg.classList.remove("show");
+      disarm(fromPg);
+      var prevIx = cur;
+      cur = n;
+      updateChrome(prevIx, false);
+      setTimeout(function () {
+        turning = false;
+      }, 80);
+      return null;
+    }
+    turning = true;
+    turningPg.style.visibility = "hidden";
+    var ctx = {
+      n: n,
+      prevIx: cur,
+      fwd: fwd,
+      fromPg: fromPg,
+      toPg: toPg,
+      turningPg: turningPg,
+      shade: shade,
+      veil: veil,
+      rig: rig,
+      done: false
+    };
+    renderTurn(ctx, fwd ? 0 : 1);
+    return ctx;
+  }
+
+  /* tear the rig down. committed=true lands on ctx.n; false restores ctx.prevIx */
+  function endTurn(ctx, committed, fwdFloat) {
+    if (ctx.done) return;
+    ctx.done = true;
+    ctx.rig.el.remove();
+    ctx.turningPg.style.visibility = "";
+    ctx.shade.style.opacity = "0";
+    ctx.shade.style.transform = "";
+    ctx.veil.style.opacity = "0";
+    if (committed) {
+      ctx.fromPg.classList.remove("show");
+      disarm(ctx.fromPg);
+      cur = ctx.n;
+      updateChrome(ctx.prevIx, fwdFloat);
+    } else {
+      ctx.toPg.classList.remove("show");
+      disarm(ctx.toPg);
+    }
+    setTimeout(function () {
+      turning = false;
+    }, 120);
+  }
+
+  /* animate a turn between two progress values, with a watchdog */
+  function animateTurn(ctx, fromProg, toProg, dur, committed, fwdFloat) {
+    var t0 = performance.now(),
+      fin = false;
+    function done() {
+      if (fin || ctx.done) {
+        fin = true;
+        return;
+      }
+      fin = true;
+      endTurn(ctx, committed, fwdFloat);
+    }
+    function frame(t) {
+      if (fin || ctx.done) return;
+      var p = Math.min(1, (t - t0) / dur);
+      renderTurn(ctx, fromProg + (toProg - fromProg) * smootherstep(p));
+      if (p < 1) requestAnimationFrame(frame);else done();
+    }
+    requestAnimationFrame(frame);
+    setTimeout(done, dur + 300); /* the book can never wedge */
+  }
+  function goTo(n, fwdFloatEligible) {
+    var ctx = beginTurn(n);
+    if (!ctx) return;
+    animateTurn(ctx, ctx.fwd ? 0 : 1, ctx.fwd ? 1 : 0, DUR, true, !!fwdFloatEligible && n === ctx.prevIx + 1);
+  }
+  function next() {
+    goTo(cur + 1, true);
+  }
+  function prev() {
+    goTo(cur - 1, false);
+  }
+
+  /* ── input: wheel (inertia-proof, respects in-page scroll) ── */
+  function scroller() {
+    return pages[cur].querySelector(".pgIn");
+  }
+  function atBoundary(sc, dir) {
+    return dir > 0 ? sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 2 : sc.scrollTop <= 2;
+  }
+  var lastWheel = 0,
+    gestureUsed = false,
+    gestureEligible = false,
+    acc = 0;
+  addEventListener("wheel", function (e) {
+    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+    var now = performance.now();
+    var fresh = now - lastWheel > 240;
+    lastWheel = now;
+    var dir = e.deltaY > 0 ? 1 : -1;
+    if (fresh) {
+      gestureUsed = false;
+      acc = 0;
+      gestureEligible = atBoundary(scroller(), dir);
+    }
+    if (turning) {
+      gestureUsed = true;
+      e.preventDefault();
+      return;
+    }
+    if (gestureUsed) {
+      e.preventDefault();
+      return;
+    }
+    if (!gestureEligible) return;
+    e.preventDefault();
+    acc += e.deltaY;
+    if (Math.abs(acc) > 80) {
+      gestureUsed = true;
+      dir > 0 ? next() : prev();
+    }
+  }, {
+    passive: false
+  });
+
+  /* ── input: touch — horizontal swipe turns like a book; vertical swipe
+        scrolls the sheet and only turns at its boundary ── */
+  var tY = 0,
+    tX = 0,
+    tEndY = 0,
+    tEndX = 0,
+    tBoundNext = false,
+    tBoundPrev = false;
+  addEventListener("touchstart", function (e) {
+    if (e.touches.length !== 1) return;
+    tY = tEndY = e.touches[0].clientY;
+    tX = tEndX = e.touches[0].clientX;
+    var sc = scroller();
+    tBoundNext = atBoundary(sc, 1);
+    tBoundPrev = atBoundary(sc, -1);
+  }, {
+    passive: true
+  });
+  addEventListener("touchmove", function (e) {
+    tEndY = e.touches[0].clientY;
+    tEndX = e.touches[0].clientX;
+  }, {
+    passive: true
+  });
+  addEventListener("touchend", function () {
+    if (turning) return;
+    var dy = tY - tEndY,
+      dx = tEndX - tX;
+    if (Math.abs(dx) > 64 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+      dx < 0 ? next() : prev(); /* swipe left = turn forward */
+      return;
+    }
+    if (Math.abs(dy) < 64 || Math.abs(dy) < Math.abs(dx)) return;
+    var sc = scroller(),
+      dir = dy > 0 ? 1 : -1;
+    var boundAtStart = dir > 0 ? tBoundNext : tBoundPrev;
+    if (boundAtStart && atBoundary(sc, dir)) {
+      dir > 0 ? next() : prev();
+    }
+  }, {
+    passive: true
+  });
+
+  /* ── input: keys, pager, links ── */
+  addEventListener("keydown", function (e) {
+    var t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "PageDown" || e.key === " " && !e.shiftKey) {
+      e.preventDefault();
+      next();
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp" || e.key === "PageUp" || e.key === " " && e.shiftKey) {
+      e.preventDefault();
+      prev();
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      goTo(0);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      goTo(N - 1);
+    }
+  });
+  btnNext.addEventListener("click", next);
+  btnPrev.addEventListener("click", prev);
+  document.querySelectorAll("[data-goto]").forEach(function (el) {
+    el.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      goTo(ids.indexOf(el.dataset.goto));
+    });
+  });
+  addEventListener("hashchange", function () {
+    var n = ids.indexOf(location.hash.slice(1));
+    if (n > -1 && n !== cur) goTo(n);
+  });
+  addEventListener("resize", function () {
+    updateChrome(cur, false);
+  }, {
+    passive: true
+  });
+
+  /* ── input: hold the mouse on the page's EDGE and drag — the sheet follows
+        your hand; release past halfway (or flick) to commit, else it settles
+        back. Right edge turns forward, left edge turns back. Middle of the
+        page never drags (clicks, text and the ledger stay usable). ── */
+  var drag = null;
+  function edgeW() {
+    return Math.min(110, Math.max(56, innerWidth * 0.07));
+  }
+  function dragZoneAt(x, y) {
+    var r = pages[cur].getBoundingClientRect();
+    if (y < r.top || y > r.bottom) return 0;
+    if (x >= r.right - edgeW() && x <= r.right + 8 && cur < N - 1) return 1;
+    if (x <= r.left + edgeW() && x >= r.left - 8 && cur > 0) return -1;
+    return 0;
+  }
+  addEventListener("pointerdown", function (e) {
+    if (e.pointerType !== "mouse" && e.pointerType !== "pen") return; /* touch keeps its swipe */
+    if (e.button !== 0 || turning || drag) return;
+    var t = e.target;
+    if (t.closest && t.closest("button, a, input, textarea, select, nav, #penTally, .sw, .qq")) return;
+    var sc = scroller(),
+      scr = sc.getBoundingClientRect();
+    if (e.clientX > scr.left + sc.clientWidth) return; /* the sheet's scrollbar */
+    var zone = dragZoneAt(e.clientX, e.clientY);
+    if (!zone) return;
+    try {
+      e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId);
+    } catch (err) {/* capture is best-effort */}
+    drag = {
+      pending: true,
+      zone: zone,
+      id: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      lastX: e.clientX,
+      lastT: performance.now(),
+      vel: 0,
+      prog: zone === 1 ? 0 : 1,
+      ctx: null,
+      raf: 0,
+      safety: 0
+    };
+  });
+  addEventListener("pointermove", function (e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    if (!drag.pending && e.buttons === 0) {
+      endDrag();
+      return;
+    } /* the pointerup was lost — release now */
+    var dx = e.clientX - drag.startX,
+      dy = e.clientY - drag.startY;
+    if (drag.pending) {
+      if (Math.abs(dy) > 16 && Math.abs(dy) > Math.abs(dx)) {
+        drag = null;
+        return;
+      }
+      if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy)) return;
+      if (drag.zone === 1 && dx > 0 || drag.zone === -1 && dx < 0) {
+        drag = null;
+        return;
+      }
+      var ctx = beginTurn(cur + drag.zone);
+      if (!ctx) {
+        drag = null;
+        return;
+      }
+      drag.pending = false;
+      drag.ctx = ctx;
+      document.documentElement.classList.add("dragging");
+    }
+    e.preventDefault();
+    clearTimeout(drag.safety);
+    drag.safety = setTimeout(endDrag, 4000); /* stale-drag failsafe */
+    var now = performance.now();
+    drag.vel = (e.clientX - drag.lastX) / Math.max(1, now - drag.lastT); /* px/ms */
+    drag.lastX = e.clientX;
+    drag.lastT = now;
+    var span = drag.ctx.rig.w * 0.85;
+    drag.prog = drag.zone === 1 ? clampN(-dx / span, 0, 1) : 1 - clampN(dx / span, 0, 1);
+    if (!drag.raf) {
+      drag.raf = requestAnimationFrame(function () {
+        if (drag && drag.ctx) {
+          renderTurn(drag.ctx, drag.prog);
+          drag.raf = 0;
+        }
+      });
+    }
+  }, {
+    passive: false
+  });
+  function endDrag() {
+    if (!drag) return;
+    var d = drag;
+    drag = null;
+    clearTimeout(d.safety);
+    document.documentElement.classList.remove("dragging");
+    if (d.raf) cancelAnimationFrame(d.raf);
+    if (!d.ctx) return; /* plain click in the zone — nothing started */
+    var flick = Math.abs(d.vel) > 0.5;
+    var commit = d.zone === 1 ? flick ? d.vel < 0 : d.prog > 0.42 : flick ? d.vel > 0 : d.prog < 0.58;
+    var toProg = d.zone === 1 ? commit ? 1 : 0 : commit ? 0 : 1;
+    var dur = Math.max(180, Math.min(540, Math.abs(toProg - d.prog) * 640));
+    animateTurn(d.ctx, d.prog, toProg, dur, commit, commit && d.zone === 1);
+  }
+  addEventListener("pointerup", function (e) {
+    if (drag && e.pointerId === drag.id) endDrag();
+  });
+  addEventListener("pointercancel", function (e) {
+    if (drag && e.pointerId === drag.id) endDrag();
+  });
+  addEventListener("blur", endDrag); /* released outside the window */
+  /* cursor affordance: an open hand over the grabbable edges */
+  var hoverRaf = 0;
+  addEventListener("mousemove", function (e) {
+    if (hoverRaf) return;
+    hoverRaf = requestAnimationFrame(function () {
+      hoverRaf = 0;
+      var can = !turning && !drag && dragZoneAt(e.clientX, e.clientY) !== 0 && !(e.target.closest && e.target.closest("button, a, input, nav, #penTally, .sw"));
+      document.documentElement.classList.toggle("canGrab", can);
+    });
+  }, {
+    passive: true
+  });
+
+  /* ── open the book ── */
+  pages[cur].classList.add("show");
+  chipVal = 0;
+  arm(pages[cur]);
+  updateChrome(cur, false);
+})();
+})(); } catch (e) { __ds_ns.__errors.push({ path: "website-v3-book.js", error: String((e && e.message) || e) }); }
 
 __ds_ns.AmountDisplay = __ds_scope.AmountDisplay;
 

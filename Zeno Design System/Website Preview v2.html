@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>zeno.app — homepage preview v2 (The Pen Pass)</title>
+<script>
+// Arm animations only when JS + IO exist. No-JS = fully rendered static page.
+(function () {
+  if ("IntersectionObserver" in window) document.documentElement.classList.add("js");
+})();
+</script>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+
+/* Animated preview of the rebuilt zeno.app homepage — "THE PEN PASS".
+   A pen works through the page as you scroll: ruling lines, printing rows,
+   tallying totals, stamping the one thing that's proven.
+   Rails: transform+opacity only · IO fires once · reduced-motion = static ·
+   no-JS = fully rendered (hiding only ever happens under html.js). */
+:root {
+  color-scheme: light;
+  --paper:#faf9f5; --desk:#f3f2ec; --card:#ffffff; --ink:#14161f; --ink-2:#5a6072; --ink-3:#808698;
+  --ink-panel:#10131f; --rule:#e5e3d9; --rule-strong:#c9c7ba; --baseline:rgba(20,22,31,.065);
+  --green:#00c26e; --green-text:#057a46; --verified:#0b8a54; --alert:#c63b49; --info:#2f6fdb;
+  --disp:"Space Grotesk",sans-serif; --body:"Hanken Grotesk",sans-serif; --mono:"JetBrains Mono",monospace;
+  --settle:cubic-bezier(.22,.8,.26,1); --thunk:cubic-bezier(.34,1.3,.5,1);
+}
+* { box-sizing: border-box; }
+html { scroll-padding-top: 84px; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--body); font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased; }
+a { color:inherit; }
+a:hover { color:var(--ink); }
+:focus-visible { outline:2px solid var(--green); outline-offset:3px; border-radius:4px; }
+.money { font-family:var(--mono); font-feature-settings:"tnum" 1; letter-spacing:-0.01em; }
+.container { max-width:1080px; margin:0 auto; padding:0 24px; }
+section { padding:104px 0; position:relative; }
+h2 { font-family:var(--disp); font-weight:700; font-size:clamp(30px,4.6vw,46px); line-height:1.06; letter-spacing:-0.025em; margin:18px 0 0; text-wrap:balance; }
+.lead { font-size:clamp(15.5px,1.8vw,17.5px); color:var(--ink-2); max-width:58ch; margin:16px 0 0; text-wrap:pretty; }
+.shead { display:flex; align-items:center; gap:12px; }
+.shead b { font-family:var(--mono); font-size:11px; font-weight:700; letter-spacing:.16em; color:var(--ink-3); white-space:nowrap; }
+.shead i { flex:1; border-bottom:1px solid var(--rule-strong); }
+.btn { display:inline-flex; align-items:center; gap:8px; height:48px; padding:0 22px; border-radius:10px; font-weight:600; font-size:15px; text-decoration:none; border:1px solid transparent; cursor:pointer; background:var(--ink-panel); color:#f2f1ea; font-family:var(--body); transition:transform .12s var(--settle), opacity .12s; }
+.btn:hover { opacity:.92; color:#f2f1ea; }
+.btn:active { transform:translateY(1px); }
+.btn.ghost { background:transparent; color:var(--ink); border-color:var(--rule-strong); }
+.btn.ghost:hover { border-color:var(--ink-3); opacity:1; }
+.btn.sm { height:40px; padding:0 16px; font-size:14px; }
+.tick { display:inline-flex; align-items:center; gap:7px; font-family:var(--mono); font-size:10.5px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--green-text); white-space:nowrap; }
+.tick::before { content:""; width:11px; height:3px; background:currentColor; }
+.lline { display:flex; align-items:baseline; gap:10px; padding:8px 0; }
+.lline .lb { flex:none; font-size:15px; font-weight:500; color:var(--ink-2); }
+.lline .lb.strong { font-weight:700; color:var(--ink); }
+.lline .lb small { font-family:var(--mono); font-size:10px; font-weight:700; color:var(--ink-3); margin-left:8px; letter-spacing:.06em; }
+.lline .dots { flex:1; border-bottom:2px dotted var(--rule-strong); transform:translateY(-3px); min-width:14px; }
+.lline .vl { flex:none; font-family:var(--mono); font-size:16px; font-weight:700; }
+
+/* atmosphere — ruled ledger paper + sunken desk alternation (no gradients, no noise) */
+.ruled { background-image:repeating-linear-gradient(to bottom, transparent 0 43px, var(--baseline) 43px 44px); }
+.desk { background:var(--desk); border-top:1px solid var(--rule); border-bottom:1px solid var(--rule); }
+@media (min-width:1200px) {
+  .ruled { position:relative; }
+  .ruled::after { content:""; position:absolute; top:0; bottom:0; left:max(20px, calc((100vw - 1080px)/2 - 44px)); width:1px; background:color-mix(in srgb, var(--alert) 26%, transparent); pointer-events:none; }
+}
+
+/* pen rule — scroll progress as the pen ruling the sheet */
+#penRule { position:fixed; top:0; left:0; right:0; height:2px; background:var(--ink); transform:scaleX(0); transform-origin:left center; z-index:60; pointer-events:none; }
+
+/* margin index — document chrome at wide viewports */
+#marginIx { display:none; }
+@media (min-width:1360px) {
+  #marginIx { display:block; position:fixed; left:max(28px, calc((100vw - 1080px)/2 - 168px)); top:50%; transform:translateY(-50%); z-index:40; padding-left:16px; }
+  #marginIx::before { content:""; position:absolute; left:0; top:-4px; bottom:-4px; width:1px; background:var(--rule-strong); }
+  #marginIx .mk { position:absolute; left:-1px; top:0; width:3px; height:30px; background:var(--green); border-radius:2px; opacity:0; transition:transform .5s var(--settle), opacity .3s; }
+  #marginIx a { display:flex; align-items:center; gap:9px; height:38px; font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:.14em; color:var(--ink-3); text-decoration:none; transition:color .25s; }
+  #marginIx a b { transition:color .25s; }
+  #marginIx a:hover { color:var(--ink); }
+  #marginIx a.on { color:var(--ink); }
+  #marginIx a.on b { color:var(--green-text); }
+}
+
+/* running tally chip — hangs from the nav rule at the pen tip; JS-only enhancement */
+#penTally { display:none; }
+
+/* preview banner */
+.pv { background:var(--ink-panel); color:#f2f1ea; font-family:var(--mono); font-size:10px; letter-spacing:.14em; padding:9px 16px; text-align:center; }
+@media (max-width:480px){ .pv{font-size:8.5px; letter-spacing:.1em} }
+.pv b { color:#1ed47f; }
+
+/* nav */
+nav { position:sticky; top:0; z-index:50; background:var(--paper); border-bottom:1px solid var(--rule-strong); transition:box-shadow .35s; }
+nav.scrolled { box-shadow:0 12px 28px -22px rgba(10,12,20,.4); }
+.navIn { max-width:1080px; margin:0 auto; padding:0 24px; height:64px; display:flex; align-items:center; gap:28px; }
+.brand { display:inline-flex; align-items:center; gap:10px; font-family:var(--disp); font-weight:700; font-size:19px; letter-spacing:-.03em; text-decoration:none; }
+.navLinks { display:flex; gap:4px; margin-left:8px; }
+.navLinks a { padding:8px 12px; font-family:var(--mono); font-size:11.5px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-2); text-decoration:none; border-radius:6px; transition:background .15s, color .15s; }
+.navLinks a:hover { color:var(--ink); background:var(--rule); }
+.navR { margin-left:auto; display:flex; gap:10px; align-items:center; }
+@media (max-width:900px){ .navLinks{display:none} }
+
+/* hero */
+.hero { padding:clamp(56px,9vh,96px) 0 84px; border-bottom:1px solid var(--rule); }
+.heroGrid { display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr); gap:clamp(32px,5vw,72px); align-items:start; }
+.kick { display:inline-flex; align-items:center; gap:10px; font-family:var(--mono); font-size:11px; font-weight:700; letter-spacing:.18em; color:var(--ink-3); }
+.kick::before { content:""; width:11px; height:3px; background:var(--green); }
+h1 { font-family:var(--disp); font-weight:700; font-size:clamp(38px,6vw,64px); line-height:1.04; letter-spacing:-.032em; margin:20px 0 0; text-wrap:balance; }
+.hl { display:block; overflow:hidden; padding-bottom:.06em; margin-bottom:-.06em; }
+.hl > span { display:block; }
+.penu { position:relative; white-space:nowrap; }
+.penu::after { content:""; position:absolute; left:0; right:0; bottom:.04em; height:3px; background:var(--green); transform-origin:left center; }
+.heroSub { font-size:clamp(16px,1.9vw,18.5px); color:var(--ink-2); max-width:46ch; margin:20px 0 0; }
+.wform { display:flex; flex-wrap:wrap; gap:10px; margin-top:30px; max-width:480px; }
+.wform input { flex:1; min-width:220px; height:48px; padding:0 16px; background:var(--card); border:1.5px solid var(--rule-strong); border-radius:10px; font-size:15px; color:var(--ink); font-family:var(--body); caret-color:var(--green-text); transition:border-color .18s var(--settle), box-shadow .18s var(--settle); }
+.wform input::placeholder { color:var(--ink-3); transition:opacity .18s; }
+.wform input:hover { border-color:var(--ink-3); }
+.wform input:focus { outline:none; border-color:var(--green); box-shadow:0 0 0 4px color-mix(in srgb, var(--green) 22%, transparent); }
+.wform input:focus::placeholder { opacity:.55; }
+.wform .arr { display:inline-block; transition:transform .18s var(--settle); }
+.wform:focus-within .arr { transform:translateX(3px); }
+.receipt { display:none; margin-top:14px; max-width:480px; }
+.receipt.show { display:block; }
+.heroTicks { display:flex; flex-wrap:wrap; gap:10px 22px; margin-top:18px; }
+
+/* the audit centerpiece */
+.audit { background:var(--card); border:1px solid var(--rule-strong); border-radius:14px; padding:22px 22px 18px; box-shadow:0 1px 0 var(--rule); }
+.aHead { display:flex; justify-content:space-between; padding-bottom:12px; font-family:var(--mono); font-size:11px; font-weight:700; letter-spacing:.18em; color:var(--ink-3); }
+.cols { display:flex; justify-content:space-between; padding-bottom:7px; border-bottom:1px solid var(--rule-strong); font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:.18em; color:var(--ink-3); }
+.aRow { display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid var(--rule); min-height:52px; }
+.aBrand { width:34px; height:34px; flex:none; border-radius:9px; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-family:var(--disp); font-weight:700; font-size:15px; }
+.aName { position:relative; display:inline-block; font-weight:650; font-size:15px; }
+.aName i { position:absolute; left:-2px; right:-2px; top:52%; height:2px; background:var(--ink); transform-origin:left center; transform:scaleX(0); transition:transform .32s var(--settle); }
+.aMeta { display:block; font-family:var(--mono); font-size:9.5px; font-weight:600; letter-spacing:.1em; color:var(--ink-3); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.aAmt { font-family:var(--mono); font-size:15px; font-weight:700; }
+.aRow.off .aName i { transform:scaleX(1); }
+.aRow.off .aName, .aRow.off .aAmt { color:var(--ink-3); }
+.aRow.off .aMeta { color:var(--verified); }
+.sw { position:relative; width:46px; height:28px; flex:none; border-radius:999px; border:none; background:var(--green); cursor:pointer; transition:background .2s; }
+.sw span { position:absolute; top:3px; left:21px; width:22px; height:22px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(10,12,20,.3); transition:left .2s var(--thunk); }
+.aRow.off .sw { background:var(--rule-strong); }
+.aRow.off .sw span { left:3px; }
+.aTotals { padding-top:12px; }
+.aTotals .row { display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
+#total { font-family:var(--mono); font-weight:700; font-size:clamp(30px,3.4vw,38px); letter-spacing:-.035em; }
+#yearly { font-family:var(--mono); font-weight:700; font-size:18px; color:var(--verified); display:inline-block; transform-origin:right center; }
+.aNote { margin-top:14px; padding-top:10px; border-top:1px solid var(--rule); font-family:var(--mono); font-size:9px; letter-spacing:.12em; line-height:1.7; color:var(--ink-3); }
+
+/* exhibits */
+.exhibits { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:clamp(24px,4vw,56px); margin-top:56px; }
+.exK { font-family:var(--mono); font-size:10.5px; font-weight:700; letter-spacing:.18em; color:var(--green-text); }
+.exV { font-family:var(--mono); font-weight:700; font-size:clamp(40px,5vw,56px); letter-spacing:-.04em; line-height:1; margin:14px 0 0; }
+.exB { font-size:15px; color:var(--ink-2); margin:12px 0 0; }
+.exQ { position:relative; font-size:clamp(19px,2.3vw,24px); line-height:1.45; font-weight:600; letter-spacing:-.015em; margin:14px 0 0; padding-left:14px; }
+.exQ::before { content:""; position:absolute; left:0; top:2px; bottom:2px; width:3px; background:var(--alert); transform-origin:top center; }
+.exC { display:block; margin-top:12px; font-family:var(--mono); font-size:9.5px; letter-spacing:.12em; color:var(--ink-3); font-style:normal; }
+.odo { white-space:nowrap; }
+.odo .oc { display:inline-block; overflow:hidden; height:1em; vertical-align:top; }
+.odo .os { display:flex; flex-direction:column; }
+.odo .os span { display:block; height:1em; line-height:1; }
+
+/* method */
+.mGrid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:clamp(24px,4vw,48px); margin-top:52px; }
+.mCol { border-top:1.5px solid var(--rule-strong); padding-top:18px; }
+.mNum { font-family:var(--mono); font-size:12px; font-weight:700; color:var(--ink-3); }
+.mT { font-family:var(--disp); font-weight:700; font-size:21px; letter-spacing:-.015em; margin:12px 0 0; }
+.mB { font-size:14.5px; color:var(--ink-2); margin:10px 0 0; }
+
+/* refusal / pricing / faq / final / footer */
+.rGrid { display:grid; grid-template-columns:1fr 1fr; gap:clamp(32px,5vw,80px); align-items:start; }
+.rLines { border-top:1.5px solid var(--rule-strong); margin-top:8px; }
+.planCols { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.35fr) minmax(220px,300px); gap:16px 28px; padding-bottom:8px; border-bottom:1px solid var(--rule-strong); font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:.18em; color:var(--ink-3); }
+.planCols span:last-child { text-align:right; }
+.planRow { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.35fr) minmax(220px,300px); gap:16px 28px; align-items:baseline; padding:26px 0; border-bottom:1px solid var(--rule); }
+.planRow.feat { position:relative; padding-left:23px; margin-left:-23px; }
+.planRow.feat::before { content:""; position:absolute; left:0; top:8px; bottom:8px; width:3px; background:var(--green); transform-origin:top center; }
+.pName { font-family:var(--disp); font-weight:700; font-size:22px; letter-spacing:-.015em; }
+.pBlurb { font-size:14px; color:var(--ink-2); margin-top:6px; }
+.pMeta { font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; color:var(--green-text); margin-top:8px; text-transform:uppercase; }
+.pFeats { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:7px; }
+.pFeats li { display:flex; gap:9px; align-items:baseline; font-size:14px; color:var(--ink-2); }
+.pFeats li::before { content:""; width:10px; height:3px; background:var(--green); flex:none; transform:translateY(-3px); }
+.pPrice { font-family:var(--mono); font-weight:700; font-size:26px; letter-spacing:-.02em; text-align:right; }
+.pPrice small { font-size:13px; font-weight:500; color:var(--ink-3); }
+.pBilled { font-family:var(--mono); font-size:10px; letter-spacing:.1em; color:var(--ink-3); margin-top:5px; text-transform:uppercase; text-align:right; }
+.qa { border-bottom:1px solid var(--rule); }
+.qq { width:100%; display:flex; justify-content:space-between; align-items:center; gap:16px; padding:20px 2px; background:none; border:none; font-family:var(--body); font-size:16.5px; font-weight:650; color:var(--ink); cursor:pointer; text-align:left; }
+.qq::after { content:"+"; font-family:var(--mono); font-size:16px; color:var(--ink-3); transition:transform .3s var(--settle); }
+.qa.open .qq::after { transform:rotate(45deg); }
+.qp { display:grid; grid-template-rows:0fr; transition:grid-template-rows .26s var(--settle); }
+.qa.open .qp { grid-template-rows:1fr; }
+.qp > div { overflow:hidden; min-height:0; }
+.qp p { margin:0; padding:0 40px 22px 2px; font-size:15px; color:var(--ink-2); }
+.faqTop { border-top:1.5px solid var(--rule-strong); margin-top:40px; }
+#waitlist { overflow:hidden; }
+.final { border-top:1.5px solid var(--rule-strong); padding-top:72px; text-align:center; position:relative; }
+.bigZeno { position:absolute; left:50%; top:55%; transform:translate(-50%,-50%); font-family:var(--disp); font-weight:700; letter-spacing:-.055em; font-size:clamp(220px,34vw,520px); line-height:1; color:var(--ink); opacity:.05; pointer-events:none; user-select:none; white-space:nowrap; z-index:0; }
+.final > *:not(.bigZeno) { position:relative; z-index:1; }
+.final .shead { justify-content:center; } .final .shead i { display:none; }
+.final .lead { margin-left:auto; margin-right:auto; }
+.final .wform, .final .receipt { justify-content:center; margin-left:auto; margin-right:auto; }
+/* torn page edge — the sheet above ends ragged, footer sits on the sheet beneath (same paper) */
+.tear { height:26px; margin-bottom:-26px; position:relative; z-index:2; filter:drop-shadow(0 5px 5px rgba(20,22,31,.16)); pointer-events:none; }
+.tear::before { content:""; display:block; height:100%; background:var(--paper); clip-path:polygon(0 0, 100% 0, 100% 35%, 96% 60%, 91% 30%, 86% 68%, 80% 42%, 74% 75%, 68% 38%, 61% 70%, 55% 34%, 49% 66%, 43% 30%, 37% 72%, 31% 40%, 25% 78%, 19% 36%, 13% 64%, 8% 32%, 4% 58%, 0 38%); }
+footer { background:var(--paper); padding:76px 0 40px; position:relative; }
+.fGrid { display:grid; grid-template-columns:1.4fr repeat(4,minmax(0,1fr)); gap:32px; }
+.fCol h4 { font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3); margin:0 0 14px; }
+.fCol a { display:block; padding:5px 0; font-size:13.5px; color:var(--ink-2); text-decoration:none; }
+.fBlurb { font-size:13.5px; color:var(--ink-2); max-width:30ch; margin:14px 0 0; }
+.fBottom { display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-top:52px; padding-top:18px; border-top:1px solid var(--rule); font-size:12.5px; color:var(--ink-3); }
+
+@media (max-width:980px){
+  .heroGrid,.rGrid{grid-template-columns:1fr}
+  .exhibits,.mGrid{grid-template-columns:1fr;gap:40px}
+  .planRow{grid-template-columns:1fr;gap:14px}
+  .planCols{display:none}
+  .planRow.feat{margin-left:0}
+  .pPrice,.pBilled{text-align:left}
+  .fGrid{grid-template-columns:repeat(2,1fr)}
+  section{padding:72px 0}
+}
+@media (max-width:480px){
+  .audit{padding:16px 14px 14px}
+  .aRow{gap:9px}
+  .hero{padding-bottom:64px}
+  .fGrid{grid-template-columns:1fr;gap:20px}
+  .fBottom{margin-top:36px}
+}
+@media (min-width:1440px){
+  section{padding:132px 0}
+  .hero{padding:112px 0 104px}
+  .exhibits{margin-top:64px}
+  .mGrid{margin-top:60px}
+}
+
+/* inline cancel flow — a quick log printed under the row */
+.aLog { display:grid; grid-template-rows:0fr; opacity:0; transition:grid-template-rows .22s var(--settle), opacity .2s; }
+.aLog.open { grid-template-rows:1fr; opacity:1; }
+.aLog > div { overflow:hidden; min-height:0; }
+.aLog .flWrap { padding:8px 0 10px 46px; border-bottom:1px solid var(--rule); display:flex; flex-direction:column; gap:5px; }
+.fl { display:flex; gap:8px; align-items:baseline; font-family:var(--mono); font-size:9.5px; font-weight:600; letter-spacing:.08em; color:var(--ink-2); }
+.fl b { flex:none; font-weight:700; color:var(--green-text); }
+.fl.fee, .fl.fee b { color:var(--info); }
+.fl.trap b { color:var(--alert); }
+.fl.ok, .fl.ok b { color:var(--verified); }
+.fl .q { position:relative; color:var(--ink); }
+.fl .q i { position:absolute; left:-1px; right:-1px; top:52%; height:1.5px; background:var(--alert); transform:scaleX(0); transform-origin:left center; transition:transform .18s var(--settle); }
+.fl.dx .q i { transform:scaleX(1); }
+.fl.dx .q { color:var(--ink-3); }
+.fl .dcl { opacity:0; transition:opacity .15s .05s; color:var(--ink-3); }
+.fl.dx .dcl { opacity:1; }
+
+/* ============ THE PEN PASS — every hide/animate rule lives ONLY here.
+   Default state above is the final rendered page (no-JS, reduced motion,
+   print: everything visible). ============ */
+@media (prefers-reduced-motion: no-preference) {
+  /* print-in: a row/section printing onto the page */
+  html.js .a-print { opacity:0; transform:translateY(12px); }
+  html.js .a-print.in { opacity:1; transform:none; transition:opacity .4s var(--settle) var(--d,0s), transform .4s var(--settle) var(--d,0s); }
+  /* rule wipe: hairlines rule themselves in, left → right */
+  html.js .a-wipe { transform:scaleX(0); transform-origin:left center; }
+  html.js .a-wipe.in { transform:scaleX(1); transition:transform .6s var(--settle) var(--d,0s); }
+  html.js .shead.a-line b { opacity:0; }
+  html.js .shead.a-line i { transform:scaleX(0); transform-origin:left center; }
+  html.js .shead.a-line.in b { opacity:1; transition:opacity .3s var(--settle) var(--d,0s); }
+  html.js .shead.a-line.in i { transform:scaleX(1); transition:transform .55s var(--settle) calc(var(--d,0s) + .12s); }
+  /* masked headline lines rise */
+  html.js .a-mask .hl > span { transform:translateY(114%); }
+  html.js .a-mask.in .hl > span { transform:none; transition:transform .68s var(--settle) var(--d,0s); }
+  html.js .a-mask.in .hl:nth-child(2) > span { transition-delay:calc(var(--d,0s) + .09s); }
+  /* pen underline on the headline */
+  html.js .penu::after { transform:scaleX(0); }
+  html.js .a-mask.in .penu::after { transform:scaleX(1); transition:transform .5s var(--settle) calc(var(--d,0s) + .85s); }
+  /* vertical rules draw top → down (indictment quote, Pro plan edge) */
+  html.js .a-drawY .exQ::before, html.js .a-drawY.planRow.feat::before { transform:scaleY(0); }
+  html.js .a-drawY.in .exQ::before, html.js .a-drawY.in.planRow.feat::before { transform:scaleY(1); transition:transform .55s var(--settle) var(--d,0s); }
+  /* refusal ledger: dots draw, then the verdict prints */
+  html.js .a-lline .dots { transform:translateY(-3px) scaleX(0); transform-origin:left center; }
+  html.js .a-lline .vl, html.js .a-lline .lb { opacity:0; }
+  html.js .a-lline.in .dots { transform:translateY(-3px) scaleX(1); transition:transform .5s var(--settle) calc(var(--d,0s) + .1s); }
+  html.js .a-lline.in .lb { opacity:1; transition:opacity .3s var(--settle) var(--d,0s); }
+  html.js .a-lline.in .vl { opacity:1; transition:opacity .26s var(--settle) calc(var(--d,0s) + .5s); }
+  /* the watermark breathes in, staying faint (transform untouched) */
+  html.js .a-zeno { opacity:0; }
+  html.js .a-zeno.in { opacity:.05; transition:opacity 1.2s var(--settle) .15s; }
+  /* headlines print word by word */
+  html.js .a-words .w { opacity:0; transform:translateY(.5em); display:inline-block; }
+  html.js .a-words.in .w { opacity:1; transform:none; transition:opacity .4s var(--settle) var(--wd,0s), transform .4s var(--settle) var(--wd,0s); }
+  /* savings pulse when a switch flips */
+  html.js #yearly.pulse { animation:pulseNum .45s var(--thunk); }
+  @keyframes pulseNum { 40% { transform:scale(1.12); } }
+  /* running tally chip — rides the pen tip, hanging from the nav rule */
+  html.js #penTally { display:block; position:fixed; top:64px; left:0; z-index:45; text-decoration:none; opacity:0; pointer-events:none; will-change:transform; }
+  html.js #penTally .ptIn { display:flex; align-items:baseline; gap:9px; background:var(--ink-panel); color:#f2f1ea; padding:8px 12px 9px; border-radius:0 0 9px 9px; box-shadow:0 12px 24px -14px rgba(10,12,20,.55); opacity:0; transform:translateY(-100%); transition:transform .38s var(--settle), opacity .3s var(--settle); }
+  html.js #penTally.show { pointer-events:auto; opacity:1; }
+  html.js #penTally.show .ptIn { transform:none; opacity:1; }
+  html.js #penTally .ptIn b { font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:.14em; color:#8b91a5; white-space:nowrap; }
+  html.js #penTally .ptIn .ptAmt { font-size:13px; font-weight:700; color:#fff; }
+  html.js #penTally.tick .ptIn { animation:ptTick .34s var(--thunk); }
+  @keyframes ptTick { 40% { transform:scale(1.07); } }
+  html.js #penTally .ptFloat { position:absolute; top:100%; right:10px; margin-top:5px; font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:.06em; color:var(--ink-2); white-space:nowrap; opacity:0; pointer-events:none; }
+  html.js #penTally .ptFloat.ok { color:var(--verified); }
+  html.js #penTally .ptFloat.go { animation:ptFloat .9s var(--settle); }
+  @keyframes ptFloat { 0% { opacity:0; transform:translateY(14px); } 30% { opacity:1; } 100% { opacity:0; transform:translateY(-4px); } }
+
+  /* inline flow lines print fast; verified rows get a green wash */
+  html.js .fl { opacity:0; transform:translateY(5px); }
+  html.js .fl.in { opacity:1; transform:none; transition:opacity .16s var(--settle), transform .16s var(--settle); }
+  html.js .aRow.vflash { animation:vWash .9s var(--settle); }
+  @keyframes vWash { 0% { background:color-mix(in srgb, var(--green) 16%, transparent); } 100% { background:transparent; } }
+}
+</style>
+</head>
+<body>
+<div id="penRule" aria-hidden="true"></div>
+<a id="penTally" href="#ledger" aria-label="Running sample bill — back to the ledger">
+  <span class="ptFloat money" aria-hidden="true"></span>
+  <span class="ptIn"><b>STILL BILLING /MO</b><span class="ptAmt money">$0.00</span></span>
+</a>
+<div class="pv"><b>ANIMATED PREVIEW</b> OF THE NEXT.JS REBUILD — EXHIBIT FIGURES BELOW ARE SAMPLE VALUES; THE REAL PAGE COMPUTES THEM FROM THE 509-SERVICE CATALOG AT BUILD</div>
+
+<div id="marginIx" aria-hidden="true">
+  <span class="mk"></span>
+  <a href="#case" data-spy="case"><b>01</b> THE CASE</a>
+  <a href="#how" data-spy="how"><b>02</b> THE METHOD</a>
+  <a href="#refusal" data-spy="refusal"><b>03</b> THE REFUSAL</a>
+  <a href="#pricing" data-spy="pricing"><b>04</b> THE BILL</a>
+  <a href="#faq" data-spy="faq"><b>05</b> QUESTIONS</a>
+</div>
+
+<nav>
+  <div class="navIn">
+    <a class="brand" href="#"><svg width="24" height="24" viewBox="0 0 120 120" fill="none"><circle cx="60" cy="60" r="51" stroke="currentColor" stroke-width="7"></circle><circle cx="60" cy="60" r="41" stroke="currentColor" stroke-width="2.5"></circle><path d="M43 45 H77 L43 75 H77" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"></path></svg>zeno</a>
+    <div class="navLinks"><a href="#how">How it works</a><a href="#case">Cancel guides</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></div>
+    <div class="navR">
+      <a class="btn sm" href="#waitlist">Join waitlist</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero ruled" id="ledger" data-screen-label="Hero">
+  <div class="container">
+    <div class="heroGrid">
+      <div>
+        <span class="kick anim a-print">LAUNCHING ON IOS &amp; ANDROID · WAITLIST OPEN</span>
+        <h1 class="anim a-mask" style="--d:.1s"><span class="hl"><span>Know what you pay.</span></span><span class="hl"><span>Cancel <span class="penu">before</span> it charges.</span></span></h1>
+        <p class="heroSub anim a-print" style="--d:.34s">Zeno is the honest way to take back your subscriptions — discovery from receipts and statements you control, a warning before every renewal, and cancellations that aren’t called done until the charge actually stops.</p>
+        <form class="wform anim a-print" style="--d:.46s" data-wl><input type="email" placeholder="you@example.com" aria-label="Email address" required><button class="btn" type="submit">Join the waitlist <span class="arr">→</span></button></form>
+        <div class="receipt"><div class="lline"><span class="lb strong">Waitlist entry</span><span class="dots"></span><span class="vl" style="color:var(--verified)">LOGGED</span></div><div style="font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;color:var(--ink-3)">ONE EMAIL AT LAUNCH · NO DRIP CAMPAIGN · <span data-wl-time></span></div></div>
+        <div class="heroTicks anim a-print" style="--d:.56s"><span class="tick">No bank login required</span><span class="tick">Discovery you control</span><span class="tick">Free to start</span></div>
+      </div>
+      <div class="audit anim a-print" style="--d:.25s" role="group" aria-label="Sample ledger — flip a switch to see what cancelling saves">
+        <div class="aHead"><span>YOUR LEDGER · SAMPLE</span><span id="billing">5 BILLING</span></div>
+        <div class="cols"><span>SERVICE</span><span>MONTHLY / KEEP</span></div>
+        <div id="rows">
+          <div class="aRow anim a-print" style="--d:.5s" data-amt="15.99" data-meta="RENEWS JUL 28"><span class="aBrand" style="background:#E50914">N</span><span style="flex:1;min-width:0"><span class="aName">Netflix<i></i></span><span class="aMeta">RENEWS JUL 28</span></span><span class="aAmt money">$15.99</span><button class="sw" role="switch" aria-checked="true" aria-label="Cancel Netflix"><span></span></button></div>
+          <div class="aRow anim a-print" style="--d:.57s" data-amt="54.99" data-meta="RENEWS JUL 14 · DARK-PATTERN CANCEL"><span class="aBrand" style="background:#FF3B30">A</span><span style="flex:1;min-width:0"><span class="aName">Adobe CC<i></i></span><span class="aMeta">RENEWS JUL 14 · DARK-PATTERN CANCEL</span></span><span class="aAmt money">$54.99</span><button class="sw" role="switch" aria-checked="true" aria-label="Cancel Adobe CC"><span></span></button></div>
+          <div class="aRow anim a-print" style="--d:.64s" data-amt="10.99" data-meta="RENEWS AUG 2"><span class="aBrand" style="background:#1DB954">S</span><span style="flex:1;min-width:0"><span class="aName">Spotify<i></i></span><span class="aMeta">RENEWS AUG 2</span></span><span class="aAmt money">$10.99</span><button class="sw" role="switch" aria-checked="true" aria-label="Cancel Spotify"><span></span></button></div>
+          <div class="aRow anim a-print" style="--d:.71s" data-amt="13.99" data-meta="TRIAL CONVERTS JUL 12"><span class="aBrand" style="background:#113CCF">D</span><span style="flex:1;min-width:0"><span class="aName">Disney+<i></i></span><span class="aMeta">TRIAL CONVERTS JUL 12</span></span><span class="aAmt money">$13.99</span><button class="sw" role="switch" aria-checked="true" aria-label="Cancel Disney+"><span></span></button></div>
+          <div class="aRow anim a-print" style="--d:.78s" data-amt="2.99" data-meta="RENEWS AUG 5"><span class="aBrand" style="background:#3B82F6">i</span><span style="flex:1;min-width:0"><span class="aName">iCloud+<i></i></span><span class="aMeta">RENEWS AUG 5</span></span><span class="aAmt money">$2.99</span><button class="sw" role="switch" aria-checked="true" aria-label="Cancel iCloud+"><span></span></button></div>
+        </div>
+        <div class="aTotals anim a-print" style="--d:.88s">
+          <div class="row"><span class="aHead" style="padding:0">COMMITTED / MONTH</span><span id="total" class="tally" data-to="98.95" data-prefix="$" data-dec="2" data-dur="1000" style="--d:.88s">$98.95</span></div>
+          <div class="row" style="margin-top:6px"><span class="aHead" style="padding:0;color:var(--verified)">BACK IN YOUR POCKET / YEAR</span><span id="yearly">+$0.00</span></div>
+        </div>
+        <p class="aNote anim a-print" style="--d:1s">SAMPLE LEDGER — FLIP A SWITCH OFF TO WALK THE REAL CANCEL FLOW, TRAPS INCLUDED. IN THE APP, A CANCELLATION IS ONLY MARKED VERIFIED AFTER YOUR NEXT RECEIPT OR STATEMENT SHOWS NO CHARGE.</p>
+      </div>
+    </div>
+  </div>
+  <span aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)" id="live"></span>
+</header>
+
+<section id="case" data-screen-label="The Case">
+  <div class="container">
+    <div class="shead anim a-line"><b>THE CASE · FROM OUR OWN CATALOG</b><i></i></div>
+    <h2 class="anim a-words">The subscription industry<br>counts on you not counting.</h2>
+    <p class="lead anim a-print" style="--d:.18s">We index how subscriptions actually get cancelled. The record isn’t flattering — and every figure below is computed from that catalog, not invented for a landing page.</p>
+    <div class="exhibits">
+      <div class="anim a-print"><span class="exK">EXHIBIT A</span><div class="exV odo" data-to="509">509</div><p class="exB">Services indexed in Zeno’s cancellation catalog — each with real, step-by-step cancellation instructions.</p><cite class="exC">ZENO CANCELLATION CATALOG · JULY 2026</cite></div>
+      <div class="anim a-print" style="--d:.12s"><span class="exK">EXHIBIT B</span><div class="exV"><span class="odo" data-to="168">168</span><small style="font-size:18px;color:var(--ink-3)"> *</small></div><p class="exB">Of them rate their cancellation <em>hard</em> — or use documented dark patterns to keep you paying. <span style="font-family:var(--mono);font-size:10px;color:var(--ink-3)">*SAMPLE VALUE IN THIS PREVIEW</span></p><cite class="exC">DIFFICULTY RATINGS, SAME CATALOG</cite></div>
+      <div class="anim a-print a-drawY" style="--d:.24s"><span class="exK">EXHIBIT C</span><blockquote class="exQ">“Decline the retention offers — there are usually three.”</blockquote><cite class="exC">STEP FROM A DOCUMENTED DARK-PATTERN GUIDE — VERBATIM ON THE REAL PAGE</cite></div>
+    </div>
+  </div>
+</section>
+
+<section id="how" class="desk" data-screen-label="The Method">
+  <div class="container">
+    <div class="shead anim a-line"><b>THE METHOD</b><i></i></div>
+    <h2 class="anim a-words">An audit, not an app tour.</h2>
+    <div class="mGrid">
+      <div class="mCol anim a-print"><span class="mNum">01</span><h3 class="mT">Discover — on your command</h3><p class="mB">Scan email receipts in an inbox you connect, or import a bank-statement CSV you export yourself. Zeno reads them on your device and scans only when you tap scan — no background collection, no bank login.</p></div>
+      <div class="mCol anim a-print" style="--d:.14s"><span class="mNum">02</span><h3 class="mT">Warn — before it charges</h3><p class="mB">Seven days out, three days out, and the morning of. Every reminder carries the exact amount about to leave your account, with quiet hours respected.</p></div>
+      <div class="mCol mCol3 anim a-print" style="--d:.28s"><span class="mNum">03</span><h3 class="mT">Cancel — and verify</h3><p class="mB">One tap opens the service's real cancellation steps, dark-pattern traps flagged. Then Zeno checks your next receipt or statement — nothing is called cancelled until the charge actually stops.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="refusal" class="ruled" data-screen-label="The Refusal">
+  <div class="container">
+    <div class="rGrid">
+      <div>
+        <div class="shead anim a-line"><b>THE REFUSAL</b><i></i></div>
+        <h2 class="anim a-words">Built for people who refuse to hand a bank login to an app.</h2>
+        <p class="lead anim a-print" style="--d:.18s">Most subscription apps start by asking for your bank credentials. Zeno is built on refusing to — discovery works from receipts and statements you already control.</p>
+        <div style="margin-top:28px" class="anim a-print"><a class="btn ghost" href="#">See the no-bank-login comparison →</a></div>
+      </div>
+      <div class="rLines">
+        <div class="lline anim a-lline"><span class="lb">Bank login</span><span class="dots"></span><span class="vl" style="color:var(--verified)">NEVER</span></div>
+        <div class="lline anim a-lline" style="--d:.09s"><span class="lb">Your credentials</span><span class="dots"></span><span class="vl" style="color:var(--verified)">NOT ASKED FOR</span></div>
+        <div class="lline anim a-lline" style="--d:.18s"><span class="lb">Background scanning<small>SCANS RUN WHEN YOU TAP SCAN</small></span><span class="dots"></span><span class="vl" style="color:var(--verified)">NONE</span></div>
+        <div class="lline anim a-lline" style="--d:.27s"><span class="lb">Data brokers</span><span class="dots"></span><span class="vl" style="color:var(--verified)">ZERO</span></div>
+        <div class="lline anim a-lline" style="--d:.36s"><span class="lb strong">Your data<small>ENCRYPTED ON YOUR DEVICE</small></span><span class="dots"></span><span class="vl">YOURS</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing" class="desk" data-screen-label="The Honest Bill">
+  <div class="container">
+    <div class="shead anim a-line"><b>THE HONEST BILL</b><i></i></div>
+    <h2 class="anim a-words">Priced like we mean it.</h2>
+    <p class="lead anim a-print" style="--d:.18s">Free is genuinely useful, Pro gates exactly three features, and Lifetime exists because we’re not ironic about recurring charges. No trial countdowns, no guilt copy, no “most popular” theater.</p>
+    <div style="margin-top:8px">
+      <div class="planCols anim a-print"><span>PLAN</span><span>WHAT YOU GET</span><span>PRICE</span></div>
+      <div class="planRow anim a-print">
+        <div><div class="pName">Free</div><p class="pBlurb">Enough to stop the bleeding — and it stays free.</p><div class="pMeta">No card required</div></div>
+        <ul class="pFeats"><li>Track up to 10 subscriptions</li><li>7 / 3 / day-of renewal reminders</li><li>Cancellation guides + verification</li><li>Insights, encrypted on device</li></ul>
+        <div><div class="pPrice">$0</div><div class="pBilled">Free forever</div></div>
+      </div>
+      <div class="planRow feat anim a-print a-drawY" style="--d:.1s">
+        <div><div class="pName">Pro</div><p class="pBlurb">The full ledger. Everything in Free stays free — Pro adds exactly three things.</p></div>
+        <ul class="pFeats"><li>Unlimited subscriptions</li><li>Category budgets</li><li>Envelope budgeting</li><li>Everything in Free, included</li></ul>
+        <div><div class="pPrice"><span class="tally" data-to="2.50" data-prefix="$" data-dec="2" data-dur="700">$2.50</span><small> /mo</small></div><div class="pBilled">Billed $29.99/yr · or $3.99 monthly</div></div>
+      </div>
+      <div class="planRow anim a-print" style="--d:.2s">
+        <div><div class="pName">Lifetime</div><p class="pBlurb">Pay once, own it forever. We're a subscription app that will sell you a way out of subscriptions.</p><div class="pMeta">YNAB charges $109 every year. This is once.</div></div>
+        <ul class="pFeats"><li>Everything in Pro</li><li>One payment — yours forever</li><li>No recurring charge, ever</li></ul>
+        <div><div class="pPrice"><span class="tally" data-to="79.99" data-prefix="$" data-dec="2" data-dur="800">$79.99</span><small> once</small></div><div class="pBilled">One payment · yours forever</div></div>
+      </div>
+      <div class="planRow anim a-print" style="--d:.3s">
+        <div><div class="pName">Family</div><p class="pBlurb">One household ledger, up to five people — members share totals, never their lists.</p><div class="pMeta">Up to 5 members · ~$1.40 / person / mo</div></div>
+        <ul class="pFeats"><li>Up to 5 members</li><li>Shared family vault</li><li>Per-member spend totals</li><li>Everything in Pro</li></ul>
+        <div><div class="pPrice"><span class="tally" data-to="6.99" data-prefix="$" data-dec="2" data-dur="800">$6.99</span><small> /mo</small></div><div class="pBilled">Billed monthly</div></div>
+      </div>
+    </div>
+    <p style="margin-top:26px;font-size:13.5px;color:var(--ink-3);max-width:62ch" class="anim a-print">Founding-waitlist members get Pro free for 3 months at launch. Cancel anytime — in one tap, obviously. Prices in USD, billed via the App Store / Google Play.</p>
+  </div>
+</section>
+
+<section id="faq" data-screen-label="Questions">
+  <div class="container" style="max-width:820px">
+    <div class="shead anim a-line"><b>QUESTIONS</b><i></i></div>
+    <h2 class="anim a-words">Asked and answered.</h2>
+    <div class="faqTop anim a-print" style="--d:.18s">
+      <div class="qa open"><button class="qq" aria-expanded="true" aria-controls="qa1">When does Zeno launch?</button><div class="qp" id="qa1" role="region"><div><p>We’re finishing the iOS and Android builds now. Join the waitlist and you’ll be among the first invited when we reach the App Store and Play Store — founding members get 3 months of Pro free.</p></div></div></div>
+      <div class="qa"><button class="qq" aria-expanded="false" aria-controls="qa2">Do I have to connect my bank?</button><div class="qp" id="qa2" role="region"><div><p>No — and that’s the point. Zeno discovers subscriptions from email receipts and bank-statement CSVs you import yourself. We never ask for bank credentials, and there’s no data aggregator in the loop.</p></div></div></div>
+      <div class="qa"><button class="qq" aria-expanded="false" aria-controls="qa3">How does discovery actually work?</button><div class="qp" id="qa3" role="region"><div><p>You start a scan of billing receipts in an inbox you connect (read-only), or import a statement CSV from any bank. Zeno reads them on your device — a scan runs when you tap scan, not in the background — and matches charges against a 509-service catalog.</p></div></div></div>
+      <div class="qa"><button class="qq" aria-expanded="false" aria-controls="qa4">Can Zeno cancel subscriptions for me?</button><div class="qp" id="qa4" role="region"><div><p>Zeno takes you straight to each service’s real cancellation flow with step-by-step guidance and warnings about known dark patterns — then checks your next receipt or statement before marking it cancelled.</p></div></div></div>
+      <div class="qa"><button class="qq" aria-expanded="false" aria-controls="qa5">What will it cost?</button><div class="qp" id="qa5" role="region"><div><p>Free forever for up to 10 subscriptions. Pro is $3.99/mo or $29.99/year and adds unlimited subscriptions, category budgets and envelope budgeting. Lifetime is a single $79.99 payment. Family is $6.99/mo for up to 5 people.</p></div></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="waitlist" style="padding-top:0" data-screen-label="Final CTA">
+  <div class="container">
+    <div class="final">
+      <span class="bigZeno anim a-zeno" aria-hidden="true">zeno</span>
+      <div class="shead anim a-line"><b>COMING SOON TO IOS &amp; ANDROID</b></div>
+      <h2 class="anim a-mask" style="--d:.08s"><span class="hl"><span>Stop paying for things</span></span><span class="hl"><span>you forgot about.</span></span></h2>
+      <p class="lead anim a-print" style="--d:.26s;text-align:center">The audit is free. The waitlist is open. Founding members get 3 months of Pro when we launch.</p>
+      <form class="wform anim a-print" style="--d:.36s" data-wl><input type="email" placeholder="you@example.com" aria-label="Email address" required><button class="btn" type="submit">Join the waitlist <span class="arr">→</span></button></form>
+      <div class="receipt" style="max-width:480px"><div class="lline"><span class="lb strong">Waitlist entry</span><span class="dots"></span><span class="vl" style="color:var(--verified)">LOGGED</span></div><div style="font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;color:var(--ink-3)">ONE EMAIL AT LAUNCH · NO DRIP CAMPAIGN · <span data-wl-time></span></div></div>
+    </div>
+  </div>
+</section>
+
+<div class="tear" aria-hidden="true"></div>
+<footer>
+  <div class="container">
+    <div class="fGrid">
+      <div><a class="brand" href="#"><svg width="24" height="24" viewBox="0 0 120 120" fill="none"><circle cx="60" cy="60" r="51" stroke="currentColor" stroke-width="7"></circle><circle cx="60" cy="60" r="41" stroke="currentColor" stroke-width="2.5"></circle><path d="M43 45 H77 L43 75 H77" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"></path></svg>zeno</a>
+        <p class="fBlurb">The honest way to take back your subscriptions. Discovery from receipts you control, warnings before every renewal, cancellations that get verified. No bank login required.</p>
+      </div>
+      <div class="fCol"><h4>Product</h4><a href="#how">How it works</a><a href="#pricing">Pricing</a><a href="#case">Cancellation guides</a><a href="#faq">FAQ</a><a href="#waitlist">Join the waitlist</a></div>
+      <div class="fCol"><h4>Compare</h4><a href="#">Rocket Money alternative</a><a href="#">YNAB alternative</a><a href="#">Monarch alternative</a><a href="#">No bank login</a><a href="#">Budgeting without bank sync</a></div>
+      <div class="fCol"><h4>Features</h4><a href="#">Family Vault</a><a href="#">Spend Twin</a><a href="#">Widgets &amp; Watch</a><a href="#">Open banking (planned)</a><a href="#">Business</a></div>
+      <div class="fCol"><h4>Company</h4><a href="#">Developers</a><a href="#">Partners</a><a href="#">Privacy policy</a><a href="#">Terms of service</a><a href="#">Cookie policy</a></div>
+    </div>
+    <div class="fBottom"><span>© 2026 Zeno. All rights reserved.</span><span style="font-family:var(--mono);letter-spacing:.08em;color:var(--green-text)">KNOW WHAT YOU PAY.</span></div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var armed = document.documentElement.classList.contains("js") && !reduced;
+
+  /* ---- tallies: adding-machine count-up with failsafe (never stuck at 0) ---- */
+
+  /* ---- tallies: adding-machine count-up with failsafe (never stuck at 0) ---- */
+  function runTally(el) {
+    if (el.dataset.done) return; el.dataset.done = "1";
+    var to = parseFloat(el.dataset.to), dec = +(el.dataset.dec || 0),
+        pre = el.dataset.prefix || "", dur = +(el.dataset.dur || 700);
+    if (!armed) { el.textContent = pre + to.toFixed(dec); return; }
+    var t0 = performance.now(), raf;
+    function tick(t) {
+      var p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+      el.textContent = pre + (to * e).toFixed(dec);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    }
+    raf = requestAnimationFrame(tick);
+    setTimeout(function () { cancelAnimationFrame(raf); el.textContent = pre + to.toFixed(dec); }, dur + 300);
+  }
+
+  /* ---- odometer: digits roll into place like a counter wheel ---- */
+  function runOdo(el) {
+    if (el.dataset.done) return; el.dataset.done = "1";
+    var final = el.dataset.to;
+    if (!armed) { el.textContent = final; return; }
+    var strips = [];
+    el.textContent = "";
+    final.split("").forEach(function (ch) {
+      if (/\d/.test(ch)) {
+        var oc = document.createElement("span"); oc.className = "oc";
+        var os = document.createElement("span"); os.className = "os";
+        for (var i = 0; i <= 9; i++) { var d = document.createElement("span"); d.textContent = i; os.appendChild(d); }
+        oc.appendChild(os); el.appendChild(oc); strips.push({ os: os, d: +ch });
+      } else { var sp = document.createElement("span"); sp.textContent = ch; el.appendChild(sp); }
+    });
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      strips.forEach(function (o, i) {
+        o.os.style.transition = "transform " + (850 + i * 220) + "ms cubic-bezier(.22,.8,.26,1)";
+        o.os.style.transform = "translateY(-" + o.d + "em)";
+      });
+    }); });
+    setTimeout(function () { el.textContent = final; }, 1900);
+  }
+
+  /* ---- headlines print word by word ---- */
+  if (armed) {
+    document.querySelectorAll(".a-words").forEach(function (h) {
+      var wd = 0, nodes = Array.prototype.slice.call(h.childNodes);
+      nodes.forEach(function (nd) {
+        if (nd.nodeType !== 3) return;
+        var frag = document.createDocumentFragment();
+        nd.textContent.split(/(\s+)/).forEach(function (part) {
+          if (!part) return;
+          if (/^\s+$/.test(part)) { frag.appendChild(document.createTextNode(part)); return; }
+          var s = document.createElement("span"); s.className = "w"; s.textContent = part;
+          s.style.setProperty("--wd", (wd * 50) + "ms"); wd++;
+          frag.appendChild(s);
+        });
+        h.replaceChild(frag, nd);
+      });
+    });
+  }
+
+  /* ---- the pen pass: IntersectionObserver, fire once, disconnect ---- */
+  if (armed) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        io.unobserve(en.target);
+        en.target.classList.add("in");
+        var ds = parseFloat((en.target.style.getPropertyValue("--d") || "0")) * 1000;
+        en.target.querySelectorAll(".tally").forEach(function (t) { setTimeout(function () { runTally(t); }, ds); });
+        en.target.querySelectorAll(".odo").forEach(function (t) { setTimeout(function () { runOdo(t); }, ds); });
+        if (en.target.classList.contains("tally")) setTimeout(function () { runTally(en.target); }, ds);
+        if (en.target.classList.contains("odo")) setTimeout(function () { runOdo(en.target); }, ds);
+      });
+    }, { rootMargin: "0px 0px -56px 0px", threshold: 0.01 });
+    document.querySelectorAll(".anim, .tally, .odo").forEach(function (el) { io.observe(el); });
+    /* failsafe: anything still hidden after 6s prints itself */
+    setTimeout(function () {
+      document.querySelectorAll(".anim:not(.in)").forEach(function (el) {
+        var r = el.getBoundingClientRect();
+        if (r.top < innerHeight && r.bottom > 0) { el.classList.add("in"); el.querySelectorAll(".tally").forEach(runTally); el.querySelectorAll(".odo").forEach(runOdo); }
+      });
+    }, 6000);
+  }
+
+  /* ---- pen rule + nav: scroll progress as the pen ruling the sheet ---- */
+  var rule = document.getElementById("penRule"), navEl = document.querySelector("nav");
+  var ticking = false;
+  function onScroll() {
+    if (ticking) return; ticking = true;
+    requestAnimationFrame(function () {
+      ticking = false;
+      var max = document.documentElement.scrollHeight - innerHeight;
+      rule.style.transform = "scaleX(" + (max > 0 ? Math.min(1, scrollY / max) : 0) + ")";
+      navEl.classList.toggle("scrolled", scrollY > 8);
+    });
+  }
+  addEventListener("scroll", onScroll, { passive: true });
+  addEventListener("resize", onScroll, { passive: true });
+  onScroll();
+
+  /* ---- margin index scroll-spy ---- */
+  var spyLinks = document.querySelectorAll("#marginIx a"), mk = document.querySelector("#marginIx .mk"),
+      spyIds = ["case", "how", "refusal", "pricing", "faq"];
+  if (armed && spyLinks.length) {
+    var spyIO = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        spyLinks.forEach(function (a) { a.classList.toggle("on", a.dataset.spy === en.target.id); });
+        var ix = spyIds.indexOf(en.target.id);
+        if (ix > -1) { mk.style.opacity = "1"; mk.style.transform = "translateY(" + (ix * 38 + 4) + "px)"; }
+      });
+    }, { rootMargin: "-40% 0px -55% 0px" });
+    spyIds.forEach(function (id) {
+      var s = document.getElementById(id); if (s) spyIO.observe(s);
+    });
+  }
+
+  /* ---- the audit: switches strike, totals re-tally ---- */
+  var live = document.getElementById("live");
+  var rows = Array.prototype.slice.call(document.querySelectorAll("#rows .aRow"));
+  var BASE = rows.reduce(function (a, r) { return a + parseFloat(r.dataset.amt); }, 0);
+  var current = { total: BASE, yearly: 0 };
+  function animateTo(id, target, prefix) {
+    var el = document.getElementById(id), from = current[id];
+    current[id] = target;
+    if (!armed) { el.textContent = prefix + target.toFixed(2); return; }
+    var t0 = performance.now(), dur = 380;
+    function tick(t) {
+      var p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+      el.textContent = prefix + (from + (target - from) * e).toFixed(2);
+      if (p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+    setTimeout(function () { el.textContent = prefix + target.toFixed(2); }, dur + 200);
+  }
+  function update() {
+    var saved = rows.reduce(function (a, r) { return a + (r.classList.contains("off") ? parseFloat(r.dataset.amt) : 0); }, 0);
+    animateTo("total", BASE - saved, "$");
+    animateTo("yearly", saved * 12, "+$");
+    var n = rows.filter(function (r) { return !r.classList.contains("off"); }).length;
+    document.getElementById("billing").textContent = n + " BILLING";
+    if (armed && saved > 0) { var y = document.getElementById("yearly"); y.classList.remove("pulse"); void y.offsetWidth; y.classList.add("pulse"); }
+  }
+  /* ---- the cancel flow: performed inline, fast, right under the row ---- */
+  var FLOWS = {
+    "Netflix": [
+      { c: "run", t: "OPENING NETFLIX \u2192 ACCOUNT \u2192 CANCEL MEMBERSHIP" },
+      { c: "ok", t: "SUBMITTED \u2014 TWO TAPS, NO TRAPS" } ],
+    "Adobe CC": [
+      { c: "run", t: "OPENING ADOBE \u2192 PLANS \u2192 MANAGE PLAN" },
+      { c: "fee", t: "FEE CHECK \u00b7 TERM ENDS JUL 14 \u2014 CANCELLING TODAY COSTS $0" },
+      { c: "trap", pre: "OFFER 1/3", q: "\u201c50% OFF FOR 3 MONTHS\u201d" },
+      { c: "trap", pre: "OFFER 2/3", q: "\u201c2 MONTHS FREE\u201d" },
+      { c: "trap", pre: "OFFER 3/3", q: "\u201cSWITCH TO $9.99 PHOTOGRAPHY\u201d" },
+      { c: "ok", t: "SUBMITTED \u2014 3 OFFERS DECLINED" } ],
+    "Spotify": [
+      { c: "run", t: "OPENING SPOTIFY \u2192 ACCOUNT \u2192 YOUR PLAN" },
+      { c: "ok", t: "SUBMITTED \u2014 ONE CONFIRM SCREEN" } ],
+    "Disney+": [
+      { c: "run", t: "OPENING ACCOUNT \u2192 SUBSCRIPTION \u2192 CANCEL" },
+      { c: "trap", pre: "OFFER 1/1", q: "\u201cSTAY FOR $4.99/MO\u201d" },
+      { c: "ok", t: "SUBMITTED \u2014 TRIAL ENDS JUL 12, $0" } ],
+    "iCloud+": [
+      { c: "run", t: "SETTINGS \u2192 ICLOUD \u2192 MANAGE STORAGE" },
+      { c: "ok", t: "SUBMITTED \u2014 DOWNGRADED TO 5 GB FREE" } ]
+  };
+  var GLYPH = { run: "\u2192", fee: "!", trap: "\u2715", ok: "\u2713" };
+  function reveal2(el, cls, ms) {
+    var done = false;
+    function go() { if (done) return; done = true; el.classList.add(cls); }
+    requestAnimationFrame(function () { requestAnimationFrame(go); });
+    setTimeout(go, ms || 70); /* rAF-suspension failsafe */
+  }
+  function playFlow(row, name, sw, done) {
+    var lines = FLOWS[name];
+    var log = document.createElement("div"); log.className = "aLog";
+    var inner = document.createElement("div"), wrap = document.createElement("div");
+    wrap.className = "flWrap"; inner.appendChild(wrap); log.appendChild(inner);
+    row.parentNode.insertBefore(log, row.nextSibling);
+    reveal2(log, "open");
+    var i = 0;
+    function step() {
+      if (i >= lines.length) {
+        done();
+        setTimeout(function () {
+          log.classList.remove("open");
+          setTimeout(function () { log.remove(); sw.disabled = false; }, 260);
+        }, 1400);
+        return;
+      }
+      var L = lines[i++];
+      var fl = document.createElement("div"); fl.className = "fl " + L.c;
+      fl.innerHTML = "<b>" + GLYPH[L.c] + "</b><span>" +
+        (L.c === "trap"
+          ? L.pre + ' <span class="q">' + L.q + '<i></i></span> <span class="dcl">\u2014 DECLINED</span>'
+          : L.t) + "</span>";
+      wrap.appendChild(fl);
+      reveal2(fl, "in");
+      if (L.c === "trap") setTimeout(function () { fl.classList.add("dx"); }, 240);
+      setTimeout(step, L.c === "trap" ? 430 : 280);
+    }
+    setTimeout(step, 200);
+  }
+  function finishCancelled(row, name) {
+    row.querySelector(".aMeta").textContent = "CANCELLED \u2014 VERIFYING NEXT STATEMENT";
+    live.textContent = name + " cancelled \u2014 verifying next statement";
+    update();
+    row._vt = setTimeout(function () {
+      if (!row.classList.contains("off")) return;
+      row.querySelector(".aMeta").textContent = "VERIFIED CANCELLED \u2014 STATEMENT SHOWED NO CHARGE";
+      if (armed) { row.classList.remove("vflash"); void row.offsetWidth; row.classList.add("vflash"); }
+      live.textContent = name + " verified cancelled \u2014 the charge stopped";
+    }, 4200);
+  }
+  function restoreRow(row, name) {
+    clearTimeout(row._vt);
+    row.classList.remove("off", "vflash");
+    row.querySelector(".sw").setAttribute("aria-checked", "true");
+    row.querySelector(".aMeta").textContent = row.dataset.meta;
+    live.textContent = name + " kept";
+    update();
+  }
+  rows.forEach(function (row) {
+    var sw = row.querySelector(".sw"), name = row.querySelector(".aName").firstChild.textContent;
+    sw.addEventListener("click", function () {
+      if (sw.disabled) return;
+      if (row.classList.contains("off")) { restoreRow(row, name); return; }
+      row.classList.add("off");
+      sw.setAttribute("aria-checked", "false");
+      if (armed && FLOWS[name]) {
+        sw.disabled = true;
+        row.querySelector(".aMeta").textContent = "RUNNING THE CANCEL FLOW\u2026";
+        live.textContent = "Cancelling " + name;
+        playFlow(row, name, sw, function () { finishCancelled(row, name); });
+      } else {
+        finishCancelled(row, name);
+      }
+    });
+  });
+
+  /* ---- the running tally: a chip rides the pen tip, adding the sample bill up as sections pass ---- */
+  var chip = document.getElementById("penTally");
+  if (armed && chip) {
+    var ptAmt = chip.querySelector(".ptAmt"), ptFloat = chip.querySelector(".ptFloat");
+    var ptSecs = ["case", "how", "refusal", "pricing", "faq"].map(function (id) { return document.getElementById(id); });
+    var heroEl = document.getElementById("ledger");
+    var ptN = 0, ptVal = 0, ptW = 150, ptRaf;
+    function ptMeasure() { ptW = chip.offsetWidth || 150; }
+    function ptTween(to) {
+      cancelAnimationFrame(ptRaf);
+      var from = ptVal, t0 = performance.now(), dur = 420;
+      function tk(t) {
+        var p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+        ptVal = from + (to - from) * e;
+        ptAmt.textContent = "$" + ptVal.toFixed(2);
+        if (p < 1) ptRaf = requestAnimationFrame(tk);
+      }
+      ptRaf = requestAnimationFrame(tk);
+      setTimeout(function () { cancelAnimationFrame(ptRaf); ptVal = to; ptAmt.textContent = "$" + to.toFixed(2); }, dur + 200);
+    }
+    function ptUpdate() {
+      chip.classList.toggle("show", heroEl.getBoundingClientRect().bottom < 64);
+      var max = document.documentElement.scrollHeight - innerHeight;
+      var p = max > 0 ? Math.min(1, scrollY / max) : 0;
+      var x = Math.min(Math.max(p * innerWidth - ptW, 10), innerWidth - ptW - 10);
+      chip.style.transform = "translateX(" + x + "px)";
+      var n = 0;
+      for (var i = 0; i < ptSecs.length; i++) if (ptSecs[i].getBoundingClientRect().top < innerHeight * 0.6) n++;
+      if (n !== ptN) {
+        var grew = n > ptN; ptN = n;
+        var target = 0;
+        for (var j = 0; j < n; j++) if (!rows[j].classList.contains("off")) target += parseFloat(rows[j].dataset.amt);
+        ptTween(target);
+        chip.classList.remove("tick"); void chip.offsetWidth; chip.classList.add("tick");
+        if (grew && n > 0) {
+          var r = rows[n - 1], off = r.classList.contains("off");
+          ptFloat.textContent = off ? "CANCELLED · $0.00" : "+ $" + parseFloat(r.dataset.amt).toFixed(2);
+          ptFloat.classList.toggle("ok", off);
+          ptFloat.classList.remove("go"); void ptFloat.offsetWidth; ptFloat.classList.add("go");
+        }
+      }
+    }
+    var ptTicking = false;
+    addEventListener("scroll", function () {
+      if (ptTicking) return; ptTicking = true;
+      requestAnimationFrame(function () { ptTicking = false; ptUpdate(); });
+    }, { passive: true });
+    addEventListener("resize", function () { ptMeasure(); ptUpdate(); }, { passive: true });
+    setTimeout(function () { ptMeasure(); ptUpdate(); }, 120);
+  }
+
+  /* ---- faq accordion (grid-rows unfold, no jank) ---- */
+  document.querySelectorAll(".qa .qq").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var qa = btn.parentElement, open = qa.classList.toggle("open");
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+  });
+
+  /* ---- waitlist forms: success is a receipt line, not a toast ---- */
+  document.querySelectorAll("form[data-wl]").forEach(function (form) {
+    form.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var rc = form.nextElementSibling;
+      rc.querySelector("[data-wl-time]").textContent = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }).toUpperCase();
+      rc.classList.add("show");
+      form.querySelector("input").value = "";
+      live.textContent = "Waitlist entry logged.";
+    });
+  });
+})();
+</script>
+</body>
+</html>

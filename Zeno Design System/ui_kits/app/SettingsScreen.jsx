@@ -5,7 +5,7 @@
    sentence set like a pull-quote, not fine print. ② Tempted by: colored
    icon-tile grid rows → plain rows with small ink glyphs. ③ Lazy: iOS
    settings clone with chevrons everywhere. */
-function SettingsScreen({ dark, onToggleDark, onUpgrade, onBack, onSecurity, onFamily, onWidgets }) {
+function SettingsScreen({ dark, onToggleDark, onUpgrade, onBack, onSecurity, onFamily, onWidgets, onProfile }) {
   const [reminders, setReminders] = React.useState(true);
   const [sheet, setSheet] = React.useState(null); // 'currency' | 'quiet' | 'delete'
   const [currency, setCurrency] = React.useState("USD $");
@@ -30,13 +30,13 @@ function SettingsScreen({ dark, onToggleDark, onUpgrade, onBack, onSecurity, onF
 
         {/* Account line */}
         <div style={{ padding: "14px 20px 0" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 14, borderBottom: "1px solid var(--rule-strong)" }}>
+          <div onClick={onProfile} style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 14, borderBottom: "1px solid var(--rule-strong)", cursor: "pointer" }}>
             <ServiceAvatar name="Alex Rivera" color="var(--cat-teal)" size={44} shape="circle" />
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: "var(--font-sans)", fontWeight: 700, fontSize: 16 }}>Alex Rivera</div>
               <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.06em", color: "var(--text-tertiary)", marginTop: 2 }}>LOCAL LEDGER · NO ACCOUNT</div>
             </div>
-            <Button variant="secondary" size="sm" onClick={onUpgrade}>Free · 8/10</Button>
+            <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); onUpgrade(); }}>Free · 8/10</Button>
           </div>
         </div>
 

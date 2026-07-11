@@ -1,0 +1,132 @@
+/* Cancel-guide hub — the evidence library. 509 guides, browsable fast.
+   Ledger treatment: ruled search, caps-mono category heads, hairline link
+   grid. Class names unchanged (CancelHubBrowser + [slug] pages use them). */
+
+/* ── The library settles on load — search bar prints, category rules wipe.
+   CSS-only, once, html.js-gated, reduced-motion collapses to static.
+   Below-fold headings finish unseen; nothing listens to scroll. ── */
+@media (prefers-reduced-motion: no-preference) {
+  :global(html.js) .search {
+    animation: hubPrint 0.4s cubic-bezier(0.22, 0.8, 0.26, 1) 0.05s both;
+  }
+  :global(html.js) .categoryHeading {
+    animation: hubPrint 0.35s cubic-bezier(0.22, 0.8, 0.26, 1) 0.12s both;
+  }
+  :global(html.js) .categoryHeading::after {
+    transform-origin: left center;
+    animation: hubRule 0.55s cubic-bezier(0.22, 0.8, 0.26, 1) 0.22s both;
+  }
+}
+@keyframes hubPrint {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes hubRule {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.search {
+  width: 100%;
+  height: 50px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1.5px solid var(--rule-strong);
+  background: var(--card);
+  color: var(--ink);
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-size: 15.5px;
+  margin-bottom: 28px;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.search::placeholder {
+  color: var(--ink-3);
+}
+
+.search:focus {
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--green) 22%, transparent);
+}
+
+.categorySection {
+  margin-bottom: 36px;
+}
+
+.categoryHeading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0 0 10px;
+}
+.categoryHeading::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid var(--rule);
+}
+
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px;
+}
+
+.grid li {
+  border-bottom: 1px solid var(--rule);
+}
+
+.grid a {
+  display: block;
+  padding: 10px 2px;
+  color: var(--ink) !important;
+  border-bottom: 0 !important;
+  font-size: 14.5px;
+  font-weight: 500;
+}
+
+.grid a:hover {
+  color: var(--green-text) !important;
+}
+
+.empty {
+  color: var(--ink-2);
+  font-size: 15px;
+}
+
+.relatedGrid {
+  list-style: none;
+  margin: 0 0 24px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.relatedGrid li {
+  border: 1px solid var(--rule-strong);
+  border-radius: 8px;
+  background: var(--card);
+}
+
+.relatedGrid a {
+  display: block;
+  padding: 8px 14px;
+  color: var(--ink) !important;
+  border-bottom: 0 !important;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.relatedGrid a:hover {
+  color: var(--green-text) !important;
+}

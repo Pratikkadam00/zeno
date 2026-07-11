@@ -17,7 +17,8 @@
           {
             "group": [
               "components/core/**",
-              "ui_kits/app/**"
+              "ui_kits/app/**",
+              "website-v3-book.js"
             ],
             "message": "Import design-system components from 'index.js', not component internals."
           }

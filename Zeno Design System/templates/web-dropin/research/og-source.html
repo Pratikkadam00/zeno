@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Zeno og.png source — 1200×630</title>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&family=JetBrains+Mono:wght@600;700&display=swap");
+/* The seal + wordmark on ruled ledger paper. Captured at 1200×630 → public/og.png */
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1200px; height: 630px; overflow: hidden; background: #faf9f5; }
+#og {
+  position: relative;
+  width: 1200px;
+  height: 630px;
+  background: #faf9f5;
+  background-image: repeating-linear-gradient(to bottom, transparent 0 43px, rgba(20,22,31,.06) 43px 44px);
+  color: #14161f;
+  font-family: "Space Grotesk", sans-serif;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+/* red margin rule — the document */
+#og::before {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0; left: 92px;
+  width: 2px;
+  background: rgba(198,59,73,.30);
+}
+/* top + bottom hairlines */
+.edge { position: absolute; left: 0; right: 0; height: 2px; background: #14161f; }
+.edge.b { height: 1px; background: #c9c7ba; }
+.brandRow { display: flex; align-items: center; gap: 28px; }
+.wordmark { font-size: 128px; font-weight: 700; letter-spacing: -0.05em; line-height: 1; padding-bottom: 10px; }
+.tag {
+  margin-top: 34px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: #5a6072;
+}
+.tag i { display: block; width: 26px; height: 6px; background: #00c26e; }
+.lline {
+  position: absolute;
+  left: 148px; right: 148px; bottom: 64px;
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 700;
+}
+.lline .lb { font-size: 17px; letter-spacing: 0.16em; color: #808698; }
+.lline .dots { flex: 1; border-bottom: 4px dotted #c9c7ba; transform: translateY(-5px); }
+.lline .vl { font-size: 19px; letter-spacing: 0.14em; color: #057a46; }
+</style>
+</head>
+<body>
+<div id="og">
+  <div class="edge" style="top:0"></div>
+  <div class="edge b" style="bottom:0"></div>
+  <div class="brandRow">
+    <svg width="150" height="150" viewBox="0 0 120 120" fill="none" aria-hidden="true">
+      <circle cx="60" cy="60" r="51" stroke="#14161f" stroke-width="7"></circle>
+      <circle cx="60" cy="60" r="41" stroke="#14161f" stroke-width="2.5"></circle>
+      <path d="M43 45 H77 L43 75 H77" stroke="#14161f" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"></path>
+    </svg>
+    <div class="wordmark">zeno</div>
+  </div>
+  <div class="tag"><i></i>KNOW WHAT YOU PAY. CANCEL BEFORE IT CHARGES.</div>
+  <div class="lline"><span class="lb">ALL YOUR SUBSCRIPTIONS</span><span class="dots"></span><span class="vl">ONE CALM VIEW</span></div>
+</div>
+</body>
+</html>

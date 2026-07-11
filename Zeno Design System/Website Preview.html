@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>zeno.app — homepage preview (The Audit)</title>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+
+/* Static preview of the rebuilt zeno.app homepage — same tokens, layout and
+   copy as the Next.js drop-in (templates/web-dropin/apps-web/). */
+:root {
+  color-scheme: light;
+  --paper:#faf9f5; --card:#ffffff; --ink:#14161f; --ink-2:#5a6072; --ink-3:#808698;
+  --ink-panel:#10131f; --rule:#e5e3d9; --rule-strong:#c9c7ba;
+  --green:#00c26e; --green-text:#057a46; --verified:#0b8a54; --alert:#c63b49; --info:#2f6fdb;
+  --disp:"Space Grotesk",sans-serif; --body:"Hanken Grotesk",sans-serif; --mono:"JetBrains Mono",monospace;
+}
+html.dark {
+  color-scheme: dark;
+  --paper:#0a0c13; --card:#141721; --ink:#f2f1ea; --ink-2:#9ba0af; --ink-3:#6c7180;
+  --ink-panel:#171b2a; --rule:#262a38; --rule-strong:#3a3f50;
+  --green:#1ed47f; --green-text:#4ade97; --verified:#2fd98a; --alert:#f2687a; --info:#6aa6ff;
+}
+* { box-sizing: border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--body); font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased; }
+a { color:inherit; }
+.money { font-family:var(--mono); font-feature-settings:"tnum" 1; letter-spacing:-0.01em; }
+.container { max-width:1080px; margin:0 auto; padding:0 24px; }
+section { padding: 104px 0; }
+h2 { font-family:var(--disp); font-weight:700; font-size:clamp(30px,4.6vw,46px); line-height:1.06; letter-spacing:-0.025em; margin:18px 0 0; text-wrap:balance; }
+.lead { font-size:clamp(15.5px,1.8vw,17.5px); color:var(--ink-2); max-width:58ch; margin:16px 0 0; text-wrap:pretty; }
+.shead { display:flex; align-items:center; gap:12px; }
+.shead b { font-family:var(--mono); font-size:11px; font-weight:700; letter-spacing:.16em; color:var(--ink-3); white-space:nowrap; }
+.shead i { flex:1; border-bottom:1px solid var(--rule); }
+.btn { display:inline-flex; align-items:center; gap:8px; height:48px; padding:0 22px; border-radius:10px; font-weight:600; font-size:15px; text-decoration:none; border:1px solid transparent; cursor:pointer; background:var(--ink-panel); color:var(--paper); font-family:var(--body); }
+html.dark .btn { background:var(--ink); color:var(--paper); }
+.btn.ghost { background:transparent; color:var(--ink); border-color:var(--rule-strong); }
+.btn.sm { height:40px; padding:0 16px; font-size:14px; }
+.tick { display:inline-flex; align-items:center; gap:7px; font-family:var(--mono); font-size:10.5px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--green-text); white-space:nowrap; }
+.tick::before { content:""; width:11px; height:3px; background:currentColor; }
+.lline { display:flex; align-items:baseline; gap:10px; padding:8px 0; }
+.lline .lb { flex:none; font-size:15px; font-weight:500; color:var(--ink-2); }
+.lline .lb.strong { font-weight:700; color:var(--ink); }
+.lline .lb small { font-family:var(--mono); font-size:10px; font-weight:700; color:var(--ink-3); margin-left:8px; letter-spacing:.06em; }
+.lline .dots { flex:1; border-bottom:2px dotted var(--rule-strong); transform:translateY(-3px); min-width:14px; }
+.lline .vl { flex:none; font-family:var(--mono); font-size:16px; font-weight:700; }
+
+/* preview banner */
+.pv { background:var(--ink-panel); color:#f2f1ea; font-family:var(--mono); font-size:10px; letter-spacing:.14em; padding:9px 16px; text-align:center; }
+.pv b { color:#1ed47f; }
+
+/* nav */
+nav { position:sticky; top:0; z-index:50; background:var(--paper); border-bottom:1px solid var(--rule-strong); }
+.navIn { max-width:1080px; margin:0 auto; padding:0 24px; height:64px; display:flex; align-items:center; gap:28px; }
+.brand { display:inline-flex; align-items:center; gap:10px; font-family:var(--disp); font-weight:700; font-size:19px; letter-spacing:-.03em; text-decoration:none; }
+.navLinks { display:flex; gap:4px; margin-left:8px; }
+.navLinks a { padding:8px 12px; font-family:var(--mono); font-size:11.5px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-2); text-decoration:none; border-radius:6px; }
+.navLinks a:hover { color:var(--ink); background:var(--rule); }
+.navR { margin-left:auto; display:flex; gap:10px; align-items:center; }
+.themeBtn { width:40px; height:40px; background:none; border:1px solid var(--rule-strong); border-radius:6px; color:var(--ink-2); cursor:pointer; font-size:15px; }
+@media (max-width:900px){ .navLinks{display:none} }
+
+/* hero */
+.hero { padding: clamp(56px,9vh,96px) 0 84px; border-bottom:1px solid var(--rule); }
+.heroGrid { display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr); gap:clamp(32px,5vw,72px); align-items:start; }
+.kick { display:inline-flex; align-items:center; gap:10px; font-family:var(--mono); font-size:11px; font-weight:700; letter-spacing:.18em; color:var(--ink-3); }
+.kick::before { content:""; width:11px; height:3px; background:var(--green); }
+h1 { font-family:var(--disp); font-weight:700; font-size:clamp(38px,6vw,64px); line-height:1.02; letter-spacing:-.032em; margin:20px 0 0; text-wrap:balance; }
+.heroSub { font-size:clamp(16px,1.9vw,18.5px); color:var(--ink-2); max-width:46ch; margin:20px 0 0; }
+.wform { display:flex; flex-wrap:wrap; gap:10px; margin-top:30px; max-width:480px; }
+.wform input { flex:1; min-width:220px; height:48px; padding:0 16px; background:var(--card); border:1.5px solid var(--rule-strong); border-radius:10px; font-size:15px; color:var(--ink); font-family:var(--body); }
+.wform input:focus { outline:none; border-color:var(--green); box-shadow:0 0 0 4px color-mix(in srgb, var(--green) 22%, transparent); }
+.heroTicks { display:flex; flex-wrap:wrap; gap:10px 22px; margin-top:18px; }
+
+/* audit */
+.audit { background:var(--card); border:1px solid var(--rule-strong); border-radius:14px; padding:22px 22px 18px; }
+.aHead { display:flex; justify-content:space-between; padding-bottom:12px; font-family:var(--mono); font-size:11px; font-weight:700; letter-spacing:.18em; color:var(--ink-3); }
+.cols { display:flex; justify-content:space-between; padding-bottom:7px; border-bottom:1px solid var(--rule-strong); font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:.18em; color:var(--ink-3); }
+.aRow { display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid var(--rule); min-height:52px; }
+.aBrand { width:34px; height:34px; flex:none; border-radius:9px; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-family:var(--disp); font-weight:700; font-size:15px; }
+.aName { position:relative; display:inline-block; font-weight:650; font-size:15px; }
+.aName i { position:absolute; left:-2px; right:-2px; top:52%; height:2px; background:var(--ink); transform-origin:left center; transform:scaleX(0); transition:transform .32s cubic-bezier(.22,.8,.26,1); }
+.aMeta { display:block; font-family:var(--mono); font-size:9.5px; font-weight:600; letter-spacing:.1em; color:var(--ink-3); margin-top:3px; }
+.aAmt { font-family:var(--mono); font-size:15px; font-weight:700; }
+.aRow.off .aName i { transform:scaleX(1); }
+.aRow.off .aName, .aRow.off .aAmt { color:var(--ink-3); }
+.aRow.off .aMeta { color:var(--verified); }
+.sw { position:relative; width:46px; height:28px; flex:none; border-radius:999px; border:none; background:var(--green); cursor:pointer; transition:background .2s; }
+.sw span { position:absolute; top:3px; left:21px; width:22px; height:22px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(10,12,20,.3); transition:left .2s cubic-bezier(.34,1.3,.5,1); }
+.aRow.off .sw { background:var(--rule-strong); }
+.aRow.off .sw span { left:3px; }
+.aTotals { padding-top:12px; }
+.aTotals .row { display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
+#total { font-family:var(--mono); font-weight:700; font-size:clamp(30px,3.4vw,38px); letter-spacing:-.035em; }
+#yearly { font-family:var(--mono); font-weight:700; font-size:18px; color:var(--verified); }
+.aNote { margin-top:14px; padding-top:10px; border-top:1px solid var(--rule); font-family:var(--mono); font-size:9px; letter-spacing:.12em; line-height:1.7; color:var(--ink-3); }
+
+/* exhibits */
+.exhibits { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:clamp(24px,4vw,56px); margin-top:56px; }
+.exK { font-family:var(--mono); font-size:10.5px; font-weight:700; letter-spacing:.18em; color:var(--green-text); }
+.exV { font-family:var(--mono); font-weight:700; font-size:clamp(40px,5vw,56px); letter-spacing:-.04em; line-height:1; margin:14px 0 0; }
+.exB { font-size:15px; color:var(--ink-2); margin:12px 0 0; }
+.exQ { font-size:clamp(19px,2.3vw,24px); line-height:1.45; font-weight:600; letter-spacing:-.015em; margin:14px 0 0; padding-left:14px; border-left:3px solid var(--alert); }
+.exC { display:block; margin-top:12px; font-family:var(--mono); font-size:9.5px; letter-spacing:.12em; color:var(--ink-3); font-style:normal; }
+
+/* method */
+.mGrid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:clamp(24px,4vw,48px); margin-top:52px; }
+.mCol { border-top:1.5px solid var(--rule-strong); padding-top:18px; }
+.mNum { font-family:var(--mono); font-size:12px; font-weight:700; color:var(--ink-3); }
+.mT { font-family:var(--disp); font-weight:700; font-size:21px; letter-spacing:-.015em; margin:12px 0 0; }
+.mB { font-size:14.5px; color:var(--ink-2); margin:10px 0 0; }
+.mCol3 .stamp { margin-top:26px; }
+.mCol3 .stamp.landed { animation: stampThunk .42s cubic-bezier(.34,1.3,.5,1) both; }
+@keyframes stampThunk { 0% { opacity:0; transform:rotate(-13deg) scale(1.6); } 60% { opacity:1; transform:rotate(-4deg) scale(.95); } 100% { opacity:1; transform:rotate(-5deg) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .mCol3 .stamp { animation:none !important; opacity:1 !important; } }
+.stamp { display:inline-flex; flex-direction:column; align-items:center; gap:4px; padding:10px 18px; border:2.5px solid var(--verified); outline:1px solid var(--verified); outline-offset:3px; border-radius:7px; color:var(--verified); transform:rotate(-5deg); font-family:var(--mono); font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
+.stamp b { font-size:14px; }
+.stamp small { font-size:9px; letter-spacing:.2em; opacity:.75; }
+
+/* refusal + pricing + faq + footer */
+.rGrid { display:grid; grid-template-columns:1fr 1fr; gap:clamp(32px,5vw,80px); align-items:start; }
+.rLines { border-top:1.5px solid var(--rule-strong); margin-top:8px; }
+.planRow { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1.6fr) auto; gap:16px 28px; align-items:baseline; padding:26px 0; border-bottom:1px solid var(--rule); }
+.planRow.feat { border-left:3px solid var(--green); padding-left:20px; margin-left:-23px; }
+.pName { font-family:var(--disp); font-weight:700; font-size:22px; letter-spacing:-.015em; }
+.pBlurb { font-size:14px; color:var(--ink-2); margin-top:6px; }
+.pMeta { font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; color:var(--green-text); margin-top:8px; text-transform:uppercase; }
+.pFeats { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:7px; }
+.pFeats li { display:flex; gap:9px; align-items:baseline; font-size:14px; color:var(--ink-2); }
+.pFeats li::before { content:""; width:10px; height:3px; background:var(--green); flex:none; transform:translateY(-3px); }
+.pPrice { font-family:var(--mono); font-weight:700; font-size:26px; letter-spacing:-.02em; text-align:right; }
+.pPrice small { font-size:13px; font-weight:500; color:var(--ink-3); }
+.pBilled { font-family:var(--mono); font-size:10px; letter-spacing:.1em; color:var(--ink-3); margin-top:5px; text-transform:uppercase; text-align:right; }
+details { border-bottom:1px solid var(--rule); }
+summary { padding:20px 2px; font-size:16.5px; font-weight:650; cursor:pointer; list-style:none; display:flex; justify-content:space-between; }
+summary::after { content:"+"; font-family:var(--mono); color:var(--ink-3); }
+details[open] summary::after { content:"–"; }
+details p { margin:0; padding:0 40px 22px 2px; font-size:15px; color:var(--ink-2); }
+.faqTop { border-top:1.5px solid var(--rule-strong); margin-top:40px; }
+.final { border-top:1.5px solid var(--rule-strong); padding-top:72px; text-align:center; }
+.final .shead { justify-content:center; } .final .shead i { display:none; }
+.final .lead { margin-left:auto; margin-right:auto; }
+.final .wform { justify-content:center; margin-left:auto; margin-right:auto; }
+footer { border-top:1px solid var(--rule-strong); padding:64px 0 40px; margin-top:40px; }
+.fGrid { display:grid; grid-template-columns:1.4fr repeat(4,minmax(0,1fr)); gap:32px; }
+.fCol h4 { font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3); margin:0 0 14px; }
+.fCol a { display:block; padding:5px 0; font-size:13.5px; color:var(--ink-2); text-decoration:none; }
+.fBlurb { font-size:13.5px; color:var(--ink-2); max-width:30ch; margin:14px 0 0; }
+.fBottom { display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-top:52px; padding-top:18px; border-top:1px solid var(--rule); font-size:12.5px; color:var(--ink-3); }
+
+@media (max-width:980px){
+  .heroGrid,.rGrid{grid-template-columns:1fr}
+  .exhibits,.mGrid{grid-template-columns:1fr;gap:40px}
+  .planRow{grid-template-columns:1fr;gap:14px}
+  .planRow.feat{margin-left:0}
+  .pPrice,.pBilled{text-align:left}
+  .fGrid{grid-template-columns:repeat(2,1fr)}
+  section{padding:72px 0}
+}
+</style>
+</head>
+<body>
+<div class="pv"><b>STATIC PREVIEW</b> OF THE NEXT.JS REBUILD — EXHIBIT FIGURES BELOW ARE SAMPLE VALUES; THE REAL PAGE COMPUTES THEM FROM THE 509-SERVICE CATALOG AT BUILD</div>
+
+<nav>
+  <div class="navIn">
+    <a class="brand" href="#"><svg width="24" height="24" viewBox="0 0 120 120" fill="none"><circle cx="60" cy="60" r="51" stroke="currentColor" stroke-width="7"></circle><circle cx="60" cy="60" r="41" stroke="currentColor" stroke-width="2.5"></circle><path d="M43 45 H77 L43 75 H77" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"></path></svg>zeno</a>
+    <div class="navLinks"><a href="#how">How it works</a><a href="#">Cancel guides</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></div>
+    <div class="navR">
+      <button class="themeBtn" id="themeBtn" aria-label="Switch theme">◐</button>
+      <a class="btn sm" href="#waitlist">Join waitlist</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="container">
+    <div class="heroGrid">
+      <div>
+        <span class="kick">LAUNCHING ON IOS &amp; ANDROID · WAITLIST OPEN</span>
+        <h1>Know what you pay.<br>Cancel before it charges.</h1>
+        <p class="heroSub">Zeno is the honest way to take back your subscriptions — discovery from receipts and statements you control, a warning before every renewal, and cancellations that aren’t called done until the charge actually stops.</p>
+        <div class="wform"><input type="email" placeholder="you@example.com" aria-label="Email address"><button class="btn">Join the waitlist →</button></div>
+        <div class="heroTicks"><span class="tick">No bank login required</span><span class="tick">Discovery you control</span><span class="tick">Free to start</span></div>
+      </div>
+      <div class="audit" role="group" aria-label="Sample ledger — flip a switch to see what cancelling saves">
+        <div class="aHead"><span>YOUR LEDGER · SAMPLE</span><span id="billing">5 BILLING</span></div>
+        <div class="cols"><span>SERVICE</span><span>MONTHLY / KEEP</span></div>
+        <div id="rows"></div>
+        <div class="aTotals">
+          <div class="row"><span class="aHead" style="padding:0">COMMITTED / MONTH</span><span id="total">$98.95</span></div>
+          <div class="row" style="margin-top:6px"><span class="aHead" style="padding:0;color:var(--verified)">BACK IN YOUR POCKET / YEAR</span><span id="yearly">+$0.00</span></div>
+        </div>
+        <p class="aNote">SAMPLE LEDGER — FLIP A SWITCH. IN THE APP, A CANCELLATION IS ONLY MARKED VERIFIED AFTER YOUR NEXT RECEIPT OR STATEMENT SHOWS NO CHARGE.</p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="case">
+  <div class="container">
+    <div class="shead"><b>THE CASE · FROM OUR OWN CATALOG</b><i></i></div>
+    <h2>The subscription industry<br>counts on you not counting.</h2>
+    <p class="lead">We index how subscriptions actually get cancelled. The record isn’t flattering — and every figure below is computed from that catalog, not invented for a landing page.</p>
+    <div class="exhibits">
+      <div><span class="exK">EXHIBIT A</span><div class="exV">509</div><p class="exB">Services indexed in Zeno’s cancellation catalog — each with real, step-by-step cancellation instructions.</p><cite class="exC">ZENO CANCELLATION CATALOG · JULY 2026</cite></div>
+      <div><span class="exK">EXHIBIT B</span><div class="exV">168<small style="font-size:18px;color:var(--ink-3)"> *</small></div><p class="exB">Of them rate their cancellation <em>hard</em> — or use documented dark patterns to keep you paying. <span style="font-family:var(--mono);font-size:10px;color:var(--ink-3)">*SAMPLE VALUE IN THIS PREVIEW</span></p><cite class="exC">DIFFICULTY RATINGS, SAME CATALOG</cite></div>
+      <div><span class="exK">EXHIBIT C</span><blockquote class="exQ">“Decline the retention offers — there are usually three.”</blockquote><cite class="exC">STEP FROM A DOCUMENTED DARK-PATTERN GUIDE — VERBATIM ON THE REAL PAGE</cite></div>
+    </div>
+  </div>
+</section>
+
+<section id="how" style="padding-top:0">
+  <div class="container">
+    <div class="shead"><b>THE METHOD</b><i></i></div>
+    <h2>An audit, not an app tour.</h2>
+    <div class="mGrid">
+      <div class="mCol"><span class="mNum">01</span><h3 class="mT">Discover — on your command</h3><p class="mB">Scan email receipts in an inbox you connect, or import a bank-statement CSV you export yourself. Zeno reads them on your device and scans only when you tap scan — no background collection, no bank login.</p></div>
+      <div class="mCol"><span class="mNum">02</span><h3 class="mT">Warn — before it charges</h3><p class="mB">Seven days out, three days out, and the morning of. Every reminder carries the exact amount about to leave your account, with quiet hours respected.</p></div>
+      <div class="mCol mCol3"><span class="mNum">03</span><h3 class="mT">Cancel — and verify</h3><p class="mB">One tap opens the service's real cancellation steps, dark-pattern traps flagged. Then Zeno checks your next receipt or statement — nothing is called cancelled until the charge actually stops.</p><span class="stamp" id="methodStamp"><b>Verified cancelled</b><small>ONLY AFTER THE CHARGE STOPS</small></span></div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:24px">
+  <div class="container">
+    <div class="rGrid">
+      <div>
+        <div class="shead"><b>THE REFUSAL</b><i></i></div>
+        <h2>Built for people who refuse to hand a bank login to an app.</h2>
+        <p class="lead">Most subscription apps start by asking for your bank credentials. Zeno is built on refusing to — discovery works from receipts and statements you already control.</p>
+        <div style="margin-top:28px"><a class="btn ghost" href="#">See the no-bank-login comparison →</a></div>
+      </div>
+      <div class="rLines">
+        <div class="lline"><span class="lb">Bank login</span><span class="dots"></span><span class="vl" style="color:var(--verified)">NEVER</span></div>
+        <div class="lline"><span class="lb">Your credentials</span><span class="dots"></span><span class="vl" style="color:var(--verified)">NOT ASKED FOR</span></div>
+        <div class="lline"><span class="lb">Background scanning<small>SCANS RUN WHEN YOU TAP SCAN</small></span><span class="dots"></span><span class="vl" style="color:var(--verified)">NONE</span></div>
+        <div class="lline"><span class="lb">Data brokers</span><span class="dots"></span><span class="vl" style="color:var(--verified)">ZERO</span></div>
+        <div class="lline"><span class="lb strong">Your data<small>ENCRYPTED ON YOUR DEVICE</small></span><span class="dots"></span><span class="vl">YOURS</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="container">
+    <div class="shead"><b>THE HONEST BILL</b><i></i></div>
+    <h2>Priced like we mean it.</h2>
+    <p class="lead">Free is genuinely useful, Pro gates exactly three features, and Lifetime exists because we’re not ironic about recurring charges. No trial countdowns, no guilt copy, no “most popular” theater.</p>
+    <div style="margin-top:8px">
+      <div class="planRow">
+        <div><div class="pName">Free</div><p class="pBlurb">Enough to stop the bleeding — and it stays free.</p><div class="pMeta">No card required</div></div>
+        <ul class="pFeats"><li>Track up to 10 subscriptions</li><li>7 / 3 / day-of renewal reminders</li><li>Cancellation guides + verification</li><li>Insights, encrypted on device</li></ul>
+        <div><div class="pPrice">$0</div><div class="pBilled">Free forever</div></div>
+      </div>
+      <div class="planRow feat">
+        <div><div class="pName">Pro</div><p class="pBlurb">The full ledger. Everything in Free stays free — Pro adds exactly three things.</p></div>
+        <ul class="pFeats"><li>Unlimited subscriptions</li><li>Category budgets</li><li>Envelope budgeting</li><li>Everything in Free, included</li></ul>
+        <div><div class="pPrice">$2.50<small> /mo</small></div><div class="pBilled">Billed $29.99/yr · or $3.99 monthly</div></div>
+      </div>
+      <div class="planRow">
+        <div><div class="pName">Lifetime</div><p class="pBlurb">Pay once, own it forever. We're a subscription app that will sell you a way out of subscriptions.</p><div class="pMeta">YNAB charges $109 every year. This is once.</div></div>
+        <ul class="pFeats"><li>Everything in Pro</li><li>One payment — yours forever</li><li>No recurring charge, ever</li></ul>
+        <div><div class="pPrice">$79.99<small> once</small></div><div class="pBilled">One payment · yours forever</div></div>
+      </div>
+      <div class="planRow">
+        <div><div class="pName">Family</div><p class="pBlurb">One household ledger, up to five people — members share totals, never their lists.</p><div class="pMeta">Up to 5 members · ~$1.40 / person / mo</div></div>
+        <ul class="pFeats"><li>Up to 5 members</li><li>Shared family vault</li><li>Per-member spend totals</li><li>Everything in Pro</li></ul>
+        <div><div class="pPrice">$6.99<small> /mo</small></div><div class="pBilled">Billed monthly</div></div>
+      </div>
+    </div>
+    <p style="margin-top:26px;font-size:13.5px;color:var(--ink-3);max-width:62ch">Founding-waitlist members get Pro free for 3 months at launch. Cancel anytime — in one tap, obviously. Prices in USD, billed via the App Store / Google Play.</p>
+  </div>
+</section>
+
+<section id="faq" style="padding-top:0">
+  <div class="container" style="max-width:820px">
+    <div class="shead"><b>QUESTIONS</b><i></i></div>
+    <h2>Asked and answered.</h2>
+    <div class="faqTop">
+      <details open><summary>When does Zeno launch?</summary><p>We’re finishing the iOS and Android builds now. Join the waitlist and you’ll be among the first invited when we reach the App Store and Play Store — founding members get 3 months of Pro free.</p></details>
+      <details><summary>Do I have to connect my bank?</summary><p>No — and that’s the point. Zeno discovers subscriptions from email receipts and bank-statement CSVs you import yourself. We never ask for bank credentials, and there’s no data aggregator in the loop.</p></details>
+      <details><summary>How does discovery actually work?</summary><p>You start a scan of billing receipts in an inbox you connect (read-only), or import a statement CSV from any bank. Zeno reads them on your device — a scan runs when you tap scan, not in the background — and matches charges against a 509-service catalog.</p></details>
+      <details><summary>Can Zeno cancel subscriptions for me?</summary><p>Zeno takes you straight to each service’s real cancellation flow with step-by-step guidance and warnings about known dark patterns — then checks your next receipt or statement before marking it cancelled.</p></details>
+      <details><summary>What will it cost?</summary><p>Free forever for up to 10 subscriptions. Pro is $3.99/mo or $29.99/year and adds unlimited subscriptions, category budgets and envelope budgeting. Lifetime is a single $79.99 payment. Family is $6.99/mo for up to 5 people.</p></details>
+    </div>
+  </div>
+</section>
+
+<section id="waitlist" style="padding-top:0">
+  <div class="container">
+    <div class="final">
+      <div class="shead"><b>COMING SOON TO IOS &amp; ANDROID</b></div>
+      <h2>Stop paying for things<br>you forgot about.</h2>
+      <p class="lead" style="text-align:center">The audit is free. The waitlist is open. Founding members get 3 months of Pro when we launch.</p>
+      <div class="wform"><input type="email" placeholder="you@example.com" aria-label="Email address"><button class="btn">Join the waitlist →</button></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="fGrid">
+      <div><a class="brand" href="#"><svg width="24" height="24" viewBox="0 0 120 120" fill="none"><circle cx="60" cy="60" r="51" stroke="currentColor" stroke-width="7"></circle><circle cx="60" cy="60" r="41" stroke="currentColor" stroke-width="2.5"></circle><path d="M43 45 H77 L43 75 H77" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"></path></svg>zeno</a>
+        <p class="fBlurb">The honest way to take back your subscriptions. Discovery from receipts you control, warnings before every renewal, cancellations that get verified. No bank login required.</p>
+      </div>
+      <div class="fCol"><h4>Product</h4><a href="#how">How it works</a><a href="#pricing">Pricing</a><a href="#">Cancellation guides</a><a href="#faq">FAQ</a><a href="#waitlist">Join the waitlist</a></div>
+      <div class="fCol"><h4>Compare</h4><a href="#">Rocket Money alternative</a><a href="#">YNAB alternative</a><a href="#">Monarch alternative</a><a href="#">No bank login</a><a href="#">Budgeting without bank sync</a></div>
+      <div class="fCol"><h4>Features</h4><a href="#">Family Vault</a><a href="#">Spend Twin</a><a href="#">Widgets &amp; Watch</a><a href="#">Open banking (planned)</a><a href="#">Business</a></div>
+      <div class="fCol"><h4>Company</h4><a href="#">Developers</a><a href="#">Partners</a><a href="#">Privacy policy</a><a href="#">Terms of service</a><a href="#">Cookie policy</a></div>
+    </div>
+    <div class="fBottom"><span>© 2026 Zeno. All rights reserved.</span><span style="font-family:var(--mono);letter-spacing:.08em">KNOW WHAT YOU PAY.</span></div>
+  </div>
+</footer>
+
+<script>
+// Theme toggle
+document.getElementById("themeBtn").addEventListener("click", function () {
+  document.documentElement.classList.toggle("dark");
+});
+
+// The stamp lands on the Cancel & verify column when it scrolls into view.
+// No-JS / reduced motion / IO-unsupported: stamp simply stays visible.
+(function () {
+  var st = document.getElementById("methodStamp");
+  if (!st) return;
+  var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced || !("IntersectionObserver" in window)) return;
+  st.style.opacity = "0";
+  var io = new IntersectionObserver(function (entries) {
+    if (entries[0].isIntersecting) {
+      st.style.opacity = "";
+      st.classList.add("landed");
+      io.disconnect();
+    }
+  }, { threshold: 0.5 });
+  io.observe(st);
+  setTimeout(function () { if (!st.classList.contains("landed")) { st.style.opacity = ""; st.classList.add("landed"); } }, 3000);
+})();
+
+// The audit — same behavior as the React centerpiece
+var SUBS = [
+  { n: "Netflix", c: "#E50914", amt: 15.99, meta: "RENEWS JUL 28" },
+  { n: "Adobe CC", c: "#FF3B30", amt: 54.99, meta: "RENEWS JUL 14 · DARK-PATTERN CANCEL" },
+  { n: "Spotify", c: "#1DB954", amt: 10.99, meta: "RENEWS AUG 2" },
+  { n: "Disney+", c: "#113CCF", amt: 13.99, meta: "TRIAL CONVERTS JUL 12" },
+  { n: "iCloud+", c: "#3B82F6", amt: 2.99, meta: "RENEWS AUG 5" }
+];
+var BASE = SUBS.reduce(function (a, s) { return a + s.amt; }, 0);
+var off = {};
+var rows = document.getElementById("rows");
+SUBS.forEach(function (s, i) {
+  var d = document.createElement("div");
+  d.className = "aRow";
+  d.innerHTML =
+    '<span class="aBrand" style="background:' + s.c + '">' + s.n[0] + "</span>" +
+    '<span style="flex:1;min-width:0"><span class="aName">' + s.n + "<i></i></span>" +
+    '<span class="aMeta">' + s.meta + "</span></span>" +
+    '<span class="aAmt money">$' + s.amt.toFixed(2) + "</span>" +
+    '<button class="sw" role="switch" aria-checked="true" aria-label="Cancel ' + s.n + '"><span></span></button>';
+  d.querySelector(".sw").addEventListener("click", function () {
+    off[i] = !off[i];
+    d.classList.toggle("off", !!off[i]);
+    this.setAttribute("aria-checked", off[i] ? "false" : "true");
+    d.querySelector(".aMeta").textContent = off[i] ? "CANCELLED — VERIFYING NEXT STATEMENT" : s.meta;
+    update();
+  });
+  rows.appendChild(d);
+});
+function update() {
+  var saved = SUBS.reduce(function (a, s, i) { return a + (off[i] ? s.amt : 0); }, 0);
+  animateTo("total", BASE - saved, "$");
+  animateTo("yearly", saved * 12, "+$");
+  var n = SUBS.length - Object.keys(off).filter(function (k) { return off[k]; }).length;
+  document.getElementById("billing").textContent = n + " BILLING";
+}
+var current = { total: BASE, yearly: 0 };
+function animateTo(id, target, prefix) {
+  var el = document.getElementById(id);
+  var from = current[id];
+  current[id] = target;
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    el.textContent = prefix + target.toFixed(2);
+    return;
+  }
+  var t0 = performance.now(), dur = 380;
+  function tick(t) {
+    var p = Math.min(1, (t - t0) / dur);
+    var e = 1 - Math.pow(1 - p, 3);
+    el.textContent = prefix + (from + (target - from) * e).toFixed(2);
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+  setTimeout(function () { el.textContent = prefix + target.toFixed(2); }, dur + 200);
+}
+</script>
+</body>
+</html>

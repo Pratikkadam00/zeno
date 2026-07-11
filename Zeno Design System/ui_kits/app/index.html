@@ -22,10 +22,36 @@
   .island { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 120px; height: 34px; background: #07090c; border-radius: 20px; z-index: 50; }
   .screen { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-app); }
   .overlay { position: absolute; inset: 0; z-index: 40; display: flex; flex-direction: column; background: var(--bg-app); }
-  .overlay > div { min-height: 0; flex: 1; }
+  .overlay > div { min-height: 0; flex: 1; animation: zn-sheet-up 0.26s var(--ease-out) both; }
   .home-indicator { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; height: 5px; border-radius: 3px; background: var(--ink-900); opacity: 0.25; z-index: 60; pointer-events: none; }
   .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
   .no-scrollbar::-webkit-scrollbar { display: none; }
+
+  /* ---- Launch splash: "The Tear" (chosen option 1e) ----
+     Cover = the app icon (green seal stamps onto navy) → grip → rip with
+     rotation + travelling shadow → ruled ledger page flutters in → quiet fade
+     into the live first screen. RN: rip = withTiming 760ms strong ease-in;
+     flutters = FadeInDown; reduced motion skips the splash entirely. */
+  .splash { position: absolute; inset: 0; z-index: 45; animation: spFade 0.3s var(--ease-out) 2.7s both; }
+  @keyframes spFade { from { opacity: 1; } to { opacity: 0; visibility: hidden; } }
+  .splash .sp-page { position: absolute; inset: 0; background-color: var(--bg-app); background-image: repeating-linear-gradient(to bottom, transparent 0 43px, rgba(20, 22, 31, 0.05) 43px 44px); }
+  .splash .sp-seal { position: absolute; top: 336px; left: calc(50% - 59px); color: var(--text-primary); animation: spFlutter 0.28s var(--ease-out) 1.65s both; }
+  .splash .sp-word { position: absolute; top: 484px; left: 0; right: 0; text-align: center; font-family: var(--font-display); font-weight: 700; font-size: 46px; letter-spacing: -0.04em; color: var(--text-primary); animation: spFlutter 0.26s var(--ease-out) 1.59s both; }
+  .splash .sp-tick { position: absolute; top: 554px; left: calc(50% - 13px); width: 26px; height: 3px; background: var(--accent); transform-origin: left center; animation: spTickIn 0.3s var(--ease-out) 1.86s both; }
+  .splash .sp-tag { position: absolute; top: 588px; left: 0; right: 0; text-align: center; font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.24em; color: var(--text-tertiary); animation: spFlutter 0.26s var(--ease-out) 1.54s both; }
+  .splash .sp-cover { position: absolute; left: -44px; right: -44px; top: -14px; height: calc(100% + 14px); background: #0A0F2C; display: flex; align-items: center; justify-content: center; transform-origin: 50% 0; box-shadow: 0 22px 44px rgba(5, 7, 13, 0.4); animation: spTear 1.05s linear 0.85s both; }
+  .splash .sp-cover::after { content: ""; position: absolute; top: 100%; left: 0; right: 0; height: 10px; background: linear-gradient(-45deg, #0A0F2C 6px, transparent 0), linear-gradient(45deg, #0A0F2C 6px, transparent 0); background-size: 14px 14px; background-repeat: repeat-x; }
+  .splash .sp-csl { color: #1ED47F; animation: spStamp 0.42s cubic-bezier(0.34, 1.3, 0.5, 1) 0.22s both; }
+  @keyframes spStamp { 0% { opacity: 0; transform: scale(1.9) rotate(-6deg); } 60% { opacity: 1; transform: scale(0.95) rotate(-1deg); } 100% { opacity: 1; transform: scale(1) rotate(0deg); } }
+  @keyframes spTear { 0% { transform: translateY(0) rotate(0deg); animation-timing-function: cubic-bezier(0.3, 0, 0.4, 1); } 16% { transform: translateY(-14px) rotate(-0.5deg); animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); } 28% { transform: translateY(-6px) rotate(-0.3deg); animation-timing-function: cubic-bezier(0.72, 0, 0.9, 0.4); } 100% { transform: translateY(-112%) rotate(-4deg); } }
+  @keyframes spFlutter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes spTickIn { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  @media (prefers-reduced-motion: reduce) { .splash { display: none; } }
+
+  /* ⊕ long-press quick arc — seals pop out along their vectors; page blurs */
+  @keyframes qaPop { from { opacity: 0; transform: translate(0px, 0px) scale(0.4); } to { opacity: 1; transform: translate(var(--tx), var(--ty)) scale(1); } }
+  @keyframes qaScrim { from { opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { [style*="qaPop"], [style*="qaScrim"] { animation: none !important; } }
 </style>
 </head>
 <body>
@@ -54,6 +80,13 @@
   <script type="text/babel" src="SettingsScreen.jsx"></script>
   <script type="text/babel" src="CoachScreen.jsx"></script>
   <script type="text/babel" src="FamilyScreen.jsx"></script>
+  <script type="text/babel" src="LoginScreen.jsx"></script>
+  <script type="text/babel" src="SecurityScreen.jsx"></script>
+  <script type="text/babel" src="NotificationsScreen.jsx"></script>
+  <script type="text/babel" src="WrappedScreen.jsx"></script>
+  <script type="text/babel" src="SpendTwinScreen.jsx"></script>
+  <script type="text/babel" src="WidgetsScreen.jsx"></script>
+  <script type="text/babel" src="ProfileScreen.jsx"></script>
   <script type="text/babel">
     const { useState, useEffect } = React;
 
@@ -70,6 +103,34 @@
       );
     }
 
+    /* Launch splash — "The Tear" (1e). Plays once per open; skipped for
+       reduced motion. Unmounted after the fade so it never blocks input. */
+    function SplashOverlay({ onDone }) {
+      React.useEffect(() => {
+        if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) { onDone(); return; }
+        const t = setTimeout(onDone, 3150);
+        return () => clearTimeout(t);
+      }, []);
+      const seal = (cls, size) => (
+        <svg className={cls} width={size} height={size} viewBox="0 0 120 120" fill="none">
+          <circle cx="60" cy="60" r="51" stroke="currentColor" strokeWidth="5.5"></circle>
+          <circle cx="60" cy="60" r="43" stroke="currentColor" strokeWidth="2"></circle>
+          <path d="M43 45 H77 L43 75 H77" stroke="currentColor" strokeWidth="9.5" strokeLinecap="round" strokeLinejoin="round"></path>
+        </svg>
+      );
+      return (
+        <div className="splash">
+          <div className="sp-page">
+            {seal("sp-seal", 118)}
+            <div className="sp-word">zeno</div>
+            <div className="sp-tick"></div>
+            <div className="sp-tag">THE HONEST LEDGER</div>
+          </div>
+          <div className="sp-cover">{seal("sp-csl", 120)}</div>
+        </div>
+      );
+    }
+
     function App() {
       const [stage, setStage] = useState("onboarding");
       const [hasData, setHasData] = useState(false);
@@ -79,8 +140,9 @@
       const [discover, setDiscover] = useState({ open: false, method: null });
       const [addOpen, setAddOpen] = useState(false);
       const [paywall, setPaywall] = useState({ open: false, reason: null });
-      const [ov, setOv] = useState(null); // settings|budget|recap|coach|notifications|family|twin|wrapped|widgets|security
+      const [ov, setOv] = useState(null); // settings|budget|recap|coach|notifications|family|twin|wrapped|widgets|security|profile|login
       const [dark, setDark] = useState(false);
+      const [splash, setSplash] = useState(true);
 
       useEffect(() => { document.documentElement.dataset.theme = dark ? "dark" : ""; }, [dark]);
 
@@ -99,6 +161,7 @@
           <div className="device">
             <div className="island"></div>
             <div className="screen"><StatusBar /><OnboardingScreen onComplete={finishOnboarding} /></div>
+            {splash && <SplashOverlay onDone={() => setSplash(false)} />}
             <div className="home-indicator"></div>
           </div>
         );
@@ -121,7 +184,7 @@
       }
 
       const overlayBody = {
-        settings: <SettingsScreen dark={dark} onToggleDark={setDark} onBack={() => setOv(null)} onUpgrade={() => { setOv(null); openPaywall("Pro removes the 10-entry ceiling and unlocks category + envelope budgets."); }} onSecurity={() => setOv("security")} onFamily={() => setOv("family")} onWidgets={() => setOv("widgets")} />,
+        settings: <SettingsScreen dark={dark} onToggleDark={setDark} onBack={() => setOv(null)} onUpgrade={() => { setOv(null); openPaywall("Pro removes the 10-entry ceiling and unlocks category + envelope budgets."); }} onSecurity={() => setOv("security")} onFamily={() => setOv("family")} onWidgets={() => setOv("widgets")} onProfile={() => setOv("profile")} />,
         budget: <BudgetScreen onBack={() => setOv(null)} onCancelSub={(id) => { setOv(null); setCancelId(id); }} onUpgrade={() => { setOv(null); openPaywall("Category budgets and envelopes are the Pro half of budgeting."); }} onImport={() => { setOv(null); setDiscover({ open: true, method: "csv" }); }} onRecap={() => setOv("recap")} onCoach={() => setOv("coach")} />,
         recap: <BudgetRecapScreen onClose={() => setOv("budget")} />,
         coach: <CoachScreen onClose={() => setOv(null)} onCancelSub={(id) => { setOv(null); setCancelId(id); }} />,
@@ -131,6 +194,8 @@
         wrapped: <WrappedScreen onClose={() => setOv(null)} />,
         widgets: <WidgetsScreen onClose={() => setOv(null)} />,
         security: <SecurityScreen onClose={() => setOv("settings")} />,
+        profile: <ProfileScreen onClose={() => setOv("settings")} onBilling={() => { setOv(null); openPaywall("Your plan, plainly priced."); }} onLogin={() => setOv("login")} onExit={() => { setOv(null); setStage("onboarding"); }} />,
+        login: <LoginScreen onClose={() => setOv("profile")} onDone={() => setOv("profile")} />,
       }[ov];
 
       return (
@@ -138,8 +203,9 @@
           <div className="island"></div>
           <div className="screen">
             <StatusBar />
-            {body}
-            <TabBar active={tab} onTab={onTab} />
+            {/* keyed page wrapper — every tab/detail change settles in like a page turn and re-prints its rows */}
+            <div key={(detailId || "") + "|" + tab + "|" + hasData} className="zn-print" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>{body}</div>
+            <TabBar active={tab} onTab={onTab} onQuick={(m) => { if (m === "manual") setAddOpen(true); else setDiscover({ open: true, method: m }); }} />
           </div>
           {discover.open && (
             <div className="overlay"><div style={{ display: "flex", flexDirection: "column" }}>

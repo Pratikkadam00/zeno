@@ -56,6 +56,18 @@
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes zn-wipe {               /* rules & bars print left→right */
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
+@keyframes zn-rise {               /* chart bars rise off the baseline */
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+@keyframes zn-grow-x {             /* meter fills extend from the left */
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
 
 .zn-print { animation: zn-print-in 240ms var(--ease-out) both; }
 .zn-stamp { animation: zn-stamp-in 320ms var(--ease-thunk) both; }

@@ -38,8 +38,8 @@ function InsightsScreen({ onBudget, onCoach, onTwin, onWrapped, onWidgets }) {
             const last = i === Z.trend.length - 1;
             return (
               <div key={m} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 6 }}>
-                {last && <span style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, fontWeight: 700, color: "var(--accent-text)" }}>${v.toFixed(0)}</span>}
-                <div style={{ width: "100%", maxWidth: 26, height: `${(v / max) * 80}px`, background: last ? "var(--text-primary)" : "var(--rule-strong)", borderRadius: "3px 3px 0 0", transition: "height var(--dur-slow) var(--ease-out)" }}></div>
+                {last && <span className="zn-print" style={{ animationDelay: `${i * 55 + 340}ms`, fontFamily: "var(--font-mono)", fontSize: 10.5, fontWeight: 700, color: "var(--accent-text)" }}>${v.toFixed(0)}</span>}
+                <div style={{ width: "100%", maxWidth: 26, height: `${(v / max) * 80}px`, background: last ? "var(--text-primary)" : "var(--rule-strong)", borderRadius: "3px 3px 0 0", transformOrigin: "bottom", animation: `zn-rise 0.5s var(--ease-out) ${i * 55}ms both` }}></div>
                 <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.1em", color: last ? "var(--text-primary)" : "var(--text-tertiary)", fontWeight: last ? 700 : 500 }}>{m.toUpperCase()}</span>
               </div>
             );
@@ -52,14 +52,14 @@ function InsightsScreen({ onBudget, onCoach, onTwin, onWrapped, onWidgets }) {
       {/* Categories — ledger lines with tick bars */}
       <SectionHead>Where it goes</SectionHead>
       <div style={{ padding: "0 20px" }}>
-        {Z.categories.map(c => (
+        {Z.categories.map((c, i) => (
           <div key={c.category} style={{ padding: "2px 0 8px", borderBottom: "1px solid var(--rule)" }}>
             <LedgerLine
               label={<span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span style={{ width: 10, height: 3, background: `var(--cat-${c.cat})` }}></span>{c.category}</span>}
               sub={`${Math.round((c.spent / catTotal) * 100)}%`}
               value={`$${c.spent.toFixed(2)}`} style={{ padding: "5px 0 3px" }} />
             <div style={{ height: 3, background: "var(--surface-sunken)" }}>
-              <div style={{ width: `${(c.spent / catTotal) * 100}%`, height: "100%", background: `var(--cat-${c.cat})` }}></div>
+              <div style={{ width: `${(c.spent / catTotal) * 100}%`, height: "100%", background: `var(--cat-${c.cat})`, transformOrigin: "left", animation: `zn-grow-x 0.5s var(--ease-out) ${i * 70 + 150}ms both` }}></div>
             </div>
           </div>
         ))}

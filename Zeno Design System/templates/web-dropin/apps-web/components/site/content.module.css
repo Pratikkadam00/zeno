@@ -1,0 +1,279 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   Zeno content sub-pages (features, cancel guides, partners, developers).
+   The Honest Ledger: a readable document column on paper — hairline rules,
+   caps-mono kickers, tick-tags instead of pills, ruled steps instead of
+   cards. Class names unchanged: 500+ SSG pages reference them.
+   Animation budget here: ONE load-time settle of the document header —
+   CSS-only keyframes at the end of this file. No scroll listeners, no IO,
+   no JS: these are utility pages that rank. */
+
+.shell {
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* Nav is sticky (in flow), so this only needs breathing room. */
+.main {
+  padding-top: 64px;
+  padding-bottom: 96px;
+}
+
+.article {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 24px;
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--ink-2);
+}
+
+.eyebrow {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.eyebrow::before {
+  content: "";
+  width: 11px;
+  height: 3px;
+  background: var(--green);
+}
+
+.title {
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  font-size: clamp(32px, 5vw, 44px);
+  line-height: 1.08;
+  font-weight: 700;
+  letter-spacing: -0.028em;
+  color: var(--ink);
+  margin: 0 0 18px;
+  text-wrap: balance;
+}
+
+.lead {
+  font-size: 17.5px;
+  line-height: 1.65;
+  color: var(--ink-2);
+  margin: 0 0 4px;
+  text-wrap: pretty;
+}
+
+.rule {
+  height: 1px;
+  border: 0;
+  background: var(--rule-strong);
+  margin: 30px 0 34px;
+}
+
+.article h2 {
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+  color: var(--ink);
+  margin: 44px 0 14px;
+}
+
+.article p {
+  margin: 0 0 18px;
+}
+
+.article a {
+  color: var(--info);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--info) 35%, transparent);
+  transition: border-color 0.15s ease;
+}
+
+.article a:hover {
+  border-bottom-color: var(--info);
+}
+
+.article strong {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+/* ── Ordered step list — ruled ledger rows, not cards ──────────────────── */
+.steps {
+  list-style: none;
+  counter-reset: step;
+  margin: 0 0 36px;
+  padding: 0;
+  border-top: 1.5px solid var(--rule-strong);
+}
+
+.steps li {
+  counter-increment: step;
+  position: relative;
+  padding: 15px 2px 15px 44px;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink);
+  line-height: 1.55;
+}
+
+.steps li::before {
+  content: counter(step, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 17px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-3);
+}
+
+/* Plain list variant (no numbers) for partner/integration rows. */
+.list {
+  list-style: none;
+  margin: 0 0 36px;
+  padding: 0;
+  border-top: 1.5px solid var(--rule-strong);
+}
+
+.list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 2px;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink);
+}
+
+.tag {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+/* ── Difficulty tick-tags (cancel guides) — no pill chrome ─────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.badge::before {
+  content: "";
+  width: 11px;
+  height: 3px;
+  background: currentColor;
+}
+
+.badgeEasy {
+  color: var(--stamp-verified);
+}
+
+.badgeMedium {
+  color: var(--warn);
+}
+
+.badgeHard {
+  color: var(--stamp-alert);
+}
+
+/* ── Inline data chips (developer key preview, etc.) ───────────────────── */
+.code {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 13.5px;
+  color: var(--ink);
+  background: var(--secondary);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 2px 8px;
+}
+
+/* ── Primary CTA — ink, like every non-money action ────────────────────── */
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 48px;
+  padding: 0 22px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--primary-foreground) !important;
+  border: 0 !important;
+  background: var(--primary);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.cta:hover {
+  background: color-mix(in srgb, var(--primary) 88%, var(--paper));
+}
+.cta:active {
+  transform: translateY(0.5px) scale(0.99);
+}
+
+.backRow {
+  margin-top: 48px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule-strong);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.backRow a {
+  color: var(--ink-2);
+  border: 0;
+}
+
+.backRow a:hover {
+  color: var(--ink);
+}
+
+@media (max-width: 640px) {
+  .main {
+    padding-top: 40px;
+  }
+}
+
+/* ── The document settles on load — the ONLY animation on these pages.
+   CSS keyframes, once, ~0.6s total; gated on html.js (no-JS renders the
+   finished page) and prefers-reduced-motion. Transform/opacity only:
+   zero CLS, zero listeners — the SEO budget holds. ── */
+@media (prefers-reduced-motion: no-preference) {
+  :global(html.js) .eyebrow {
+    animation: docPrint 0.4s cubic-bezier(0.22, 0.8, 0.26, 1) both;
+  }
+  :global(html.js) .title {
+    animation: docPrint 0.4s cubic-bezier(0.22, 0.8, 0.26, 1) 0.08s both;
+  }
+  :global(html.js) .lead {
+    animation: docPrint 0.4s cubic-bezier(0.22, 0.8, 0.26, 1) 0.16s both;
+  }
+  :global(html.js) .rule {
+    transform-origin: left center;
+    animation: docRule 0.55s cubic-bezier(0.22, 0.8, 0.26, 1) 0.2s both;
+  }
+}
+@keyframes docPrint {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes docRule {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}

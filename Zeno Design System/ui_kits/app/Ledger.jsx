@@ -102,4 +102,34 @@ function CodeBoxes({ code = "", length = 8, size = 36 }) {
   );
 }
 
-Object.assign(window, { SectionHead, ColumnHeads, LedgerLine, Stamp, TearEdge, SkeletonRow, BottomSheetLite, CodeBoxes });
+/* TallyNumber — adding-machine count-up for hero money. 600ms cubic ease-out,
+   tabular mono so digits don't jitter. RN: Reanimated derived value + ReText.
+   Reduced motion: renders the final value immediately. */
+function TallyNumber({ value, dur = 600, big = 58, small = 28, color = "var(--text-primary)" }) {
+  const reduced = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const [v, setV] = React.useState(reduced ? value : 0);
+  React.useEffect(() => {
+    if (reduced) { setV(value); return; }
+    let raf; const t0 = performance.now();
+    const tick = (t) => {
+      const p = Math.min(1, (t - t0) / dur);
+      const e = 1 - Math.pow(1 - p, 3);
+      setV(value * e);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    // rAF can be suspended entirely (capture contexts, backgrounded webviews) —
+    // guarantee the ledger never sits at $0.00: force the final value shortly
+    // after the animation window regardless.
+    const failsafe = setTimeout(() => setV(value), dur + 300);
+    return () => { cancelAnimationFrame(raf); clearTimeout(failsafe); };
+  }, [value]);
+  const d = Math.floor(v); const c = (v - d).toFixed(2).slice(2);
+  return (
+    <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: big, lineHeight: 1, letterSpacing: "-0.045em", color, fontFeatureSettings: "'tnum' 1" }}>
+      ${d}<span style={{ fontSize: small, fontWeight: 600, opacity: 0.55 }}>.{c}</span>
+    </span>
+  );
+}
+
+Object.assign(window, { SectionHead, ColumnHeads, LedgerLine, Stamp, TearEdge, SkeletonRow, BottomSheetLite, CodeBoxes, TallyNumber });

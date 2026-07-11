@@ -65,26 +65,27 @@ function HomeScreen({ hasData, onOpen, onTab, onDiscover, onAdd, onSettings, onB
           </button>
         </div>
         <div className="zn-print" style={{ marginTop: 8 }}>
-          <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 58, lineHeight: 1, letterSpacing: "-0.045em", color: "var(--text-primary)", fontFeatureSettings: "'tnum' 1" }}>
-            ${Math.floor(total)}<span style={{ fontSize: 28, fontWeight: 600, opacity: 0.55 }}>.{(total % 1).toFixed(2).slice(2)}</span>
-          </span>
+          {/* adding-machine tally — the ledger totals itself on open */}
+          <TallyNumber value={total} />
         </div>
-        {/* category rule-bar */}
-        <div style={{ display: "flex", gap: 2, height: 4, marginTop: 14 }}>
+        {/* category rule-bar — prints left→right */}
+        <div style={{ display: "flex", gap: 2, height: 4, marginTop: 14, animation: "zn-wipe 0.55s var(--ease-out) 0.25s both" }}>
           {segs.map(([cat, val]) => <div key={cat} title={cat} style={{ flex: val, background: `var(--cat-${cat})` }}></div>)}
         </div>
         <div style={{ borderBottom: "1px solid var(--rule-strong)", marginTop: 14 }}>
-          <LedgerLine label="Charged so far" value={`$${B.committed.toFixed(2)}`} />
-          <LedgerLine label="Still to renew" sub="2 RENEWALS" value={`$${(B.projected - B.committed).toFixed(2)}`} />
+          <div className="zn-print" style={{ animationDelay: "180ms" }}><LedgerLine label="Charged so far" value={`$${B.committed.toFixed(2)}`} /></div>
+          <div className="zn-print" style={{ animationDelay: "240ms" }}><LedgerLine label="Still to renew" sub="2 RENEWALS" value={`$${(B.projected - B.committed).toFixed(2)}`} /></div>
         </div>
         {/* budget — one honest ledger line */}
-        <LedgerLine
-          onClick={onBudget}
-          label="Budget" sub={`CAP $${B.cap}`}
-          value={over ? `$${(B.projected - B.cap).toFixed(2)} OVER` : approaching ? `$${(B.cap - B.projected).toFixed(2)} LEFT` : "ON PACE"}
-          valueColor={over ? "var(--stamp-alert)" : approaching ? "#A36A0B" : "var(--stamp-verified)"}
-          strong
-        />
+        <div className="zn-print" style={{ animationDelay: "300ms" }}>
+          <LedgerLine
+            onClick={onBudget}
+            label="Budget" sub={`CAP $${B.cap}`}
+            value={over ? `$${(B.projected - B.cap).toFixed(2)} OVER` : approaching ? `$${(B.cap - B.projected).toFixed(2)} LEFT` : "ON PACE"}
+            valueColor={over ? "var(--stamp-alert)" : approaching ? "#A36A0B" : "var(--stamp-verified)"}
+            strong
+          />
+        </div>
       </div>
 
       {/* NEEDS ATTENTION — rule list with colored margin ticks */}
