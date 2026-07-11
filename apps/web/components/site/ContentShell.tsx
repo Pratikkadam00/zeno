@@ -12,9 +12,9 @@ type ContentShellProps = {
 };
 
 /**
- * Shared dark-brand layout for marketing/content sub-pages (features, cancel
+ * Shared ledger-paper layout for marketing/content sub-pages (features, cancel
  * guides, partners, developers). Renders the fixed Nav, a centered readable
- * article column on the brand background, and the Footer.
+ * article column on the paper background, and the Footer.
  */
 export function ContentShell({ eyebrow, title, lead, children }: ContentShellProps) {
   return (

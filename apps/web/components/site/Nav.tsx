@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Magnetic } from "./primitives";
+import { Moon, Sun } from "lucide-react";
 import styles from "../../app/home.module.css";
 
 const baseLinks = [
-  { href: "/#features", label: "Features" },
   { href: "/#how", label: "How it works" },
+  { href: "/cancel", label: "Cancel guides" },
   { href: "/#pricing", label: "Pricing" }
 ];
 const analyticsLink = { href: "/analytics", label: "Analytics" };
@@ -20,6 +20,48 @@ export type NavProps = {
   // production deploy.
   showAnalytics?: boolean;
 };
+
+/* Both themes are art-directed (paper / the 11pm ledger), so the toggle is
+   first-class chrome. Applies .dark + persists to zeno-theme; the inline
+   script in layout.tsx restores it before first paint. */
+function ThemeToggle() {
+  const [mounted, setMounted] = useState(false);
+  const [dark, setDark] = useState(false);
+  useEffect(() => {
+    // Mount-only: reveal the toggle and read the theme the inline layout script
+    // already applied before paint. Deliberate one-shot sync setState (avoids a
+    // hydration mismatch), not a render cascade.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+    setDark(document.documentElement.classList.contains("dark"));
+  }, []);
+  const toggle = () => {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    try {
+      localStorage.setItem("zeno-theme", next ? "dark" : "light");
+    } catch {
+      /* private mode — theme just won't persist */
+    }
+  };
+  return (
+    <button type="button" className={styles.themeBtn} onClick={toggle} aria-label={mounted && dark ? "Switch to light theme" : "Switch to dark theme"}>
+      {mounted && dark ? <Sun size={17} aria-hidden /> : <Moon size={17} aria-hidden />}
+    </button>
+  );
+}
+
+/* The seal — Zeno's double-ruled Z mark, inline so it inherits currentColor. */
+function Seal({ size = 24 }: { size?: number }) {
+  return (
+    <svg className={styles.brandSeal} width={size} height={size} viewBox="0 0 120 120" fill="none" aria-hidden="true">
+      <circle cx="60" cy="60" r="51" stroke="currentColor" strokeWidth="7" />
+      <circle cx="60" cy="60" r="41" stroke="currentColor" strokeWidth="2.5" />
+      <path d="M43 45 H77 L43 75 H77" stroke="currentColor" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 export function Nav({ showAnalytics = false }: NavProps) {
   const [scrolled, setScrolled] = useState(false);
@@ -36,7 +78,9 @@ export function Nav({ showAnalytics = false }: NavProps) {
   // Close the mobile menu on Escape, and lock body scroll while it's open.
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -50,18 +94,21 @@ export function Nav({ showAnalytics = false }: NavProps) {
     <nav className={`${styles.nav} ${scrolled ? styles.navScrolled : ""}`}>
       <div className={styles.navInner}>
         <Link href="/" className={styles.brand} onClick={() => setOpen(false)}>
-          <span className={styles.brandMark}>Z</span>
-          Zeno
+          <Seal />
+          zeno
         </Link>
         <div className={styles.navLinks}>
           {links.map((l) => (
-            <Link key={l.href} href={l.href} className={styles.navLink}>{l.label}</Link>
+            <Link key={l.href} href={l.href} className={styles.navLink}>
+              {l.label}
+            </Link>
           ))}
         </div>
         <div className={styles.navRight}>
-          <Magnetic strength={0.3}>
-            <Link href="/#waitlist" className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`}>Join waitlist</Link>
-          </Magnetic>
+          <ThemeToggle />
+          <Link href="/#waitlist" className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`}>
+            Join waitlist
+          </Link>
           <button
             type="button"
             className={styles.navToggle}
@@ -71,23 +118,25 @@ export function Nav({ showAnalytics = false }: NavProps) {
             onClick={() => setOpen((v) => !v)}
           >
             <span className={`${styles.navToggleBars} ${open ? styles.navToggleBarsOpen : ""}`} aria-hidden>
-              <span /><span /><span />
+              <span />
+              <span />
+              <span />
             </span>
           </button>
         </div>
       </div>
 
       {/* Mobile menu (rendered below 900px) */}
-      <div
-        className={`${styles.navBackdrop} ${open ? styles.navBackdropOpen : ""}`}
-        onClick={() => setOpen(false)}
-        aria-hidden
-      />
+      <div className={`${styles.navBackdrop} ${open ? styles.navBackdropOpen : ""}`} onClick={() => setOpen(false)} aria-hidden />
       <div id="mobile-nav" className={`${styles.navMenu} ${open ? styles.navMenuOpen : ""}`} hidden={!open}>
         {links.map((l) => (
-          <Link key={l.href} href={l.href} className={styles.navMenuLink} onClick={() => setOpen(false)}>{l.label}</Link>
+          <Link key={l.href} href={l.href} className={styles.navMenuLink} onClick={() => setOpen(false)}>
+            {l.label}
+          </Link>
         ))}
-        <Link href="/#waitlist" className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => setOpen(false)}>Join waitlist</Link>
+        <Link href="/#waitlist" className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => setOpen(false)}>
+          Join waitlist
+        </Link>
       </div>
     </nav>
   );

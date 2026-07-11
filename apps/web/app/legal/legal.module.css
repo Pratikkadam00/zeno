@@ -1,17 +1,43 @@
 /* ───────────────────────────────────────────────────────────────────────────
-   Zeno legal pages — readable, elegant article column on the dark brand bg.
-   Uses the global --z-* and --font-* tokens defined in app/globals.css.
+   Zeno legal pages — the ledger's paper document chrome. LEGAL COPY IS
+   REVIEWED AND UNTOUCHED; this file restyles the frame only. Class names
+   unchanged (privacy/terms/cookies pages reference them).
+   One load-time settle of the header chrome (CSS-only, html.js-gated,
+   reduced-motion static) — the reviewed copy below never animates.
 ─────────────────────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+  :global(html.js) .eyebrow {
+    animation: lglPrint 0.4s cubic-bezier(0.22, 0.8, 0.26, 1) both;
+  }
+  :global(html.js) .title {
+    animation: lglPrint 0.4s cubic-bezier(0.22, 0.8, 0.26, 1) 0.08s both;
+  }
+  :global(html.js) .updated {
+    animation: lglPrint 0.4s cubic-bezier(0.22, 0.8, 0.26, 1) 0.14s both;
+  }
+  :global(html.js) .rule {
+    transform-origin: left center;
+    animation: lglRule 0.55s cubic-bezier(0.22, 0.8, 0.26, 1) 0.18s both;
+  }
+}
+@keyframes lglPrint {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes lglRule {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
 
 .shell {
   min-height: 100vh;
-  background: var(--z-bg);
-  color: var(--z-text);
+  background: var(--paper);
+  color: var(--ink);
 }
 
-/* Clears the fixed Nav. */
 .main {
-  padding-top: 140px;
+  padding-top: 64px;
   padding-bottom: 96px;
 }
 
@@ -22,65 +48,78 @@
   font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
   font-size: 16px;
   line-height: 1.7;
-  color: var(--z-muted);
+  color: var(--ink-2);
 }
 
 .eyebrow {
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 12px;
-  letter-spacing: 0.14em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--z-blue);
+  color: var(--ink-3);
   margin: 0 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.eyebrow::before {
+  content: "";
+  width: 11px;
+  height: 3px;
+  background: var(--green);
 }
 
 .title {
   font-family: var(--font-display), var(--font-body), sans-serif;
-  font-size: 40px;
+  font-size: clamp(30px, 4.5vw, 40px);
   line-height: 1.1;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--z-text);
-  margin: 0 0 16px;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+  margin: 0 0 14px;
 }
 
 .updated {
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 13px;
-  color: var(--z-quiet);
-  margin: 0 0 28px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0 0 26px;
 }
 
-/* Subtle hairline under the page header. */
 .rule {
   height: 1px;
   border: 0;
-  background: var(--z-line);
+  background: var(--rule-strong);
   margin: 0 0 36px;
 }
 
 .lede {
-  font-size: 18px;
+  font-size: 17.5px;
   line-height: 1.65;
-  color: var(--z-text);
+  color: var(--ink);
   margin: 0 0 36px;
 }
 
-/* Table of contents */
+/* Table of contents — an index card on the document. */
 .toc {
-  border: 1px solid var(--z-line);
-  border-radius: 14px;
-  background: var(--z-panel);
+  border: 1px solid var(--rule-strong);
+  border-radius: 12px;
+  background: var(--card);
   padding: 20px 24px;
   margin: 0 0 44px;
 }
 
 .tocHeading {
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 12px;
-  letter-spacing: 0.12em;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--z-quiet);
+  color: var(--ink-3);
   margin: 0 0 12px;
 }
 
@@ -97,31 +136,31 @@
 }
 
 .tocList a {
-  color: var(--z-muted);
+  color: var(--ink-2);
   text-decoration: none;
   transition: color 0.15s ease;
 }
 
 .tocList a:hover {
-  color: var(--z-blue);
+  color: var(--ink);
 }
 
 .article h2 {
   font-family: var(--font-display), var(--font-body), sans-serif;
   font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   line-height: 1.3;
-  color: var(--z-text);
+  color: var(--ink);
   margin: 48px 0 14px;
-  scroll-margin-top: 120px;
+  scroll-margin-top: 84px;
 }
 
 .article h3 {
   font-family: var(--font-body), sans-serif;
   font-size: 17px;
-  font-weight: 600;
-  color: var(--z-text);
+  font-weight: 650;
+  color: var(--ink);
   margin: 28px 0 10px;
 }
 
@@ -130,14 +169,14 @@
 }
 
 .article a {
-  color: var(--z-blue);
+  color: var(--info);
   text-decoration: none;
-  border-bottom: 1px solid rgba(91, 140, 255, 0.3);
+  border-bottom: 1px solid color-mix(in srgb, var(--info) 35%, transparent);
   transition: border-color 0.15s ease;
 }
 
 .article a:hover {
-  border-bottom-color: var(--z-blue);
+  border-bottom-color: var(--info);
 }
 
 .article ul,
@@ -151,61 +190,59 @@
 }
 
 .article li::marker {
-  color: var(--z-quiet);
+  color: var(--ink-3);
 }
 
 .article strong {
-  color: var(--z-text);
-  font-weight: 600;
+  color: var(--ink);
+  font-weight: 650;
 }
 
 .note {
-  border: 1px solid var(--z-line);
-  border-left: 3px solid var(--z-blue);
-  border-radius: 12px;
-  background: var(--z-panel);
-  padding: 16px 20px;
+  border-left: 3px solid var(--green);
+  padding: 2px 0 2px 16px;
   margin: 0 0 36px;
-  color: var(--z-text);
+  color: var(--ink);
   font-size: 15px;
   line-height: 1.6;
 }
 
 .note strong {
-  color: var(--z-blue);
+  color: var(--green-text);
 }
 
 /* Cross-links between the three legal documents. */
 .crosslinks {
   margin-top: 56px;
-  padding-top: 24px;
-  border-top: 1px solid var(--z-line);
+  padding-top: 20px;
+  border-top: 1px solid var(--rule-strong);
   display: flex;
   flex-wrap: wrap;
   gap: 8px 20px;
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 13px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
 }
 
 .crosslinks span {
-  color: var(--z-quiet);
+  color: var(--ink-3);
 }
 
 .crosslinks a {
-  color: var(--z-muted);
+  color: var(--ink-2);
   text-decoration: none;
   border: 0;
 }
 
 .crosslinks a:hover {
-  color: var(--z-blue);
+  color: var(--ink);
 }
 
 @media (max-width: 640px) {
   .main {
-    padding-top: 112px;
+    padding-top: 40px;
   }
   .title {
-    font-size: 32px;
+    font-size: 30px;
   }
 }

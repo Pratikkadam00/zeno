@@ -1,17 +1,21 @@
 /* ───────────────────────────────────────────────────────────────────────────
    Zeno content sub-pages (features, cancel guides, partners, developers).
-   Readable article column on the dark brand bg. Uses global --z-* / --font-*.
-─────────────────────────────────────────────────────────────────────────── */
+   The Honest Ledger: a readable document column on paper — hairline rules,
+   caps-mono kickers, tick-tags instead of pills, ruled steps instead of
+   cards. Class names unchanged: 500+ SSG pages reference them.
+   Animation budget here: ONE load-time settle of the document header —
+   CSS-only keyframes at the end of this file. No scroll listeners, no IO,
+   no JS: these are utility pages that rank. */
 
 .shell {
   min-height: 100vh;
-  background: var(--z-bg);
-  color: var(--z-text);
+  background: var(--paper);
+  color: var(--ink);
 }
 
-/* Clears the fixed Nav. */
+/* Nav is sticky (in flow), so this only needs breathing room. */
 .main {
-  padding-top: 140px;
+  padding-top: 64px;
   padding-bottom: 96px;
 }
 
@@ -22,49 +26,61 @@
   font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
   font-size: 16px;
   line-height: 1.7;
-  color: var(--z-muted);
+  color: var(--ink-2);
 }
 
 .eyebrow {
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 12px;
-  letter-spacing: 0.14em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--z-blue);
+  color: var(--ink-3);
   margin: 0 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.eyebrow::before {
+  content: "";
+  width: 11px;
+  height: 3px;
+  background: var(--green);
 }
 
 .title {
   font-family: var(--font-display), var(--font-body), sans-serif;
-  font-size: clamp(34px, 5vw, 46px);
+  font-size: clamp(32px, 5vw, 44px);
   line-height: 1.08;
   font-weight: 700;
-  letter-spacing: -0.025em;
-  color: var(--z-text);
+  letter-spacing: -0.028em;
+  color: var(--ink);
   margin: 0 0 18px;
+  text-wrap: balance;
 }
 
 .lead {
-  font-size: 18px;
+  font-size: 17.5px;
   line-height: 1.65;
-  color: var(--z-text);
+  color: var(--ink-2);
   margin: 0 0 4px;
+  text-wrap: pretty;
 }
 
 .rule {
   height: 1px;
   border: 0;
-  background: var(--z-line);
-  margin: 32px 0 36px;
+  background: var(--rule-strong);
+  margin: 30px 0 34px;
 }
 
 .article h2 {
   font-family: var(--font-display), var(--font-body), sans-serif;
   font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   line-height: 1.3;
-  color: var(--z-text);
+  color: var(--ink);
   margin: 44px 0 14px;
 }
 
@@ -73,57 +89,48 @@
 }
 
 .article a {
-  color: var(--z-blue);
+  color: var(--info);
   text-decoration: none;
-  border-bottom: 1px solid rgba(91, 140, 255, 0.3);
+  border-bottom: 1px solid color-mix(in srgb, var(--info) 35%, transparent);
   transition: border-color 0.15s ease;
 }
 
 .article a:hover {
-  border-bottom-color: var(--z-blue);
+  border-bottom-color: var(--info);
 }
 
 .article strong {
-  color: var(--z-text);
-  font-weight: 600;
+  color: var(--ink);
+  font-weight: 650;
 }
 
-/* ── Ordered step list, rendered as compact cards ──────────────────────────── */
+/* ── Ordered step list — ruled ledger rows, not cards ──────────────────── */
 .steps {
   list-style: none;
   counter-reset: step;
   margin: 0 0 36px;
   padding: 0;
-  display: grid;
-  gap: 12px;
+  border-top: 1.5px solid var(--rule-strong);
 }
 
 .steps li {
   counter-increment: step;
   position: relative;
-  padding: 16px 18px 16px 56px;
-  border: 1px solid var(--z-line);
-  border-radius: 14px;
-  background: var(--z-panel);
-  color: var(--z-text);
+  padding: 15px 2px 15px 44px;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink);
   line-height: 1.55;
 }
 
 .steps li::before {
-  content: counter(step);
+  content: counter(step, decimal-leading-zero);
   position: absolute;
-  left: 16px;
-  top: 14px;
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
-  display: grid;
-  place-items: center;
+  left: 0;
+  top: 17px;
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  color: #fff;
-  background: linear-gradient(180deg, #6b97ff, var(--z-blue-deep));
+  color: var(--ink-3);
 }
 
 /* Plain list variant (no numbers) for partner/integration rows. */
@@ -131,8 +138,7 @@
   list-style: none;
   margin: 0 0 36px;
   padding: 0;
-  display: grid;
-  gap: 10px;
+  border-top: 1.5px solid var(--rule-strong);
 }
 
 .list li {
@@ -140,110 +146,134 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 18px;
-  border: 1px solid var(--z-line);
-  border-radius: 12px;
-  background: var(--z-panel);
-  color: var(--z-text);
+  padding: 14px 2px;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink);
 }
 
 .tag {
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  color: var(--z-muted);
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--z-line-hi);
-  background: var(--z-panel-hi);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
   white-space: nowrap;
 }
 
-/* ── Difficulty badge (cancel guides) ──────────────────────────────────────── */
+/* ── Difficulty tick-tags (cancel guides) — no pill chrome ─────────────── */
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 12px;
-  letter-spacing: 0.06em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+}
+.badge::before {
+  content: "";
+  width: 11px;
+  height: 3px;
+  background: currentColor;
 }
 
 .badgeEasy {
-  color: #6ee7b7;
-  border-color: rgba(52, 211, 153, 0.4);
-  background: rgba(52, 211, 153, 0.08);
+  color: var(--stamp-verified);
 }
 
 .badgeMedium {
-  color: #fcd34d;
-  border-color: rgba(251, 191, 36, 0.4);
-  background: rgba(251, 191, 36, 0.08);
+  color: var(--warn);
 }
 
 .badgeHard {
-  color: #fca5a5;
-  border-color: rgba(244, 63, 94, 0.4);
-  background: rgba(244, 63, 94, 0.08);
+  color: var(--stamp-alert);
 }
 
-/* ── Inline data chips (developer key preview, etc.) ───────────────────────── */
+/* ── Inline data chips (developer key preview, etc.) ───────────────────── */
 .code {
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 13.5px;
-  color: var(--z-cyan);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--z-line);
-  border-radius: 7px;
+  color: var(--ink);
+  background: var(--secondary);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
   padding: 2px 8px;
 }
 
-/* ── Primary CTA button ────────────────────────────────────────────────────── */
+/* ── Primary CTA — ink, like every non-money action ────────────────────── */
 .cta {
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  height: 50px;
-  padding: 0 24px;
-  border-radius: 13px;
+  height: 48px;
+  padding: 0 22px;
+  border-radius: 10px;
   font-weight: 600;
-  font-size: 15.5px;
-  color: #fff !important;
+  font-size: 15px;
+  color: var(--primary-foreground) !important;
   border: 0 !important;
-  background: linear-gradient(180deg, #6b97ff, var(--z-blue-deep));
-  box-shadow: 0 10px 34px rgba(91, 140, 255, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25);
-  transition: box-shadow 0.25s ease, transform 0.2s ease;
+  background: var(--primary);
+  transition: background 0.15s ease, transform 0.15s ease;
 }
 
 .cta:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 14px 44px rgba(91, 140, 255, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  background: color-mix(in srgb, var(--primary) 88%, var(--paper));
+}
+.cta:active {
+  transform: translateY(0.5px) scale(0.99);
 }
 
 .backRow {
   margin-top: 48px;
-  padding-top: 24px;
-  border-top: 1px solid var(--z-line);
+  padding-top: 20px;
+  border-top: 1px solid var(--rule-strong);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 13px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
 }
 
 .backRow a {
-  color: var(--z-muted);
+  color: var(--ink-2);
   border: 0;
 }
 
 .backRow a:hover {
-  color: var(--z-blue);
+  color: var(--ink);
 }
 
 @media (max-width: 640px) {
   .main {
-    padding-top: 112px;
+    padding-top: 40px;
   }
+}
+
+/* ── The document settles on load — the ONLY animation on these pages.
+   CSS keyframes, once, ~0.6s total; gated on html.js (no-JS renders the
+   finished page) and prefers-reduced-motion. Transform/opacity only:
+   zero CLS, zero listeners — the SEO budget holds. ── */
+@media (prefers-reduced-motion: no-preference) {
+  :global(html.js) .eyebrow {
+    animation: docPrint 0.4s cubic-bezier(0.22, 0.8, 0.26, 1) both;
+  }
+  :global(html.js) .title {
+    animation: docPrint 0.4s cubic-bezier(0.22, 0.8, 0.26, 1) 0.08s both;
+  }
+  :global(html.js) .lead {
+    animation: docPrint 0.4s cubic-bezier(0.22, 0.8, 0.26, 1) 0.16s both;
+  }
+  :global(html.js) .rule {
+    transform-origin: left center;
+    animation: docRule 0.55s cubic-bezier(0.22, 0.8, 0.26, 1) 0.2s both;
+  }
+}
+@keyframes docPrint {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes docRule {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
 }

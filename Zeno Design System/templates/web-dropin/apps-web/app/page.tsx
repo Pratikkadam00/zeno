@@ -1,4 +1,4 @@
-import { services } from "@zeno/service-catalog";
+import { serviceRecords } from "@zeno/service-catalog";
 import { Nav } from "@/components/site/Nav";
 import { Hero } from "@/components/site/Hero";
 import { Footer } from "@/components/site/Footer";
@@ -19,10 +19,10 @@ export default function HomePage() {
   // hardcoded. hard + dark_pattern = the services that fight you on the way
   // out; the quote is a verbatim first step from a documented dark-pattern
   // guide (falls back gracefully if none exists).
-  const hardCount = services.filter((s) => s.cancellationDifficulty === "hard" || s.cancellationDifficulty === "dark_pattern").length;
-  const darkExample = services.find((s) => s.cancellationDifficulty === "dark_pattern" && s.cancellationGuideSteps.length > 0);
+  const hardCount = serviceRecords.filter((s) => s.cancellationDifficulty === "hard" || s.cancellationDifficulty === "dark_pattern").length;
+  const darkExample = serviceRecords.find((s) => s.cancellationDifficulty === "dark_pattern" && s.cancellationGuideSteps.length > 0);
   const stats: CaseStats = {
-    total: services.length,
+    total: serviceRecords.length,
     hardCount,
     quote: darkExample ? { service: darkExample.name, step: darkExample.cancellationGuideSteps[0]! } : null
   };

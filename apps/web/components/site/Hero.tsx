@@ -1,288 +1,354 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, m, useMotionValue, useReducedMotion, useSpring } from "motion/react";
+// Zeno hero — "Run your own audit." The centerpiece is a DOCUMENT, not a
+// phone: five sample subscriptions as ledger rows with cancel switches.
+// Flip one OFF and the cancel flow performs INLINE under the row — fee
+// check, retention traps declined with a strike — then the row is only
+// marked VERIFIED after a beat, when "the statement shows no charge". The
+// app's promise, felt. The monthly total re-tallies live and is carried
+// down the page by the running-tally chip (pen.tsx) via LEDGER_EVENT.
+//
+// SLOP AUDIT — ① Zeno: the hero object is a ledger you operate; money in
+// tabular mono; strike → declined traps → verified sequence. ② Tempted by:
+// keeping the 3D-tilt phone with glow. ③ Lazy version: gradient headline +
+// tilted screenshot + two CTAs.
+//
+// SSR/no-JS: renders statically with all rows active and the true base
+// total (no zero-flash — tweens start FROM the server value). Entrance
+// choreography is CSS-only, gated on html.js (layout.tsx sets it before
+// paint), so no-JS never sees a hidden hero. Reduced motion: flows are
+// skipped, totals jump, strikes appear without animation.
+
+import { Fragment, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useReducedMotion } from "motion/react";
 import { WaitlistForm } from "./WaitlistForm";
+import { TickTag, ColumnHeads } from "./ledger";
+import { CANCEL_FLOWS, FLOW_GLYPH, LEDGER_EVENT, SAMPLE_BASE, SAMPLE_SUBS, type FlowLine } from "./sample-ledger";
 import styles from "../../app/home.module.css";
 
-const ease = [0.16, 1, 0.3, 1] as const;
+const dvar = (s: number) => ({ "--d": `${s}s` }) as CSSProperties;
 
-const SUBS = [
-  { n: "Netflix", c: "#E50914", amt: 15.49, d: "1 day", danger: true },
-  { n: "Adobe CC", c: "#FF3B30", amt: 55, d: "2 days", danger: true },
-  { n: "Midjourney", c: "#8B5CF6", amt: 10.0, d: "5 days", danger: false },
-  { n: "Spotify", c: "#1DB954", amt: 10.99, d: "12 days", danger: false }
-];
-const BASE_SPEND = 107.46;
-const SCREENS = ["Dashboard", "Calendar", "Discover", "Cancel"] as const;
-
-// Visually hidden, but still read by screen readers (the standard sr-only
-// recipe). Kept inline so this lives entirely in-component and needs no CSS.
-const srOnly: React.CSSProperties = {
-  position: "absolute",
-  width: 1,
-  height: 1,
-  padding: 0,
-  margin: -1,
-  overflow: "hidden",
-  clip: "rect(0, 0, 0, 0)",
-  whiteSpace: "nowrap",
-  border: 0
-};
-
-export function Hero() {
-  const [cancelled, setCancelled] = useState<string[]>([]);
-  const toggle = (n: string) => setCancelled((c) => (c.includes(n) ? c.filter((x) => x !== n) : [...c, n]));
-  const saved = SUBS.filter((s) => cancelled.includes(s.n)).reduce((sum, s) => sum + s.amt, 0);
-  const spend = Math.max(0, BASE_SPEND - saved);
-  const netflixCancelled = cancelled.includes("Netflix");
-  const parts = spend.toFixed(2).split(".");
-  const whole = parts[0] ?? "0";
-  const cents = parts[1] ?? "00";
-
-  // Auto-advancing screen carousel; pauses on hover and respects reduced-motion
-  // (users who prefer less motion drive it manually via the dots below).
-  const [slide, setSlide] = useState(0);
-  const pausedRef = useRef(false);
-  const reduceMotion = useReducedMotion();
+/* Tweens between values on CHANGE only — the server-rendered number is the
+   real total, so no-JS and first paint never show a zero. rAF with a timeout
+   failsafe (suspended rAF can never strand the number mid-tween). */
+function useTweenedNumber(target: number, duration = 380) {
+  const [v, setV] = useState(target);
+  const prev = useRef(target);
+  const reduce = useReducedMotion();
   useEffect(() => {
-    if (reduceMotion) return;
-    const id = setInterval(() => { if (!pausedRef.current) setSlide((s) => (s + 1) % SCREENS.length); }, 3800);
-    return () => clearInterval(id);
-  }, [reduceMotion]);
-
-  // The interactive mockup is purely visual, so its state changes are invisible
-  // to screen-reader users. We mirror them into a polite live region: the active
-  // screen name as the carousel advances, and the Netflix cancel/undo toggle.
-  // Per-effect mount guards keep the very first render from announcing anything.
-  const [announce, setAnnounce] = useState("");
-  const slideMounted = useRef(false);
-  const cancelMounted = useRef(false);
-  useEffect(() => {
-    if (!slideMounted.current) { slideMounted.current = true; return; }
-    setAnnounce(`${SCREENS[slide]} screen`);
-  }, [slide]);
-  useEffect(() => {
-    if (!cancelMounted.current) { cancelMounted.current = true; return; }
-    setAnnounce(netflixCancelled ? "Netflix cancelled" : "reminder restored");
-  }, [netflixCancelled]);
-
-  // Cursor-driven 3D tilt + lift.
-  const tiltRef = useRef<HTMLDivElement>(null);
-  const rx = useMotionValue(0);
-  const ry = useMotionValue(0);
-  const sc = useMotionValue(1);
-  const srx = useSpring(rx, { stiffness: 140, damping: 14, mass: 0.4 });
-  const sry = useSpring(ry, { stiffness: 140, damping: 14, mass: 0.4 });
-  const ssc = useSpring(sc, { stiffness: 200, damping: 18 });
-  function onTilt(e: React.MouseEvent) {
-    const el = tiltRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    ry.set(((e.clientX - r.left) / r.width - 0.5) * 18);
-    rx.set(-((e.clientY - r.top) / r.height - 0.5) * 18);
-  }
-  function onEnter() { pausedRef.current = true; sc.set(1.04); }
-  function onLeave() { pausedRef.current = false; rx.set(0); ry.set(0); sc.set(1); }
-
-  return (
-    <header className={styles.hero}>
-      {/* Mirrors the visual-only mockup state to assistive tech. */}
-      <span aria-live="polite" role="status" style={srOnly}>{announce}</span>
-      <div className={styles.heroBg} aria-hidden>
-        <span className={`${styles.mesh} ${styles.meshA}`} />
-        <span className={`${styles.mesh} ${styles.meshB}`} />
-        <span className={`${styles.mesh} ${styles.meshC}`} />
-        <span className={`${styles.mesh} ${styles.meshD}`} />
-        <span className={styles.heroSheen} />
-        <span className={styles.heroGridFull} />
-        <span className={styles.heroVignette} />
-      </div>
-
-      <div className={styles.heroInner}>
-        <div className={styles.heroGrid}>
-          <div className={styles.heroCopy}>
-            <m.div className={styles.heroBadge} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease }}>
-              <span className={styles.heroBadgePill}>SOON</span>
-              Launching on iOS &amp; Android — join the waitlist
-            </m.div>
-            <m.h1 className={styles.heroTitle} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.75, delay: 0.08, ease }}>
-              Know what you pay.<br />
-              <span className={styles.gradText}>Cancel before it charges.</span>
-            </m.h1>
-            <m.p className={styles.heroSub} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.22, ease }}>
-              Zeno is the subscription radar that finds every recurring charge, warns you days before each renewal, and gets you to cancel in one tap — without ever touching your bank login.
-            </m.p>
-            <m.div className={styles.heroForm} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.34, ease }}>
-              <WaitlistForm />
-              <div className={styles.heroNote}>
-                <span className={styles.heroNoteItem}><span className={styles.heroCheck}>✓</span> No bank login</span>
-                <span className={styles.heroNoteItem}><span className={styles.heroCheck}>✓</span> Scanned on-device</span>
-                <span className={styles.heroNoteItem}><span className={styles.heroCheck}>✓</span> Free to start</span>
-              </div>
-            </m.div>
-            {/* Hero strip = the promise (how it feels to use Zeno). The hard
-                numbers ($219 / catalog size / 3 / 0) live in the Stats band
-                below, so these stay action-framed to avoid reading as a
-                duplicate. */}
-            <m.div className={styles.heroStats} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.46, ease }}>
-              <div className={styles.heroStat}><span className={styles.heroStatVal}>1 tap</span><span className={styles.heroStatLabel}>to cancel a renewal</span></div>
-              <span className={styles.heroStatDiv} />
-              <div className={styles.heroStat}><span className={styles.heroStatVal}>7 days</span><span className={styles.heroStatLabel}>heads-up before it charges</span></div>
-              <span className={styles.heroStatDiv} />
-              <div className={styles.heroStat}><span className={styles.heroStatVal}>No</span><span className={styles.heroStatLabel}>bank login required</span></div>
-            </m.div>
-          </div>
-
-          {/* Interactive, auto-cycling app mockup */}
-          <m.div className={styles.heroMockWrap} initial={{ opacity: 0, y: 40, rotateY: -12 }} animate={{ opacity: 1, y: 0, rotateY: 0 }} transition={{ duration: 1, delay: 0.3, ease }}>
-            <m.div ref={tiltRef} className={styles.phoneTilt} style={{ rotateX: srx, rotateY: sry, scale: ssc }} onMouseMove={onTilt} onMouseEnter={onEnter} onMouseLeave={onLeave}>
-              <div className={styles.phone}>
-                <div className={styles.phoneNotch} />
-                <div className={styles.phoneScreen}>
-                  <AnimatePresence mode="wait">
-                    <m.div
-                      key={slide}
-                      className={styles.screen}
-                      initial={{ opacity: 0, x: 28 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -28 }}
-                      transition={{ duration: 0.4, ease }}
-                    >
-                      {slide === 0 ? <ScreenDashboard whole={whole} cents={cents} cancelled={cancelled} netflixCancelled={netflixCancelled} toggle={toggle} /> : null}
-                      {slide === 1 ? <ScreenCalendar /> : null}
-                      {slide === 2 ? <ScreenDiscover /> : null}
-                      {slide === 3 ? <ScreenCancel /> : null}
-                    </m.div>
-                  </AnimatePresence>
-                </div>
-                <div className={styles.slideDots}>
-                  {SCREENS.map((s, i) => (
-                    <button key={s} className={`${styles.slideDot} ${slide === i ? styles.slideDotActive : ""}`} aria-label={`Show ${s}`} onClick={() => setSlide(i)} />
-                  ))}
-                </div>
-              </div>
-            </m.div>
-            <span className={styles.phoneGlow} />
-          </m.div>
-        </div>
-      </div>
-
-      <m.div className={styles.scrollCue} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2, duration: 1 }}>
-        Scroll
-        <span className={styles.scrollLine} />
-      </m.div>
-    </header>
-  );
+    if (prev.current === target) return;
+    const from = prev.current;
+    prev.current = target;
+    if (reduce) {
+      // Reduced motion: jump straight to the target, no tween. Deliberate.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setV(target);
+      return;
+    }
+    let raf = 0;
+    const t0 = performance.now();
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - t0) / duration);
+      const e = 1 - Math.pow(1 - p, 3);
+      setV(from + (target - from) * e);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    const failsafe = setTimeout(() => setV(target), duration + 200);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(failsafe);
+    };
+  }, [target, duration, reduce]);
+  return v;
 }
 
-function AppTop({ title }: { title?: string }) {
+/* One printed line of the inline cancel flow. Handles its own entrance and,
+   for retention traps, the strike + "— DECLINED" a beat after appearing. */
+function FlowLogLine({ line }: { line: FlowLine }) {
+  const [shown, setShown] = useState(false);
+  const [struck, setStruck] = useState(false);
+  useEffect(() => {
+    const r = requestAnimationFrame(() => requestAnimationFrame(() => setShown(true)));
+    const failsafe = setTimeout(() => setShown(true), 70);
+    const t = line.c === "trap" ? window.setTimeout(() => setStruck(true), 240) : 0;
+    return () => {
+      cancelAnimationFrame(r);
+      clearTimeout(failsafe);
+      if (t) clearTimeout(t);
+    };
+  }, [line.c]);
+  const tone = line.c === "fee" ? styles.flFee : line.c === "trap" ? styles.flTrap : line.c === "ok" ? styles.flOk : "";
   return (
-    <div className={styles.appTop}>
-      {title ? <span className={styles.appScreenTitle}>{title}</span> : <span className={styles.appBrand}>zeno</span>}
-      <span className={styles.appAvatar}>Z</span>
+    <div className={`${styles.fl} ${tone} ${shown ? styles.flIn : ""} ${struck ? styles.flDx : ""}`}>
+      <b aria-hidden="true">{FLOW_GLYPH[line.c]}</b>
+      <span>
+        {line.c === "trap" ? (
+          <>
+            {line.pre}{" "}
+            <span className={styles.flQ}>
+              {line.q}
+              <i aria-hidden="true" />
+            </span>{" "}
+            <span className={styles.flDcl}>— DECLINED</span>
+          </>
+        ) : (
+          line.t
+        )}
+      </span>
     </div>
   );
 }
 
-function ScreenDashboard({ whole, cents, cancelled, netflixCancelled, toggle }: { whole: string; cents: string; cancelled: string[]; netflixCancelled: boolean; toggle: (n: string) => void }) {
+/* The log container — unfolds via grid-template-rows (no height jank). */
+function FlowLog({ lines, shown, closing }: { lines: FlowLine[]; shown: number; closing: boolean }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const r = requestAnimationFrame(() => requestAnimationFrame(() => setOpen(true)));
+    const failsafe = setTimeout(() => setOpen(true), 70);
+    return () => {
+      cancelAnimationFrame(r);
+      clearTimeout(failsafe);
+    };
+  }, []);
   return (
-    <>
-      <AppTop />
-      <div className={styles.appLabel}>Monthly spend</div>
-      <div className={styles.appSpend}>${whole}<span>.{cents}</span></div>
-      <div className={styles.appMeta}>{5 - cancelled.length} subscriptions · {cancelled.length ? `${cancelled.length} cancelled` : "3 renewing this week"}</div>
-      <AnimatePresence mode="wait" initial={false}>
-        {netflixCancelled ? (
-          <m.div key="done" className={styles.appAlertDone} initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease }}>
-            <span className={styles.appAlertIconDone}>✓</span>
-            <div className={styles.appAlertText}><strong>Netflix cancelled</strong><span>You just saved ${(15.49 * 12).toFixed(0)}/yr</span></div>
-            <button className={styles.appUndo} onClick={() => toggle("Netflix")}>Undo</button>
-          </m.div>
-        ) : (
-          <m.div key="warn" className={styles.appAlert} initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease }}>
-            <span className={styles.appAlertIcon}>⚠</span>
-            <div className={styles.appAlertText}><strong>Netflix renews in 1 day</strong><span>$15.49 · dark-pattern cancel</span></div>
-            <button className={styles.appCancel} onClick={() => toggle("Netflix")}>Cancel</button>
-          </m.div>
-        )}
-      </AnimatePresence>
-      <div className={styles.appListLabel}>Upcoming renewals · tap to cancel</div>
-      {SUBS.map((s) => {
-        const off = cancelled.includes(s.n);
-        return (
-          <button key={s.n} className={styles.appRow} data-cancelled={off} onClick={() => toggle(s.n)} type="button">
-            <span className={styles.appIcon} style={{ background: `${s.c}22`, color: s.c }}>{s.n[0]}</span>
-            <span className={styles.appName}>{s.n}</span>
-            <span className={styles.appAmt}>${s.amt.toFixed(2)}</span>
-            <span className={styles.appDays} data-danger={s.danger} data-off={off}>{off ? "✓ cancelled" : s.d}</span>
-          </button>
+    <div className={`${styles.aLog} ${open && !closing ? styles.aLogOpen : ""}`}>
+      <div>
+        <div className={styles.flWrap}>
+          {lines.slice(0, shown).map((l, i) => (
+            <FlowLogLine key={i} line={l} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type RowPhase = "running" | "cancelled" | "verified";
+
+export function Hero() {
+  const reduce = useReducedMotion();
+  const [cancelled, setCancelled] = useState<string[]>([]);
+  const [phase, setPhase] = useState<Record<string, RowPhase>>({});
+  const [flows, setFlows] = useState<Record<string, { shown: number; closing: boolean }>>({});
+  const timers = useRef<Record<string, number[]>>({});
+  const [announce, setAnnounce] = useState("");
+
+  const saved = SAMPLE_SUBS.filter((s) => cancelled.includes(s.n)).reduce((a, s) => a + s.amt, 0);
+  const total = useTweenedNumber(SAMPLE_BASE - saved);
+  const yearly = useTweenedNumber(saved * 12);
+
+  // Mount guard keeps the live region silent on first render.
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    const t = timers.current;
+    return () => {
+      for (const k of Object.keys(t)) for (const id of t[k] ?? []) clearTimeout(id);
+    };
+  }, []);
+
+  // The running-tally chip (pen.tsx) carries the visitor's edits down the page.
+  useEffect(() => {
+    if (!mounted.current) return;
+    window.dispatchEvent(new CustomEvent(LEDGER_EVENT, { detail: { off: SAMPLE_SUBS.map((s) => cancelled.includes(s.n)) } }));
+  }, [cancelled]);
+
+  const later = (n: string, fn: () => void, ms: number) => {
+    const id = window.setTimeout(fn, ms);
+    (timers.current[n] ??= []).push(id);
+  };
+  const clearTimers = (n: string) => {
+    for (const id of timers.current[n] ?? []) clearTimeout(id);
+    timers.current[n] = [];
+  };
+  const say = (msg: string) => {
+    if (mounted.current) setAnnounce(msg);
+  };
+  const totalsAfter = (next: string[]) => {
+    const s = SAMPLE_SUBS.filter((x) => next.includes(x.n)).reduce((a, x) => a + x.amt, 0);
+    return { total: (SAMPLE_BASE - s).toFixed(2), yearly: (s * 12).toFixed(2) };
+  };
+
+  const finishCancelled = (name: string, next: string[]) => {
+    setPhase((p) => ({ ...p, [name]: "cancelled" }));
+    const t = totalsAfter(next);
+    say(`${name} cancelled — verifying next statement. Monthly total ${t.total} dollars, ${t.yearly} dollars a year back.`);
+    later(
+      name,
+      () => {
+        setPhase((p) => (p[name] ? { ...p, [name]: "verified" } : p));
+        say(`${name} verified cancelled — the charge stopped.`);
+      },
+      4200
+    );
+  };
+
+  const startFlow = (name: string, next: string[]) => {
+    const lines = CANCEL_FLOWS[name] ?? [];
+    setPhase((p) => ({ ...p, [name]: "running" }));
+    setFlows((f) => ({ ...f, [name]: { shown: 0, closing: false } }));
+    say(`Cancelling ${name}…`);
+    let at = 200;
+    lines.forEach((L, i) => {
+      later(name, () => setFlows((f) => (f[name] ? { ...f, [name]: { ...f[name], shown: i + 1 } } : f)), at);
+      at += L.c === "trap" ? 430 : 280;
+    });
+    later(
+      name,
+      () => {
+        finishCancelled(name, next);
+        later(name, () => setFlows((f) => (f[name] ? { ...f, [name]: { ...f[name], closing: true } } : f)), 1400);
+        later(
+          name,
+          () =>
+            setFlows((f) => {
+              const { [name]: _drop, ...rest } = f;
+              return rest;
+            }),
+          1660
         );
-      })}
-    </>
-  );
-}
+      },
+      at
+    );
+  };
 
-const CAL_DOTS: Record<number, string> = { 14: "#fb7185", 15: "#fb7185", 18: "#fbbf24", 22: "#34d399", 27: "#5b8cff" };
-function ScreenCalendar() {
-  const days = Array.from({ length: 30 }, (_, i) => i + 1);
-  const lead = 6; // June 2026 starts mid-week (visual)
-  return (
-    <>
-      <AppTop title="Calendar" />
-      <div className={styles.calKpis}>
-        <div><div className={styles.calKpiVal}>$107.46</div><div className={styles.calKpiLab}>this month</div></div>
-        <div><div className={styles.calKpiVal} style={{ color: "var(--z-rose)" }}>$80.48</div><div className={styles.calKpiLab}>next 7 days</div></div>
-      </div>
-      <div className={styles.calMonth}>June 2026</div>
-      <div className={styles.calGrid}>
-        {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => <span key={i} className={styles.calHead}>{d}</span>)}
-        {Array.from({ length: lead }, (_, i) => <span key={`x${i}`} />)}
-        {days.map((d) => (
-          <span key={d} className={styles.calCell} data-today={d === 13}>
-            {d}
-            {CAL_DOTS[d] ? <span className={styles.calDot} style={{ background: CAL_DOTS[d] }} /> : null}
-          </span>
-        ))}
-      </div>
-    </>
-  );
-}
+  const toggle = (name: string) => {
+    if (cancelled.includes(name)) {
+      // restore
+      clearTimers(name);
+      const next = cancelled.filter((x) => x !== name);
+      setCancelled(next);
+      setPhase((p) => {
+        const { [name]: _drop, ...rest } = p;
+        return rest;
+      });
+      setFlows((f) => {
+        const { [name]: _drop, ...rest } = f;
+        return rest;
+      });
+      say(`${name} kept. Monthly total ${totalsAfter(next).total} dollars.`);
+      return;
+    }
+    const next = [...cancelled, name];
+    setCancelled(next);
+    if (!reduce && CANCEL_FLOWS[name]) startFlow(name, next);
+    else finishCancelled(name, next);
+  };
 
-function ScreenDiscover() {
-  return (
-    <>
-      <AppTop title="Discover" />
-      <div className={styles.discIntro}>Find every subscription you pay for.</div>
-      <div className={styles.discCard}>
-        <div className={styles.discTop}><span className={styles.discIco} style={{ background: "rgba(52,211,153,0.14)" }}>🏦</span><div><div className={styles.discName}>Import bank statement</div><div className={styles.discSub}>Catches every recurring charge</div></div></div>
-        <div className={styles.discBtn} style={{ background: "var(--z-emerald)", color: "#04110c" }}>Import CSV</div>
-      </div>
-      <div className={styles.discCard}>
-        <div className={styles.discTop}><span className={styles.discIco} style={{ background: "rgba(91,140,255,0.14)" }}>✉</span><div><div className={styles.discName}>Scan Gmail receipts</div><div className={styles.discSub}>Read-only · on your device</div></div></div>
-        <div className={styles.discBtn}>Connect Gmail</div>
-      </div>
-    </>
-  );
-}
+  const rowDelays = [0.5, 0.57, 0.64, 0.71, 0.78];
 
-const CANCEL_STEPS = ["Go to account.adobe.com/plans", "Manage plan → Cancel", "Decline the retention offers", "Confirm — check your email"];
-function ScreenCancel() {
   return (
-    <>
-      <AppTop title="Cancel" />
-      <div className={styles.cgHero}>
-        <span className={styles.cgIco} style={{ background: "rgba(255,59,48,0.14)", color: "#FF6B60" }}>A</span>
-        <div className={styles.cgName}>Adobe Creative Cloud</div>
-        <div className={styles.cgMeta}>$55 · monthly</div>
-        <span className={styles.cgBadge}>⚠ Dark pattern</span>
+    <header id="ledger" className={`${styles.hero} ${styles.ruled}`}>
+      <span aria-live="polite" role="status" style={{ position: "absolute", width: 1, height: 1, padding: 0, margin: -1, overflow: "hidden", clip: "rect(0,0,0,0)", whiteSpace: "nowrap", border: 0 }}>
+        {announce}
+      </span>
+      <div className={styles.container}>
+        <div className={styles.heroGrid}>
+          <div>
+            <span className={`${styles.heroKick} ${styles.heroPrint}`}>
+              <span className={styles.heroKickTick} aria-hidden />
+              LAUNCHING ON IOS &amp; ANDROID · WAITLIST OPEN
+            </span>
+            <h1 className={`${styles.heroTitle} ${styles.heroMask}`} style={dvar(0.1)}>
+              <span className={styles.hl}>
+                <span>Know what you pay.</span>
+              </span>
+              <span className={styles.hl}>
+                <span>
+                  Cancel <span className={styles.penu}>before</span> it charges.
+                </span>
+              </span>
+            </h1>
+            <p className={`${styles.heroSub} ${styles.heroPrint}`} style={dvar(0.34)}>
+              Zeno is the honest way to take back your subscriptions — discovery from receipts and statements you control, a warning before every renewal,
+              and cancellations that aren&rsquo;t called done until the charge actually stops.
+            </p>
+            <div className={`${styles.heroFormWrap} ${styles.heroPrint}`} style={dvar(0.46)}>
+              <WaitlistForm />
+            </div>
+            <div className={`${styles.heroTicks} ${styles.heroPrint}`} style={dvar(0.56)}>
+              <TickTag tone="green">No bank login required</TickTag>
+              <TickTag tone="green">Discovery you control</TickTag>
+              <TickTag tone="green">Free to start</TickTag>
+            </div>
+          </div>
+
+          {/* The audit — try it on this sample ledger */}
+          <div className={`${styles.audit} ${styles.heroPrint}`} style={dvar(0.25)} role="group" aria-label="Sample ledger — flip a switch to walk the real cancel flow">
+            <div className={styles.auditHead}>
+              <span className={styles.auditTitle}>YOUR LEDGER · SAMPLE</span>
+              <span className={styles.auditTitle}>{SAMPLE_SUBS.length - cancelled.length} BILLING</span>
+            </div>
+            <ColumnHeads left="SERVICE" right="MONTHLY / KEEP" />
+            {SAMPLE_SUBS.map((s, i) => {
+              const off = cancelled.includes(s.n);
+              const ph = phase[s.n];
+              const fl = flows[s.n];
+              const flowLines = CANCEL_FLOWS[s.n] ?? [];
+              return (
+                <Fragment key={s.n}>
+                  <div className={`${styles.auditRow} ${styles.heroPrint} ${off ? styles.auditRowOff : ""} ${ph === "verified" ? styles.vflash : ""}`} style={dvar(rowDelays[i] ?? 0)}>
+                    <span className={styles.auditBrand} style={{ background: s.c }} aria-hidden>
+                      {s.n[0]}
+                    </span>
+                    <span className={styles.auditNameWrap}>
+                      <span className={styles.auditName}>
+                        {s.n}
+                        <span className={styles.auditStrike} aria-hidden />
+                      </span>
+                      <span className={styles.auditMeta}>
+                        {off ? (
+                          <span className={styles.auditVerified}>
+                            {ph === "verified"
+                              ? "VERIFIED CANCELLED — STATEMENT SHOWED NO CHARGE"
+                              : ph === "running"
+                                ? "RUNNING THE CANCEL FLOW…"
+                                : "CANCELLED — VERIFYING NEXT STATEMENT"}
+                          </span>
+                        ) : (
+                          s.meta
+                        )}
+                      </span>
+                    </span>
+                    <span className={`money ${styles.auditAmt}`}>${s.amt.toFixed(2)}</span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={!off}
+                      disabled={!!flows[s.n]}
+                      aria-label={off ? `Restore ${s.n}, ${s.amt.toFixed(2)} dollars a month` : `Cancel ${s.n}, ${s.amt.toFixed(2)} dollars a month`}
+                      className={`${styles.auditSwitch} ${off ? styles.auditSwitchOff : ""}`}
+                      onClick={() => toggle(s.n)}
+                    >
+                      <span className={styles.auditKnob} aria-hidden />
+                    </button>
+                  </div>
+                  {fl ? <FlowLog lines={flowLines} shown={fl.shown} closing={fl.closing} /> : null}
+                </Fragment>
+              );
+            })}
+            <div className={`${styles.auditTotals} ${styles.heroPrint}`} style={dvar(0.88)}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+                <span className={styles.auditTitle}>COMMITTED / MONTH</span>
+                <span className={`money ${styles.auditTotalVal}`}>${total.toFixed(2)}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, marginTop: 6 }}>
+                <span className={styles.auditTitle} style={{ color: "var(--stamp-verified)" }}>
+                  BACK IN YOUR POCKET / YEAR
+                </span>
+                <span key={saved.toFixed(2)} className={`money ${styles.auditYearly} ${saved > 0 ? styles.pulse : ""}`}>
+                  +${yearly.toFixed(2)}
+                </span>
+              </div>
+            </div>
+            <p className={`${styles.auditNote} ${styles.heroPrint}`} style={dvar(1)}>
+              SAMPLE LEDGER — FLIP A SWITCH OFF TO WALK THE REAL CANCEL FLOW, TRAPS INCLUDED. IN THE APP, A CANCELLATION IS ONLY MARKED VERIFIED AFTER YOUR
+              NEXT RECEIPT OR STATEMENT SHOWS NO CHARGE.
+            </p>
+          </div>
+        </div>
       </div>
-      <div className={styles.cgSave}>Cancelling saves you <strong>$660/yr</strong></div>
-      <div className={styles.appListLabel}>How to cancel</div>
-      {CANCEL_STEPS.map((s, i) => (
-        <div key={s} className={styles.cgStep}><span className={styles.cgStepNum}>{i + 1}</span>{s}</div>
-      ))}
-      <div className={styles.cgBtn}>Open cancellation page →</div>
-    </>
+    </header>
   );
 }
