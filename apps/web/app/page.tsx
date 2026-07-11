@@ -2,7 +2,7 @@ import { serviceRecords } from "@zeno/service-catalog";
 import { Nav } from "@/components/site/Nav";
 import { Hero } from "@/components/site/Hero";
 import { Footer } from "@/components/site/Footer";
-import { MarginIndex, PenRule, RunningTally } from "@/components/site/pen";
+import { LedgerBook, type Sheet } from "@/components/site/LedgerBook";
 import { AnalyticsTeaser, FAQ, FinalCTA, Method, Pricing, Refusal, TheCase, type CaseStats } from "@/components/site/sections";
 import { FAQS } from "@/components/site/faq-data";
 import { JsonLd } from "@/components/site/JsonLd";
@@ -27,6 +27,20 @@ export default function HomePage() {
     quote: darkExample ? { service: darkExample.name, step: darkExample.cancellationGuideSteps[0]! } : null
   };
 
+  // The homepage story, in order. LedgerBook renders these as one scrolling
+  // document by default; when a wide, motion-friendly, capable browser is
+  // detected post-hydration it leafs them as page-turn sheets instead.
+  const sheets: Sheet[] = [
+    { id: "cover", label: "COVER", node: <Hero /> },
+    { id: "case", label: "THE CASE", node: <TheCase stats={stats} /> },
+    { id: "how", label: "THE METHOD", node: <Method /> },
+    { id: "refusal", label: "THE REFUSAL", node: <Refusal /> },
+    ...(showAnalytics ? [{ id: "back-office", label: "THE BACK OFFICE", node: <AnalyticsTeaser /> }] : []),
+    { id: "pricing", label: "THE BILL", node: <Pricing /> },
+    { id: "faq", label: "QUESTIONS", node: <FAQ faqs={FAQS} /> },
+    { id: "waitlist", label: "THE CLOSE", node: <FinalCTA /> }
+  ];
+
   return (
     <div>
       <JsonLd
@@ -41,22 +55,10 @@ export default function HomePage() {
         }}
       />
       <Nav showAnalytics={showAnalytics} />
-      {/* The pen chrome: progress rule, margin index (≥1360px), and the
-          running-tally chip that carries the hero's sample bill down the page. */}
-      <PenRule />
-      <MarginIndex />
-      <RunningTally />
-      <main id="main">
-        <Hero />
-        <TheCase stats={stats} />
-        <Method />
-        <Refusal />
-        {showAnalytics ? <AnalyticsTeaser /> : null}
-        <Pricing />
-        <FAQ faqs={FAQS} />
-        <FinalCTA />
-      </main>
-      <Footer />
+      {/* LedgerBook renders the sections as a scrolling document by default
+          (the SEO/CWV/a11y base) and, only when eligible post-hydration, leafs
+          them as a page-turn ledger. It owns the pen/tally chrome. */}
+      <LedgerBook sheets={sheets} footer={<Footer />} />
     </div>
   );
 }

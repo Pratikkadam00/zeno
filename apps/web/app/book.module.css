@@ -1,0 +1,223 @@
+/* The Ledger Book — a progressive-enhancement presentation of the homepage as a
+   pad of ledger sheets you leaf through. Applied ONLY client-side, only when
+   motion is welcome and the browser can run it (see LedgerBook.tsx's gate).
+   No-JS, crawlers, reduced-motion, and unsupported browsers never see any of
+   this — they get the normal scrolling document, so SEO/CWV/a11y are unaffected.
+   Rails: transform/opacity only; in-page scrolling always wins over a page turn;
+   the turn is a single CSS-3D fold around the spine (left edge), never a
+   scroll-jack. Tokens (--paper/--desk/--rule-strong/--ink-panel/--baseline…)
+   come from globals.css and are art-directed for both themes. */
+
+:root {
+  --book-navH: 57px;
+}
+
+/* ── Book mode: lock the document, the stage owns the viewport ── */
+.book {
+  position: fixed;
+  inset: var(--book-navH) 0 0 0;
+  perspective: 2600px;
+  perspective-origin: 42% 50%;
+  background: var(--desk);
+  --padX: clamp(20px, 3vw, 48px);
+  --padT: clamp(8px, 1.8vh, 18px);
+  --padB: clamp(14px, 3vh, 30px);
+  z-index: 1;
+}
+
+/* Page-edge stacks: unread sheets to the right, read sheets pile up left. */
+.edge {
+  position: absolute;
+  top: calc(var(--padT) + 3px);
+  bottom: calc(var(--padB) + 3px);
+  width: 0;
+  z-index: 0;
+  pointer-events: none;
+  transition: width 0.5s cubic-bezier(0.22, 0.8, 0.26, 1);
+  background: repeating-linear-gradient(to right, var(--rule-strong) 0 1px, var(--paper) 1px 3px);
+  border-top: 1px solid var(--rule-strong);
+  border-bottom: 1px solid var(--rule-strong);
+}
+.edgeR { left: calc(100% - var(--padX)); border-radius: 0 4px 4px 0; }
+.edgeL { right: calc(100% - var(--padX)); border-radius: 4px 0 0 4px; }
+
+/* ── Sheets ── */
+.sheet {
+  position: absolute;
+  left: var(--padX);
+  right: var(--padX);
+  top: var(--padT);
+  bottom: var(--padB);
+  display: none;
+  background: var(--paper);
+  border: 1px solid var(--rule-strong);
+  border-radius: 0 10px 10px 0;
+  overflow: hidden;
+  box-shadow: 0 1px 0 rgba(20, 22, 31, 0.05);
+  contain: layout paint;
+}
+.sheetShown { display: block; z-index: 1; }
+/* the sheet currently turning sits above, and hides its own back via the fold */
+.sheetTurning { display: block; z-index: 3; transform-origin: left center; backface-visibility: hidden; }
+
+/* red margin rule near the spine + spine shading — it's a bound ledger */
+.sheet::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 clamp(30px, 4.5vw, 56px);
+  width: 1px;
+  background: color-mix(in srgb, var(--danger, #c63b49) 26%, transparent);
+  pointer-events: none;
+  z-index: 2;
+}
+.sheet::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 30px;
+  background: linear-gradient(to right, rgba(10, 12, 20, 0.07), rgba(10, 12, 20, 0));
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* The scroller inside each sheet. In-page scroll happens here; only at its
+   top/bottom boundary does a wheel/swipe turn the page. */
+.scroll {
+  position: relative;
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background-image: repeating-linear-gradient(to bottom, transparent 0 43px, var(--baseline) 43px 44px);
+  background-attachment: local;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-strong) transparent;
+}
+
+.pageNum {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  z-index: 3;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--ink-3, #808698);
+  pointer-events: none;
+}
+
+/* The fold: a shadow sweeps across the turning sheet as it lifts. */
+.foldShade {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(to right, rgba(10, 12, 20, 0) 30%, rgba(10, 12, 20, 0.22));
+}
+
+/* ── Chrome: pen rule (page progress), pager, hint, running tally ── */
+.penRule {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--ink, #14161f);
+  transform: scaleX(0);
+  transform-origin: left center;
+  z-index: 80;
+  pointer-events: none;
+  transition: transform 0.68s cubic-bezier(0.55, 0.06, 0.28, 1);
+}
+
+.pager {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  z-index: 75;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--ink-panel);
+  color: #f2f1ea;
+  border-radius: 10px;
+  padding: 5px 6px;
+  box-shadow: 0 14px 30px -16px rgba(10, 12, 20, 0.6);
+}
+.pager button {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: #f2f1ea;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s, opacity 0.2s;
+}
+.pager button:hover { background: rgba(242, 241, 234, 0.12); }
+.pager button:active { transform: translateY(1px); }
+.pager button:disabled { opacity: 0.28; cursor: default; background: none; }
+.pn { min-width: 64px; text-align: center; font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.14em; }
+.pn small { color: #8b91a5; }
+.pl {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: #8b91a5;
+  padding: 0 10px 0 4px;
+  border-left: 1px solid rgba(242, 241, 234, 0.14);
+  margin-left: 4px;
+}
+@media (max-width: 640px) { .pl { display: none; } }
+
+.hint {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 74;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--ink-2, #5a6072);
+  pointer-events: none;
+  transition: opacity 0.5s;
+}
+.hint::after { content: "◂"; margin-left: 8px; display: inline-block; }
+.hintGone { opacity: 0; }
+@media (max-width: 640px) { .hint { display: none; } }
+
+.chip {
+  position: fixed;
+  top: var(--book-navH);
+  left: 0;
+  z-index: 66;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.68s cubic-bezier(0.55, 0.06, 0.28, 1), opacity 0.3s cubic-bezier(0.22, 0.8, 0.26, 1);
+}
+.chipShow { opacity: 1; }
+.chipIn {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  background: var(--ink-panel);
+  color: #f2f1ea;
+  padding: 7px 11px 8px;
+  border-radius: 0 0 9px 9px;
+  box-shadow: 0 12px 24px -14px rgba(10, 12, 20, 0.55);
+}
+.chipIn b { font-family: var(--font-mono); font-size: 8.5px; font-weight: 700; letter-spacing: 0.14em; color: #8b91a5; white-space: nowrap; }
+.chipAmt { font-family: var(--font-mono); font-size: 12.5px; font-weight: 700; color: #fff; }
+
+@media (prefers-reduced-motion: reduce) {
+  .penRule, .chip, .edge, .sheetTurning, .foldShade { transition: none !important; }
+}
