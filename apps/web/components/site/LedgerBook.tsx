@@ -33,6 +33,22 @@ export function LedgerBook({ sheets, footer }: { sheets: Sheet[]; footer: ReactN
   const N = sheets.length;
   const liveRef = useRef<HTMLParagraphElement | null>(null);
   const scrollersRef = useRef<(HTMLDivElement | null)[]>([]);
+  const sheetRefs = useRef<(HTMLElement | null)[]>([]);
+  const timerRef = useRef<number | null>(null);
+  const turningRef = useRef(false);
+  const mountedRef = useRef(true);
+  const firstFocusRef = useRef(true);
+  const [viewportW, setViewportW] = useState(() => (typeof window !== "undefined" ? window.innerWidth : 1200));
+
+  // Track mount and clear any pending turn timer on unmount — a committed turn
+  // must never run setState / replaceState / scrollTop onto a detached tree.
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   // ── Eligibility: decided once, client-side, after mount ──
   useEffect(() => {
@@ -85,13 +101,21 @@ export function LedgerBook({ sheets, footer }: { sheets: Sheet[]; footer: ReactN
 
   const go = useCallback(
     (to: number) => {
-      if (turn || to === cur || to < 0 || to >= N) return;
+      // turningRef is set synchronously so a second call in the same batch (or
+      // before the turn state flushes) short-circuits regardless of state timing.
+      if (turningRef.current || turn || to === cur || to < 0 || to >= N) return;
+      turningRef.current = true;
       const dir: 1 | -1 = to > cur ? 1 : -1;
       setArmed(false);
       setTurn({ to, dir });
       say(`Page ${to + 1} of ${N} — ${sheets[to]?.label ?? ""}`);
-      // Commit on a failsafe timer (the book can never wedge on a dropped frame).
-      window.setTimeout(() => {
+      // Commit on a tracked failsafe timer (the book can never wedge on a dropped
+      // frame). Tracked + cleared so it never fires onto an unmounted tree.
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = window.setTimeout(() => {
+        timerRef.current = null;
+        turningRef.current = false;
+        if (!mountedRef.current) return;
         setCur(to);
         setTurn(null);
         if (typeof history !== "undefined" && history.replaceState) {
@@ -107,20 +131,52 @@ export function LedgerBook({ sheets, footer }: { sheets: Sheet[]; footer: ReactN
   const next = useCallback(() => go(cur + 1), [go, cur]);
   const prev = useCallback(() => go(cur - 1), [go, cur]);
 
-  // ── Keyboard nav ──
+  // ── Keyboard nav — ←/→ are explicit page turns; Space/PageDown/↓ (and their
+  //    reverses) scroll the sheet and only turn AT its scroll boundary, so a
+  //    keyboard user can read a long sheet before the page turns (in-page scroll
+  //    wins, matching the wheel handler). ──
   useEffect(() => {
     if (!book) return;
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
-      if (e.key === "ArrowRight" || e.key === "PageDown" || (e.key === " " && !e.shiftKey)) { e.preventDefault(); next(); }
-      else if (e.key === "ArrowLeft" || e.key === "PageUp" || (e.key === " " && e.shiftKey)) { e.preventDefault(); prev(); }
+      const sc = scrollersRef.current[cur];
+      const atBoundary = (dir: number) => !sc || (dir > 0 ? sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 2 : sc.scrollTop <= 2);
+      const scrollOrTurn = (dir: 1 | -1) => {
+        if (atBoundary(dir)) { e.preventDefault(); if (dir > 0) next(); else prev(); }
+        // Instant (not "smooth") — native PageDown is instant, and smooth
+        // scrollBy is silently dropped in some renderers, which would strand a
+        // keyboard user on a long sheet with no way to scroll or turn.
+        else if (sc) { e.preventDefault(); sc.scrollBy({ top: dir * sc.clientHeight * 0.9, behavior: "auto" }); }
+      };
+      if (e.key === "ArrowRight") { e.preventDefault(); next(); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); prev(); }
       else if (e.key === "Home") { e.preventDefault(); go(0); }
       else if (e.key === "End") { e.preventDefault(); go(N - 1); }
+      else if (e.key === "PageDown" || e.key === "ArrowDown" || (e.key === " " && !e.shiftKey)) scrollOrTurn(1);
+      else if (e.key === "PageUp" || e.key === "ArrowUp" || (e.key === " " && e.shiftKey)) scrollOrTurn(-1);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [book, next, prev, go, N]);
+  }, [book, cur, next, prev, go, N]);
+
+  // ── Focus follows the turn: after a commit, move focus to the new sheet so a
+  //    keyboard/screen-reader user's place isn't orphaned to <body>. Skips the
+  //    initial mount so the cover isn't force-focused on load. ──
+  useEffect(() => {
+    if (!book) return;
+    if (firstFocusRef.current) { firstFocusRef.current = false; return; }
+    sheetRefs.current[cur]?.focus({ preventScroll: true });
+  }, [book, cur]);
+
+  // ── Keep the running-tally chip positioned across a resize (its translateX is
+  //    derived from the viewport width). ──
+  useEffect(() => {
+    if (!book) return;
+    const onResize = () => setViewportW(window.innerWidth);
+    window.addEventListener("resize", onResize, { passive: true });
+    return () => window.removeEventListener("resize", onResize);
+  }, [book]);
 
   // ── Wheel nav — turns only when the sheet is at its scroll boundary in the
   //    wheel direction; otherwise the sheet scrolls normally (in-page wins). ──
@@ -186,14 +242,14 @@ export function LedgerBook({ sheets, footer }: { sheets: Sheet[]; footer: ReactN
     );
   }
 
-  const chipX = typeof window !== "undefined" ? Math.min(Math.max(progress * window.innerWidth - 150, 10), window.innerWidth - 160) : 10;
+  const chipX = Math.min(Math.max(progress * viewportW - 150, 10), viewportW - 160);
 
   // ── Book mode ──
   return (
     <>
       <p aria-live="polite" role="status" style={SR_ONLY} ref={liveRef} />
       <span className={styles.penRule} style={{ transform: `scaleX(${progress})` }} aria-hidden />
-      <div className={styles.book} role="region" aria-roledescription="ledger book" aria-label="Zeno — the audit, as a leafable ledger">
+      <div id="main" className={styles.book} role="region" aria-roledescription="ledger book" aria-label="Zeno — the audit, as a leafable ledger">
         <span className={`${styles.edge} ${styles.edgeR}`} style={{ width: `${(N - 1 - cur) * 3}px` }} aria-hidden />
         <span className={`${styles.edge} ${styles.edgeL}`} style={{ width: `${cur * 3}px` }} aria-hidden />
         {sheets.map((s, i) => {
@@ -224,6 +280,8 @@ export function LedgerBook({ sheets, footer }: { sheets: Sheet[]; footer: ReactN
             <section
               key={s.id}
               id={`sheet-${s.id}`}
+              ref={(el) => { sheetRefs.current[i] = el; }}
+              tabIndex={-1}
               className={`${styles.sheet} ${visible ? styles.sheetShown : ""} ${turning ? styles.sheetTurning : ""}`}
               aria-label={`Page ${i + 1} of ${N}: ${s.label}`}
               aria-hidden={visible ? undefined : true}
