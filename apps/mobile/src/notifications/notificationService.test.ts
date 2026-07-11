@@ -110,6 +110,37 @@ describe("rescheduleAllNotifications — global iOS cap (P1.10)", () => {
     expect(vi.mocked(Notifications.scheduleNotificationAsync).mock.calls.length).toBe(55);
   });
 
+  it("migrates keyless pre-upgrade notifications: cancels every un-keyed pending one and reschedules with keys (P5.4)", async () => {
+    // Before the content.data.key was introduced, scheduled reminders carried
+    // only { subscriptionId, action }. On the first reschedule after upgrade the
+    // reconcile can't match them (no key), so it must cancel ALL of them and
+    // re-create the desired set WITH keys — a one-time migration, not a
+    // permanent churn (the identical-set test above proves it settles after).
+    const sub = { id: "s0", name: "Sub", amount: 10, nextRenewalDate: daysFromNow(30), billingCycle: "monthly" as const };
+    const keyless = ["old-7d", "old-3d", "old-day"].map((id, i) => ({
+      identifier: id,
+      content: { data: { subscriptionId: "s0", action: ["view", "cancel", "confirm"][i] } }, // NO key
+      trigger: {}
+    }));
+
+    vi.mocked(Notifications.scheduleNotificationAsync).mockClear();
+    vi.mocked(Notifications.cancelScheduledNotificationAsync).mockClear();
+    vi.mocked(Notifications.getAllScheduledNotificationsAsync).mockResolvedValue(keyless as never);
+    const spy = vi.spyOn(Date, "now").mockReturnValue(NOW);
+    await rescheduleAllNotifications([sub]);
+    spy.mockRestore();
+
+    // Every keyless notification cancelled (by its identifier)...
+    const cancelled = vi.mocked(Notifications.cancelScheduledNotificationAsync).mock.calls.map(([id]) => id);
+    expect(cancelled.sort()).toEqual(["old-3d", "old-7d", "old-day"]);
+    // ...and the full monthly ladder re-scheduled, each now carrying a key.
+    const scheduled = vi.mocked(Notifications.scheduleNotificationAsync).mock.calls;
+    expect(scheduled).toHaveLength(3);
+    for (const [request] of scheduled) {
+      expect(typeof (request.content.data as { key?: string })?.key).toBe("string");
+    }
+  });
+
   it("does zero native writes when the desired set already matches what's pending (P4.1 diff)", async () => {
     const subs = Array.from({ length: 5 }, (_, i) => ({
       id: `s${i}`,

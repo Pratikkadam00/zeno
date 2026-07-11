@@ -114,6 +114,42 @@ verified (drop-in = Audit baseline; v3 book = enhancement layer with built-in fa
   migration in the diff reconcile.
 - **P5.5** Coverage floor at current level; ratchet as port phases land.
 
+**M0 status — landed 2026-07-11 (partial by design; P5.3/P5.4 done, P5.1/P5.2-hydration sequenced into M2/M3):**
+- **P5.3 — DONE.** New `apps/mobile/src/api/client.test.ts` (30 tests) covers the full
+  `ApiResult` taxonomy on the coach + family paths: network-throw→`offline`,
+  401→`auth`, 404→`not_found`, 5xx→`server`, and a 200 with a malformed/empty
+  envelope→`server` (never a false success). Also pins the two truthfulness-critical
+  behaviours: `getHousehold`'s "200 but no household" → `not_found` (a disbanded
+  household, distinct from a server error), and `deleteAccountOnServer` returning
+  `false` on any non-2xx / offline (failure must NOT be swallowed into a success, or
+  the app would tell the user their account is gone while server data survives). Auth
+  header attaches only when signed in; `recordFunnelEvent` stays anonymous (no auth
+  header even when signed in) and never throws. Plaid paths intentionally excluded
+  (kept as code only while Plaid is in dev). `client.ts` coverage 0 → 76% (the
+  uncovered lines are exactly the Plaid + open-banking helpers).
+- **P5.4 — DONE.** Quiet-hours boundaries were already covered thoroughly; added the one
+  missing branch — the keyless pre-upgrade migration in `rescheduleAllNotifications`
+  (pre-key pending reminders are all cancelled and re-created WITH keys, a one-time
+  migration that then settles to zero writes). `notificationService.test.ts` 18 → 19.
+- **P5.2 — mostly pre-covered; no redundant tests written.** add/update/delete
+  (`subscription-mutations.test.ts`), renewal roll-forward (`subscription-ui.test.ts`),
+  and free-cap enforcement (`applyFreeCap` in `discovery-helpers.test.ts`) already have
+  thorough suites. The only uncovered piece — `coachAiConsent`/settings **hydration** —
+  is inline in `subscription-store.tsx`'s effect, and that store is rewritten in **M3**;
+  per this plan's own rule ("tests land per port phase, never against old UI") the
+  hydration test is written in M3 against the ported store, not here.
+- **P5.1 — DECIDED: defer the component-test infra to M2 (isolated jest project).**
+  Evidence, not a guess: `react-native` does not parse under the current node-env Vitest
+  (every existing mobile test mocks it to a stub), so `@testing-library/react-native`
+  cannot render under Vitest without a full RN-preset transform overhaul. A throwaway
+  smoke test against the *old* kit under a fragile config de-risks nothing (the hard
+  parts — Reanimated 4, gorhom bottom-sheet, SVG — arrive with the ported components).
+  So the infra is stood up in **M2** as an isolated jest project with the RN preset,
+  validated against the FIRST real Honest Ledger component we're keeping.
+- **P5.5 — baseline established; hard CI ratchet deferred to M7 (as the plan states).**
+  Mobile suite: 23 files / 261 tests green. A global threshold set now would break the
+  moment M1–M6 add new screen files before their tests land; M7 owns the ratchet.
+
 ### M1 — Honest Ledger foundation (was D0)
 Tokens to `src/theme/tokens.ts` (navy-cast ink scale, paper #FAF9F5, rule/rule-strong/
 ink-panel/stamp tokens, art-directed dark); verify the RN font trio matches the DS trio
