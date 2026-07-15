@@ -1,5 +1,5 @@
 import { searchServices } from "@zeno/service-catalog";
-import { buildYearInReview, createAnalyticsSnapshot, createBusinessSummary, createFamilyVaultSummary, createRenewalReminderPlan, createSpendSummary, createSpendTwin, createWidgetSnapshot, demoBusinessWorkspace, demoFamilyMembers, detectPriceHikes, getEndingTrials, isCurrencyCode, monthlyAmount, monthlyAmountIn, partnerIntegrationManifests, type AnalyticsSnapshot, type BillingCycle, type BusinessSubscriptionSummary, type CurrencyCode, type EndingTrial, type ExchangeRates, type FamilyVaultSummary, type FxContext, type PartnerIntegrationManifest, type PriceHike, type PriceHistoryEntry, type RenewalReminderPlan, type SpendSummary, type SpendTwinComparison, type Subscription, type SubscriptionCategory, type SubscriptionStatus, type WidgetSnapshot, type YearInReview } from "@zeno/shared";
+import { buildYearInReview, createAnalyticsSnapshot, createBusinessSummary, createFamilyVaultSummary, createRenewalReminderPlan, createSpendSummary, createSpendTwin, createWidgetSnapshot, demoBusinessWorkspace, demoFamilyMembers, detectPriceHikes, getEndingTrials, monthlyAmount, monthlyAmountIn, partnerIntegrationManifests, type AnalyticsSnapshot, type BillingCycle, type BusinessSubscriptionSummary, type CurrencyCode, type EndingTrial, type ExchangeRates, type FamilyVaultSummary, type FxContext, type PartnerIntegrationManifest, type PriceHike, type PriceHistoryEntry, type RenewalReminderPlan, type SpendSummary, type SpendTwinComparison, type Subscription, type SubscriptionCategory, type SubscriptionStatus, type WidgetSnapshot, type YearInReview } from "@zeno/shared";
 import * as Crypto from "expo-crypto";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform } from "react-native";
@@ -8,6 +8,7 @@ import { cancelAllNotifications, type QuietHours } from "../notifications/notifi
 import { openZenoDatabase, readAppMeta, writeAppMeta, type ZenoDatabase } from "../storage/database";
 import { clearAllSubscriptions, listSubscriptions, softDeleteSubscription, upsertSubscription } from "../storage/subscription-repository";
 import { rollRenewalForward } from "../utils/subscription-ui";
+import { hydrateNotificationSettings, hydratePriceHistory, normalizeCoachConsent, normalizeHomeCurrency, normalizeQuietHours, parseCachedRates, type CachedExchangeRates } from "./subscription-hydration";
 import { applySubscriptionChange, withNotificationSettingsEntry, withUpdatedNotificationSettings, withoutNotificationSettingsEntry } from "./subscription-mutations";
 import { seedSubscriptions } from "./seed-subscriptions";
 
@@ -118,8 +119,6 @@ const coachAiConsentMetaKey = "coach.aiConsent.v1";
 const defaultQuietHours: QuietHours = { enabled: false, startHour: 22, endHour: 8 };
 const defaultHomeCurrency: CurrencyCode = "USD";
 
-type CachedExchangeRates = { rates: ExchangeRates; fetchedAt: string };
-
 // expo-sqlite is not configured for web; web sessions stay in-memory.
 const persistenceEnabled = Platform.OS !== "web";
 
@@ -186,73 +185,26 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
           return;
         }
 
-        if (storedQuietHours) {
-          try {
-            setQuietHoursState({ ...defaultQuietHours, ...(JSON.parse(storedQuietHours) as Partial<QuietHours>) });
-          } catch (error) {
-            console.warn("Corrupt quiet-hours setting in database; using defaults.", error);
-          }
-        }
+        // Normalize each persisted setting against corrupt/legacy/missing rows.
+        // The helpers are pure and unit-tested in subscription-hydration.test.ts;
+        // setting a value equal to the current default is a React no-op (bailout).
+        setQuietHoursState(normalizeQuietHours(storedQuietHours, defaultQuietHours));
+        setHomeCurrencyState(normalizeHomeCurrency(storedHomeCurrency, defaultHomeCurrency));
+        setCoachAiConsentState(normalizeCoachConsent(storedCoachConsent));
 
-        // Validate the persisted value against the enum rather than trusting a
-        // raw cast — a corrupt/legacy row must not inject an unsupported code
-        // that would break every downstream conversion.
-        if (isCurrencyCode(storedHomeCurrency)) {
-          setHomeCurrencyState(storedHomeCurrency);
-        }
-
-        // Only "granted"/"declined" are meaningful persisted decisions; anything
-        // else (missing row, corrupt value) leaves consent at the "unset" default
-        // so the coach shows the prompt rather than silently transmitting.
-        if (storedCoachConsent === "granted" || storedCoachConsent === "declined") {
-          setCoachAiConsentState(storedCoachConsent);
-        }
-
-        if (storedRates) {
-          try {
-            const cached = JSON.parse(storedRates) as CachedExchangeRates;
-            setExchangeRates(cached.rates);
-            setRatesLastFetchedAt(cached.fetchedAt);
-          } catch (error) {
-            console.warn("Corrupt exchange-rate cache in database; ignoring.", error);
-          }
+        const cachedRates = parseCachedRates(storedRates);
+        if (cachedRates) {
+          setExchangeRates(cachedRates.rates);
+          setRatesLastFetchedAt(cachedRates.fetchedAt);
         }
 
         subscriptionsRef.current = persisted;
         setSubscriptions(persisted);
-        // Restore saved per-subscription settings, then ensure every persisted
-        // subscription has an entry (defaults for any added before this blob was
-        // written), so toggles never read undefined.
-        let restored: Record<string, SubscriptionNotificationSettings> = {};
-        if (storedSettings) {
-          try {
-            restored = JSON.parse(storedSettings) as Record<string, SubscriptionNotificationSettings>;
-          } catch (error) {
-            console.warn("Corrupt notification settings in database; using defaults.", error);
-          }
-        }
-        const hydratedSettings = Object.fromEntries(
-          persisted.map((subscription) => [subscription.id, restored[subscription.id] ?? defaultNotificationSettings])
-        );
+        const hydratedSettings = hydrateNotificationSettings(persisted, storedSettings, defaultNotificationSettings);
         notificationSettingsRef.current = hydratedSettings;
         setNotificationSettings(hydratedSettings);
 
-        // Restore price history; seed any subscription without one with a single
-        // baseline point (current price) so future changes can be detected as hikes.
-        let restoredHistory: Record<string, PriceHistoryEntry[]> = {};
-        if (storedPriceHistory) {
-          try {
-            restoredHistory = JSON.parse(storedPriceHistory) as Record<string, PriceHistoryEntry[]>;
-          } catch (error) {
-            console.warn("Corrupt price history in database; reseeding.", error);
-          }
-        }
-        const hydratedHistory = Object.fromEntries(
-          persisted.map((subscription) => [
-            subscription.id,
-            restoredHistory[subscription.id] ?? [{ at: subscription.createdAt, amountMinor: subscription.price.amountMinor }]
-          ])
-        );
+        const hydratedHistory = hydratePriceHistory(persisted, storedPriceHistory);
         priceHistoryRef.current = hydratedHistory;
         setPriceHistory(hydratedHistory);
 

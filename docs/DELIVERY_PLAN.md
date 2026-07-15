@@ -114,7 +114,7 @@ verified (drop-in = Audit baseline; v3 book = enhancement layer with built-in fa
   migration in the diff reconcile.
 - **P5.5** Coverage floor at current level; ratchet as port phases land.
 
-**M0 status — landed 2026-07-11 (partial by design; P5.3/P5.4 done, P5.1/P5.2-hydration sequenced into M2/M3):**
+**M0 status — landed 2026-07-11 (P5.2/P5.3/P5.4 done; P5.1 sequenced into M2):**
 - **P5.3 — DONE.** New `apps/mobile/src/api/client.test.ts` (30 tests) covers the full
   `ApiResult` taxonomy on the coach + family paths: network-throw→`offline`,
   401→`auth`, 404→`not_found`, 5xx→`server`, and a 200 with a malformed/empty
@@ -131,13 +131,20 @@ verified (drop-in = Audit baseline; v3 book = enhancement layer with built-in fa
   missing branch — the keyless pre-upgrade migration in `rescheduleAllNotifications`
   (pre-key pending reminders are all cancelled and re-created WITH keys, a one-time
   migration that then settles to zero writes). `notificationService.test.ts` 18 → 19.
-- **P5.2 — mostly pre-covered; no redundant tests written.** add/update/delete
-  (`subscription-mutations.test.ts`), renewal roll-forward (`subscription-ui.test.ts`),
-  and free-cap enforcement (`applyFreeCap` in `discovery-helpers.test.ts`) already have
-  thorough suites. The only uncovered piece — `coachAiConsent`/settings **hydration** —
-  is inline in `subscription-store.tsx`'s effect, and that store is rewritten in **M3**;
-  per this plan's own rule ("tests land per port phase, never against old UI") the
-  hydration test is written in M3 against the ported store, not here.
+- **P5.2 — DONE.** add/update/delete (`subscription-mutations.test.ts`), renewal
+  roll-forward (`subscription-ui.test.ts`), and free-cap enforcement (`applyFreeCap` in
+  `discovery-helpers.test.ts`) were already thoroughly covered. The remaining piece —
+  `coachAiConsent`/settings **hydration** — was inline in `subscription-store.tsx`'s
+  effect (untestable without SQLite/React); extracted it to a pure module
+  `subscription-hydration.ts` (behavior-preserving; the store now calls the helpers) and
+  covered it in `subscription-hydration.test.ts` (18 tests). This locks the DATA-layer
+  contract, which is **stable across the M3 UI rewrite**, so it was worth doing now
+  rather than deferring: corrupt/legacy/missing rows never crash boot, `homeCurrency` is
+  enum-validated, notification settings backfill so no sub reads `undefined`, price
+  history seeds a baseline — and, privacy-critically, a corrupt/legacy consent value is
+  **never** read as `granted` (stays `unset`, so the coach re-prompts instead of
+  silently transmitting). Full mobile suite 24 files / 279 tests green (refactor
+  behavior-preserving).
 - **P5.1 — DECIDED: defer the component-test infra to M2 (isolated jest project).**
   Evidence, not a guess: `react-native` does not parse under the current node-env Vitest
   (every existing mobile test mocks it to a stub), so `@testing-library/react-native`
