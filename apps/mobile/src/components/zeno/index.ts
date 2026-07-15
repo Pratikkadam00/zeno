@@ -13,3 +13,16 @@ export { ProgressBar, type ProgressBarProps } from "./ProgressBar";
 export { ListRow, type ListRowProps } from "./ListRow";
 export { AmountDisplay, type AmountDisplayProps, type AmountDisplaySize } from "./AmountDisplay";
 export { SegmentedControl, type SegmentedControlProps, type SegmentOption } from "./SegmentedControl";
+
+// The Honest Ledger signature kit (M2).
+export {
+  SectionHead,
+  ColumnHeads,
+  LedgerLine,
+  Stamp,
+  type StampTone,
+  type StampSize,
+  TearEdge,
+  SkeletonRow,
+  CodeBoxes
+} from "./Ledger";
