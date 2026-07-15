@@ -2,9 +2,10 @@ import * as Linking from "expo-linking";
 import { router, Stack, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppState, Text, View, type AppStateStatus } from "react-native";
 import { AppErrorBoundary } from "../src/components/AppErrorBoundary";
+import { SplashSequence } from "../src/components/SplashSequence";
 import { useAuthStore } from "../src/auth/authStore";
 import { checkStatus, identifyRevenueCatUser, initRevenueCat, resetRevenueCatUser } from "../src/billing/revenueCat";
 import { BudgetStoreProvider } from "../src/data/budget-store";
@@ -28,6 +29,9 @@ initErrorReporting();
 
 export default function RootLayout() {
   const { loaded, error } = useZenoFonts();
+  // The animated "Tear" splash plays once over the app on cold launch, then
+  // dismisses itself. Its onDone is timer-driven, so it can never get stuck.
+  const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => {
     if (loaded || error) {
@@ -50,6 +54,9 @@ export default function RootLayout() {
           </BudgetStoreProvider>
         </SubscriptionStoreProvider>
       </ZenoThemeProvider>
+      {/* Overlays the app (navy cover continues seamlessly from the native
+          splash), tears away to the ledger page, then unmounts. */}
+      {splashDone ? null : <SplashSequence onDone={() => setSplashDone(true)} />}
     </AppErrorBoundary>
   );
 }
