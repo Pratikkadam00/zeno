@@ -3,7 +3,9 @@
    Ported 1:1 from the Zeno Design System (../../Zeno Design System/tokens/*.css).
    This is the SINGLE SOURCE OF TRUTH for color, type, spacing, radius,
    shadow, motion and fonts in the app. One brand, light + dark.
-   Signature: Zeno Green #00C26E with DARK INK text (never white-on-green).
+   Signature: The Honest Ledger — navy-cast INK on warm PAPER (#FAF9F5), bound
+   by hairline RULES; Zeno Green #00C26E is reserved for money-positive accents
+   (never white-on-green). Verified actions land a STAMP.
    ============================================================ */
 
 /* ---- Raw palette (matches tokens/colors.css :root) ---- */
@@ -20,21 +22,32 @@ export const palette = {
     800: "#0A5634",
     900: "#073A24"
   },
+  // Ink neutrals are navy-cast (brand #0A0F2C heritage), not neutral grey.
   ink: {
-    900: "#12151B", // primary text / near-black
-    800: "#1B1F27",
-    700: "#2A2F3A",
-    600: "#3C4250",
-    500: "#5A6172", // secondary text
-    400: "#818897", // tertiary text / icons
-    300: "#AAB0BC",
-    200: "#D3D7DF", // strong border
-    100: "#E7E9EE", // default border / divider
-    75: "#EFF1F4",
-    50: "#F4F5F7" // sunken surface
+    900: "#14161F", // primary text / near-black ink
+    800: "#1C1F2B",
+    700: "#2A2E3D",
+    600: "#3C4152",
+    500: "#5A6072", // secondary text
+    400: "#808698", // tertiary text / icons
+    300: "#A9AEBC", // strong border
+    200: "#D2D5DE",
+    100: "#E7E8EE", // divider
+    75: "#EFF0F4",
+    50: "#F3F3F1" // sunken surface (warm, paper-tinted)
   },
-  paper: "#F8F8F6", // app background, warm white
+  paper: "#FAF9F5", // app background, warm paper
   white: "#FFFFFF",
+
+  // Ledger signature tokens: hairline rules replace most card chrome; navy-ink
+  // panels carry statement blocks; stamps mark verified/alert states.
+  ledger: {
+    rule: "#E5E3D9", // hairline — leader lines, row dividers
+    ruleStrong: "#C9C7BA", // column rules, leader dots
+    inkPanel: "#10131F", // navy-ink statement blocks
+    stampVerified: "#0B8A54", // "cancelled/verified" stamp
+    stampAlert: "#C63B49" // "still charging/alert" stamp
+  },
 
   /* Category palette — maps to subscription categories + charts */
   category: {
@@ -89,6 +102,13 @@ export type ColorScheme = {
   borderDefault: string;
   borderStrong: string;
 
+  // Ledger signature tokens (art-directed per scheme).
+  rule: string;
+  ruleStrong: string;
+  inkPanel: string;
+  stampVerified: string;
+  stampAlert: string;
+
   accent: string;
   accentHover: string;
   accentPressed: string;
@@ -123,9 +143,15 @@ export const lightScheme: ColorScheme = {
   textOnAccent: palette.ink[900],
   textInverse: palette.white,
 
-  borderSubtle: palette.ink[100],
-  borderDefault: palette.ink[200],
+  borderSubtle: palette.ledger.rule,
+  borderDefault: palette.ledger.ruleStrong,
   borderStrong: palette.ink[300],
+
+  rule: palette.ledger.rule,
+  ruleStrong: palette.ledger.ruleStrong,
+  inkPanel: palette.ledger.inkPanel,
+  stampVerified: palette.ledger.stampVerified,
+  stampAlert: palette.ledger.stampAlert,
 
   accent: palette.green[500],
   accentHover: palette.green[600],
@@ -147,30 +173,38 @@ export const lightScheme: ColorScheme = {
   overlay: "rgba(18, 21, 27, 0.55)"
 };
 
+// Dark = "the ledger at 11pm": the desk goes navy-black, paper becomes lit
+// documents, green ink gains luminescence, rules glow faintly. Not an inversion.
 export const darkScheme: ColorScheme = {
-  bgApp: "#0B0D11",
-  surfaceCard: "#15181F",
-  surfaceSunken: "#101319",
-  surfaceRaised: "#1B1F27",
+  bgApp: "#0A0C13", // the desk
+  surfaceCard: "#141721", // lit paper
+  surfaceSunken: "#10121B",
+  surfaceRaised: "#1B1E2B",
   surfaceInverse: palette.paper,
 
-  textPrimary: "#F2F3F6",
-  textSecondary: "#9AA1AF",
-  textTertiary: "#6B7280",
-  textDisabled: "#4B515E",
-  textOnAccent: "#0B0D11",
-  textInverse: "#12151B",
+  textPrimary: "#F2F1EA", // warm paper-white
+  textSecondary: "#9BA0AF",
+  textTertiary: "#6C7180",
+  textDisabled: "#4B505E",
+  textOnAccent: "#0A0C13",
+  textInverse: "#14161F",
 
-  borderSubtle: "#232831",
-  borderDefault: "#2E343F",
-  borderStrong: "#3C4350",
+  borderSubtle: "#262A38",
+  borderDefault: "#3A3F50",
+  borderStrong: "#4A5064",
 
-  accent: "#14D17E",
-  accentHover: "#2BD089",
+  rule: "#262A38",
+  ruleStrong: "#3A3F50",
+  inkPanel: "#171B2A",
+  stampVerified: "#2FD98A",
+  stampAlert: "#F2687A",
+
+  accent: "#1ED47F", // luminous green ink
+  accentHover: "#2FD98A",
   accentPressed: "#5FE0A6",
-  accentSoft: "rgba(0, 194, 110, 0.14)",
-  accentSoft2: "rgba(0, 194, 110, 0.22)",
-  accentText: "#5FE0A6",
+  accentSoft: "rgba(30, 212, 127, 0.13)",
+  accentSoft2: "rgba(30, 212, 127, 0.22)",
+  accentText: "#4ADE97",
 
   success: palette.semantic.success,
   warning: palette.semantic.warning,
@@ -315,15 +349,18 @@ export const shadow = {
   }
 } as const;
 
-/* ---- Motion — matches motion.css ---- */
+/* ---- Motion — matches motion.css. "Everything settles like paper." ----
+   Reanimated spring configs (settle/thunk/sheet) live in ./motion.ts. */
 export const motion = {
   durInstant: 80,
   durFast: 140,
   dur: 220,
   durSlow: 340,
+  printStagger: 45, // per-row print-in delay (FadeInDown stagger)
   // RN Easing.bezier(...) args
   easeOut: [0.22, 0.8, 0.26, 1] as const,
   easeInOut: [0.5, 0, 0.2, 1] as const,
+  easeThunk: [0.34, 1.3, 0.5, 1] as const, // stamp lands with weight
   easeSpring: [0.34, 1.56, 0.64, 1] as const
 } as const;
 

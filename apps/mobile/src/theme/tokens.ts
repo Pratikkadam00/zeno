@@ -23,6 +23,12 @@ export type ThemeTokens = {
   mutedText: string;
   quietText: string;
   border: string;
+  // Ledger signature tokens (hairline rules, navy-ink panels, stamps).
+  rule: string;
+  ruleStrong: string;
+  inkPanel: string;
+  stampVerified: string;
+  stampAlert: string;
   primary: string;
   secondary: string;
   success: string;
@@ -57,6 +63,11 @@ function buildZenoTheme(id: ThemePreference, c: ColorScheme): ThemeTokens {
     mutedText: c.textSecondary,
     quietText: c.textTertiary,
     border: c.borderSubtle,
+    rule: c.rule,
+    ruleStrong: c.ruleStrong,
+    inkPanel: c.inkPanel,
+    stampVerified: c.stampVerified,
+    stampAlert: c.stampAlert,
     primary: c.accent,
     secondary: palette.category.blue,
     success: c.success,
