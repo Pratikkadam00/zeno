@@ -167,6 +167,27 @@ display font if the web audit is any guide, so VERIFY; `src/theme/motion.ts` (du
 from `Splash Animations.html`** + app icon (OWNER DECISION: green/navy/paper candidate)
 wired into app.config.ts. Emulator eyeball after the token shift.
 
+**M1 status — 2026-07-27: code landed (`a544541`, `b37da11`); emulator verification partially done.**
+- **Verified on emulator-5554**: the Honest Ledger tokens render correctly on-device — warm
+  paper `#FAF9F5` background, navy-cast ink text, green accent; onboarding truthfulness
+  copy intact. The **Navy app icon + native splash** now show the Zeno coin on `#0A0F2C`.
+- **BUG FOUND AND FIXED during that verification** (exactly why gate #2 exists): the app was
+  still launching with the OLD orbital icon. Cause — `apps/mobile/android/` is gitignored
+  but persists locally, so `expo run:android` reuses it and does **not** regenerate
+  `android/app/src/main/res/**` (`ic_launcher*`, `splashscreen_logo.png`) from changed
+  `assets/*.png`. Fix: `npx expo prebuild --platform android --no-install`, then rebuild.
+  **No repo change was needed** (a clean checkout has no `android/`, so prebuild runs and
+  produces the correct icon) — but anyone with an existing local `android/` MUST prebuild
+  after an icon/splash asset change. Re-confirm on a clean build before store assets (M7/A6).
+- **STILL OPEN**: the "Tear" splash animation was only partially observed (the navy cover
+  frame was captured; the tear + page reveal were not). A black-screen period was seen
+  after the splash but its cause is **unresolved** — the app sat in uninterruptible I/O
+  wait (`D` state, ~40% iowait) on a thrashing emulator, and `AppErrorBoundary` was ruled
+  out (its error screen shows white text, the frames were blank), so a stalled compositor
+  is the leading explanation, not a confirmed app defect. This machine's emulator is too
+  slow to screenshot this dev build reliably. **Carry into M7**: confirm the splash plays
+  end-to-end and that no black frame appears, on a faster device/emulator.
+
 ### M2 — Core kit (was D1)
 Update Card (hairline --rule) / Button (ink primary; green = money-positive only) /
 Badge / ListRow; new RN components from `Ledger.jsx`: LedgerLine, SectionHead/
