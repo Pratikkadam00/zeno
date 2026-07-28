@@ -46,7 +46,7 @@ import {
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ServiceAvatar } from "../src/components/zeno";
+import { LedgerSheet, ServiceAvatar } from "../src/components/zeno";
 import { useZenoTheme } from "../src/theme/theme-provider";
 import type { ThemeTokens } from "../src/theme/tokens";
 
@@ -96,6 +96,10 @@ export default function SettingsScreen() {
   const { reset: resetBudget } = useBudgetStore();
   const lockEnabled = useLockStore((s) => s.enabled);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  // P4 debt closed: the option pickers are designed LedgerSheets, not system
+  // Alert dialogs (which can't show the current value, can't be styled, and on
+  // Android render a cramped stack of buttons).
+  const [picker, setPicker] = useState<null | "currency" | "quiet">(null);
 
   const quietWindowLabel = `${formatHour(quietHours.startHour)} – ${formatHour(quietHours.endHour)}`;
   const QUIET_PRESETS: { label: string; startHour: number; endHour: number }[] = [
@@ -190,10 +194,7 @@ export default function SettingsScreen() {
             ? "Totals across currencies are converted"
             : "Conversion rates unavailable — totals show your dominant currency only",
           value: homeCurrencyLabel, chevron: true,
-          onPress: () => Alert.alert("Home currency", "Totals and budgets are shown in this currency. Individual subscriptions keep displaying in the currency you added them in.", [
-            ...CURRENCY_OPTIONS.map((code) => ({ text: `${code} (${currencySymbol(code)})`, onPress: () => setHomeCurrency(code) })),
-            { text: "Cancel", style: "cancel" as const }
-          ])
+          onPress: () => setPicker("currency")
         }
       ]
     },
@@ -213,10 +214,7 @@ export default function SettingsScreen() {
         { id: "quiet-hours", Icon: MoonStar, iconBg: palette.category.violet, label: "Quiet hours", sub: quietHours.enabled ? `${quietWindowLabel} · reminders shift to morning` : "Off", isSwitch: true, switchValue: quietHours.enabled, onToggle: (value) => setQuietHours({ enabled: value }) },
         {
           id: "quiet-window", Icon: Clock, iconBg: palette.category.slate, label: "Quiet window", value: quietWindowLabel, chevron: true,
-          onPress: () => Alert.alert("Quiet window", "Renewal reminders that fall inside this window are delayed to the end of it.", [
-            ...QUIET_PRESETS.map((preset) => ({ text: preset.label, onPress: () => setQuietHours({ startHour: preset.startHour, endHour: preset.endHour, enabled: true }) })),
-            { text: "Cancel", style: "cancel" as const }
-          ])
+          onPress: () => setPicker("quiet")
         }
       ]
     },
@@ -364,6 +362,43 @@ export default function SettingsScreen() {
           <Text style={styles.versionSub}>Made with care for people who hate surprise charges.</Text>
         </View>
       </ScrollView>
+
+      {/* Designed option pickers (replacing Alert.alert). Each shows the
+          CURRENT value with a check — something a system alert can't do. */}
+      <LedgerSheet
+        open={picker === "currency"}
+        title="Home currency"
+        destructive="Totals and budgets are shown in this currency. Individual subscriptions keep displaying in the currency you added them in."
+        options={CURRENCY_OPTIONS.map((code) => ({
+          value: code,
+          label: `${code} (${currencySymbol(code)})`,
+          selected: code === homeCurrency
+        }))}
+        onPick={(value) => {
+          setHomeCurrency(value as CurrencyCode);
+          setPicker(null);
+        }}
+        onClose={() => setPicker(null)}
+      />
+
+      <LedgerSheet
+        open={picker === "quiet"}
+        title="Quiet window"
+        destructive="Renewal reminders that fall inside this window are delayed to the end of it."
+        options={QUIET_PRESETS.map((preset) => ({
+          value: `${preset.startHour}-${preset.endHour}`,
+          label: preset.label,
+          selected: quietHours.startHour === preset.startHour && quietHours.endHour === preset.endHour
+        }))}
+        onPick={(value) => {
+          const [start, end] = value.split("-").map(Number);
+          if (start !== undefined && end !== undefined) {
+            setQuietHours({ startHour: start, endHour: end, enabled: true });
+          }
+          setPicker(null);
+        }}
+        onClose={() => setPicker(null)}
+      />
     </SafeAreaView>
   );
 }
