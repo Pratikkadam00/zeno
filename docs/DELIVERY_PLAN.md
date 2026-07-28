@@ -266,6 +266,30 @@ celebration (the app's ONE celebration — no confetti anywhere), Paywall, Onboa
 splash handoff, Calendar, Insights, Budget, BudgetRecap, Settings (Alert.alert pickers →
 BottomSheet — closes the P4 debt). Truthfulness copy verbatim. Emulator drive per flow.
 
+**M4 status — IN PROGRESS 2026-07-28** (`0c38e56`, `614b977`):
+- **Cancel + Stamp — DONE.** The success state is now the Stamp (neutral "Pending",
+  thunk + Success haptic) over ledger lines printing what comes back monthly and
+  yearly; card is paper, not green-tinted. **Bug fixed while porting**: the
+  celebration was never visible — `handleConfirmedCancel` fired a ToastAndroid +
+  `router.replace("/dashboard")` (Android) or an Alert whose OK replaced (iOS), so
+  the success view rendered for at most a frame. The stamp now lands and stays;
+  the user dismisses with Done. The outcome the toast carried is preserved for
+  screen readers via a polite live region.
+- **Settings pickers — DONE (closes the P4 Alert.alert debt).** Home currency and
+  quiet window are LedgerSheets showing the CURRENT value with a check — something
+  a system alert cannot do.
+- **Paywall — truthfulness swept, one issue FOUND (not yet fixed, owner call):**
+  no banned claims present, and it correctly sells only the three real Pro
+  unlocks. BUT `VALUE_PROPS` item 4 "No bank login, ever" / "On-device &
+  encrypted — your data stays yours" is **not a Pro unlock** — free users get it
+  too — while the list's own comment states "every item here is gated behind
+  `plan === 'pro'` … sell what's real (standards §14)". Listing it implies the
+  core promise is paid. Suggested fix: move it out of VALUE_PROPS to a footer
+  line so it still reads as Zeno's differentiator without being sold as Pro.
+  Deliberately left for owner review since this is legally-reviewed copy.
+- **Not yet ported**: Discover, Paywall visuals, Onboarding, Calendar, Insights,
+  Budget, BudgetRecap.
+
 ### M5 — Coach + Family; retire the legacy kit (was D4)
 Port the CoachScreen/FamilyScreen mockups; migrates the last screens off legacy
 `src/components/ui` (Surface/PrimaryButton). Consent + "General information, not
