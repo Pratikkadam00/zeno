@@ -4,6 +4,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppState, Text, View, type AppStateStatus } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppErrorBoundary } from "../src/components/AppErrorBoundary";
 import { SplashSequence } from "../src/components/SplashSequence";
 import { useAuthStore } from "../src/auth/authStore";
@@ -46,18 +47,22 @@ export default function RootLayout() {
   }
 
   return (
-    <AppErrorBoundary>
-      <ZenoThemeProvider>
-        <SubscriptionStoreProvider>
-          <BudgetStoreProvider>
-            <RootStack />
-          </BudgetStoreProvider>
-        </SubscriptionStoreProvider>
-      </ZenoThemeProvider>
-      {/* Overlays the app (navy cover continues seamlessly from the native
-          splash), tears away to the ledger page, then unmounts. */}
-      {splashDone ? null : <SplashSequence onDone={() => setSplashDone(true)} />}
-    </AppErrorBoundary>
+    // GestureHandlerRootView must wrap the whole app for react-native-gesture-handler
+    // (and therefore @gorhom/bottom-sheet) to receive touches at all.
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AppErrorBoundary>
+        <ZenoThemeProvider>
+          <SubscriptionStoreProvider>
+            <BudgetStoreProvider>
+              <RootStack />
+            </BudgetStoreProvider>
+          </SubscriptionStoreProvider>
+        </ZenoThemeProvider>
+        {/* Overlays the app (navy cover continues seamlessly from the native
+            splash), tears away to the ledger page, then unmounts. */}
+        {splashDone ? null : <SplashSequence onDone={() => setSplashDone(true)} />}
+      </AppErrorBoundary>
+    </GestureHandlerRootView>
   );
 }
 
