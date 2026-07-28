@@ -229,6 +229,37 @@ print-in stagger helper (FlatList-safe, transform/opacity only). Component smoke
 Chrome/tab bar, Dashboard, Subscriptions (PRESERVE P4 FlatList/memo/debounce),
 SubscriptionDetail, AddSubscription. Emulator-verify each.
 
+**M3 status — DONE 2026-07-28** (`5ecac39`, `5fcb914`, `e2f7e4c`, `6600d85`, `f6e3382`):
+Each screen ported against its DS mockup's own "slop audit", so the defining move
+in every case was a DELETION:
+- **Chrome**: paper tab bar under a hairline; the active tab is an OVERLINE TICK
+  (green rule growing in from the left) with the icon going ink, not green; the
+  center action is an INK SEAL, not a green pill; caps-mono labels; Home → Ledger.
+  New `Masthead` / `ScreenHeader` primitives.
+- **Dashboard**: the dark floating hero card and the budget card are gone. A
+  typographic statement on paper — dateline masthead, "COMMITTED THIS MONTH" over
+  an adding-machine total, a category rule-bar driven by the store's fx-aware
+  byCategory (so it excludes exactly what the total excludes), charged/still-to-
+  renew ledger lines, and budget as ONE honest line (over / left / on pace, or
+  "SET ONE"). Attention rows use colored MARGIN TICKS instead of tinted tiles.
+  Empty state is "PAGE 1 — BLANK".
+- **Subscriptions**: pill chips and the card-wrapped list both deleted. Text-tab
+  filters with underline ticks, real ColumnHeads, rows on the paper, verified
+  cancellations carrying a mini STAMP and still-charging rows stating the amount
+  in alert ink. **P4 perf preserved exactly** (memoized row, 200ms debounced query
+  driving the filter, stable useCallback, FlatList windowing props untouched).
+- **Detail**: the stat-card trio deleted → LedgerLines; charge history is a real
+  ledger table (ColumnHeads + entry count + the "estimated from your billing
+  cycle" caveat kept); a verified cancellation lands the STAMP with its annual
+  saving and strikes the amount through. Honest empty copy verbatim: "…honest
+  history, not sample data." All handlers/edit modal/verification lifecycle
+  untouched; 13 orphaned style keys removed.
+- **Add**: category chip-grid → caps-mono text ticks; column heads restyled.
+- Gates each phase: typecheck + lint clean, vitest 279, RN component tests 8.
+- **NOT yet eyeballed on device** — same constraint as M1 (this machine's emulator
+  wedges on screenshots). These are large visual changes verified structurally
+  only; M7's emulator drive is where they get confirmed.
+
 ### M4 — Flows (was D3)
 Discover (scanline + tear-edge receipt results), CancelFlow + the Stamp verified-cancel
 celebration (the app's ONE celebration — no confetti anywhere), Paywall, Onboarding +
