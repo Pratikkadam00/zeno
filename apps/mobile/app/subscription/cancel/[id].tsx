@@ -1,15 +1,15 @@
 import { findServiceBySlug } from "@zeno/service-catalog";
 import type { BillingCycle, CancellationDifficulty } from "@zeno/shared";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { Alert, Animated, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, ToastAndroid, View } from "react-native";
+import { Alert, Animated, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useEffect, useMemo, useState } from "react";
 import { useSubscriptionStore } from "../../../src/data/subscription-store";
 import { cancelNotificationsForSubscription } from "../../../src/notifications/notificationService";
 import { formatMoney } from "../../../src/utils/format";
 import { formatShortDate, getDaysRemaining, withAlpha } from "../../../src/utils/subscription-ui";
-import { AlertTriangle, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronUp, CircleCheck, ExternalLink, Mail, Phone, PiggyBank, Search, XCircle, type LucideIcon } from "lucide-react-native";
-import { ServiceAvatar } from "../../../src/components/zeno";
+import { AlertTriangle, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronUp, ExternalLink, Mail, Phone, PiggyBank, Search, XCircle, type LucideIcon } from "lucide-react-native";
+import { Button, LedgerLine, ServiceAvatar, Stamp } from "../../../src/components/zeno";
 import { useZenoTheme } from "../../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../../src/theme/tokens";
 import { type as typography } from "../../../src/theme/typography";
@@ -152,16 +152,12 @@ export default function SubscriptionCancelScreen() {
     // straight to "cancelled". Zeno re-checks around the next renewal date.
     requestCancellation(sub.id);
     await cancelNotificationsForSubscription(sub.id);
+    // Let the stamp land ON SCREEN and stay there — the user dismisses it with
+    // Done. Previously this fired a toast (Android) or an alert (iOS) and
+    // replaced straight to the dashboard, so the stamp was never actually seen;
+    // a system toast is precisely the "lazy version" the DS rejects for this
+    // moment. Screen readers get the outcome announced instead.
     setCancelSuccess(true);
-    const message = `${sub.name} marked cancelled — we'll verify it stopped.`;
-    if (Platform.OS === "android") {
-      ToastAndroid.show(message, ToastAndroid.LONG);
-      router.replace("/dashboard");
-    } else {
-      Alert.alert("Pending verification", message, [
-        { text: "OK", onPress: () => router.replace("/dashboard") }
-      ]);
-    }
   }
 
   return (
@@ -290,12 +286,29 @@ export default function SubscriptionCancelScreen() {
           {/* Confirm / Success section */}
           {showConfirm ? (
             cancelSuccess ? (
-              <View style={styles.successCard}>
-                <CircleCheck size={32} color={theme.success} strokeWidth={2} />
-                <Text style={[styles.successTitle, { marginTop: 8 }]}>Pending verification</Text>
-                <Text style={styles.successBody}>
-                  We&apos;ll confirm there&apos;s no charge around {formatShortDate(sub.nextRenewalDate)}. If it stops, you save {formatMoney(annualMinor, sub.price.currency)}/year.
+              // The STAMP is the celebration — no check-circle, no confetti.
+              // It reads "Pending" because nothing is proven yet: Zeno waits for
+              // the next statement before it stamps anything Verified.
+              <View
+                style={styles.successCard}
+                accessible
+                accessibilityRole="summary"
+                accessibilityLiveRegion="polite"
+                accessibilityLabel={`${sub.name} marked cancelled, pending verification. We'll confirm there's no charge around ${formatShortDate(sub.nextRenewalDate)}. If it stops, you keep ${formatMoney(annualMinor, sub.price.currency)} a year.`}
+              >
+                <Stamp tone="neutral" size="md" angle={-4} sub={`REPORTED ${formatShortDate(new Date().toISOString()).toUpperCase()}`} animate>
+                  Pending
+                </Stamp>
+                <Text style={[styles.successBody, { marginTop: 14 }]}>
+                  We&apos;ll confirm there&apos;s no charge around {formatShortDate(sub.nextRenewalDate)}. If it stops, this comes back to you:
                 </Text>
+                <View style={{ alignSelf: "stretch", borderTopWidth: 1, borderColor: theme.rule, marginTop: 12 }}>
+                  <LedgerLine label="Every month" value={`+${formatMoney(sub.price.amountMinor, sub.price.currency)}`} valueColor={theme.stampVerified} />
+                  <LedgerLine label="Every year" value={`+${formatMoney(annualMinor, sub.price.currency)}`} valueColor={theme.stampVerified} strong size={16} />
+                </View>
+                <Button variant="primary" size="lg" fullWidth onPress={() => router.replace("/dashboard")} style={{ marginTop: 20 }}>
+                  Done
+                </Button>
               </View>
             ) : (
               <Animated.View style={[styles.confirmCard, { opacity: confirmAnim, transform: [{ translateY: confirmSlide }] }]}>
@@ -504,20 +517,19 @@ function createStyles(theme: ThemeTokens) {
     notYetBtnText: { fontSize: 15, fontWeight: "500", color: theme.mutedText, textAlign: "center" },
 
     // Success card
+    // Paper, not a green tint — the stamp carries the emphasis on its own.
     successCard: {
       marginHorizontal: 16,
       marginBottom: 12,
-      backgroundColor: theme.successSurface,
-      borderWidth: 0.5,
-      borderColor: withAlpha(theme.success, 0.2),
-      borderRadius: 16,
-      paddingVertical: 20,
+      backgroundColor: theme.surface,
+      borderWidth: 1,
+      borderColor: theme.rule,
+      borderRadius: 12,
+      paddingVertical: 24,
       paddingHorizontal: 16,
       alignItems: "center"
     },
-    successCheck: { fontSize: 32, color: theme.success, marginBottom: 8 },
-    successTitle: { fontSize: 17, fontWeight: "600", color: theme.text, marginBottom: 4 },
-    successBody: { fontSize: 14, color: theme.mutedText, textAlign: "center" },
+    successBody: { fontSize: 14, color: theme.mutedText, textAlign: "center", lineHeight: 20 },
 
     // Support section
     supportCard: {
