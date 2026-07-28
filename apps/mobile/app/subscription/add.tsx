@@ -620,9 +620,13 @@ function createStyles(theme: ThemeTokens) {
     searchIcon: { fontSize: 15, color: theme.quietText },
     searchInput: { flex: 1, ...typography.body, color: theme.text, paddingVertical: 0 },
 
+    // Caps-mono ledger column head.
     popularLabel: {
-      ...typography.sectionHeader,
-      color: theme.mutedText,
+      fontFamily: fonts.mono.bold,
+      fontSize: 10.5,
+      letterSpacing: 1.7,
+      textTransform: "uppercase" as const,
+      color: theme.quietText,
       paddingHorizontal: spacing.screenH,
       paddingBottom: 8,
       paddingTop: 4
@@ -759,19 +763,28 @@ function createStyles(theme: ThemeTokens) {
       flexDirection: "row",
       flexWrap: "wrap",
       justifyContent: "flex-end",
-      gap: 6
+      columnGap: 14,
+      rowGap: 2
     },
+    // Text ticks, not pills: a caps-mono label that gets an underline tick when
+    // chosen. The DS slop audit rejects the chip grid here.
     categoryChip: {
-      borderRadius: 16,
-      borderWidth: 0.5,
-      borderColor: theme.border,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      minHeight: 30
+      paddingHorizontal: 2,
+      paddingTop: 8,
+      paddingBottom: 6,
+      minHeight: 30,
+      borderBottomWidth: 2,
+      borderBottomColor: "transparent"
     },
-    categoryChipActive: { borderColor: theme.primary, backgroundColor: theme.primarySurface },
-    categoryChipText: { ...typography.caption1, color: theme.mutedText, fontWeight: "600" },
-    categoryChipTextActive: { color: theme.primary },
+    categoryChipActive: { borderBottomColor: theme.primary },
+    categoryChipText: {
+      fontFamily: fonts.mono.bold,
+      fontSize: 10,
+      letterSpacing: 1.1,
+      textTransform: "uppercase" as const,
+      color: theme.quietText
+    },
+    categoryChipTextActive: { color: theme.text },
 
     notesInput: {
       ...typography.subheadline,
