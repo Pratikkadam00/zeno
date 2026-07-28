@@ -195,6 +195,36 @@ ColumnHeads, Stamp (thunk spring + Success haptic), TearEdge/SheetShell, Skeleto
 (Reanimated shimmer), BottomSheet (gorhom; option-list + confirm-destructive), CodeBoxes,
 print-in stagger helper (FlatList-safe, transform/opacity only). Component smoke tests.
 
+**M2 status — DONE 2026-07-28** (`5b9b3b6`, `5cde459`, `3fca959`, `f3f82f5`):
+- **Ledger signature kit** (new `Ledger.tsx`): LedgerLine (dotted leader), SectionHead /
+  ColumnHeads, Stamp (thunk spring + Success haptic, verified/alert/neutral), TearEdge,
+  SkeletonRow (opacity pulse — no gradient lib, no layout measurement), CodeBoxes.
+- **Button** is now solid **ink** primary (was green); green survives only as the new
+  `money` variant; `danger` is outlined; press = stamp-down 0.97 + Medium haptic.
+  **Card** is a document: hairline `rule`, radius md, NO resting shadow (only `elevated`
+  lifts), press darkens the rule instead of raising a shadow.
+  Added the `textOnInk` token — this caught a regression the refresh would otherwise have
+  shipped: dashboard's two "Discover" buttons passed a `textOnAccent` (dark) icon that
+  would have been invisible on the new dark ink button.
+- **LedgerSheet** (@gorhom): option-list + `ConfirmSheet` destructive variant, tear edge,
+  DS sheet spring, tap/pan-to-close. Also wired **GestureHandlerRootView at the app root**,
+  which was missing — without it every gesture-handler surface silently gets no touches.
+  M4 uses this to replace the `Alert.alert` pickers (closing the P4 debt).
+- **AmountDisplay `animate`** — the DS TallyNumber count-up, added to the existing
+  component rather than duplicating the money typography; reduced-motion renders final
+  immediately and a failsafe timer guarantees the ledger never sits at $0.00 if rAF is
+  throttled/suspended.
+- **P5.1 RTL infra (carried from M0) — DONE.** Isolated jest project (`jest.config.js`),
+  disjoint from vitest by extension (`*.rntest.tsx` vs `*.test.ts(x)`), plus 8 smoke tests
+  rendering the real kit through the real theme provider. Required pins, each a hard
+  failure not a guess: jest **29** (jest-expo@56 is built on 29; jest 30 throws
+  `clearMocksOnScope is not a function`), react-test-renderer **19.2.3** (RTL pulls 19.2.8
+  whose react peer rejects 19.2.3), and `resolver: react-native-worklets/jest/resolver.js`
+  (Reanimated 4's worklets `.native` entry throws under jest; Reanimated's own `mock.js`
+  does NOT work — it re-imports the real index).
+- Gates: mobile typecheck + lint clean; vitest repo-wide **53 files / 498 tests**; jest RN
+  **8/8**. On-device eyeball of the ink/hairline shift folds into M7 (see the M1 note).
+
 ### M3 — Hot screens (was D2)
 Chrome/tab bar, Dashboard, Subscriptions (PRESERVE P4 FlatList/memo/debounce),
 SubscriptionDetail, AddSubscription. Emulator-verify each.
