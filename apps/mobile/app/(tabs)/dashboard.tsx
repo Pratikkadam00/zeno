@@ -1,19 +1,20 @@
-import type { BillingCycle, CurrencyCode, SubscriptionCategory } from "@zeno/shared";
+import type { BillingCycle, SubscriptionCategory } from "@zeno/shared";
 import { router, Stack } from "expo-router";
-import { AlarmClock, AlertTriangle, Bell, ChevronRight, CircleCheck, Plus, Radar, Search, Target, TrendingUp, User } from "lucide-react-native";
+import { AlarmClock, AlertTriangle, Bell, ChevronRight, Plus, Search, TrendingUp, User } from "lucide-react-native";
 import { useEffect, useMemo, type ReactNode } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthStore } from "../../src/auth/authStore";
 import { checkStatus } from "../../src/billing/revenueCat";
-import { AmountDisplay, Button, Card, ListRow, ServiceAvatar } from "../../src/components/zeno";
+import { AmountDisplay, Button, LedgerLine, ListRow, Masthead, SectionHead, ServiceAvatar } from "../../src/components/zeno";
 import { useBudgetStore } from "../../src/data/budget-store";
-import { budgetStatus, computeBudgetForecast } from "../../src/finance/budget";
+import { computeBudgetForecast } from "../../src/finance/budget";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
 import { generateInsights, getTotalSavingOpportunity } from "../../src/insights/insightsEngine";
 import { useZenoTokens } from "../../src/theme/useZenoTokens";
+import { useZenoTheme } from "../../src/theme/theme-provider";
 import { currencySymbol, formatMoney } from "../../src/utils/format";
-import { formatShortDate, getDaysRemaining } from "../../src/utils/subscription-ui";
+import { formatShortDate, getCategoryColor, getDaysRemaining } from "../../src/utils/subscription-ui";
 
 // D2 (locked): free tier tracks up to 10 subscriptions.
 const FREE_LIMIT = 10;
@@ -36,6 +37,9 @@ function categoryLabel(category: SubscriptionCategory): string {
 export default function DashboardScreen() {
   const t = useZenoTokens();
   const c = t.color;
+  // getCategoryColor is keyed off the legacy ThemeTokens shape (shared with the
+  // analytics screen), so the rule-bar colors match the charts exactly.
+  const { theme } = useZenoTheme();
   const insets = useSafeAreaInsets();
   const { subscriptions, totalMonthlyMinor, upcoming, endingTrials, priceHikes, homeCurrency, fx, spendSummary } = useSubscriptionStore();
   const { plan, setPlan } = useAuthStore();
@@ -54,10 +58,46 @@ export default function DashboardScreen() {
   const budgetForecast = useMemo(() => computeBudgetForecast(subscriptions, undefined, fx), [subscriptions, fx]);
   const attentionSubs = subscriptions.filter((s) => s.status === "attention");
   const trackedCount = subscriptions.filter((s) => s.status !== "cancelled").length;
+  const atFreeLimit = trackedCount >= FREE_LIMIT;
   const renewingThisWeek = upcoming.filter((s) => {
     const d = getDaysRemaining(s.nextRenewalDate);
     return d !== null && d <= 7;
   });
+
+  // The category rule-bar: the month's spend ruled proportionally. Reuses the
+  // store's already-fx-aware byCategory breakdown (so it excludes the same
+  // unconvertible currencies the total does) and the app's category palette.
+  const categorySegments = useMemo(
+    () =>
+      spendSummary.byCategory
+        .filter((entry) => entry.monthlyMinor > 0)
+        .sort((a, b) => b.monthlyMinor - a.monthlyMinor)
+        .map((entry) => ({ category: entry.category, minor: entry.monthlyMinor, color: getCategoryColor(entry.category, theme) })),
+    [spendSummary.byCategory, theme]
+  );
+
+  // Budget as ONE honest ledger line. With no cap set it invites you to set one;
+  // with a cap it states over / left / on pace — never a fabricated status.
+  const budgetLine = useMemo(() => {
+    const cap = budgetConfig.capMinor;
+    if (cap == null) {
+      return {
+        sub: "NO CAP SET",
+        value: "SET ONE",
+        color: c.accentText,
+        a11y: `Set a monthly budget. Forecast ${formatMoney(budgetForecast.projectedMinor, homeCurrency)} this month.`
+      };
+    }
+    const over = budgetForecast.projectedMinor > cap;
+    const approaching = !over && budgetForecast.projectedMinor > cap * 0.85;
+    const delta = Math.abs(cap - budgetForecast.projectedMinor);
+    return {
+      sub: `CAP ${formatMoney(cap, homeCurrency)}`,
+      value: over ? `${formatMoney(delta, homeCurrency)} OVER` : approaching ? `${formatMoney(delta, homeCurrency)} LEFT` : "ON PACE",
+      color: over ? c.stampAlert : approaching ? c.warning : c.stampVerified,
+      a11y: `Budget. ${over ? `${formatMoney(delta, homeCurrency)} over cap` : approaching ? `${formatMoney(delta, homeCurrency)} left` : "On pace"}.`
+    };
+  }, [budgetConfig.capMinor, budgetForecast.projectedMinor, homeCurrency, c.accentText, c.stampAlert, c.warning, c.stampVerified]);
 
   useEffect(() => {
     let mounted = true;
@@ -71,26 +111,37 @@ export default function DashboardScreen() {
 
   const hasData = subscriptions.length > 0;
 
+  // Ledger masthead: today's date as the page's dateline, the way a statement
+  // is headed. Uses the device locale, uppercased mono in the kicker.
+  const dateline = new Date()
+    .toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })
+    .toUpperCase();
+
   const Header = (
-    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 6, paddingBottom: 8 }}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Settings"
-        onPress={() => router.push("/settings")}
-        style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: c.surfaceSunken, alignItems: "center", justifyContent: "center" }}
-      >
-        <User size={19} color={c.textSecondary} strokeWidth={2} />
-      </Pressable>
-      <Text style={{ fontFamily: t.fonts.display.bold, fontSize: 30, letterSpacing: 30 * t.letterSpacing.tight, color: c.textPrimary }}>Home</Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Notifications"
-        onPress={() => router.push("/notifications" as never)}
-        style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
-      >
-        <Bell size={20} color={c.textSecondary} strokeWidth={2} />
-      </Pressable>
-    </View>
+    <Masthead
+      kicker={`THE LEDGER · ${dateline}`}
+      title="Your ledger"
+      left={
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Settings"
+          onPress={() => router.push("/settings")}
+          style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: c.surfaceSunken, alignItems: "center", justifyContent: "center" }}
+        >
+          <User size={19} color={c.textSecondary} strokeWidth={2} />
+        </Pressable>
+      }
+      right={
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Notifications"
+          onPress={() => router.push("/notifications" as never)}
+          style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
+        >
+          <Bell size={20} color={c.textSecondary} strokeWidth={2} />
+        </Pressable>
+      }
+    />
   );
 
   if (!hasData) {
@@ -98,15 +149,14 @@ export default function DashboardScreen() {
       <View style={{ flex: 1, backgroundColor: c.bgApp, paddingTop: insets.top }}>
         <Stack.Screen options={{ headerShown: false }} />
         {Header}
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 36, paddingBottom: 40 }}>
-          <View style={{ width: 64, height: 64, borderRadius: t.radius.xl, backgroundColor: c.accentSoft, alignItems: "center", justifyContent: "center", marginBottom: 18 }}>
-            <Radar size={30} color={c.accentText} strokeWidth={2} />
-          </View>
-          <Text style={{ fontFamily: t.fonts.display.bold, fontSize: 22, color: c.textPrimary, marginBottom: 6, textAlign: "center" }}>
-            Let&apos;s find what you&apos;re paying for
+        {/* The empty ledger is a blank page, not an illustration. */}
+        <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 32, paddingBottom: 40 }}>
+          <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: 10.5, letterSpacing: 1.8, color: c.textTertiary, marginBottom: 10 }}>PAGE 1 — BLANK</Text>
+          <Text style={{ fontFamily: t.fonts.display.bold, fontSize: 26, letterSpacing: -0.5, color: c.textPrimary, marginBottom: 8, lineHeight: 30 }}>
+            Nothing on the books yet.
           </Text>
-          <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: 15, color: c.textSecondary, lineHeight: 22, textAlign: "center", marginBottom: 24 }}>
-            Nothing tracked yet. Run your first free scan — no bank login, processed on your device.
+          <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: 14.5, color: c.textSecondary, lineHeight: 22, marginBottom: 24 }}>
+            Run your first free scan — no bank login required, processed on your device — or write the first line yourself.
           </Text>
           <Button variant="primary" size="lg" fullWidth onPress={() => router.push("/discover")} leftIcon={<Search size={18} color={c.textOnInk} strokeWidth={2} />}>
             Discover subscriptions
@@ -124,72 +174,66 @@ export default function DashboardScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       {Header}
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 + insets.bottom }}>
-        {/* Spend summary — solid ink contrast surface */}
-        <View style={{ paddingHorizontal: 16, paddingTop: 4 }}>
-          <View style={[{ backgroundColor: t.palette.ink[900], borderRadius: t.radius["2xl"], paddingHorizontal: 22, paddingTop: 22, paddingBottom: 18 }, t.shadow.lg]}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-              <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: t.fontSize.bodySm, color: t.palette.ink[300], letterSpacing: t.letterSpacing.wide, textTransform: "uppercase" }}>
-                Active this month
-              </Text>
-              {plan === "free" ? (
-                <Text style={{ fontFamily: t.fonts.mono.semibold, fontSize: t.fontSize.caption, color: t.palette.ink[300] }}>
-                  {trackedCount}/{FREE_LIMIT} tracked
-                </Text>
-              ) : null}
-            </View>
-            <View style={{ marginTop: 10 }}>
-              <AmountDisplay amount={totalMonthlyMinor / 100} currency={currencySymbol(homeCurrency)} size="xl" color="#FFFFFF" />
-            </View>
-            {spendSummary.excludedCurrencyCount ? (
-              <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: t.fontSize.caption, color: t.palette.ink[400], marginTop: 6 }}>
-                {spendSummary.excludedCurrencyCount} subscription{spendSummary.excludedCurrencyCount > 1 ? "s" : ""} in other currencies not included above.
-              </Text>
-            ) : null}
+        {/* THE STATEMENT — a typographic hero ON the paper. Deliberately NOT a
+            floating card: the type does the work (the DS "delete-a-card" test). */}
+        <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
+          <View style={{ flexDirection: "row", alignItems: "baseline", columnGap: 10 }}>
+            <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: 10.5, letterSpacing: 1.8, color: c.textTertiary }}>COMMITTED THIS MONTH</Text>
+            <View style={{ flex: 1, minWidth: 12, height: 0, borderBottomWidth: 2, borderStyle: "dotted", borderColor: c.ruleStrong, transform: [{ translateY: -3 }] }} />
             {plan === "free" ? (
-              <>
-                <View style={{ height: 6, backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 3, marginTop: 16, overflow: "hidden" }}>
-                  <View style={{ width: `${Math.min(100, (trackedCount / FREE_LIMIT) * 100)}%`, height: "100%", backgroundColor: t.palette.green[400], borderRadius: 3 }} />
-                </View>
-                <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: t.fontSize.caption, color: t.palette.ink[400], marginTop: 8 }}>
-                  Free plan · {Math.max(0, FREE_LIMIT - trackedCount)} slots left
+              <Pressable
+                accessibilityRole={atFreeLimit ? "button" : undefined}
+                accessibilityLabel={atFreeLimit ? "Free plan limit reached — upgrade" : undefined}
+                disabled={!atFreeLimit}
+                onPress={() => router.push("/paywall" as never)}
+              >
+                <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: 10.5, letterSpacing: 0.8, color: atFreeLimit ? c.accentText : c.textTertiary }}>
+                  {trackedCount}/{FREE_LIMIT} FREE{atFreeLimit ? " ↗" : ""}
                 </Text>
-              </>
-            ) : (
-              <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: t.fontSize.caption, color: t.palette.ink[400], marginTop: 12 }}>
-                {subscriptions.length} subscriptions · {renewingThisWeek.length} renewing this week
-              </Text>
-            )}
+              </Pressable>
+            ) : null}
           </View>
-        </View>
 
-        {/* Budget status (Phase 2) */}
-        <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
-          {budgetConfig.capMinor == null ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Set a monthly budget"
-              onPress={() => router.push("/budget" as never)}
-              style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: c.surfaceCard, borderWidth: 1, borderColor: c.borderSubtle, borderRadius: t.radius.lg, paddingHorizontal: 16, paddingVertical: 14, opacity: pressed ? 0.9 : 1 }, t.shadow.xs]}
-            >
-              <View style={{ width: 38, height: 38, borderRadius: t.radius.md, backgroundColor: c.accentSoft, alignItems: "center", justifyContent: "center" }}>
-                <Target size={19} color={c.accentText} strokeWidth={2} />
-              </View>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: t.fontSize.body, color: c.textPrimary }}>Set a monthly budget</Text>
-                <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: t.fontSize.bodySm, color: c.textTertiary }}>Forecast {formatMoney(budgetForecast.projectedMinor, homeCurrency)} this month from your renewals</Text>
-              </View>
-              <ChevronRight size={18} color={c.textTertiary} strokeWidth={2} />
-            </Pressable>
-          ) : (
-            <BudgetStatusCard t={t} projectedMinor={budgetForecast.projectedMinor} capMinor={budgetConfig.capMinor} currency={homeCurrency} />
-          )}
+          {/* the ledger totals itself on open, like an adding machine */}
+          <View style={{ marginTop: 8 }}>
+            <AmountDisplay amount={totalMonthlyMinor / 100} currency={currencySymbol(homeCurrency)} size="xl" animate />
+          </View>
+
+          {spendSummary.excludedCurrencyCount ? (
+            <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: t.fontSize.caption, color: c.textTertiary, marginTop: 6 }}>
+              {spendSummary.excludedCurrencyCount} subscription{spendSummary.excludedCurrencyCount > 1 ? "s" : ""} in other currencies not included above.
+            </Text>
+          ) : null}
+
+          {/* category rule-bar — the month's spend, proportionally ruled */}
+          {categorySegments.length > 0 ? (
+            <View style={{ flexDirection: "row", columnGap: 2, height: 4, marginTop: 14 }}>
+              {categorySegments.map((seg) => (
+                <View key={seg.category} style={{ flex: seg.minor, backgroundColor: seg.color }} />
+              ))}
+            </View>
+          ) : null}
+
+          <View style={{ borderBottomWidth: 1, borderColor: c.ruleStrong, marginTop: 14 }}>
+            <LedgerLine label="Charged so far" value={formatMoney(budgetForecast.committedMinor, homeCurrency)} />
+            <LedgerLine
+              label="Still to renew"
+              sub={`${renewingThisWeek.length} THIS WEEK`}
+              value={formatMoney(Math.max(0, budgetForecast.projectedMinor - budgetForecast.committedMinor), homeCurrency)}
+            />
+          </View>
+
+          {/* budget — one honest ledger line, not a card */}
+          <Pressable accessibilityRole="button" accessibilityLabel={budgetLine.a11y} onPress={() => router.push("/budget" as never)}>
+            <LedgerLine label="Budget" sub={budgetLine.sub} value={budgetLine.value} valueColor={budgetLine.color} strong />
+          </Pressable>
         </View>
 
         {/* Needs attention — still-charging + trials ending + price hikes */}
         {attentionSubs.length > 0 || endingTrials.length > 0 || priceHikes.length > 0 ? (
           <>
             <SectionTitle t={t}>Needs attention</SectionTitle>
-            <View style={{ paddingHorizontal: 16, rowGap: 8 }}>
+            <View style={{ paddingHorizontal: 20 }}>
               {attentionSubs.slice(0, 3).map((sub) => (
                 <AttentionRow
                   key={`attn-${sub.id}`}
@@ -236,54 +280,52 @@ export default function DashboardScreen() {
 
         {/* Upcoming renewals */}
         <SectionTitle t={t} onSeeAll={() => router.push("/subscriptions" as never)}>
-          Upcoming renewals
+          Upcoming
         </SectionTitle>
-        <View style={{ paddingHorizontal: 16 }}>
-          <Card padding="none">
-            {upcoming.slice(0, 5).map((s, i, arr) => (
-              <ListRow
-                key={s.id}
-                divider={i < arr.length - 1}
-                leading={<ServiceAvatar name={s.name} />}
-                title={s.name}
-                subtitle={`${categoryLabel(s.category)} · ${formatShortDate(s.nextRenewalDate, "—")}`}
-                amount={formatMoney(s.price.amountMinor, s.price.currency)}
-                cadence={CADENCE_SHORT[s.billingCycle]}
-                chevron
-                onPress={() => router.push(`/subscription/${s.id}` as never)}
-              />
-            ))}
-          </Card>
+        {/* Ledger rows on the paper itself — ruled, not boxed. */}
+        <View style={{ paddingHorizontal: 6 }}>
+          {upcoming.slice(0, 5).map((s, i, arr) => (
+            <ListRow
+              key={s.id}
+              divider={i < arr.length - 1}
+              leading={<ServiceAvatar name={s.name} />}
+              title={s.name}
+              subtitle={`${formatShortDate(s.nextRenewalDate, "—")} · ${categoryLabel(s.category).toUpperCase()}`}
+              amount={formatMoney(s.price.amountMinor, s.price.currency)}
+              cadence={CADENCE_SHORT[s.billingCycle]}
+              chevron
+              onPress={() => router.push(`/subscription/${s.id}` as never)}
+            />
+          ))}
         </View>
 
         {/* Ways to save */}
         {allInsights.length > 0 ? (
           <>
-            <SectionTitle t={t} onSeeAll={() => router.push("/analytics")}>
+            <SectionTitle t={t} onSeeAll={() => router.push("/analytics")} seeAllLabel="MORE ↗">
               Ways to save
             </SectionTitle>
-            <View style={{ paddingHorizontal: 16, rowGap: 8 }}>
+            <View style={{ paddingHorizontal: 20 }}>
               {savingOpportunity > 20 ? (
                 <Pressable
                   accessibilityRole="button"
+                  accessibilityLabel={`You could save ${currencySymbol(homeCurrency)}${savingOpportunity.toFixed(0)} a month. See how.`}
                   onPress={() => router.push("/analytics")}
-                  style={{ backgroundColor: c.successSoft, borderRadius: t.radius.lg, padding: 12 }}
                 >
-                  <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: t.fontSize.bodySm, color: c.success, lineHeight: 18 }}>
-                    You could save {currencySymbol(homeCurrency)}{savingOpportunity.toFixed(0)}/mo — tap to see how
-                  </Text>
+                  {/* the one money-positive figure on the page reads green */}
+                  <LedgerLine
+                    label="Could stop paying"
+                    sub="ACROSS YOUR LEDGER"
+                    value={`${currencySymbol(homeCurrency)}${savingOpportunity.toFixed(0)}/mo`}
+                    valueColor={c.accentText}
+                    strong
+                  />
                 </Pressable>
               ) : null}
               {previewInsights.map((insight) => (
-                <AttentionRow
-                  key={insight.id}
-                  t={t}
-                  tone="accent"
-                  icon={<TrendingUp size={19} color={c.accentText} strokeWidth={2} />}
-                  title={insight.title}
-                  body={insight.message}
-                  onPress={() => router.push("/analytics")}
-                />
+                <Pressable key={insight.id} accessibilityRole="button" accessibilityLabel={`${insight.title}. ${insight.message}`} onPress={() => router.push("/analytics")}>
+                  <LedgerLine label={insight.title} value="REVIEW" valueColor={c.textSecondary} />
+                </Pressable>
               ))}
             </View>
           </>
@@ -303,16 +345,20 @@ export default function DashboardScreen() {
   );
 }
 
-function SectionTitle({ t, children, onSeeAll }: { t: ReturnType<typeof useZenoTokens>; children: string; onSeeAll?: () => void }) {
+/** Ledger column head: caps-mono label, trailing hairline, optional link. */
+function SectionTitle({ t, children, onSeeAll, seeAllLabel = "ALL ↗" }: { t: ReturnType<typeof useZenoTokens>; children: string; onSeeAll?: () => void; seeAllLabel?: string }) {
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 22, paddingBottom: 10 }}>
-      <Text style={{ fontFamily: t.fonts.display.bold, fontSize: t.fontSize.title, color: t.color.textPrimary }}>{children}</Text>
-      {onSeeAll ? (
-        <Pressable accessibilityRole="button" onPress={onSeeAll}>
-          <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: t.fontSize.bodySm, color: t.color.accentText }}>See all</Text>
-        </Pressable>
-      ) : null}
-    </View>
+    <SectionHead
+      right={
+        onSeeAll ? (
+          <Pressable accessibilityRole="button" accessibilityLabel={`See all ${children}`} onPress={onSeeAll} hitSlop={8}>
+            <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: 9.5, letterSpacing: 1.3, color: t.color.accentText }}>{seeAllLabel}</Text>
+          </Pressable>
+        ) : undefined
+      }
+    >
+      {children}
+    </SectionHead>
   );
 }
 
@@ -332,56 +378,32 @@ function AttentionRow({
   onPress: () => void;
 }) {
   const c = t.color;
-  const tile = tone === "warning" ? c.warningSoft : tone === "danger" ? c.dangerSoft : tone === "info" ? c.infoSoft : c.accentSoft;
+  // A ruled row with a colored MARGIN TICK — the annotation a bookkeeper makes
+  // in the margin — rather than a tinted tile in a rounded card.
+  const tick = tone === "warning" ? c.warning : tone === "danger" ? c.stampAlert : tone === "info" ? c.info : c.stampVerified;
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={`${title}. ${body}`}
       onPress={onPress}
-      style={({ pressed }) => [
-        { flexDirection: "row", alignItems: "center", columnGap: 12, backgroundColor: c.surfaceCard, borderWidth: 1, borderColor: c.borderSubtle, borderRadius: t.radius.lg, paddingHorizontal: 14, paddingVertical: 12, opacity: pressed ? 0.9 : 1 },
-        t.shadow.xs
-      ]}
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        columnGap: 12,
+        minHeight: 48,
+        paddingVertical: 13,
+        borderBottomWidth: 1,
+        borderColor: c.rule,
+        backgroundColor: pressed ? c.surfaceSunken : "transparent"
+      })}
     >
-      <View style={{ width: 38, height: 38, borderRadius: t.radius.md, backgroundColor: tile, alignItems: "center", justifyContent: "center" }}>{icon}</View>
+      <View style={{ width: 3, alignSelf: "stretch", backgroundColor: tick, borderRadius: 2 }} />
+      {icon}
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text numberOfLines={1} style={{ fontFamily: t.fonts.sans.semibold, fontSize: t.fontSize.body, color: c.textPrimary }}>{title}</Text>
-        <Text numberOfLines={1} style={{ fontFamily: t.fonts.sans.regular, fontSize: t.fontSize.bodySm, color: c.textTertiary, marginTop: 1 }}>{body}</Text>
+        <Text numberOfLines={2} style={{ fontFamily: t.fonts.sans.semibold, fontSize: 14.5, color: c.textPrimary, letterSpacing: -0.14 }}>{title}</Text>
+        <Text numberOfLines={1} style={{ fontFamily: t.fonts.mono.regular, fontSize: 9.5, letterSpacing: 0.8, color: c.textTertiary, marginTop: 3, textTransform: "uppercase" }}>{body}</Text>
       </View>
-      <ChevronRight size={17} color={c.textTertiary} strokeWidth={2} />
-    </Pressable>
-  );
-}
-
-function BudgetStatusCard({ t, projectedMinor, capMinor, currency }: { t: ReturnType<typeof useZenoTokens>; projectedMinor: number; capMinor: number; currency: CurrencyCode }) {
-  const c = t.color;
-  const status = budgetStatus(projectedMinor, capMinor);
-  const main = status === "over" ? c.danger : status === "approaching" ? c.warning : c.success;
-  const soft = status === "over" ? c.dangerSoft : status === "approaching" ? c.warningSoft : c.successSoft;
-  const SIcon = status === "over" ? AlertTriangle : status === "approaching" ? TrendingUp : CircleCheck;
-  const label = status === "over" ? "Over budget" : status === "approaching" ? "Approaching" : "On pace";
-  const pct = Math.min(100, capMinor > 0 ? (projectedMinor / capMinor) * 100 : 0);
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Monthly budget"
-      onPress={() => router.push("/budget" as never)}
-      style={({ pressed }) => [{ backgroundColor: c.surfaceCard, borderWidth: 1, borderColor: c.borderSubtle, borderRadius: t.radius.lg, paddingHorizontal: 16, paddingVertical: 14, opacity: pressed ? 0.9 : 1 }, t.shadow.xs]}
-    >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-        <Target size={18} color={c.textSecondary} strokeWidth={2} />
-        <Text style={{ flex: 1, fontFamily: t.fonts.sans.semibold, fontSize: t.fontSize.body, color: c.textPrimary }}>Monthly budget</Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, paddingVertical: 3, borderRadius: t.radius.pill, backgroundColor: soft }}>
-          <SIcon size={13} color={main} strokeWidth={2} />
-          <Text style={{ fontFamily: t.fonts.sans.bold, fontSize: 12, color: main }}>{label}</Text>
-        </View>
-      </View>
-      <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginTop: 10 }}>
-        <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: 17, color: c.textPrimary }}>{formatMoney(projectedMinor, currency)}</Text>
-        <Text style={{ fontFamily: t.fonts.mono.regular, fontSize: 13, color: c.textTertiary }}>projected / {currencySymbol(currency)}{Math.round(capMinor / 100)}</Text>
-      </View>
-      <View style={{ height: 7, backgroundColor: c.surfaceSunken, borderRadius: 4, overflow: "hidden", marginTop: 8 }}>
-        <View style={{ width: `${pct}%`, height: "100%", backgroundColor: main, borderRadius: 4 }} />
-      </View>
+      <ChevronRight size={16} color={c.textTertiary} strokeWidth={2} />
     </Pressable>
   );
 }
