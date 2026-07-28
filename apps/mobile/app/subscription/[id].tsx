@@ -9,7 +9,7 @@ import { cancelNotificationsForSubscription, scheduleRenewalNotificationsWithPre
 import { currencySymbol, formatMoney } from "../../src/utils/format";
 import { formatDaysLabel, formatShortDate, getDaysRemaining } from "../../src/utils/subscription-ui";
 import { AlertTriangle, Bell, BellOff, ChevronLeft, CircleCheck, Clock, MoreHorizontal } from "lucide-react-native";
-import { Button, Card, Input, ServiceAvatar } from "../../src/components/zeno";
+import { Button, Card, ColumnHeads, Input, LedgerLine, SectionHead, ServiceAvatar, Stamp } from "../../src/components/zeno";
 import { useZenoTheme } from "../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
@@ -24,6 +24,20 @@ function getBillingLabel(cycle: BillingCycle): string {
   if (cycle === "quarterly") return "/quarter";
   if (cycle === "trial") return "/trial";
   return "/month";
+}
+
+/** Cycle as a standalone noun for a ledger line ("Monthly"), not the "/month"
+ *  suffix getBillingLabel renders next to an amount. */
+function getCycleName(cycle: BillingCycle): string {
+  const names: Record<BillingCycle, string> = {
+    weekly: "Weekly",
+    monthly: "Monthly",
+    quarterly: "Quarterly",
+    annual: "Yearly",
+    trial: "Free trial",
+    unknown: "—"
+  };
+  return names[cycle];
 }
 
 function formatAnnualEquivalent(amountMinor: number, cycle: BillingCycle): number {
@@ -332,11 +346,21 @@ export default function SubscriptionDetailScreen() {
                 </View>
 
                 <View style={styles.amountRow}>
-                  <Text style={styles.amountCurrency}>{currencySymbol(sub.price.currency)}</Text>
-                  <Text style={styles.amountWhole}>{amountWhole}</Text>
-                  <Text style={styles.amountDecimal}>.{amountDecimal}</Text>
+                  <Text style={[styles.amountCurrency, sub.status === "cancelled" ? styles.amountVoided : null]}>{currencySymbol(sub.price.currency)}</Text>
+                  <Text style={[styles.amountWhole, sub.status === "cancelled" ? styles.amountVoided : null]}>{amountWhole}</Text>
+                  <Text style={[styles.amountDecimal, sub.status === "cancelled" ? styles.amountVoided : null]}>.{amountDecimal}</Text>
                 </View>
                 <Text style={styles.amountPeriod}>{getBillingLabel(sub.billingCycle)}</Text>
+
+                {/* A verified cancellation is the app's ONE celebration: the
+                    stamp lands, and the amount above is struck through. */}
+                {sub.status === "cancelled" ? (
+                  <View style={{ marginTop: 14 }}>
+                    <Stamp tone="verified" size="md" angle={7} sub={`SAVED ${formatMoney(annualMinor, sub.price.currency)}/YR`} animate>
+                      Verified
+                    </Stamp>
+                  </View>
+                ) : null}
               </View>
 
               {/* Cancellation verification lifecycle (CHANGE 4) */}
@@ -421,77 +445,66 @@ export default function SubscriptionDetailScreen() {
                 </View>
               ) : null}
 
-              {/* Stats row */}
-              <View style={styles.statsRow}>
-                <View style={styles.statCard}>
-                  <Text style={styles.statLabel}>NEXT CHARGE</Text>
-                  <Text style={[styles.statValue, {
-                    color: daysRemaining === null ? theme.text
-                      : daysRemaining <= 3 ? theme.danger
-                      : daysRemaining <= 7 ? theme.warning
-                      : theme.text
-                  }]}>
-                    {formatDaysLabel(daysRemaining)}
-                  </Text>
-                  <Text style={styles.statSub}>{formatShortDate(sub.nextRenewalDate)}</Text>
-                </View>
-
-                <View style={styles.statCard}>
-                  <Text style={styles.statLabel}>PER YEAR</Text>
-                  <Text style={[styles.statValue, { color: theme.text }]}>
-                    {formatMoney(annualMinor, sub.price.currency)}
-                  </Text>
-                  <Text style={styles.statSub}>at current rate</Text>
-                </View>
-
-                <View style={styles.statCard}>
-                  <Text style={styles.statLabel}>SAVE IF ANNUAL</Text>
-                  {annualSaving !== null && annualSaving > 0 ? (
-                    <>
-                      <Text style={[styles.statValue, { color: theme.success }]}>
-                        {formatMoney(annualSaving, sub.price.currency)}
-                      </Text>
-                      <Text style={styles.statSub}>switch to annual</Text>
-                    </>
-                  ) : (
-                    <>
-                      <Text style={[styles.statValue, { color: theme.quietText }]}>—</Text>
-                      <Text style={styles.statSub}>already annual</Text>
-                    </>
-                  )}
-                </View>
+              {/* The facts, as ledger lines. The DS deletes the stat-card trio:
+                  rules and type carry these, not three little tiles. */}
+              <View style={{ paddingHorizontal: 20, paddingTop: 10 }}>
+                <LedgerLine
+                  label="Next payment"
+                  sub={formatShortDate(sub.nextRenewalDate).toUpperCase()}
+                  value={formatDaysLabel(daysRemaining)}
+                  valueColor={
+                    daysRemaining === null ? theme.text : daysRemaining <= 3 ? theme.danger : daysRemaining <= 7 ? theme.warning : theme.text
+                  }
+                />
+                <LedgerLine label="Billing cycle" value={getCycleName(sub.billingCycle)} />
+                <LedgerLine label="Per year" sub="AT CURRENT RATE" value={formatMoney(annualMinor, sub.price.currency)} />
+                {annualSaving !== null && annualSaving > 0 ? (
+                  // money-positive — the one green figure on this page
+                  <LedgerLine
+                    label="Save if annual"
+                    sub="SWITCH TO ANNUAL"
+                    value={formatMoney(annualSaving, sub.price.currency)}
+                    valueColor={theme.stampVerified}
+                    strong
+                  />
+                ) : null}
               </View>
 
-              {/* Charge history */}
-              <Text style={styles.sectionLabel}>CHARGE HISTORY</Text>
-              {chargeHistory.length > 0 && !sub.lastChargedDate ? (
-                <Text style={styles.historyCaption}>Estimated from your billing cycle</Text>
-              ) : null}
-              <View style={styles.groupCard}>
-                {chargeHistory.length === 0 ? (
-                  <View style={styles.emptyRow}>
-                    <Text style={styles.emptyText}>No charge history yet</Text>
-                  </View>
-                ) : (
-                  chargeHistory.map((entry, index) => {
-                    const isLast = index === chargeHistory.length - 1;
-                    return (
-                      <View key={`${index}-${entry.date}`}>
-                        <View style={styles.historyRow}>
-                          <Text style={styles.historyDate}>{entry.date}</Text>
-                          <View style={styles.historyRight}>
-                            <Text style={styles.historyAmount}>
-                              {formatMoney(entry.amountMinor, sub.price.currency)}
-                            </Text>
-                            <Text style={styles.historyLabel}>Charged</Text>
-                          </View>
-                        </View>
-                        {!isLast ? <View style={styles.fullSep} /> : null}
-                      </View>
-                    );
-                  })
-                )}
-              </View>
+              {/* CHARGE HISTORY — the ledger table */}
+              <SectionHead
+                right={
+                  chargeHistory.length > 0 ? (
+                    <Text style={{ fontFamily: fonts.mono.regular, fontSize: 9.5, letterSpacing: 1, color: theme.quietText }}>
+                      {chargeHistory.length} ENTRIES
+                    </Text>
+                  ) : undefined
+                }
+              >
+                Charge history
+              </SectionHead>
+              {chargeHistory.length === 0 ? (
+                <View style={{ paddingHorizontal: 20, paddingTop: 6 }}>
+                  <Text style={{ fontFamily: fonts.sans.regular, fontSize: 13.5, color: theme.quietText, lineHeight: 20 }}>
+                    No charges logged yet. Each one prints here as it happens — honest history, not sample data.
+                  </Text>
+                </View>
+              ) : (
+                <View style={{ paddingHorizontal: 20 }}>
+                  {!sub.lastChargedDate ? (
+                    <Text style={{ fontFamily: fonts.mono.regular, fontSize: 9.5, letterSpacing: 0.8, color: theme.quietText, paddingBottom: 6 }}>
+                      ESTIMATED FROM YOUR BILLING CYCLE
+                    </Text>
+                  ) : null}
+                  <ColumnHeads left="DATE" right="AMOUNT" style={{ paddingHorizontal: 0, paddingBottom: 6 }} />
+                  {chargeHistory.map((entry, index) => (
+                    <LedgerLine
+                      key={`${index}-${entry.date}`}
+                      label={entry.date.toUpperCase()}
+                      value={formatMoney(entry.amountMinor, sub.price.currency)}
+                    />
+                  ))}
+                </View>
+              )}
 
               {/* Notifications */}
               <Text style={styles.sectionLabel}>NOTIFICATIONS</Text>
@@ -663,6 +676,8 @@ function createStyles(theme: ThemeTokens) {
     amountWhole: { fontSize: 44, fontWeight: "700", color: theme.text, letterSpacing: -2 },
     amountDecimal: { fontSize: 22, fontWeight: "300", color: theme.mutedText },
     amountPeriod: { ...typography.footnote, color: theme.mutedText, marginTop: 4, textAlign: "center" },
+    // A cancelled entry's amount is struck from the books, not deleted.
+    amountVoided: { color: theme.quietText, textDecorationLine: "line-through" as const },
 
     // Urgency banner
     urgencyCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: theme.card, borderRadius: 16, overflow: "hidden" },
@@ -686,27 +701,12 @@ function createStyles(theme: ThemeTokens) {
     verifyBtnText: { fontSize: 14, fontFamily: fonts.sans.semibold },
 
     // Stats
-    statsRow: { flexDirection: "row", gap: 8, marginHorizontal: 16, marginBottom: 8 },
-    statCard: { flex: 1, backgroundColor: theme.card, borderRadius: 14, padding: 14 },
-    statLabel: { ...typography.sectionHeader, color: theme.mutedText, marginBottom: 6 },
-    statValue: { fontSize: 20, fontWeight: "700", letterSpacing: -0.5 },
-    statSub: { ...typography.caption1, color: theme.mutedText, marginTop: 3 },
-
     // Section label + grouped card
     sectionLabel: { ...typography.sectionHeader, color: theme.mutedText, paddingHorizontal: spacing.screenH, paddingBottom: 8, marginTop: 20 },
     groupCard: { marginHorizontal: 16, backgroundColor: theme.card, borderRadius: spacing.groupRadius, overflow: "hidden" },
 
     // History
-    historyRow: { paddingHorizontal: 16, paddingVertical: 13, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-    historyDate: { ...typography.subheadline, color: theme.text },
-    historyRight: { alignItems: "flex-end" },
-    historyAmount: { ...typography.subheadline, fontWeight: "500", color: theme.text, fontVariant: ["tabular-nums"] },
-    historyLabel: { ...typography.caption1, color: theme.mutedText, marginTop: 1, textAlign: "right" },
-    historyCaption: { ...typography.caption1, color: theme.quietText, paddingHorizontal: spacing.screenH, marginTop: -4, marginBottom: 8 },
     fullSep: { height: 0.5, backgroundColor: theme.border },
-    emptyRow: { padding: 20, alignItems: "center" },
-    emptyText: { ...typography.subheadline, color: theme.quietText },
-
     // Notifications
     notifRow: { paddingHorizontal: 16, paddingVertical: 13, flexDirection: "row", alignItems: "center", gap: 14 },
     notifIconWrap: { width: 34, height: 34, borderRadius: 10, backgroundColor: theme.warningSurface, alignItems: "center", justifyContent: "center" },
