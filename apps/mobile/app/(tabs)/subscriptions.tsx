@@ -1,22 +1,24 @@
 import { monthlyAmount, monthlyAmountIn, type Subscription, type SubscriptionStatus } from "@zeno/shared";
 import { router } from "expo-router";
-import { Inbox, Plus, Search } from "lucide-react-native";
+import { Plus, Search } from "lucide-react-native";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { FlatList, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  Badge,
   Button,
+  ColumnHeads,
   IconButton,
   Input,
   ListRow,
+  Masthead,
   ServiceAvatar,
+  Stamp,
   type BadgeTone
 } from "../../src/components/zeno";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
 import { useZenoTokens } from "../../src/theme/useZenoTokens";
 import { formatMoney } from "../../src/utils/format";
-import { formatShortDate } from "../../src/utils/subscription-ui";
+import { categoryLabel, formatShortDate } from "../../src/utils/subscription-ui";
 
 type FilterKey = "All" | "Active" | "Paused" | "Pending" | "Cancelled";
 const FILTERS: { key: FilterKey; match: (s: Subscription) => boolean }[] = [
@@ -72,32 +74,33 @@ const SubscriptionRow = memo(function SubscriptionRow({
   const c = t.color;
   const badge = statusBadge(subscription.status);
   const dimmed = subscription.status === "paused" || subscription.status === "cancelled";
-  const sub =
-    subscription.status === "active" || subscription.status === "trial"
-      ? formatShortDate(subscription.nextRenewalDate, "—")
-      : subscription.status === "paused"
-        ? "Paused"
-        : "";
+  const money = formatMoney(subscription.price.amountMinor, subscription.price.currency);
+  // A verified cancellation carries a mini STAMP — the proof-of-work page.
+  // A still-charging entry states the amount in alert ink instead.
+  const trailing =
+    subscription.status === "cancelled" ? (
+      <Stamp size="sm" angle={-4}>
+        Verified
+      </Stamp>
+    ) : subscription.status === "attention" ? (
+      <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: 12, color: c.stampAlert }}>{money} !</Text>
+    ) : (
+      <View style={{ alignItems: "flex-end" }}>
+        <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: 14.5, color: c.textPrimary }}>{money}</Text>
+        <Text style={{ fontFamily: t.fonts.mono.regular, fontSize: 9.5, letterSpacing: 0.6, color: c.textTertiary, marginTop: 1 }}>
+          {subscription.status === "paused" ? "PAUSED" : formatShortDate(subscription.nextRenewalDate, "—").toUpperCase()}
+        </Text>
+      </View>
+    );
   return (
     <ListRow
       divider={!isLast}
-      leading={<ServiceAvatar name={subscription.name} />}
+      leading={<ServiceAvatar name={subscription.name} style={dimmed ? { opacity: 0.45 } : undefined} />}
       title={subscription.name}
+      subtitle={subscription.status === "active" ? categoryLabel(subscription.category).toUpperCase() : badge.label}
       onPress={() => onPress(subscription.id)}
       style={dimmed ? { opacity: 0.6 } : undefined}
-      trailing={
-        <View style={{ alignItems: "flex-end", rowGap: 3 }}>
-          <Badge tone={badge.tone} dot={badge.dot}>
-            {badge.label}
-          </Badge>
-          <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: t.fontSize.body, color: c.textPrimary }}>
-            {formatMoney(subscription.price.amountMinor, subscription.price.currency)}
-          </Text>
-          {sub ? (
-            <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: t.fontSize.micro, color: c.textTertiary }}>{sub}</Text>
-          ) : null}
-        </View>
-      }
+      trailing={trailing}
     />
   );
 });
@@ -145,66 +148,51 @@ export default function SubscriptionsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp, paddingTop: insets.top }}>
-      {/* Header */}
-      <View style={{ paddingHorizontal: 20, paddingTop: 6, paddingBottom: 4, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <Text style={{ fontFamily: t.fonts.display.bold, fontSize: 30, letterSpacing: 30 * t.letterSpacing.tight, color: c.textPrimary }}>
-          Subscriptions
-        </Text>
-        <IconButton variant="secondary" label="Add subscription" onPress={() => router.push("/subscription/add")}>
-          <Plus size={20} color={c.textPrimary} strokeWidth={2} />
-        </IconButton>
-      </View>
-
-      {/* Billing total */}
-      <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
-        <Text style={{ fontFamily: t.fonts.mono.regular, fontSize: t.fontSize.bodySm, color: c.textTertiary }}>
-          {billingCount} billing ·{" "}
-          <Text style={{ fontFamily: t.fonts.mono.semibold, color: c.textSecondary }}>{money(totalMinor)}/mo</Text>
-        </Text>
-      </View>
+      {/* Masthead — the kicker states the ledger's standing balance. */}
+      <Masthead
+        kicker={`${billingCount} BILLING · ${money(totalMinor)}/MO`}
+        title="Subscriptions"
+        rule={false}
+        right={
+          <IconButton variant="secondary" label="Add subscription" onPress={() => router.push("/subscription/add")}>
+            <Plus size={20} color={c.textPrimary} strokeWidth={2} />
+          </IconButton>
+        }
+      />
 
       {/* Search */}
-      <View style={{ paddingHorizontal: 16, paddingBottom: 10 }}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
         <Input
-          leftIcon={<Search size={18} color={c.textTertiary} strokeWidth={2} />}
-          placeholder="Search subscriptions"
-          accessibilityLabel="Search subscriptions"
+          leftIcon={<Search size={17} color={c.textTertiary} strokeWidth={2} />}
+          placeholder="Search the ledger"
+          accessibilityLabel="Search the ledger"
           value={query}
           onChangeText={setQuery}
         />
       </View>
 
-      {/* Filter chips */}
-      <View style={{ paddingBottom: 12 }}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, columnGap: 7 }}>
+      {/* Text-tab filters — caps-mono with an underline tick, sitting on the
+          page's column rule. Deliberately NOT pill chips (the DS slop audit). */}
+      <View style={{ borderBottomWidth: 1, borderColor: c.ruleStrong }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 14, columnGap: 14 }}>
           {FILTERS.map((f) => {
             const on = filter === f.key;
             const count = subscriptions.filter(f.match).length;
             return (
               <Pressable
                 key={f.key}
-                accessibilityRole="button"
+                accessibilityRole="tab"
                 accessibilityState={{ selected: on }}
-                accessibilityLabel={`Filter: ${f.key}`}
+                accessibilityLabel={`${f.key}, ${count}`}
                 onPress={() => setFilter(f.key)}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  columnGap: 6,
-                  height: 32,
-                  paddingHorizontal: 13,
-                  borderRadius: t.radius.pill,
-                  borderWidth: 1,
-                  borderColor: on ? "transparent" : c.borderDefault,
-                  backgroundColor: on ? c.surfaceInverse : "transparent"
-                }}
+                style={{ flexDirection: "row", alignItems: "baseline", columnGap: 5, paddingTop: 4, paddingBottom: 9 }}
               >
-                <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: t.fontSize.bodySm, color: on ? c.textInverse : c.textSecondary }}>
+                <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: 10.5, letterSpacing: 1.3, textTransform: "uppercase", color: on ? c.textPrimary : c.textTertiary }}>
                   {f.key}
                 </Text>
-                <Text style={{ fontFamily: t.fonts.mono.regular, fontSize: t.fontSize.micro, color: on ? c.textInverse : c.textTertiary, opacity: 0.7 }}>
-                  {count}
-                </Text>
+                <Text style={{ fontFamily: t.fonts.mono.regular, fontSize: 9, color: on ? c.accentText : c.textDisabled }}>{count}</Text>
+                {/* the underline tick that marks the open page */}
+                <View style={{ position: "absolute", left: 0, right: 0, bottom: -1, height: 2.5, backgroundColor: on ? c.accent : "transparent" }} />
               </Pressable>
             );
           })}
@@ -216,28 +204,22 @@ export default function SubscriptionsScreen() {
           FlatList windows rows for a long (paid) portfolio and skips re-rendering
           unchanged rows. */}
       {list.length === 0 ? (
-        <View style={{ alignItems: "center", paddingVertical: 60, paddingHorizontal: 30, rowGap: 4 }}>
-          <Inbox size={30} color={c.textTertiary} strokeWidth={2} />
-          <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: t.fontSize.body, color: c.textSecondary, marginTop: 8 }}>{empty[0]}</Text>
-          <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: t.fontSize.bodySm, color: c.textTertiary, textAlign: "center" }}>{empty[1]}</Text>
+        // An empty filter is an empty page, stated plainly and left-aligned.
+        <View style={{ paddingVertical: 56, paddingHorizontal: 32 }}>
+          <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: 10, letterSpacing: 1.8, color: c.textTertiary, marginBottom: 8 }}>EMPTY PAGE</Text>
+          <Text style={{ fontFamily: t.fonts.display.bold, fontSize: 20, color: c.textPrimary, marginBottom: 5 }}>{empty[0]}</Text>
+          <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: 13.5, color: c.textSecondary, lineHeight: 20 }}>{empty[1]}</Text>
           {filter === "All" ? (
-            <Button variant="secondary" onPress={() => router.push("/subscription/add")} style={{ marginTop: 16 }}>
+            <Button variant="secondary" onPress={() => router.push("/subscription/add")} style={{ marginTop: 18 }}>
               Add a subscription
             </Button>
           ) : null}
         </View>
       ) : (
-        <View
-          style={{
-            flex: 1,
-            marginHorizontal: 16,
-            backgroundColor: c.surfaceCard,
-            borderWidth: 1,
-            borderColor: c.borderSubtle,
-            borderRadius: t.radius.lg,
-            overflow: "hidden"
-          }}
-        >
+        // Rows sit on the paper under real table column heads — no card box.
+        // Virtualization and the memoized row (P4.3) are unchanged.
+        <View style={{ flex: 1 }}>
+          <ColumnHeads left="SERVICE" right="AMOUNT / NEXT" style={{ marginTop: 14, marginHorizontal: 6 }} />
           <FlatList
             data={list}
             keyExtractor={(s) => s.id}
@@ -245,6 +227,7 @@ export default function SubscriptionsScreen() {
               <SubscriptionRow subscription={item} isLast={index === list.length - 1} onPress={handleRowPress} />
             )}
             showsVerticalScrollIndicator={false}
+            style={{ paddingHorizontal: 6 }}
             contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}
             initialNumToRender={12}
             windowSize={11}

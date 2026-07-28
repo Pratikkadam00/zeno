@@ -1,4 +1,4 @@
-import type { BillingCycle, SubscriptionCategory } from "@zeno/shared";
+import type { BillingCycle } from "@zeno/shared";
 import { router, Stack } from "expo-router";
 import { AlarmClock, AlertTriangle, Bell, ChevronRight, Plus, Search, TrendingUp, User } from "lucide-react-native";
 import { useEffect, useMemo, type ReactNode } from "react";
@@ -14,7 +14,7 @@ import { generateInsights, getTotalSavingOpportunity } from "../../src/insights/
 import { useZenoTokens } from "../../src/theme/useZenoTokens";
 import { useZenoTheme } from "../../src/theme/theme-provider";
 import { currencySymbol, formatMoney } from "../../src/utils/format";
-import { formatShortDate, getCategoryColor, getDaysRemaining } from "../../src/utils/subscription-ui";
+import { categoryLabel, formatShortDate, getCategoryColor, getDaysRemaining } from "../../src/utils/subscription-ui";
 
 // D2 (locked): free tier tracks up to 10 subscriptions.
 const FREE_LIMIT = 10;
@@ -27,12 +27,6 @@ const CADENCE_SHORT: Record<BillingCycle, string> = {
   trial: "trial",
   unknown: ""
 };
-
-function categoryLabel(category: SubscriptionCategory): string {
-  if (category === "ai_tools") return "AI tools";
-  const spaced = category.replace(/_/g, " ");
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
-}
 
 export default function DashboardScreen() {
   const t = useZenoTokens();

@@ -149,3 +149,13 @@ export function getUrgencyBadge(
   if (days <= 7) return { bg: theme.warningSurface, text: theme.warning, label };
   return { bg: theme.surfaceAlt, text: theme.quietText, label };
 }
+
+/**
+ * Human label for a subscription category enum ("ai_tools" → "AI tools").
+ * Shared by the dashboard and the subscriptions ledger so both read identically.
+ */
+export function categoryLabel(category: string): string {
+  if (category === "ai_tools") return "AI tools";
+  const spaced = category.replace(/_/g, " ");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
