@@ -1,8 +1,17 @@
 import type { ReactNode } from "react";
 import { Pressable, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { useZenoTokens } from "../../theme/useZenoTokens";
+import { palette } from "../../theme/zeno";
+import { haptics } from "../../theme/haptics";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+/**
+ * Zeno Button — the ledger-language action primitive.
+ * `primary` is SOLID INK on paper text. Green is reserved for money-positive
+ * moments (`money`), never generic CTAs. `danger` is outlined — real alerts
+ * only, never solid panic. Press = stamp-down (scale 0.97) + Medium haptic on
+ * the solid CTAs. Ported from Zeno Design System/components/core/Button.jsx.
+ */
+export type ButtonVariant = "primary" | "money" | "secondary" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
 
 export type ButtonProps = {
@@ -41,12 +50,17 @@ export function Button({
   const s = sizes[size];
 
   const variants: Record<ButtonVariant, { bg: string; pressed: string; color: string; border: string; shadow?: object }> = {
-    primary: { bg: c.accent, pressed: c.accentPressed, color: c.textOnAccent, border: "transparent", shadow: t.shadow.xs },
-    secondary: { bg: c.surfaceCard, pressed: c.surfaceSunken, color: c.textPrimary, border: c.borderDefault, shadow: t.shadow.xs },
+    // solid ink — the default action, reads as a stamped statement line
+    primary: { bg: c.inkPanel, pressed: palette.ink[700], color: c.textOnInk, border: "transparent", shadow: t.shadow.xs },
+    // the ONLY green button: money-positive actions (savings, verified cancels)
+    money: { bg: c.accent, pressed: c.accentPressed, color: c.textOnAccent, border: "transparent", shadow: t.shadow.xs },
+    secondary: { bg: c.surfaceCard, pressed: c.surfaceSunken, color: c.textPrimary, border: c.borderDefault },
     ghost: { bg: "transparent", pressed: c.surfaceSunken, color: c.textPrimary, border: "transparent" },
-    danger: { bg: c.danger, pressed: "#BE123C", color: "#FFFFFF", border: "transparent", shadow: t.shadow.xs }
+    // outlined, never solid — a destructive action shouldn't shout before it's chosen
+    danger: { bg: c.surfaceCard, pressed: c.dangerSoft, color: c.danger, border: c.danger }
   };
   const v = variants[variant];
+  const solid = variant === "primary" || variant === "money";
 
   return (
     <Pressable
@@ -54,7 +68,17 @@ export function Button({
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled }}
       disabled={disabled}
-      onPress={onPress}
+      onPress={
+        onPress
+          ? () => {
+              // Solid CTAs land with weight; quieter variants stay silent.
+              if (solid) {
+                haptics.primaryAction();
+              }
+              onPress();
+            }
+          : undefined
+      }
       style={({ pressed }) => [
         {
           flexDirection: "row",
@@ -69,9 +93,10 @@ export function Button({
           borderWidth: 1,
           borderColor: disabled ? c.borderSubtle : v.border,
           backgroundColor: disabled ? c.surfaceSunken : pressed ? v.pressed : v.bg,
-          transform: [{ scale: pressed && !disabled ? 0.985 : 1 }]
+          // stamp-down: presses press INTO the page rather than bouncing off it
+          transform: [{ scale: pressed && !disabled ? 0.97 : 1 }, { translateY: pressed && !disabled ? 0.5 : 0 }]
         },
-        !disabled && variant !== "ghost" ? v.shadow : null,
+        !disabled && solid ? v.shadow : null,
         style
       ]}
     >

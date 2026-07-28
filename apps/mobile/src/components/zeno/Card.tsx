@@ -15,7 +15,13 @@ export type CardProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-/** Zeno Card — white surface, hairline border, soft resting shadow. */
+/**
+ * Zeno Card — a document, not a floating tile. A hairline rule frame on paper
+ * with NO resting shadow; only `elevated` (menus, floating surfaces) lifts off
+ * the page. Apply the delete-a-card test: use it only when the content really
+ * IS a distinct document (a statement, a receipt, a grouped ledger).
+ * Ported from Zeno Design System/components/core/Card.jsx.
+ */
 export function Card({ padding = "md", interactive = false, elevated = false, onPress, accessibilityLabel, children, style }: CardProps) {
   const t = useZenoTokens();
   const c = t.color;
@@ -24,8 +30,8 @@ export function Card({ padding = "md", interactive = false, elevated = false, on
   const base: StyleProp<ViewStyle> = {
     backgroundColor: c.surfaceCard,
     borderWidth: 1,
-    borderColor: c.borderSubtle,
-    borderRadius: t.radius.lg,
+    borderColor: c.rule, // hairline — the frame IS the chrome
+    borderRadius: t.radius.md,
     padding: pads[padding]
   };
 
@@ -35,12 +41,14 @@ export function Card({ padding = "md", interactive = false, elevated = false, on
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
-        style={({ pressed }) => [base, pressed ? t.shadow.md : elevated ? t.shadow.sm : t.shadow.xs, style]}
+        // Pressing darkens the rule (the RN stand-in for the web's hover
+        // border-shift) instead of raising a shadow — paper doesn't float.
+        style={({ pressed }) => [base, pressed ? { borderColor: c.ruleStrong } : null, elevated ? t.shadow.sm : null, style]}
       >
         {children}
       </Pressable>
     );
   }
 
-  return <View style={[base, elevated ? t.shadow.sm : t.shadow.xs, style]}>{children}</View>;
+  return <View style={[base, elevated ? t.shadow.sm : null, style]}>{children}</View>;
 }

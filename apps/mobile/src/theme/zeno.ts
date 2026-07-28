@@ -96,6 +96,7 @@ export type ColorScheme = {
   textTertiary: string;
   textDisabled: string;
   textOnAccent: string; // dark ink on green = the Zeno look
+  textOnInk: string; // paper on an ink-panel surface (primary buttons, statement blocks)
   textInverse: string;
 
   borderSubtle: string;
@@ -141,6 +142,7 @@ export const lightScheme: ColorScheme = {
   textTertiary: palette.ink[400],
   textDisabled: palette.ink[300],
   textOnAccent: palette.ink[900],
+  textOnInk: palette.paper,
   textInverse: palette.white,
 
   borderSubtle: palette.ledger.rule,
@@ -187,6 +189,8 @@ export const darkScheme: ColorScheme = {
   textTertiary: "#6C7180",
   textDisabled: "#4B505E",
   textOnAccent: "#0A0C13",
+  // the ink panel stays dark in both schemes, so its text stays paper
+  textOnInk: "#F2F1EA",
   textInverse: "#14161F",
 
   borderSubtle: "#262A38",
