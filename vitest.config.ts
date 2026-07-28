@@ -15,6 +15,10 @@ export default defineConfig({
       "packages/**/*.test.ts",
       "packages/**/*.test.tsx"
     ],
+    // RN component tests (`*.rntest.tsx`) belong to the isolated jest project in
+    // apps/mobile — react-native can't be parsed in this node environment. The
+    // include globs above don't match that extension; this makes it explicit.
+    exclude: ["**/node_modules/**", "**/dist/**", "**/*.rntest.tsx"],
     environment: "node",
     coverage: {
       provider: "v8",
