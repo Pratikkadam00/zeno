@@ -29,7 +29,7 @@ import { formatMoney } from "../../src/utils/format";
 import { shareText } from "../../src/utils/share";
 import { recordFunnelEvent } from "../../src/api/client";
 import { Check, ChevronDown, ChevronUp, FileSpreadsheet, MailSearch, Plus, Search, Share2, Upload } from "lucide-react-native";
-import { ServiceAvatar } from "../../src/components/zeno";
+import { ColumnHeads, ServiceAvatar, TearEdge } from "../../src/components/zeno";
 import { fonts } from "../../src/theme/zeno";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -283,8 +283,9 @@ export default function DiscoverScreen() {
       <SafeAreaView style={styles.safeArea} edges={["top"]}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-          {/* Results header */}
+          {/* Results header — the scan produced a document, so it reads as one. */}
           <View style={styles.pageHeaderWrap}>
+            <Text style={styles.receiptKicker}>SCAN RESULTS</Text>
             <Text style={styles.pageTitle}>Found {results.length} subscriptions</Text>
             <Text style={styles.pageSubtitle}>Review and add the ones you want to track</Text>
           </View>
@@ -323,7 +324,12 @@ export default function DiscoverScreen() {
             </Pressable>
           </View>
 
-          {/* Results list */}
+          {/* Results list — a receipt torn off the roll: tear edge, column
+              heads, rows, tear edge. Nobody else's results screen prints. */}
+          <TearEdge flip color={theme.card} />
+          <View style={styles.receiptBody}>
+            <ColumnHeads left="SERVICE" right="AMOUNT" style={{ paddingHorizontal: 0, marginBottom: 2 }} />
+          </View>
           <View style={styles.groupCard}>
             {results.map((result, index) => {
               const isLast = index === results.length - 1;
@@ -389,6 +395,8 @@ export default function DiscoverScreen() {
               );
             })}
           </View>
+          {/* torn off the roll */}
+          <TearEdge color={theme.card} />
 
           <Pressable accessibilityRole="button" onPress={() => setResults([])} style={styles.textLink}>
             <Text style={styles.textLinkLabel}>Start over</Text>
@@ -840,7 +848,11 @@ function createStyles(theme: ThemeTokens) {
     selectCount:   { fontSize: 13, color: theme.mutedText },
     selectAllLink: { fontSize: 13, fontWeight: "600", color: theme.primary },
     capNotice:     { fontSize: 13, color: theme.warning, textAlign: "center", marginBottom: 10 },
-    groupCard:     { marginHorizontal: 16, backgroundColor: theme.card, borderRadius: spacing.groupRadius, overflow: "hidden" },
+    groupCard:     { marginHorizontal: 16, backgroundColor: theme.card, overflow: "hidden" },
+    // Receipt chrome: the tear edges above/below make the rows read as a
+    // printed slip, so the sheet itself is square rather than a rounded card.
+    receiptKicker: { fontFamily: fonts.mono.bold, fontSize: 10, letterSpacing: 1.8, color: theme.quietText, marginBottom: 4 },
+    receiptBody:   { marginHorizontal: 16, backgroundColor: theme.card, paddingHorizontal: 16, paddingTop: 10 },
     resultRow:     { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 12, minHeight: spacing.rowH + 8 },
     checkbox:      { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: theme.border, alignItems: "center", justifyContent: "center" },
     checkboxSelected:{ borderColor: theme.primary, backgroundColor: theme.primary },
