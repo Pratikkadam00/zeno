@@ -41,9 +41,12 @@ type IconCmp = ComponentType<{ size?: number; color?: string; strokeWidth?: numb
 const VALUE_PROPS: readonly { Icon: IconCmp; title: string; sub: string }[] = [
   { Icon: InfinityIcon, title: "Unlimited subscriptions", sub: "Track past the 10-subscription free limit" },
   { Icon: PieChart,     title: "Category budgets",         sub: "Set a spending cap for each category" },
-  { Icon: Wallet,       title: "Envelope budgeting",       sub: "Fund envelopes and track what's left" },
-  { Icon: ShieldCheck,  title: "No bank login, ever",      sub: "On-device & encrypted — your data stays yours" }
+  { Icon: Wallet,       title: "Envelope budgeting",       sub: "Fund envelopes and track what's left" }
 ];
+// "No bank login" is how Zeno works for EVERYONE, free included — so it is not
+// listed above (each row there renders a check, which would sell a free promise
+// as a paid unlock and contradict this file's own rule). It reads as a standing
+// commitment beneath the list instead.
 
 // ─── Helpers (logic unchanged) ────────────────────────────────────────────────
 
@@ -357,6 +360,15 @@ export default function PaywallScreen() {
           })}
         </View>
 
+        {/* Standing commitment — true on every plan, so deliberately outside the
+            list above and without a check: it is not something Pro buys you. */}
+        <View style={styles.commitmentRow}>
+          <ShieldCheck size={15} color={theme.mutedText} strokeWidth={2} />
+          <Text style={styles.commitmentText}>
+            No bank login on any plan — free included. Your subscriptions stay encrypted on this device unless you turn on a cloud feature.
+          </Text>
+        </View>
+
         {/* Error */}
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -479,6 +491,10 @@ function createStyles(theme: ThemeTokens) {
     propTitle:     { ...typography.subheadline, color: theme.text },
     propSub:       { ...typography.caption1, color: theme.mutedText, marginTop: 2 },
     propSep:       { position: "absolute", left: 66, right: 0, bottom: 0, height: 0.5, backgroundColor: theme.border },
+
+    // Standing commitment (true on every plan)
+    commitmentRow:  { flexDirection: "row", alignItems: "flex-start", columnGap: 8, marginHorizontal: 16, marginTop: 10, marginBottom: 4 },
+    commitmentText: { ...typography.footnote, flex: 1, color: theme.mutedText, lineHeight: 18 },
 
     // Error
     errorText:     { ...typography.footnote, color: theme.danger, textAlign: "center", marginHorizontal: 16 },
