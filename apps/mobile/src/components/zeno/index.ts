@@ -24,6 +24,7 @@ export {
   type StampSize,
   TearEdge,
   SkeletonRow,
+  ScanLine,
   CodeBoxes
 } from "./Ledger";
 export { LedgerSheet, ConfirmSheet, type LedgerSheetProps, type LedgerSheetOption } from "./LedgerSheet";

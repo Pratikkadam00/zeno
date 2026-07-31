@@ -192,6 +192,37 @@ export function SkeletonRow({ width = "100%", height = 14, style }: { width?: nu
   return <Animated.View style={[{ width, height, borderRadius: 4, backgroundColor: c.surfaceSunken }, animatedStyle, style]} />;
 }
 
+/* ScanLine — the discovery scan head sweeping down a page. The DS chooses this
+   over a radar/pulse deliberately: the scan is reading documents, so the motion
+   should look like reading a document. Reduced motion holds it still and dim. */
+export function ScanLine({ height = 120, style }: { height?: number; style?: StyleProp<ViewStyle> }) {
+  const t = useZenoTokens();
+  const c = t.color;
+  const reduced = useReducedMotion();
+  const y = useSharedValue(0);
+
+  useEffect(() => {
+    if (reduced) {
+      y.value = height / 2;
+      return;
+    }
+    y.value = withRepeat(withTiming(height, { duration: 1600, easing: Easing.inOut(Easing.ease) }), -1, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reduced, height]);
+
+  const lineStyle = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
+
+  return (
+    <View style={[{ height, overflow: "hidden" }, style]} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      {/* the ruled page being read */}
+      {Array.from({ length: Math.floor(height / 14) }).map((_, i) => (
+        <View key={i} style={{ height: 1, marginTop: 13, backgroundColor: c.rule }} />
+      ))}
+      <Animated.View style={[{ position: "absolute", left: 0, right: 0, top: 0, height: 2, backgroundColor: c.accent, opacity: reduced ? 0.5 : 1 }, lineStyle]} />
+    </View>
+  );
+}
+
 /* CodeBoxes — mono boxes for an N-char code (e.g. the Family Vault share code). */
 export function CodeBoxes({ code = "", length = 8, size = 36 }: { code?: string; length?: number; size?: number }) {
   const t = useZenoTokens();

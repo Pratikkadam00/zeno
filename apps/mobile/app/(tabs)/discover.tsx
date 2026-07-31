@@ -29,7 +29,7 @@ import { formatMoney } from "../../src/utils/format";
 import { shareText } from "../../src/utils/share";
 import { recordFunnelEvent } from "../../src/api/client";
 import { Check, ChevronDown, ChevronUp, FileSpreadsheet, MailSearch, Plus, Search, Share2, Upload } from "lucide-react-native";
-import { ColumnHeads, ServiceAvatar, TearEdge } from "../../src/components/zeno";
+import { ColumnHeads, ScanLine, ServiceAvatar, TearEdge } from "../../src/components/zeno";
 import { fonts } from "../../src/theme/zeno";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -604,6 +604,9 @@ export default function DiscoverScreen() {
 
               {isScanning ? (
                 <View style={styles.progressWrap}>
+                  {/* The scan head sweeps a ruled page — the scan is reading
+                      documents, so it looks like reading, not like radar. */}
+                  <ScanLine height={84} style={{ marginBottom: 12 }} />
                   <View style={styles.progressTrack}>
                     <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
                   </View>
