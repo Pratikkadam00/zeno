@@ -1,14 +1,11 @@
 import type { SubscriptionCategory } from "@zeno/shared";
 import { router, Stack } from "expo-router";
 import {
-  AlertTriangle,
   Banknote,
   CalendarClock,
   ChevronLeft,
   ChevronRight,
-  CircleCheck,
   History,
-  Info,
   Lock,
   Minus,
   PieChart,
@@ -18,7 +15,6 @@ import {
   Sparkles,
   Target,
   Trash2,
-  TrendingUp,
   Wallet,
   Zap
 } from "lucide-react-native";
@@ -26,7 +22,7 @@ import { useState, type ComponentType, type ReactNode } from "react";
 import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthStore } from "../src/auth/authStore";
-import { AmountDisplay, Badge, Button, Card, IconButton, Input, ListRow, ServiceAvatar } from "../src/components/zeno";
+import { AmountDisplay, Badge, Button, Card, IconButton, Input, LedgerLine, ListRow, ServiceAvatar, Stamp } from "../src/components/zeno";
 import { useBudgetStore } from "../src/data/budget-store";
 import { useSubscriptionStore } from "../src/data/subscription-store";
 import { budgetStatus, computeBudgetForecast, computeCategoryForecast, suggestedCapMinor, type BudgetStatus } from "../src/finance/budget";
@@ -145,8 +141,7 @@ export default function BudgetScreen() {
   const headroomMinor = capMinor - projectedMinor;
   const pct = Math.min(100, capMinor > 0 ? (projectedMinor / capMinor) * 100 : 0);
   const committedPct = Math.min(100, capMinor > 0 ? (committedMinor / capMinor) * 100 : 0);
-  const StatusIcon = status === "over" ? AlertTriangle : status === "approaching" ? TrendingUp : CircleCheck;
-  const statusLabel = status === "over" ? "Over budget" : status === "approaching" ? "Approaching" : "On pace";
+  const statusLabel = status === "over" ? "Over" : status === "approaching" ? "Close" : "On pace";
 
   const cutCandidates = subscriptions
     .filter((s) => s.status === "active")
@@ -167,33 +162,44 @@ export default function BudgetScreen() {
       <BudgetHeader t={t} right={<IconButton variant="ghost" size={40} label="Edit budget" onPress={() => setCap(null)}><Pencil size={20} color={c.textSecondary} strokeWidth={2} /></IconButton>} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 28 + insets.bottom }}>
-        {/* Hero — forward-looking status */}
-        <View style={[{ backgroundColor: t.palette.ink[900], borderRadius: t.radius["2xl"], padding: 22 }, t.shadow.lg]}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: 12.5, color: t.palette.ink[300], letterSpacing: t.letterSpacing.wide, textTransform: "uppercase" }}>Projected this month</Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, paddingVertical: 3, borderRadius: t.radius.pill, backgroundColor: sc.soft }}>
-              <StatusIcon size={13} color={sc.main} strokeWidth={2} />
-              <Text style={{ fontFamily: t.fonts.sans.bold, fontSize: 12, color: sc.main }}>{statusLabel}</Text>
-            </View>
+        {/* Forecast, forward-looking — a typographic block on paper with a
+            two-tone rule bar. The DS rejects the dark hero card + progress ring
+            here: the cap is a rule drawn across the bar, and the verdict is a
+            stamp-chip rather than a tinted pill. */}
+        <View style={{ paddingTop: 18 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", columnGap: 10 }}>
+            <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: 10.5, letterSpacing: 1.8, color: c.textTertiary }}>PROJECTED THIS MONTH</Text>
+            <View style={{ flex: 1, height: 1, backgroundColor: c.rule }} />
+            <Stamp size="sm" angle={4} tone={status === "over" ? "alert" : status === "approaching" ? "neutral" : "verified"}>
+              {statusLabel}
+            </Stamp>
           </View>
-          <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8, marginTop: 10 }}>
-            <AmountDisplay amount={projectedMinor / 100} currency={currencySymbol(homeCurrency)} size="xl" color="#FFFFFF" />
-            <Text style={{ fontFamily: t.fonts.mono.regular, fontSize: 15, color: t.palette.ink[400] }}>/ {dollarsRound(capMinor)}</Text>
+
+          <View style={{ flexDirection: "row", alignItems: "baseline", columnGap: 8, marginTop: 10 }}>
+            <AmountDisplay amount={projectedMinor / 100} currency={currencySymbol(homeCurrency)} size="xl" animate />
+            <Text style={{ fontFamily: t.fonts.mono.regular, fontSize: 15, color: c.textTertiary }}>/ {dollarsRound(capMinor)}</Text>
           </View>
-          <View style={{ height: 8, backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 4, marginTop: 16, overflow: "hidden" }}>
-            <View style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${pct}%`, backgroundColor: status === "over" ? c.danger : status === "approaching" ? c.warning : t.palette.green[400], borderRadius: 4 }} />
-            <View style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${committedPct}%`, backgroundColor: "rgba(255,255,255,0.5)", borderRadius: 4 }} />
+
+          {/* Two-tone rule bar: solid = already charged, tinted = still forecast,
+              and the cap is a hard rule drawn across it. */}
+          <View style={{ height: 8, backgroundColor: c.surfaceSunken, marginTop: 16, overflow: "hidden" }}>
+            <View style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${pct}%`, backgroundColor: status === "over" ? c.stampAlert : status === "approaching" ? c.warning : c.accent }} />
+            <View style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${committedPct}%`, backgroundColor: c.inkPanel }} />
+            {/* the cap rule */}
+            <View style={{ position: "absolute", left: `${Math.min(100, capMinor > 0 ? (capMinor / Math.max(projectedMinor, capMinor)) * 100 : 100)}%`, top: 0, bottom: 0, width: 2, backgroundColor: c.textPrimary }} />
           </View>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8 }}>
-            <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: 11.5, color: t.palette.ink[400] }}>{money(committedMinor)} charged</Text>
-            <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: 11.5, color: t.palette.ink[400] }}>{daysLeftInMonth} days left</Text>
+
+          <View style={{ borderBottomWidth: 1, borderColor: c.ruleStrong, marginTop: 10 }}>
+            <LedgerLine label="Charged so far" value={money(committedMinor)} />
+            <LedgerLine label="Still to renew" sub={`${daysLeftInMonth} DAYS LEFT`} value={money(Math.max(0, projectedMinor - committedMinor))} />
+            <LedgerLine label="Forecast month-end" value={money(projectedMinor)} strong />
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 12 }}>
-            <Info size={13} color={t.palette.ink[400]} strokeWidth={2} />
-            <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: 12, color: t.palette.ink[300] }}>Forecast from your renewal dates</Text>
-          </View>
+
+          <Text style={{ fontFamily: t.fonts.mono.regular, fontSize: 9.5, letterSpacing: 0.8, color: c.textTertiary, marginTop: 8 }}>
+            FORECAST FROM YOUR RENEWAL DATES
+          </Text>
           {forecast.excludedCurrencyCount ? (
-            <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: 11.5, color: t.palette.ink[400], marginTop: 4 }}>
+            <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: 11.5, color: c.textTertiary, marginTop: 4 }}>
               {forecast.excludedCurrencyCount} subscription{forecast.excludedCurrencyCount > 1 ? "s" : ""} in other currencies not included above.
             </Text>
           ) : null}
