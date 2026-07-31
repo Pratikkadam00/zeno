@@ -287,8 +287,21 @@ BottomSheet — closes the P4 debt). Truthfulness copy verbatim. Emulator drive 
   core promise is paid. Suggested fix: move it out of VALUE_PROPS to a footer
   line so it still reads as Zeno's differentiator without being sold as Pro.
   Deliberately left for owner review since this is legally-reviewed copy.
-- **Not yet ported**: Discover, Paywall visuals, Onboarding, Calendar, Insights,
-  Budget, BudgetRecap.
+- **Paywall — FIXED 2026-07-28** (`54464b8`): "No bank login, ever" moved out of
+  `VALUE_PROPS` (every row there renders a green check, so it sold a free promise
+  as a paid unlock) to a standing commitment line beneath the list, with no check:
+  "No bank login on any plan — free included. Your subscriptions stay encrypted on
+  this device unless you turn on a cloud feature." That wording also avoids the
+  banned absolute on-device claim, since the AI coach transmits under explicit
+  consent. The three real Pro unlocks are unchanged.
+- **Discover — DONE** (`88ab1cf`, `9ae391b`): results print as a torn-off receipt
+  (SCAN RESULTS kicker → TearEdge → SERVICE/AMOUNT ColumnHeads → rows → TearEdge;
+  the rounded card is gone), and the scan state uses the new reusable **ScanLine**
+  kit component — a scan head sweeping a ruled page, which the DS chooses over a
+  radar/pulse because the scan is *reading documents*. Reduced motion holds it
+  still; it is hidden from screen readers, and the honest per-email progress
+  counter and cancel control are untouched.
+- **Not yet ported**: Onboarding, Calendar, Insights, Budget, BudgetRecap.
 
 ### M5 — Coach + Family; retire the legacy kit (was D4)
 Port the CoachScreen/FamilyScreen mockups; migrates the last screens off legacy
