@@ -1,9 +1,9 @@
 import { buildMonthlySpendHistory } from "@zeno/shared";
 import { router, Stack } from "expo-router";
-import { AlertTriangle, Flame, Gift, PartyPopper, Share2, X } from "lucide-react-native";
+import { Gift, Share2, X } from "lucide-react-native";
 import { Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Badge, Button, Card } from "../src/components/zeno";
+import { Badge, Button, LedgerLine, SectionHead, Stamp } from "../src/components/zeno";
 import { useBudgetStore } from "../src/data/budget-store";
 import { useSubscriptionStore } from "../src/data/subscription-store";
 import { useZenoTokens } from "../src/theme/useZenoTokens";
@@ -80,32 +80,65 @@ export default function BudgetRecapScreen() {
       {Header}
 
       <View style={{ flex: 1, paddingHorizontal: 16 }}>
-        {/* Verdict hero */}
-        <View style={[{ backgroundColor: under ? c.accent : t.palette.ink[900], borderRadius: t.radius["2xl"], padding: 26, alignItems: "center" }, under ? t.shadow.accent : t.shadow.lg]}>
-          <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: under ? "rgba(10,42,28,0.18)" : c.dangerSoft, alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
-            {under ? <PartyPopper size={28} color={t.palette.ink[900]} strokeWidth={2} /> : <AlertTriangle size={28} color={c.danger} strokeWidth={2} />}
-          </View>
-          <Text style={{ fontFamily: t.fonts.display.bold, fontSize: 24, letterSpacing: -0.5, color: under ? t.palette.ink[900] : "#FFFFFF" }}>
-            {under ? "You stayed under!" : "You went over"}
-          </Text>
-          <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: 14.5, marginTop: 6, textAlign: "center", color: under ? t.palette.ink[800] : t.palette.ink[300] }}>
-            {money(diffMinor)} {under ? "under" : "over"} your {dollarsRound(capMinor)} cap in {recap.label}.
-          </Text>
+        {/* The month, stamped. The stamp IS the celebration — no confetti, no
+            party icon, no green banner (all three named in the DS slop audit). */}
+        <View style={{ alignItems: "center", paddingTop: 18, paddingBottom: 6 }}>
+          <Stamp
+            animate
+            size="lg"
+            angle={-5}
+            tone={under ? "verified" : "alert"}
+            sub={`CAP ${dollarsRound(capMinor)} · SPENT ${money(recap.amountMinor)}`}
+          >
+            {under ? "Under cap" : "Over cap"}
+          </Stamp>
+          {/* Streak as TALLY MARKS — the way a ledger counts. */}
           {under && streak > 1 ? (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 14, paddingHorizontal: 12, paddingVertical: 5, borderRadius: t.radius.pill, backgroundColor: "rgba(10,42,28,0.16)" }}>
-              <Flame size={14} color={t.palette.ink[900]} strokeWidth={2} />
-              <Text style={{ fontFamily: t.fonts.sans.bold, fontSize: 12.5, color: t.palette.ink[900] }}>{streak}-month streak</Text>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", columnGap: 4, marginTop: 16 }}
+              accessible
+              accessibilityLabel={`${streak} month streak under cap`}
+            >
+              {Array.from({ length: Math.min(streak, 12) }).map((_, i) => (
+                <View
+                  key={i}
+                  style={{
+                    width: 2.5,
+                    height: 16,
+                    backgroundColor: c.stampVerified,
+                    // every fifth mark strikes across the previous four
+                    transform: [{ rotate: (i + 1) % 5 === 0 ? "-68deg" : "0deg" }],
+                    marginLeft: (i + 1) % 5 === 0 ? -14 : 0
+                  }}
+                />
+              ))}
+              <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: 10, letterSpacing: 1.2, color: c.textTertiary, marginLeft: 8 }}>
+                {streak} MONTHS
+              </Text>
             </View>
           ) : null}
         </View>
 
-        {/* Cap vs actual + trend */}
-        <Card padding="md" style={{ marginTop: 14 }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 12 }}>
-            <Stat t={t} label="Budget" value={dollarsRound(capMinor)} />
-            <Stat t={t} label="Actual" value={money(recap.amountMinor)} accent={under} />
-            <Stat t={t} label={prev ? `vs ${prev.label}` : "vs prev"} value={prev ? `${recap.amountMinor < prev.amountMinor ? "−" : "+"}${money(Math.abs(recap.amountMinor - prev.amountMinor))}` : "—"} />
-          </View>
+        {/* The month's arithmetic, as ledger lines under a rule. */}
+        <View style={{ borderTopWidth: 1, borderColor: c.ruleStrong, marginTop: 14 }}>
+          <LedgerLine label="The cap" value={dollarsRound(capMinor)} />
+          <LedgerLine
+            label="Actually spent"
+            value={money(recap.amountMinor)}
+            valueColor={under ? c.stampVerified : c.stampAlert}
+            strong
+          />
+          <LedgerLine label="Margin" value={`${under ? "−" : "+"}${money(diffMinor)}`} />
+          {prev ? (
+            <LedgerLine
+              label={`vs ${prev.label}`}
+              value={`${recap.amountMinor < prev.amountMinor ? "▼" : "▲"} ${money(Math.abs(recap.amountMinor - prev.amountMinor))}`}
+            />
+          ) : null}
+        </View>
+
+        <SectionHead style={{ paddingHorizontal: 0 }}>Six months vs the cap</SectionHead>
+        <View>
           {/* Trend bars with cap line */}
           <View style={{ height: 96, flexDirection: "row", alignItems: "flex-end", gap: 8, paddingTop: 6 }}>
             <View style={{ position: "absolute", left: 0, right: 0, top: 6 + (1 - capMinor / maxMinor) * 84, borderTopWidth: 1.5, borderTopColor: c.borderStrong, borderStyle: "dashed" }} />
@@ -121,7 +154,7 @@ export default function BudgetRecapScreen() {
               );
             })}
           </View>
-        </Card>
+        </View>
 
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: c.accentSoft, borderRadius: t.radius.md }}>
           <Gift size={17} color={c.accentText} strokeWidth={2} />
@@ -141,15 +174,6 @@ export default function BudgetRecapScreen() {
         ) : null}
         <Button variant="primary" size="lg" fullWidth onPress={() => router.back()}>Done</Button>
       </View>
-    </View>
-  );
-}
-
-function Stat({ t, label, value, accent }: { t: ReturnType<typeof useZenoTokens>; label: string; value: string; accent?: boolean }) {
-  return (
-    <View style={{ flex: 1, alignItems: "center" }}>
-      <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: 17, color: accent ? t.color.accentText : t.color.textPrimary }}>{value}</Text>
-      <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: 11, letterSpacing: t.letterSpacing.wide, textTransform: "uppercase", color: t.color.textTertiary, marginTop: 2 }}>{label}</Text>
     </View>
   );
 }
