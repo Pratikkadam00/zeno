@@ -9,12 +9,14 @@ Companion to `docs/DELIVERY_PLAN.md` (the plan). This file is the *working state
 - **M1 (foundation): DONE** — tokens/motion/haptics/Navy icon/Tear splash.
 - **M2 (core kit): DONE** — see kit inventory below.
 - **M3 (hot screens): DONE** — Chrome, Dashboard, Subscriptions, Detail, Add.
-- **M4 (flows): 7 of 9** — DONE: Cancel+Stamp, Settings→LedgerSheet, Paywall
-  truthfulness, Discover (receipt + ScanLine), BudgetRecap (stamp + tally-mark
-  streak), Onboarding (3 beats, ledger prints itself), Budget (typographic
-  forecast + two-tone rule bar with cap rule + stamp verdict).
-  **REMAINING: Calendar (`app/(tabs)/calendar.tsx`, 466 ln), Insights
-  (`app/(tabs)/analytics.tsx`, 444 ln).**
+- **M4 (flows): DONE (9 of 9)** — Cancel+Stamp (and fixed the celebration being
+  invisible: the screen used to toast + navigate away instantly), Settings →
+  LedgerSheet (closes the P4 Alert.alert debt), Paywall truthfulness (a free
+  promise was being sold as a Pro unlock), Discover (tear-edge receipt +
+  ScanLine), BudgetRecap (stamp + tally-mark streak), Onboarding (3 beats, the
+  ledger prints itself), Budget (typographic forecast, two-tone rule bar with a
+  cap rule, stamp verdict), Insights (categories = ledger lines with inline tick
+  bars, no donut), Calendar (one ledger summary block, no stat-card trio).
 - **M5, M6, M7: NOT STARTED.**
 
 ## The kit (import from `src/components/zeno`)
