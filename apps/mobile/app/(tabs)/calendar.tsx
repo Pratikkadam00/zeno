@@ -8,7 +8,7 @@ import { formatMoney } from "../../src/utils/format";
 import { formatShortDate, getDaysRemaining, getUrgencyBadge } from "../../src/utils/subscription-ui";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
 import { convertMinor, type CurrencyCode, type FxContext, type Subscription } from "@zeno/shared";
-import { ServiceAvatar } from "../../src/components/zeno";
+import { LedgerLine, ServiceAvatar } from "../../src/components/zeno";
 import { useZenoTheme } from "../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
@@ -310,27 +310,25 @@ export default function CalendarScreen() {
         {/* Header */}
         <Text style={styles.pageTitle}>Calendar</Text>
 
-        {/* Stats row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>THIS MONTH</Text>
-            <Text style={styles.statValue}>{formatMoney(Math.round(monthlyTotal * 100), homeCurrency)}</Text>
-            <Text style={styles.statSub}>{thisMonthTotalCount} renewals</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>NEXT 7 DAYS</Text>
-            <Text style={[styles.statValue, { color: next7ValueColor }]}>
-              {formatMoney(Math.round(next7Total * 100), homeCurrency)}
-            </Text>
-            <Text style={styles.statSub}>{next7DaysList.length} due soon</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>THIS YEAR</Text>
-            <Text style={styles.statValue}>{formatMoney(Math.round(projectedAnnual * 100), homeCurrency)}</Text>
-            <Text style={styles.statSub}>projected</Text>
-          </View>
+        {/* One ledger summary block — the DS replaces the stat-card trio here
+            (same call as the dashboard and the detail page). */}
+        <View style={styles.summaryBlock}>
+          <LedgerLine
+            label="This month"
+            sub={`${thisMonthTotalCount} RENEWALS`}
+            value={formatMoney(Math.round(monthlyTotal * 100), homeCurrency)}
+          />
+          <LedgerLine
+            label="Next 7 days"
+            sub={`${next7DaysList.length} DUE SOON`}
+            value={formatMoney(Math.round(next7Total * 100), homeCurrency)}
+            valueColor={next7ValueColor}
+          />
+          <LedgerLine
+            label="Projected year"
+            value={formatMoney(Math.round(projectedAnnual * 100), homeCurrency)}
+            strong
+          />
         </View>
 
         {spendSummary.excludedCurrencyCount ? (
@@ -400,11 +398,7 @@ function createStyles(theme: ThemeTokens) {
     },
 
     // Stats
-    statsRow: { flexDirection: "row", gap: 8, marginHorizontal: 16, marginTop: 12, marginBottom: 8 },
-    statCard: { flex: 1, backgroundColor: theme.card, borderRadius: 14, padding: 14 },
-    statLabel: { ...typography.sectionHeader, color: theme.mutedText, marginBottom: 6 },
-    statValue: { fontSize: 20, fontFamily: fonts.mono.bold, color: theme.text, letterSpacing: -0.5 },
-    statSub: { ...typography.caption1, color: theme.mutedText, marginTop: 3 },
+    summaryBlock: { marginHorizontal: 20, marginTop: 12, marginBottom: 8, borderTopWidth: 1, borderBottomWidth: 1, borderColor: theme.ruleStrong },
 
     // Calendar
     calendarCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: theme.card, borderRadius: 16, overflow: "hidden" },
