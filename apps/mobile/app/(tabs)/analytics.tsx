@@ -11,7 +11,7 @@ import { generateInsights, getTotalSavingOpportunity } from "../../src/insights/
 import type { Insight } from "../../src/insights/insightsEngine";
 import { currencySymbol, formatMoney } from "../../src/utils/format";
 import { formatShortDate, getCategoryColor, getDaysRemaining, getUrgencyBadge, withAlpha } from "../../src/utils/subscription-ui";
-import { ServiceAvatar } from "../../src/components/zeno";
+import { LedgerLine, ServiceAvatar } from "../../src/components/zeno";
 import { useZenoTheme } from "../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
@@ -230,39 +230,39 @@ export default function AnalyticsScreen() {
         )}
 
         {/* ── Category breakdown ── */}
-        <Text style={styles.sectionLabel}>SPEND BREAKDOWN</Text>
-        <View style={styles.groupCard}>
+        {/* Where it goes — ledger lines with inline tick bars, on the paper.
+            The DS rejects the donut chart and the avatar-per-category card list:
+            a colour tick + a rule carries the category, and the bar sits under
+            the line it belongs to. */}
+        <Text style={styles.sectionLabel}>WHERE IT GOES</Text>
+        <View style={{ paddingHorizontal: 20 }}>
           {categoryRows.length === 0 ? (
-            <View style={styles.emptyRow}><Text style={styles.emptyRowText}>No spend data yet</Text></View>
+            <Text style={styles.emptyRowText}>No spend data yet</Text>
           ) : (
-            categoryRows.map((cat, index) => {
-              const isLast = index === categoryRows.length - 1;
+            categoryRows.map((cat) => {
               const pct = Math.min((cat.monthlyMinor / Math.max(spendSummary.totalMonthlyMinor, 1)) * 100, 100);
               const barColor = getCategoryColor(cat.category, theme);
               return (
-                <View key={cat.category}>
-                  <View style={styles.catRow}>
-                    <ServiceAvatar name={labelCategory(cat.category)} size={spacing.avatarMd} />
+                <View key={cat.category} style={{ paddingBottom: 8, borderBottomWidth: 1, borderColor: theme.rule }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", columnGap: 8 }}>
+                    <View style={{ width: 10, height: 3, backgroundColor: barColor }} />
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.catName}>{labelCategory(cat.category)}</Text>
-                      <View style={styles.progressTrack}>
-                        <View style={[styles.progressFill, { width: `${pct}%`, backgroundColor: barColor }]} />
-                      </View>
-                    </View>
-                    <View style={styles.catRight}>
-                      <Text style={styles.catAmount}>{formatMoney(cat.monthlyMinor, homeCurrency)}</Text>
-                      <Text style={styles.catPct}>{Math.round(pct)}%</Text>
+                      <LedgerLine
+                        label={labelCategory(cat.category)}
+                        sub={`${Math.round(pct)}%`}
+                        value={formatMoney(cat.monthlyMinor, homeCurrency)}
+                        style={{ paddingTop: 5, paddingBottom: 3 }}
+                      />
                     </View>
                   </View>
-                  {!isLast ? <View style={styles.rowSep} /> : null}
+                  <View style={{ height: 3, backgroundColor: theme.surfaceAlt }}>
+                    <View style={{ width: `${pct}%`, height: "100%", backgroundColor: barColor }} />
+                  </View>
                 </View>
               );
             })
           )}
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total monthly</Text>
-            <Text style={styles.totalAmount}>{formatMoney(spendSummary.totalMonthlyMinor, homeCurrency)}</Text>
-          </View>
+          <LedgerLine label="Total monthly" value={formatMoney(spendSummary.totalMonthlyMinor, homeCurrency)} strong size={16} />
         </View>
 
         {/* ── All subscriptions ── */}
@@ -401,20 +401,6 @@ function createStyles(theme: ThemeTokens) {
     emptyRowText: { ...typography.callout, color: theme.mutedText },
 
     // Category rows
-    catRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 13, gap: 14 },
-    catName: { ...typography.subheadline, color: theme.text },
-    progressTrack: { marginTop: 6, height: 3, backgroundColor: theme.surfaceAlt, borderRadius: 2 },
-    progressFill: { height: 3, borderRadius: 2 },
-    catRight: { alignItems: "flex-end" },
-    catAmount: { fontSize: 15, fontFamily: fonts.mono.semibold, color: theme.text, fontVariant: ["tabular-nums"] },
-    catPct: { ...typography.caption1, color: theme.mutedText, marginTop: 1, textAlign: "right" },
-    totalRow: {
-      paddingHorizontal: 16, paddingVertical: 13,
-      borderTopWidth: 0.5, borderTopColor: theme.border,
-      flexDirection: "row", justifyContent: "space-between"
-    },
-    totalLabel: { fontSize: 14, fontWeight: "600", color: theme.text },
-    totalAmount: { fontSize: 14, fontFamily: fonts.mono.bold, color: theme.text, fontVariant: ["tabular-nums"] },
 
     // Sort / table header row
     tableHeaderRow: {
