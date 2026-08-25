@@ -1,6 +1,7 @@
 import { Share2 } from "lucide-react-native";
-import { Pressable, ScrollView, Text, View } from "react-native";
-import { Kpi, PrimaryButton, Screen, Surface } from "../src/components/ui";
+import { Pressable, ScrollView, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import type { ReactNode } from "react";
+import { Button, LedgerLine } from "../src/components/zeno";
 import { useSubscriptionStore } from "../src/data/subscription-store";
 import { useZenoTheme } from "../src/theme/theme-provider";
 import type { ThemeTokens } from "../src/theme/tokens";
@@ -26,6 +27,16 @@ function ShareIconButton({ label, onPress, theme }: { label: string; onPress: ()
 
 function labelCategory(category: string): string {
   return category.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** A block of the Wrapped page: paper, hairline rule frame, no resting shadow. */
+function Surface({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  const { theme } = useZenoTheme();
+  return (
+    <View style={[{ backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, padding: 16, marginHorizontal: 20, marginTop: 12 }, style]}>
+      {children}
+    </View>
+  );
 }
 
 export default function WrappedScreen() {
@@ -77,7 +88,7 @@ export default function WrappedScreen() {
   };
 
   return (
-    <Screen>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ScrollView contentContainerStyle={{ gap: 16, paddingBottom: 32 }}>
         <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
           <View style={{ flex: 1 }}>
@@ -96,12 +107,11 @@ export default function WrappedScreen() {
           <ShareIconButton label="Share total spend" onPress={shareTotal} theme={theme} />
         </View>
 
-        <View style={{ flexDirection: "row", gap: 12 }}>
-          <Kpi label="Active now" value={`${review.activeCount}`} />
-          <Kpi label="Cancelled" value={`${review.cancelledCount}`} />
-        </View>
-        <View style={{ flexDirection: "row", gap: 12 }}>
-          <Kpi label="On pace next year" value={money(review.projectedAnnualMinor)} />
+        {/* The year's arithmetic as ledger lines, not KPI tiles. */}
+        <View style={{ borderTopWidth: 1, borderBottomWidth: 1, borderColor: theme.ruleStrong, marginHorizontal: 20, marginTop: 4 }}>
+          <LedgerLine label="Active now" value={`${review.activeCount}`} />
+          <LedgerLine label="Cancelled" value={`${review.cancelledCount}`} valueColor={theme.stampVerified} />
+          <LedgerLine label="On pace next year" value={money(review.projectedAnnualMinor)} strong />
         </View>
 
         {review.mostExpensive ? (
@@ -149,8 +159,8 @@ export default function WrappedScreen() {
           </Text>
         ) : null}
 
-        <PrimaryButton onPress={shareSummary}>Share my Wrapped</PrimaryButton>
+        <Button variant="primary" size="lg" fullWidth onPress={shareSummary} style={{ marginHorizontal: 20 }}>Share my Wrapped</Button>
       </ScrollView>
-    </Screen>
+    </View>
   );
 }
