@@ -99,11 +99,26 @@ cold bundle (96s with `--clear`). Wait for "Android Bundled" in the Metro log
 before screenshotting, or the capture lands mid-bundle.
 
 **STILL UNVERIFIED (blocked, not skipped):** dashboard and everything behind it.
-Tapping "Continue without an account" triggers first-run SQLCipher seeding, and
-this emulator drops into `D` state (uninterruptible disk I/O, ~28% iowait) where
-`screencap` hangs indefinitely. The app process stays alive and logcat shows no
-JS error — it is an emulator disk limitation, not an app fault. A faster machine
-or a physical device will get through it.
+
+Failure mode, reproduced FOUR times with measurements: entering the app puts the
+process into `D` state (uninterruptible disk I/O, iowait 28% vs 4% idle), and
+`screencap`/`dumpsys` then hang indefinitely. The emulator recovers only once the
+app is killed; Android eventually OOM-killed it each time.
+
+Root cause is NOT app seeding — that was my first assumption and it is wrong.
+`seed-subscriptions.ts` writes only 5 rows via 5 sequential upserts, which is
+trivial. The cost is dev-build overhead on a slow virtual disk: SQLCipher
+database creation + key derivation on first open, plus expo-sqlite native init,
+plus Metro dev-mode module serving. **A release build on real hardware does not
+carry this**, so this is an emulator limitation on this machine and NOT evidence
+of a cold-start problem in the product.
+
+Practical notes for whoever picks this up:
+- Wait for "Android Bundled" in the Metro log before the FIRST screenshot
+  (cold bundle took 96s with `--clear`; a warm one is ~100ms).
+- `adb shell svc power stayon true` prevents the dim-screen captures.
+- Confirm the app is actually foregrounded (`dumpsys window | grep mCurrentFocus`)
+  before sending taps — otherwise input lands on the launcher.
 
 ## Open items / findings not yet actioned
 - **M3+M4 visuals have never been SEEN on a device.** Verified structurally
