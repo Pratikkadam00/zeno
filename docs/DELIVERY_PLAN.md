@@ -316,6 +316,29 @@ NotificationsScreen, WrappedScreen (coverage-honesty line verbatim), SpendTwinSc
 ProfileScreen. Also removes the last screens on the old theming system
 (the deferred P4.2 consolidation completes here).
 
+**RELEASE-BUILD BLOCKER FOUND 2026-08-25 (affects M7 / A3 / A6):**
+`./gradlew assembleRelease` FAILS out of the box:
+
+```
+Execution failed for task ':app:createBundleReleaseJsAndAssets_SentryUpload_...'
+Script '@sentry/react-native/sentry.gradle' line: 132
+```
+
+Cause: the Sentry gradle plugin runs a source-map upload during release bundling
+and exits non-zero because org / project / auth token are not configured (the
+same thing the `[@sentry/react-native/expo] Missing config for organization,
+project` warning has been printing all along). Debug builds are unaffected, which
+is why this was invisible until an actual release build was attempted.
+
+Two ways forward, both fine:
+- set `SENTRY_DISABLE_AUTO_UPLOAD=true` for builds that should not upload, or
+- finish A3 (Sentry org/project + `SENTRY_AUTH_TOKEN`) so uploads work.
+
+With the flag set, `assembleRelease` succeeds: 8m10s, `app-release.apk` ~167MB
+(universal, all ABIs). For emulator work build a single ABI instead
+(`-PreactNativeArchitectures=x86_64`) — the 167MB universal APK saturates this
+machine's emulator during `adb install`.
+
 ### M7 — Final mobile verification & close
 Full emulator drive of every flow; dark-mode + reduced-motion + a11y passes; coverage
 ratchet (P5.5); adversarial review; MASVS spot re-check (`/security-review` on the
