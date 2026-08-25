@@ -1,13 +1,31 @@
-import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ActivityIndicator, ScrollView, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { createSpendSummary, monthlyAmount, monthlyAmountIn } from "@zeno/shared";
-import { Screen, Surface } from "../src/components/ui";
+import { PenLine } from "lucide-react-native";
+import { Button } from "../src/components/zeno";
+import { fonts } from "../src/theme/zeno";
 import { getAiCoaching, type AiCoaching } from "../src/api/client";
 import { useBudgetStore } from "../src/data/budget-store";
 import { useSubscriptionStore } from "../src/data/subscription-store";
 import { budgetStatus, computeBudgetForecast } from "../src/finance/budget";
 import { formatMoney } from "../src/utils/format";
 import { useZenoTheme } from "../src/theme/theme-provider";
+
+const NEWLINE = String.fromCharCode(10);
+
+/**
+ * A block of the coach's page: paper with a hairline rule frame and no resting
+ * shadow (the Honest Ledger card rule). Local to this screen so it no longer
+ * depends on the legacy src/components/ui kit.
+ */
+function Surface({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  const { theme } = useZenoTheme();
+  return (
+    <View style={[{ backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, padding: 16, marginHorizontal: 20, marginTop: 12 }, style]}>
+      {children}
+    </View>
+  );
+}
 
 export default function CoachScreen() {
   const { theme } = useZenoTheme();
@@ -99,7 +117,7 @@ export default function CoachScreen() {
   const aiActive = ai?.source === "ai";
 
   return (
-    <Screen>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ScrollView contentContainerStyle={{ gap: 16, paddingBottom: 32 }}>
         <View>
           <Text style={{ color: theme.text, fontSize: 30, lineHeight: 36, fontWeight: "900" }}>AI spend coach</Text>
@@ -116,36 +134,47 @@ export default function CoachScreen() {
         </View>
 
         {!aiConsented ? (
-          <Surface>
-            <Text style={{ color: theme.text, fontSize: 17, fontWeight: "900" }}>
-              {coachAiConsent === "declined" ? "AI coaching is off" : "Turn on AI coaching?"}
+          /* Consent as a short agreement you actually read — numbered clauses on
+             ruled paper, not an AI-gradient card. The legally-reviewed sentence
+             below is preserved VERBATIM; only its presentation changed. */
+          <View style={{ paddingHorizontal: 20, paddingTop: 10 }}>
+            <PenLine size={26} color={theme.mutedText} strokeWidth={2} />
+            <Text style={{ fontFamily: fonts.display.bold, fontSize: 23, letterSpacing: -0.5, color: theme.text, marginTop: 12, marginBottom: 8, lineHeight: 27 }}>
+              {coachAiConsent === "declined" ? "AI coaching is off." : "Coaching is optional."}{NEWLINE}Here&apos;s the deal.
             </Text>
-            <Text style={{ color: theme.mutedText, marginTop: 8, lineHeight: 21 }}>
-              To write personalized savings advice, Zeno sends your subscription names, categories and amounts to our
-              server, which passes them to an AI model. We never send your bank login, card numbers, balances, or
-              anything found in your email — and nothing is shared until you tap Enable.
-            </Text>
-            <View style={{ flexDirection: "row", gap: 12, marginTop: 14 }}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Enable AI coaching"
-                onPress={() => setCoachAiConsent("granted")}
-                style={{ backgroundColor: theme.primary, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 18 }}
-              >
-                <Text style={{ color: theme.onPrimary, fontWeight: "800" }}>Enable AI coaching</Text>
-              </Pressable>
-              {coachAiConsent === "unset" ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Not now, keep insights on-device"
-                  onPress={() => setCoachAiConsent("declined")}
-                  style={{ borderRadius: 12, paddingVertical: 12, paddingHorizontal: 18, justifyContent: "center" }}
-                >
-                  <Text style={{ color: theme.mutedText, fontWeight: "700" }}>Not now</Text>
-                </Pressable>
-              ) : null}
+            <View style={{ borderTopWidth: 1, borderColor: theme.ruleStrong, marginTop: 8 }}>
+              {[
+                ["On-device by default", "Zeno's built-in insights run right here. Nothing is sent anywhere."],
+                [
+                  "AI coaching, only if you ask",
+                  "To write personalized savings advice, Zeno sends your subscription names, categories and amounts to our server, which passes them to an AI model. We never send your bank login, card numbers, balances, or anything found in your email — and nothing is shared until you tap Enable."
+                ],
+                ["Revocable", "Turn it off any time in Settings. Off means off."]
+              ].map(([clauseTitle, clauseBody], i) => (
+                <View key={clauseTitle} style={{ flexDirection: "row", columnGap: 12, paddingVertical: 12, borderBottomWidth: 1, borderColor: theme.rule }}>
+                  <Text style={{ fontFamily: fonts.mono.bold, fontSize: 11, color: theme.quietText }}>{String(i + 1).padStart(2, "0")}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontFamily: fonts.sans.bold, fontSize: 14.5, color: theme.text }}>{clauseTitle}</Text>
+                    <Text style={{ fontFamily: fonts.sans.regular, fontSize: 13, color: theme.mutedText, marginTop: 3, lineHeight: 20 }}>{clauseBody}</Text>
+                  </View>
+                </View>
+              ))}
             </View>
-          </Surface>
+            {/* equal-weight choice — deliberately no dark pattern */}
+            <View style={{ flexDirection: "row", columnGap: 10, marginTop: 18 }}>
+              {coachAiConsent === "unset" ? (
+                <Button variant="secondary" size="lg" accessibilityLabel="Not now, keep insights on-device" onPress={() => setCoachAiConsent("declined")} style={{ flex: 1 }}>
+                  Not now
+                </Button>
+              ) : null}
+              <Button variant="primary" size="lg" accessibilityLabel="Enable AI coaching" onPress={() => setCoachAiConsent("granted")} style={{ flex: 1 }}>
+                Enable AI coaching
+              </Button>
+            </View>
+            <Text style={{ fontFamily: fonts.mono.bold, fontSize: 9.5, letterSpacing: 1.2, color: theme.quietText, textAlign: "center", marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderColor: theme.rule }}>
+              GENERAL INFORMATION, NOT FINANCIAL ADVICE.
+            </Text>
+          </View>
         ) : null}
 
         <Surface>
@@ -248,6 +277,6 @@ export default function CoachScreen() {
           </Surface>
         )}
       </ScrollView>
-    </Screen>
+    </View>
   );
 }

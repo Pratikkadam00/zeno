@@ -16,6 +16,12 @@ export function Screen({ children, style }: ViewProps) {
   return <View style={[styles.screen, { backgroundColor: theme.background }, style]}>{children}</View>;
 }
 
+/**
+ * Legacy surface, restyled to the Honest Ledger: a document on paper — hairline
+ * `rule` frame, radius md, and NO resting shadow (a card is not a floating
+ * tile). Screens still importing this pick up the ledger look without needing a
+ * structural rewrite; they migrate to the zeno kit screen by screen.
+ */
 export function Surface({ children, style }: ViewProps) {
   const { theme } = useZenoTheme();
   return (
@@ -24,10 +30,9 @@ export function Surface({ children, style }: ViewProps) {
         styles.surface,
         {
           backgroundColor: theme.card,
-          borderColor: theme.border,
-          borderRadius: theme.cardRadius
+          borderColor: theme.rule,
+          borderRadius: 12
         },
-        theme.shadows && styles.shadow,
         style
       ]}
     >
@@ -39,8 +44,8 @@ export function Surface({ children, style }: ViewProps) {
 export function PrimaryButton({ children, style, ...props }: Omit<PressableProps, "children" | "style"> & { children: string; style?: StyleProp<ViewStyle> }) {
   const { theme } = useZenoTheme();
   return (
-    <Pressable accessibilityRole="button" {...props} style={({ pressed }) => [styles.button, { backgroundColor: theme.primary, borderRadius: theme.radius, opacity: pressed ? 0.86 : 1 }, style]}>
-      <Text style={[styles.buttonText, { color: theme.onPrimary, fontWeight: theme.heavyText ? "900" : "800" }]}>{children}</Text>
+    <Pressable accessibilityRole="button" {...props} style={({ pressed }) => [styles.button, { backgroundColor: theme.inkPanel, borderRadius: theme.radius, transform: [{ scale: pressed ? 0.97 : 1 }] }, style]}>
+      <Text style={[styles.buttonText, { color: theme.onInk, fontWeight: theme.heavyText ? "900" : "800" }]}>{children}</Text>
     </Pressable>
   );
 }

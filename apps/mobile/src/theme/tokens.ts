@@ -27,6 +27,8 @@ export type ThemeTokens = {
   rule: string;
   ruleStrong: string;
   inkPanel: string;
+  /** Paper text ON an ink-panel surface (primary buttons, statement blocks). */
+  onInk: string;
   stampVerified: string;
   stampAlert: string;
   primary: string;
@@ -66,6 +68,7 @@ function buildZenoTheme(id: ThemePreference, c: ColorScheme): ThemeTokens {
     rule: c.rule,
     ruleStrong: c.ruleStrong,
     inkPanel: c.inkPanel,
+    onInk: c.textOnInk,
     stampVerified: c.stampVerified,
     stampAlert: c.stampAlert,
     primary: c.accent,

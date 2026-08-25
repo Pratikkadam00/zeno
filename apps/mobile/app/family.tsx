@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
-import { ScrollView, Text, TextInput, View } from "react-native";
+import { useEffect, useState, type ReactNode } from "react";
+import { ScrollView, Text, TextInput, View, type StyleProp, type ViewStyle } from "react-native";
 import * as SecureStore from "expo-secure-store";
-import { PrimaryButton, Screen, Surface } from "../src/components/ui";
+import { Button, CodeBoxes } from "../src/components/zeno";
+import { fonts } from "../src/theme/zeno";
 import { createHousehold, getHousehold, joinHousehold, leaveHousehold, setMemberSpend, type ApiFailureReason, type Household } from "../src/api/client";
 import { useAuthStore } from "../src/auth/authStore";
 import { useSubscriptionStore } from "../src/data/subscription-store";
@@ -25,6 +26,19 @@ function messageForReason(reason: ApiFailureReason, action: "create" | "join"): 
         ? "Couldn't create a household right now. Please try again."
         : "Couldn't join right now. Please try again.";
   }
+}
+
+/**
+ * A block of the household page: paper, hairline rule frame, no resting shadow.
+ * Local so this screen no longer depends on the legacy src/components/ui kit.
+ */
+function Surface({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  const { theme } = useZenoTheme();
+  return (
+    <View style={[{ backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, padding: 16, marginHorizontal: 20, marginTop: 12 }, style]}>
+      {children}
+    </View>
+  );
 }
 
 export default function FamilyScreen() {
@@ -114,7 +128,7 @@ export default function FamilyScreen() {
   const allSameCurrency = household ? household.members.every((m) => m.currency === household.members[0]?.currency) : true;
 
   return (
-    <Screen>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ScrollView contentContainerStyle={{ gap: 16, paddingBottom: 32 }}>
         <View>
           <Text style={{ color: theme.text, fontSize: 30, lineHeight: 36, fontWeight: "900" }}>Family</Text>
@@ -128,9 +142,10 @@ export default function FamilyScreen() {
         ) : household ? (
           <>
             <Surface>
-              <Text style={{ color: theme.mutedText, fontSize: 13 }}>Share code</Text>
-              <Text style={{ color: theme.text, fontSize: 28, fontWeight: "900", letterSpacing: 4, marginTop: 4 }}>{household.shareCode}</Text>
-              <Text style={{ color: theme.mutedText, marginTop: 6 }}>Anyone with this code can join your household.</Text>
+              <Text style={{ fontFamily: fonts.mono.bold, fontSize: 10.5, letterSpacing: 1.8, color: theme.quietText, marginBottom: 10 }}>SHARE CODE</Text>
+              {/* mono boxes — a code you read out loud, not a run-on string */}
+              <CodeBoxes code={household.shareCode} length={household.shareCode.length || 8} />
+              <Text style={{ color: theme.mutedText, marginTop: 10, textAlign: "center" }}>Anyone with this code can join your household.</Text>
             </Surface>
 
             <Surface>
@@ -150,14 +165,14 @@ export default function FamilyScreen() {
               </View>
             </Surface>
 
-            <PrimaryButton onPress={onLeave}>Leave household</PrimaryButton>
+            <Button variant="danger" size="lg" fullWidth onPress={onLeave}>Leave household</Button>
           </>
         ) : (
           <>
             <Surface>
               <Text style={{ color: theme.text, fontSize: 18, fontWeight: "800" }}>Start a household</Text>
               <Text style={{ color: theme.mutedText, marginTop: 6, marginBottom: 12 }}>Create one and share the code with your family.</Text>
-              <PrimaryButton onPress={onCreate}>{busy ? "Working…" : "Create household"}</PrimaryButton>
+              <Button variant="primary" size="lg" fullWidth onPress={onCreate}>{busy ? "Working…" : "Create household"}</Button>
             </Surface>
 
             <Surface>
@@ -172,13 +187,13 @@ export default function FamilyScreen() {
                 accessibilityLabel="Household share code"
                 style={{ marginTop: 10, marginBottom: 12, borderWidth: 1, borderColor: theme.border, borderRadius: theme.radius, paddingHorizontal: 14, paddingVertical: 12, color: theme.text, fontSize: 18, letterSpacing: 3 }}
               />
-              <PrimaryButton onPress={onJoin}>{busy ? "Working…" : "Join household"}</PrimaryButton>
+              <Button variant="primary" size="lg" fullWidth onPress={onJoin}>{busy ? "Working…" : "Join household"}</Button>
             </Surface>
           </>
         )}
 
         {error ? <Text style={{ color: theme.danger }}>{error}</Text> : null}
       </ScrollView>
-    </Screen>
+    </View>
   );
 }
