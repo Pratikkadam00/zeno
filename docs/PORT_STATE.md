@@ -81,6 +81,30 @@ PowerShell here-string mangles em-dashes/arrows and silently breaks the commit.
   The emulator wedges under repeated captures; keep bursts small.
 - Expo **web** does not work (expo-sqlite `wa-sqlite.wasm` fails to resolve).
 
+## On-device verification log (emulator-5554, 2026-07-28)
+
+**VERIFIED ON DEVICE — the port renders correctly.** First real visual proof:
+- **Onboarding beat 1**: warm paper #FAF9F5, display headline, the ledger
+  printing itself with dotted leaders, `Committed $61.97/mo` in verified-green
+  — correctly COMPUTED from its own rows (15.99+10.99+20.00+2.99+12.00), which
+  is exactly why the total is derived and not hardcoded. "Sample figures — your
+  ledger starts empty." present. Ruled progress ticks. **"Continue" renders INK,
+  not green** → the M2 Button refresh confirmed on a real device.
+- **Beat 2**: green caps-mono "UNLIKE THE OTHERS" kicker, "No bank login
+  required." in defiant display type, two ticks lit.
+- **Beat 3**: all three ticks lit, CTA becomes "Sign in", local-only path shown.
+
+Also resolved: the **black screen seen at launch is NOT a bug** — it is Metro's
+cold bundle (96s with `--clear`). Wait for "Android Bundled" in the Metro log
+before screenshotting, or the capture lands mid-bundle.
+
+**STILL UNVERIFIED (blocked, not skipped):** dashboard and everything behind it.
+Tapping "Continue without an account" triggers first-run SQLCipher seeding, and
+this emulator drops into `D` state (uninterruptible disk I/O, ~28% iowait) where
+`screencap` hangs indefinitely. The app process stays alive and logcat shows no
+JS error — it is an emulator disk limitation, not an app fault. A faster machine
+or a physical device will get through it.
+
 ## Open items / findings not yet actioned
 - **M3+M4 visuals have never been SEEN on a device.** Verified structurally
   only. M7's emulator drive is where they get confirmed. Two bugs this session
