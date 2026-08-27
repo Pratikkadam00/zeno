@@ -9,7 +9,7 @@ import { useLockStore } from "../src/security/lock-store";
 import { ServiceAvatar } from "../src/components/zeno";
 import { useZenoTheme } from "../src/theme/theme-provider";
 import type { ThemeTokens } from "../src/theme/tokens";
-import { palette } from "../src/theme/zeno";
+import { fonts, palette } from "../src/theme/zeno";
 
 export default function ProfileScreen() {
   const { theme } = useZenoTheme();
@@ -109,18 +109,18 @@ function createStyles(theme: ThemeTokens) {
     screen: { flex: 1, backgroundColor: theme.background },
     content: { padding: 20, paddingBottom: 60, gap: 12 },
     header: { alignItems: "center", gap: 10, paddingVertical: 12 },
-    email: { fontSize: 18, fontWeight: "800", color: theme.text, maxWidth: "90%" },
-    planBadge: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
-    planBadgeText: { fontSize: 13, fontWeight: "700" },
-    card: { backgroundColor: theme.card, borderRadius: 16, overflow: "hidden" },
+    email: { fontFamily: fonts.display.bold, fontSize: 20, letterSpacing: -0.4, color: theme.text, maxWidth: "90%" },
+    planBadge: { borderWidth: 1, borderColor: theme.ruleStrong, borderRadius: 4, paddingHorizontal: 10, paddingVertical: 4 },
+    planBadgeText: { fontFamily: fonts.mono.bold, fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase" as const },
+    card: { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, overflow: "hidden" },
     row: { minHeight: 44, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 14 },
-    rowIcon: { width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+    rowIcon: { width: 30, height: 30, borderRadius: 6, alignItems: "center", justifyContent: "center" },
     rowText: { flex: 1, minWidth: 0 },
-    rowTitle: { fontSize: 16, fontWeight: "600", color: theme.text },
+    rowTitle: { fontFamily: fonts.sans.semibold, fontSize: 15.5, color: theme.text },
     rowSub: { fontSize: 13, color: theme.mutedText, marginTop: 2 },
     chevron: { fontSize: 22, color: theme.quietText },
-    separator: { height: StyleSheet.hairlineWidth, backgroundColor: theme.border, marginLeft: 60 },
-    metaLabel: { fontSize: 12, fontWeight: "700", color: theme.mutedText, marginTop: 8, marginLeft: 4 },
+    separator: { height: 1, backgroundColor: theme.rule, marginLeft: 60 },
+    metaLabel: { fontFamily: fonts.mono.bold, fontSize: 10.5, letterSpacing: 1.8, textTransform: "uppercase" as const, color: theme.quietText, marginTop: 8, marginLeft: 4 },
     accountId: { fontSize: 14, color: theme.mutedText, fontFamily: theme.numberFontFamily },
     privacyNote: { flexDirection: "row", alignItems: "flex-start", gap: 9, backgroundColor: theme.successSurface, borderRadius: 12, padding: 12, marginTop: 4 },
     privacyText: { flex: 1, fontSize: 12.5, color: theme.mutedText, lineHeight: 18 },

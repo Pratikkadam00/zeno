@@ -6,6 +6,7 @@ import { ShieldCheck } from "lucide-react-native";
 import { verifyPin } from "../src/security/app-lock";
 import { useLockStore } from "../src/security/lock-store";
 import { useZenoTheme } from "../src/theme/theme-provider";
+import { fonts } from "../src/theme/zeno";
 
 const MIN_PIN = 4;
 const MAX_PIN = 8;
@@ -63,9 +64,10 @@ export default function SecurityScreen() {
   return (
     <SafeAreaView style={[styles.fill, { backgroundColor: theme.background }]} edges={["bottom"]}>
       <View style={styles.body}>
-        <View style={[styles.badge, { backgroundColor: theme.primarySurface }]}>
+        <View>
           <ShieldCheck size={26} color={theme.primary} strokeWidth={2.4} />
         </View>
+        <Text style={[styles.kicker, { color: theme.quietText }]}>SECURITY</Text>
         <Text style={[styles.title, { color: theme.text }]}>App lock</Text>
         <Text style={[styles.subtitle, { color: theme.mutedText }]}>
           {enabled
@@ -113,9 +115,10 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   body: { flex: 1, paddingHorizontal: 24, paddingTop: 24, gap: 12 },
   badge: { width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center" },
-  title: { fontSize: 22, fontWeight: "800" },
+  kicker: { fontFamily: fonts.mono.bold, fontSize: 10.5, letterSpacing: 1.8, marginBottom: 6 },
+  title: { fontFamily: fonts.display.bold, fontSize: 24, letterSpacing: -0.5 },
   subtitle: { fontSize: 15, lineHeight: 21 },
-  label: { fontSize: 13, fontWeight: "700", marginTop: 8 },
+  label: { fontFamily: fonts.mono.bold, fontSize: 10, letterSpacing: 1.4, textTransform: "uppercase" as const, marginTop: 8 },
   input: { height: 54, borderWidth: 1, borderRadius: 14, paddingHorizontal: 16, fontSize: 18, fontWeight: "700", letterSpacing: 4 },
   error: { fontSize: 13, fontWeight: "600" },
   btn: { marginTop: 8, height: 52, borderRadius: 14, alignItems: "center", justifyContent: "center" },

@@ -3,7 +3,7 @@ import { AlarmClock, AlertTriangle, Bell, BellOff, ChevronLeft, Clock, TrendingU
 import type { ComponentType, ReactNode } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Card, ListRow } from "../src/components/zeno";
+import { ListRow } from "../src/components/zeno";
 import { useSubscriptionStore } from "../src/data/subscription-store";
 import { useZenoTokens } from "../src/theme/useZenoTokens";
 import { formatMoney, notificationLabel } from "../src/utils/format";
@@ -42,7 +42,7 @@ export default function NotificationsScreen() {
           <ChevronLeft size={22} color={c.accent} strokeWidth={2} />
           <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: 17, color: c.accent }}>Back</Text>
         </Pressable>
-        <Text style={{ flex: 1, textAlign: "center", fontFamily: t.fonts.sans.semibold, fontSize: 17, color: c.textPrimary }}>Notifications</Text>
+        <Text style={{ flex: 1, textAlign: "center", fontFamily: t.fonts.mono.bold, fontSize: 11, letterSpacing: 1.8, textTransform: "uppercase", color: c.textPrimary }}>Notifications</Text>
         <View style={{ minWidth: 60 }} />
       </View>
 
@@ -59,10 +59,10 @@ export default function NotificationsScreen() {
           {/* Flags — things that need a look */}
           {flagsCount > 0 ? (
             <>
-              <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: t.fontSize.micro, letterSpacing: t.letterSpacing.caps, textTransform: "uppercase", color: c.textTertiary, paddingHorizontal: 4, paddingTop: 16, paddingBottom: 8 }}>
+              <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: 10.5, letterSpacing: 1.8, textTransform: "uppercase", color: c.textTertiary, paddingHorizontal: 4, paddingTop: 16, paddingBottom: 8 }}>
                 Flags
               </Text>
-              <Card padding="none">
+              <View>
                 {attention.map((s, i, arr) => (
                   <ListRow
                     key={`attn-${s.id}`}
@@ -107,17 +107,17 @@ export default function NotificationsScreen() {
                     onPress={() => router.push(`/subscription/${hike.subscription.id}` as never)}
                   />
                 ))}
-              </Card>
+              </View>
             </>
           ) : null}
 
           {/* Scheduled reminders */}
           {reminderPlan.length > 0 ? (
             <>
-              <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: t.fontSize.micro, letterSpacing: t.letterSpacing.caps, textTransform: "uppercase", color: c.textTertiary, paddingHorizontal: 4, paddingTop: 22, paddingBottom: 8 }}>
+              <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: 10.5, letterSpacing: 1.8, textTransform: "uppercase", color: c.textTertiary, paddingHorizontal: 4, paddingTop: 22, paddingBottom: 8 }}>
                 Upcoming reminders
               </Text>
-              <Card padding="none">
+              <View>
                 {reminderPlan.slice(0, 12).map((plan, i, arr) => (
                   <ListRow
                     key={`${plan.subscriptionId}-${plan.kind}-${i}`}
@@ -129,7 +129,7 @@ export default function NotificationsScreen() {
                     onPress={() => router.push(`/subscription/${plan.subscriptionId}` as never)}
                   />
                 ))}
-              </Card>
+              </View>
             </>
           ) : null}
         </ScrollView>

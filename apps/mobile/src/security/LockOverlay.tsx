@@ -5,6 +5,8 @@ import { Fingerprint, ShieldCheck } from "lucide-react-native";
 import { useAuthStore } from "../auth/authStore";
 import { useZenoTheme } from "../theme/theme-provider";
 import { useLockStore } from "./lock-store";
+import { CodeBoxes } from "../components/zeno";
+import { haptics } from "../theme/haptics";
 
 const PIN_MAX = 8;
 
@@ -16,6 +18,7 @@ export function LockOverlay() {
   const { ready, biometricAvailable, tryBiometric, tryPin } = useLockStore();
   const logout = useAuthStore((s) => s.logout);
   const [pin, setPin] = useState("");
+  const inputRef = useRef<TextInput>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const attemptedBiometric = useRef(false);
@@ -32,9 +35,7 @@ export function LockOverlay() {
   if (!ready) {
     return (
       <View style={[styles.fill, styles.center, { backgroundColor: theme.background }]}>
-        <View style={[styles.badge, { backgroundColor: theme.primarySurface }]}>
-          <ShieldCheck size={28} color={theme.primary} strokeWidth={2.4} />
-        </View>
+        <ShieldCheck size={26} color={theme.mutedText} strokeWidth={2} />
       </View>
     );
   }
@@ -53,19 +54,30 @@ export function LockOverlay() {
   return (
     <SafeAreaView style={[styles.fill, { backgroundColor: theme.background }]}>
       <View style={styles.center}>
-        <View style={[styles.badge, { backgroundColor: theme.primarySurface }]}>
-          <ShieldCheck size={28} color={theme.primary} strokeWidth={2.4} />
-        </View>
+        <ShieldCheck size={26} color={theme.mutedText} strokeWidth={2} />
         <Text style={[styles.title, { color: theme.text }]}>Zeno is locked</Text>
         <Text style={[styles.subtitle, { color: theme.mutedText }]}>Enter your PIN to continue.</Text>
 
+        {/* PIN reads as CODE BOXES (the DS element for entered codes), with the
+            real TextInput kept invisible behind them so the number-pad, secure
+            entry and accessibility behaviour are all unchanged. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Enter PIN"
+          onPress={() => inputRef.current?.focus()}
+          style={{ marginTop: 6 }}
+        >
+          <CodeBoxes code={"•".repeat(pin.length)} length={Math.max(4, pin.length || 4)} size={40} />
+        </Pressable>
         <TextInput
-          style={[styles.input, { color: theme.text, borderColor: error ? theme.danger : theme.border, backgroundColor: theme.surface }]}
+          ref={inputRef}
+          style={styles.hiddenInput}
           value={pin}
           onChangeText={(next) => {
             setError(null);
             const digits = next.replace(/[^0-9]/g, "").slice(0, PIN_MAX);
             setPin(digits);
+            haptics.pinDigit();
             if (digits.length >= 4) void submit(digits);
           }}
           keyboardType="number-pad"
@@ -74,8 +86,6 @@ export function LockOverlay() {
           maxLength={PIN_MAX}
           editable={!busy}
           accessibilityLabel="PIN"
-          placeholder="••••"
-          placeholderTextColor={theme.quietText}
           returnKeyType="done"
           onSubmitEditing={() => void submit(pin)}
         />
@@ -105,7 +115,7 @@ export function LockOverlay() {
 const styles = StyleSheet.create({
   fill: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32, gap: 12 },
-  badge: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", marginBottom: 4 },
+  hiddenInput: { position: "absolute", opacity: 0, width: 1, height: 1 },
   title: { fontSize: 22, fontWeight: "800" },
   subtitle: { fontSize: 15, textAlign: "center" },
   input: {

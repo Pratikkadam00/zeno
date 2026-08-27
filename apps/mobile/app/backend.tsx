@@ -1,8 +1,18 @@
-import { useEffect, useState } from "react";
-import { ScrollView, Text, View } from "react-native";
-import { PrimaryButton, Screen, Surface } from "../src/components/ui";
+import { useEffect, useState, type ReactNode } from "react";
+import { ScrollView, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { Button } from "../src/components/zeno";
 import { getMobileBackendStatus, type MobileBackendStatus } from "../src/api/client";
 import { useZenoTheme } from "../src/theme/theme-provider";
+
+/** Ledger paper block — local so this dev screen is off the legacy ui kit. */
+function Surface({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  const { theme } = useZenoTheme();
+  return (
+    <View style={[{ backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, padding: 16, marginHorizontal: 20, marginTop: 12 }, style]}>
+      {children}
+    </View>
+  );
+}
 
 export default function BackendScreen() {
   const { theme } = useZenoTheme();
@@ -15,7 +25,7 @@ export default function BackendScreen() {
   useEffect(refresh, []);
 
   return (
-    <Screen>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ScrollView contentContainerStyle={{ gap: 16, paddingBottom: 32 }}>
         <View>
           <Text style={{ color: theme.text, fontSize: 30, lineHeight: 36, fontWeight: "900" }}>Backend</Text>
@@ -43,8 +53,8 @@ export default function BackendScreen() {
           </View>
         </Surface>
 
-        <PrimaryButton onPress={refresh}>Refresh connection</PrimaryButton>
+        <Button variant="primary" size="lg" fullWidth onPress={refresh} style={{ marginHorizontal: 20, marginTop: 10 }}>Refresh connection</Button>
       </ScrollView>
-    </Screen>
+    </View>
   );
 }

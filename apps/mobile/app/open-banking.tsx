@@ -1,10 +1,20 @@
-import { useState } from "react";
-import { ScrollView, Text, View } from "react-native";
-import { PrimaryButton, Screen, Surface } from "../src/components/ui";
+import { useState, type ReactNode } from "react";
+import { ScrollView, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { Button } from "../src/components/zeno";
 import { connectPlaidSandbox, createPlaidLinkToken } from "../src/api/client";
 import { useZenoTheme } from "../src/theme/theme-provider";
 
 type Status = { kind: "idle" | "working" | "ok" | "error"; message: string };
+
+/** Ledger paper block — local so this dev screen is off the legacy ui kit. */
+function Surface({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  const { theme } = useZenoTheme();
+  return (
+    <View style={[{ backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, padding: 16, marginHorizontal: 20, marginTop: 12 }, style]}>
+      {children}
+    </View>
+  );
+}
 
 export default function OpenBankingScreen() {
   const { theme } = useZenoTheme();
@@ -27,7 +37,7 @@ export default function OpenBankingScreen() {
   const statusColor = status.kind === "ok" ? theme.success : status.kind === "error" ? theme.danger : theme.mutedText;
 
   return (
-    <Screen>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ScrollView contentContainerStyle={{ gap: 16, paddingBottom: 32 }}>
         <View>
           <Text style={{ color: theme.text, fontSize: 30, lineHeight: 36, fontWeight: "900" }}>Connect your bank</Text>
@@ -42,8 +52,8 @@ export default function OpenBankingScreen() {
         </Surface>
 
         <View style={{ gap: 12 }}>
-          <PrimaryButton onPress={checkServer}>Check connection</PrimaryButton>
-          <PrimaryButton onPress={simulate}>Connect a sandbox bank</PrimaryButton>
+          <Button variant="primary" size="lg" fullWidth onPress={checkServer} style={{ marginHorizontal: 20, marginTop: 10 }}>Check connection</Button>
+          <Button variant="primary" size="lg" fullWidth onPress={simulate} style={{ marginHorizontal: 20, marginTop: 10 }}>Connect a sandbox bank</Button>
         </View>
 
         <Surface>
@@ -52,6 +62,6 @@ export default function OpenBankingScreen() {
           </Text>
         </Surface>
       </ScrollView>
-    </Screen>
+    </View>
   );
 }
