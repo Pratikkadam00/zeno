@@ -184,3 +184,89 @@ describe("refreshToken — concurrent-call de-duplication", () => {
     expect(refreshCalls).toBe(2);
   });
 });
+
+// ── Token-leak / session-hygiene suite ───────────────────────────────────────
+// These assert on the CONTENTS of the fake secure store, i.e. what actually
+// survives on the device, rather than only on in-memory store flags.
+
+async function login() {
+  timedFetchMock.mockResolvedValueOnce(authSessionEnvelope());
+  await useAuthStore.getState().verifyMagicLink("token-123");
+}
+
+/** logout() also POSTs to revoke the session server-side; give it a 200. */
+async function logout() {
+  timedFetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ data: {}, error: null }), { status: 200 }));
+  await useAuthStore.getState().logout();
+}
+
+describe("token hygiene — nothing is left on the device after sign-out", () => {
+  it("logout deletes EVERY persisted token key, not just the access token", async () => {
+    await login();
+    // sanity: the session really was written
+    expect([...fakeStore.keys()].some((k) => k.includes("refresh"))).toBe(true);
+
+    await logout();
+
+    const leftovers = [...fakeStore.entries()].filter(([k]) => /token|account/i.test(k));
+    expect(leftovers).toEqual([]);
+  });
+
+  it("no stored value still contains the access or refresh token after logout", async () => {
+    await login();
+    await logout();
+    const dump = JSON.stringify([...fakeStore.entries()]);
+    expect(dump).not.toContain("access-token");
+    expect(dump).not.toContain("refresh-token");
+  });
+
+  it("logout also clears in-memory auth state (no token served to a later caller)", async () => {
+    await login();
+    await logout();
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    expect(useAuthStore.getState().accountId).toBeNull();
+    await expect(useAuthStore.getState().getValidAccessToken()).resolves.toBeNull();
+  });
+});
+
+describe("getValidAccessToken — the gate every authed request passes through", () => {
+  it("returns null when signed out, so no Authorization header is ever attached", async () => {
+    await expect(useAuthStore.getState().getValidAccessToken()).resolves.toBeNull();
+  });
+
+  it("returns the stored token without a network call while it is still valid", async () => {
+    await login();
+    timedFetchMock.mockReset();
+    await expect(useAuthStore.getState().getValidAccessToken()).resolves.toBe("access-token");
+    expect(timedFetchMock).not.toHaveBeenCalled();
+  });
+
+  it("refreshes BEFORE expiry (30s skew) rather than serving an about-to-die token", async () => {
+    await login();
+    // force the stored expiry inside the skew window
+    const expiryKey = [...fakeStore.keys()].find((k) => k.toLowerCase().includes("expires"));
+    expect(expiryKey).toBeDefined();
+    fakeStore.set(expiryKey as string, String(Date.now() + 10_000));
+
+    timedFetchMock.mockReset();
+    timedFetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: {
+            accountId: "acct_1",
+            accessToken: "rotated-token",
+            refreshToken: "rotated-refresh",
+            expiresInSeconds: 900,
+            refreshExpiresInSeconds: 2_592_000,
+            tokenType: "Bearer"
+          },
+          error: null
+        }),
+        { status: 200 }
+      )
+    );
+
+    await expect(useAuthStore.getState().getValidAccessToken()).resolves.toBe("rotated-token");
+    expect(timedFetchMock).toHaveBeenCalledTimes(1);
+  });
+});
