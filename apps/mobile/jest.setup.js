@@ -19,3 +19,12 @@ jest.mock("expo-haptics", () => ({
   ImpactFeedbackStyle: { Light: "light", Medium: "medium", Heavy: "heavy" },
   NotificationFeedbackType: { Success: "success", Warning: "warning", Error: "error" }
 }));
+
+// useReducedMotion() calls AccessibilityInfo.isReduceMotionEnabled() and sets
+// state when the promise resolves. Un-mocked that lands outside act() and prints
+// a warning on every render test. Spying on the REAL react-native export (rather
+// than replacing the internal module, which breaks the export entirely) resolves
+// it synchronously with motion enabled — the default — leaving behaviour intact.
+const RN = require("react-native");
+jest.spyOn(RN.AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(false);
+jest.spyOn(RN.AccessibilityInfo, "addEventListener").mockReturnValue({ remove: jest.fn() });
