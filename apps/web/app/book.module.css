@@ -221,3 +221,13 @@
 @media (prefers-reduced-motion: reduce) {
   .penRule, .chip, .edge, .sheetTurning, .foldShade { transition: none !important; }
 }
+
+/* ── Edge-drag affordance ──────────────────────────────────────────────────
+   A grab hand appears only over the page edges where a drag would actually
+   start; while dragging, text selection is suppressed so the sheet tracks the
+   pointer cleanly instead of highlighting the ledger. Both classes are set on
+   <html> by LedgerBook's pointer handlers. */
+:global(html.znCanGrab) .sheet { cursor: grab; }
+:global(html.znGrab) { cursor: grabbing; }
+:global(html.znGrab) .sheet,
+:global(html.znGrab) .scroll { user-select: none; cursor: grabbing; }

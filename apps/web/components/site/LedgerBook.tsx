@@ -12,9 +12,10 @@
 // Deliberately bounded vs the standalone prototype: the turn is a single
 // CSS-3D fold around the spine (backface-visibility hides the page past 90°, so
 // no preserve-3d/overflow flattening gotchas and no two-segment paper-bend rig),
-// and input is keys / pager / wheel-at-scroll-boundary — in-page scrolling
-// always wins, no drag-physics, no mobile touch. That keeps the highest-bug-risk
-// pieces out while preserving the leaf-through feel where it reads best.
+// and input is keys / pager / wheel-at-scroll-boundary PLUS edge-drag: hold the
+// mouse on a page edge and the sheet follows your hand, release past halfway (or
+// flick) to commit. In-page scrolling always wins — the middle of the sheet never
+// drags, so clicks, text selection and the ledger stay usable.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { MarginIndex, PenRule, RunningTally } from "./pen";
@@ -128,6 +129,64 @@ export function LedgerBook({ sheets, footer }: { sheets: Sheet[]; footer: ReactN
     [turn, cur, N, sheets, say]
   );
 
+  // ── Edge-drag page turning ───────────────────────────────────────────────
+  // Ported from the design prototype (website-v3-book.js). The sheet tracks the
+  // pointer while held on an edge; releasing past ~halfway, or flicking, commits.
+  // Everything is driven straight onto the DOM node via a ref during the drag so
+  // a pointermove never triggers a React re-render.
+  const dragRef = useRef<{
+    zone: 1 | -1;
+    id: number;
+    pending: boolean;
+    startX: number;
+    startY: number;
+    lastX: number;
+    lastT: number;
+    vel: number;
+    prog: number;
+    from: number;
+    raf: number;
+    safety: number;
+  } | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  // Commit or revert a drag: animate the sheet the rest of the way, then either
+  // advance the page or snap back — reusing the same failsafe-timer discipline
+  // as go() so a dropped frame can never wedge the book.
+  const settleDrag = useCallback(
+    (from: number, to: number, fromProg: number, commit: boolean) => {
+      const node = sheetRefs.current[from];
+      const toProg = commit ? 1 : 0;
+      const duration = Math.max(180, Math.min(540, Math.abs(toProg - fromProg) * 640));
+      if (node) {
+        node.style.transition = `transform ${duration}ms cubic-bezier(0.22,0.8,0.26,1)`;
+        node.style.transform = `rotateY(${-toProg * 180}deg)`;
+      }
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = window.setTimeout(() => {
+        timerRef.current = null;
+        turningRef.current = false;
+        if (!mountedRef.current) return;
+        if (node) {
+          node.style.transition = "";
+          node.style.transform = "";
+        }
+        setDragging(false);
+        setTurn(null);
+        if (commit) {
+          setCur(to);
+          say(`Page ${to + 1} of ${N} — ${sheets[to]?.label ?? ""}`);
+          if (typeof history !== "undefined" && history.replaceState) {
+            history.replaceState(null, "", `#${sheets[to]?.id ?? ""}`);
+          }
+          const sc = scrollersRef.current[to];
+          if (sc) sc.scrollTop = 0;
+        }
+      }, duration + 40);
+    },
+    [N, sheets, say]
+  );
+
   const next = useCallback(() => go(cur + 1), [go, cur]);
   const prev = useCallback(() => go(cur - 1), [go, cur]);
 
@@ -177,6 +236,136 @@ export function LedgerBook({ sheets, footer }: { sheets: Sheet[]; footer: ReactN
     window.addEventListener("resize", onResize, { passive: true });
     return () => window.removeEventListener("resize", onResize);
   }, [book]);
+
+  // ── Pointer: grab a page EDGE and drag the sheet with your hand ──
+  useEffect(() => {
+    if (!book) return;
+
+    const edgeW = () => Math.min(110, Math.max(56, window.innerWidth * 0.07));
+
+    // Which edge (if any) is under the pointer: +1 = right edge (forward),
+    // -1 = left edge (back). The middle of the sheet is deliberately dead so
+    // clicks, text selection and the sample ledger keep working.
+    const zoneAt = (x: number, y: number): 0 | 1 | -1 => {
+      const node = sheetRefs.current[cur];
+      if (!node) return 0;
+      const r = node.getBoundingClientRect();
+      if (y < r.top || y > r.bottom) return 0;
+      const w = edgeW();
+      if (x >= r.right - w && x <= r.right + 8 && cur < N - 1) return 1;
+      if (x <= r.left + w && x >= r.left - 8 && cur > 0) return -1;
+      return 0;
+    };
+
+    const clamp = (v: number) => Math.max(0, Math.min(1, v));
+
+    const endDrag = () => {
+      const d = dragRef.current;
+      if (!d) return;
+      dragRef.current = null;
+      clearTimeout(d.safety);
+      if (d.raf) cancelAnimationFrame(d.raf);
+      document.documentElement.classList.remove("znGrab");
+      if (d.pending) return; // never crossed the threshold — treat as a plain click
+      // A flick commits on direction alone; otherwise it's whether the sheet
+      // travelled past the halfway-ish point.
+      const flick = Math.abs(d.vel) > 0.5;
+      const commit = flick ? (d.zone === 1 ? d.vel < 0 : d.vel > 0) : d.prog > 0.42;
+      settleDrag(d.from, cur + d.zone, d.prog, commit);
+    };
+
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse" && e.pointerType !== "pen") return; // touch keeps native scroll
+      if (e.button !== 0 || turningRef.current || dragRef.current) return;
+      const t = e.target as HTMLElement | null;
+      if (t?.closest?.("button, a, input, textarea, select, nav, label")) return;
+      const zone = zoneAt(e.clientX, e.clientY);
+      if (!zone) return;
+      try { t?.setPointerCapture?.(e.pointerId); } catch { /* capture is best-effort */ }
+      dragRef.current = {
+        zone, id: e.pointerId, pending: true,
+        startX: e.clientX, startY: e.clientY,
+        lastX: e.clientX, lastT: performance.now(),
+        vel: 0, prog: 0, from: cur, raf: 0, safety: 0
+      };
+    };
+
+    const onMove = (e: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d || e.pointerId !== d.id) return;
+      if (!d.pending && e.buttons === 0) { endDrag(); return; } // a lost pointerup
+      const dx = e.clientX - d.startX;
+      const dy = e.clientY - d.startY;
+      if (d.pending) {
+        // Vertical intent means the reader is scrolling — in-page scroll wins.
+        if (Math.abs(dy) > 16 && Math.abs(dy) > Math.abs(dx)) { dragRef.current = null; return; }
+        if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy)) return;
+        if ((d.zone === 1 && dx > 0) || (d.zone === -1 && dx < 0)) { dragRef.current = null; return; }
+        const to = cur + d.zone;
+        if (to < 0 || to >= N) { dragRef.current = null; return; }
+        d.pending = false;
+        turningRef.current = true;
+        setDragging(true);
+        setArmed(false);
+        setTurn({ to, dir: d.zone });
+        document.documentElement.classList.add("znGrab");
+      }
+      e.preventDefault();
+      clearTimeout(d.safety);
+      d.safety = window.setTimeout(endDrag, 4000); // stale-drag failsafe
+      const now = performance.now();
+      d.vel = (e.clientX - d.lastX) / Math.max(1, now - d.lastT); // px/ms
+      d.lastX = e.clientX;
+      d.lastT = now;
+      const node = sheetRefs.current[d.from];
+      const span = (node?.getBoundingClientRect().width ?? window.innerWidth) * 0.85;
+      d.prog = clamp(d.zone === 1 ? -dx / span : dx / span);
+      if (!d.raf) {
+        d.raf = requestAnimationFrame(() => {
+          const cd = dragRef.current;
+          if (!cd) return;
+          cd.raf = 0;
+          const el = sheetRefs.current[cd.from];
+          if (el) {
+            el.style.transition = "none";
+            el.style.transform = `rotateY(${-cd.prog * 180}deg)`;
+          }
+        });
+      }
+    };
+
+    const onUp = (e: PointerEvent) => { if (dragRef.current?.id === e.pointerId) endDrag(); };
+
+    // Cursor affordance: show a grab hand only where a drag would actually start.
+    let hoverRaf = 0;
+    const onHover = (e: PointerEvent) => {
+      if (hoverRaf || dragRef.current) return;
+      hoverRaf = requestAnimationFrame(() => {
+        hoverRaf = 0;
+        const t = e.target as HTMLElement | null;
+        const can = !turningRef.current && zoneAt(e.clientX, e.clientY) !== 0 &&
+          !t?.closest?.("button, a, input, textarea, select, nav, label");
+        document.documentElement.classList.toggle("znCanGrab", Boolean(can));
+      });
+    };
+
+    window.addEventListener("pointerdown", onDown);
+    window.addEventListener("pointermove", onMove, { passive: false });
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    window.addEventListener("blur", endDrag);
+    window.addEventListener("pointermove", onHover, { passive: true });
+    return () => {
+      window.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      window.removeEventListener("blur", endDrag);
+      window.removeEventListener("pointermove", onHover);
+      if (hoverRaf) cancelAnimationFrame(hoverRaf);
+      document.documentElement.classList.remove("znCanGrab", "znGrab");
+    };
+  }, [book, cur, N, settleDrag]);
 
   // ── Wheel nav — turns only when the sheet is at its scroll boundary in the
   //    wheel direction; otherwise the sheet scrolls normally (in-page wins). ──
@@ -267,14 +456,23 @@ export function LedgerBook({ sheets, footer }: { sheets: Sheet[]; footer: ReactN
           const endAngle = isFrom ? -180 : 0;
           const startAngle = isFrom ? 0 : -180;
           const angle = turning ? (armed ? endAngle : startAngle) : 0;
+          // While a drag is live the transform is written straight onto the node
+          // each frame, so React must not fight it with its own transform or a
+          // transition — the sheet has to track the hand exactly.
           const style: CSSProperties | undefined = turning
-            ? {
-                transform: `rotateY(${angle}deg)`,
-                transition: `transform ${TURN_MS}ms cubic-bezier(0.55,0.06,0.28,1)`,
-                backfaceVisibility: "hidden",
-                WebkitBackfaceVisibility: "hidden",
-                willChange: "transform"
-              }
+            ? dragging
+              ? {
+                  backfaceVisibility: "hidden",
+                  WebkitBackfaceVisibility: "hidden",
+                  willChange: "transform"
+                }
+              : {
+                  transform: `rotateY(${angle}deg)`,
+                  transition: `transform ${TURN_MS}ms cubic-bezier(0.55,0.06,0.28,1)`,
+                  backfaceVisibility: "hidden",
+                  WebkitBackfaceVisibility: "hidden",
+                  willChange: "transform"
+                }
             : undefined;
           return (
             <section
