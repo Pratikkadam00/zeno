@@ -15,7 +15,8 @@
 // and input is keys / pager / wheel-at-scroll-boundary PLUS edge-drag: hold the
 // mouse on a page edge and the sheet follows your hand, release past halfway (or
 // flick) to commit. In-page scrolling always wins — the middle of the sheet never
-// drags, so clicks, text selection and the ledger stay usable.
+// drags, so clicks, text selection and the ledger stay usable. Touch gets a
+// horizontal swipe to turn, with vertical scrolling still winning in-page.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { MarginIndex, PenRule, RunningTally } from "./pen";
@@ -366,6 +367,66 @@ export function LedgerBook({ sheets, footer }: { sheets: Sheet[]; footer: ReactN
       document.documentElement.classList.remove("znCanGrab", "znGrab");
     };
   }, [book, cur, N, settleDrag]);
+
+  // ── Touch: a horizontal swipe turns the page like a book; a vertical swipe
+  //    scrolls the sheet and only turns AT its boundary (in-page scroll wins,
+  //    same rule as the wheel and keyboard handlers). Listeners stay passive —
+  //    the gesture is decided on touchend, so native scrolling is never blocked. ──
+  useEffect(() => {
+    if (!book) return;
+    let startX = 0, startY = 0, endX = 0, endY = 0;
+    let boundNext = false, boundPrev = false;
+
+    const atBoundary = (sc: HTMLDivElement, dir: number) =>
+      dir > 0 ? sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 2 : sc.scrollTop <= 2;
+
+    const onStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      if (!t) return;
+      startX = endX = t.clientX;
+      startY = endY = t.clientY;
+      const sc = scrollersRef.current[cur];
+      // Remember whether the sheet was ALREADY at its boundary when the gesture
+      // began, so a scroll that merely arrives at the end doesn't also turn.
+      boundNext = sc ? atBoundary(sc, 1) : true;
+      boundPrev = sc ? atBoundary(sc, -1) : true;
+    };
+
+    const onMove = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!t) return;
+      endX = t.clientX;
+      endY = t.clientY;
+    };
+
+    const onEnd = () => {
+      if (turningRef.current) return;
+      const dy = startY - endY;
+      const dx = endX - startX;
+      // Clearly horizontal → turn. Swipe left goes forward, like a real page.
+      if (Math.abs(dx) > 64 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        if (dx < 0) next(); else prev();
+        return;
+      }
+      if (Math.abs(dy) < 64 || Math.abs(dy) < Math.abs(dx)) return;
+      const sc = scrollersRef.current[cur];
+      const dir = dy > 0 ? 1 : -1;
+      const boundAtStart = dir > 0 ? boundNext : boundPrev;
+      if (boundAtStart && (!sc || atBoundary(sc, dir))) {
+        if (dir > 0) next(); else prev();
+      }
+    };
+
+    window.addEventListener("touchstart", onStart, { passive: true });
+    window.addEventListener("touchmove", onMove, { passive: true });
+    window.addEventListener("touchend", onEnd, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", onStart);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onEnd);
+    };
+  }, [book, cur, next, prev]);
 
   // ── Wheel nav — turns only when the sheet is at its scroll boundary in the
   //    wheel direction; otherwise the sheet scrolls normally (in-page wins). ──
