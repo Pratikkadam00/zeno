@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "../src/auth/authStore";
 import { useZenoTheme } from "../src/theme/theme-provider";
+import { fonts } from "../src/theme/zeno";
 import type { ThemeTokens } from "../src/theme/tokens";
 import { spacing } from "../src/theme/spacing";
 import { type } from "../src/theme/typography";
@@ -160,6 +161,31 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.formSection}>
+          <View style={styles.bottomSection}>
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: ageConfirmed }}
+              accessibilityLabel={`I am at least ${MINIMUM_AGE} years old and agree to the Terms and Privacy Policy`}
+              onPress={() => setAgeConfirmed((prev) => !prev)}
+              style={styles.consentRow}
+            >
+              <View style={[styles.checkbox, ageConfirmed ? styles.checkboxChecked : null]}>
+                {ageConfirmed ? <Text style={styles.checkboxTick} accessible={false}>{"✓"}</Text> : null}
+              </View>
+              <Text style={styles.privacyTextBase}>
+                {`I'm at least ${MINIMUM_AGE} and agree to the`}
+                <Text accessibilityRole="link" onPress={() => openLink(TERMS_URL)} style={styles.privacyLink}>
+                  {" Terms"}
+                </Text>
+                <Text style={styles.privacyTextBase}> and </Text>
+                <Text accessibilityRole="link" onPress={() => openLink(PRIVACY_URL)} style={styles.privacyLink}>
+                  Privacy Policy
+                </Text>
+              </Text>
+            </Pressable>
+          </View>
+          <Text style={styles.signHint}>SIGN THE LINE TO CONTINUE</Text>
+
               <View style={styles.inputBlock}>
                 <Text style={styles.fieldLabel}>Email</Text>
                 <View style={styles.inputContainer}>
@@ -286,29 +312,6 @@ export default function LoginScreen() {
             </View>
           </View>
 
-          <View style={styles.bottomSection}>
-            <Pressable
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: ageConfirmed }}
-              accessibilityLabel={`I am at least ${MINIMUM_AGE} years old and agree to the Terms and Privacy Policy`}
-              onPress={() => setAgeConfirmed((prev) => !prev)}
-              style={styles.consentRow}
-            >
-              <View style={[styles.checkbox, ageConfirmed ? styles.checkboxChecked : null]}>
-                {ageConfirmed ? <Text style={styles.checkboxTick} accessible={false}>{"✓"}</Text> : null}
-              </View>
-              <Text style={styles.privacyTextBase}>
-                {`I'm at least ${MINIMUM_AGE} and agree to the`}
-                <Text accessibilityRole="link" onPress={() => openLink(TERMS_URL)} style={styles.privacyLink}>
-                  {" Terms"}
-                </Text>
-                <Text style={styles.privacyTextBase}> and </Text>
-                <Text accessibilityRole="link" onPress={() => openLink(PRIVACY_URL)} style={styles.privacyLink}>
-                  Privacy Policy
-                </Text>
-              </Text>
-            </Pressable>
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -383,15 +386,7 @@ function createStyles(theme: ThemeTokens) {
       ...type.footnote,
       color: theme.mutedText
     },
-    inputContainer: {
-      backgroundColor: theme.card,
-      borderRadius: 12,
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10
-    },
+    inputContainer: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: theme.ruleStrong, borderRadius: 8, paddingHorizontal: 12, minHeight: 50 },
     inputIcon: {
       fontSize: 16,
       color: theme.mutedText
@@ -402,32 +397,13 @@ function createStyles(theme: ThemeTokens) {
       color: theme.text,
       paddingVertical: 0
     },
-    successState: {
-      backgroundColor: theme.successSurface,
-      borderColor: withAlpha(theme.success, 0.3),
-      borderWidth: 0.5,
-      borderRadius: 10,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8
-    },
-    successText: {
-      color: theme.success,
-      fontSize: 14
-    },
+    successState: { flexDirection: "row", alignItems: "center", gap: 8, borderTopWidth: 1, borderBottomWidth: 1, borderColor: theme.rule, paddingVertical: 10, marginTop: 12 },
+    successText: { fontFamily: fonts.mono.bold, fontSize: 14, color: theme.stampVerified },
     successMessage: {
       ...type.footnote,
       color: theme.success
     },
-    primaryButton: {
-      width: "100%",
-      borderRadius: 14,
-      paddingVertical: 17,
-      alignItems: "center",
-      justifyContent: "center"
-    },
+    primaryButton: { width: "100%", borderRadius: 12, paddingVertical: 16, alignItems: "center", justifyContent: "center" },
     primaryButtonText: {
       color: theme.buttonPrimaryText,
       fontSize: 17,
@@ -444,25 +420,11 @@ function createStyles(theme: ThemeTokens) {
       height: 0.5,
       backgroundColor: theme.border
     },
-    dividerText: {
-      ...type.footnote,
-      color: theme.quietText
-    },
+    dividerText: { fontFamily: fonts.mono.bold, fontSize: 9.5, letterSpacing: 1.6, textTransform: "uppercase", color: theme.quietText, paddingHorizontal: 10 },
     socialStack: {
       gap: 12
     },
-    appleButton: {
-      width: "100%",
-      backgroundColor: APPLE_BUTTON_BG,
-      borderRadius: 14,
-      paddingVertical: 15,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 10,
-      borderWidth: 0.5,
-      borderColor: theme.border
-    },
+    appleButton: { width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: APPLE_BUTTON_BG, borderWidth: 1, borderColor: theme.ruleStrong, borderRadius: 12, paddingVertical: 15 },
     appleIcon: {
       color: APPLE_BUTTON_TEXT,
       fontSize: 20,
@@ -473,18 +435,7 @@ function createStyles(theme: ThemeTokens) {
       fontSize: 17,
       fontWeight: "600"
     },
-    googleButton: {
-      width: "100%",
-      backgroundColor: theme.card,
-      borderRadius: 14,
-      paddingVertical: 15,
-      borderWidth: 0.5,
-      borderColor: theme.border,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 10
-    },
+    googleButton: { width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, borderWidth: 1, borderColor: theme.ruleStrong, borderRadius: 12, paddingVertical: 15 },
     googleMark: {
       width: 22,
       height: 22,
@@ -519,21 +470,10 @@ function createStyles(theme: ThemeTokens) {
       fontSize: 15,
       fontWeight: "500"
     },
-    errorState: {
-      backgroundColor: theme.dangerSurface,
-      borderColor: withAlpha(theme.danger, 0.2),
-      borderWidth: 0.5,
-      borderRadius: 10,
-      paddingHorizontal: 14,
-      paddingVertical: 10
-    },
-    errorText: {
-      ...type.footnote,
-      color: theme.danger
-    },
-    bottomSection: {
-      marginTop: 24
-    },
+    errorState: { borderLeftWidth: 3, borderLeftColor: theme.stampAlert, paddingLeft: 12, marginTop: 12 },
+    errorText: { fontSize: 13.5, fontFamily: fonts.sans.regular, color: theme.text, lineHeight: 20 },
+    signHint: { fontFamily: fonts.mono.bold, fontSize: 9, letterSpacing: 1.4, color: theme.quietText, marginLeft: 2, marginBottom: 14 },
+    bottomSection: { marginBottom: 4 },
     privacyTextBase: {
       ...type.caption1,
       color: theme.quietText,
@@ -543,23 +483,8 @@ function createStyles(theme: ThemeTokens) {
       color: theme.primary,
       ...type.caption1
     },
-    consentRow: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      justifyContent: "center",
-      gap: 10,
-      paddingHorizontal: 8
-    },
-    checkbox: {
-      width: 22,
-      height: 22,
-      borderRadius: 6,
-      borderWidth: 1.5,
-      borderColor: theme.border,
-      alignItems: "center",
-      justifyContent: "center",
-      marginTop: 1
-    },
+    consentRow: { flexDirection: "row", alignItems: "flex-start", gap: 11, minHeight: 48 },
+    checkbox: { width: 22, height: 22, borderRadius: 5, borderWidth: 1.5, borderColor: theme.ruleStrong, alignItems: "center", justifyContent: "center", marginTop: 1 },
     checkboxChecked: {
       backgroundColor: theme.primary,
       borderColor: theme.primary
