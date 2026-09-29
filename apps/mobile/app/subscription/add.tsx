@@ -728,8 +728,8 @@ function createStyles(theme: ThemeTokens) {
     renewalDate: { ...typography.subheadline, color: theme.primary },
 
     // Editable renewal date (CHANGE 5)
-    renewBlock: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderColor: theme.ruleStrong, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10 },
-    renewStepperRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10, backgroundColor: theme.surfaceAlt, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
+    renewBlock: { paddingHorizontal: 16, paddingVertical: 14 },
+    renewStepperRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10, borderWidth: 1, borderColor: theme.ruleStrong, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10 },
     renewDateText: { ...typography.subheadline, fontFamily: fonts.sans.semibold, color: theme.text },
     renewSubText: { fontSize: 12, fontFamily: fonts.sans.regular, color: theme.mutedText, marginTop: 1 },
     stepperBtn: { width: 36, height: 36, borderRadius: 8, borderWidth: 1, borderColor: theme.ruleStrong, backgroundColor: theme.card, alignItems: "center", justifyContent: "center" },
