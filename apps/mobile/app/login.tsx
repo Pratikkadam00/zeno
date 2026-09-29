@@ -207,12 +207,12 @@ export default function LoginScreen() {
                 style={({ pressed }) => [
                   styles.primaryButton,
                   {
-                    backgroundColor: canSubmitEmail ? theme.primary : withAlpha(theme.primary, 0.4),
+                    backgroundColor: canSubmitEmail ? theme.buttonPrimaryBg : withAlpha(theme.buttonPrimaryBg, 0.4),
                     opacity: pressed ? 0.9 : 1
                   }
                 ]}
               >
-                {activeProvider === "magic" ? <ActivityIndicator color={theme.onPrimary} /> : <Text style={styles.primaryButtonText}>Send sign-in link</Text>}
+                {activeProvider === "magic" ? <ActivityIndicator color={theme.buttonPrimaryText} /> : <Text style={styles.primaryButtonText}>Send sign-in link</Text>}
               </Pressable>
 
               <View style={styles.dividerRow}>
@@ -429,7 +429,7 @@ function createStyles(theme: ThemeTokens) {
       justifyContent: "center"
     },
     primaryButtonText: {
-      color: theme.onPrimary,
+      color: theme.buttonPrimaryText,
       fontSize: 17,
       fontWeight: "600"
     },

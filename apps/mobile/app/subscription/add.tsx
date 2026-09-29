@@ -562,7 +562,7 @@ export default function AddSubscriptionScreen() {
             accessibilityLabel="Add subscription"
             accessibilityState={{ disabled: !formValid }}
             onPress={handleSave}
-            style={[styles.saveButton, { backgroundColor: formValid ? theme.primary : withAlpha(theme.primary, 0.4) }]}
+            style={[styles.saveButton, { backgroundColor: formValid ? theme.buttonPrimaryBg : withAlpha(theme.buttonPrimaryBg, 0.4) }]}
           >
             <Text style={styles.saveButtonText}>Add Subscription</Text>
           </Pressable>
@@ -831,6 +831,6 @@ function createStyles(theme: ThemeTokens) {
       alignItems: "center",
       justifyContent: "center"
     },
-    saveButtonText: { fontSize: 17, fontWeight: "600", color: theme.onPrimary }
+    saveButtonText: { fontSize: 17, fontWeight: "600", color: theme.buttonPrimaryText }
   });
 }
