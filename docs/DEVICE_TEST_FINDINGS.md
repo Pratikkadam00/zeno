@@ -97,8 +97,14 @@ Dark mode verified across dashboard, settings, coach, cancel, detail, add.
    equalled its tile background.
 
 ## Findings logged, not changed
-- "Charged so far" sums active subs including ones not yet charged this month
-  (pre-existing semantic; label implies a charge occurred). Check against spec.
+- ~~"Charged so far" sums subs not yet charged~~ **CORRECTED (fourth pass):** it
+  is right — it sums subs whose charge already landed this calendar month
+  (Adobe Sep 1, Midjourney Sep 4 …), and "Still to renew" is the rest of the
+  month. 91.97 + 15.49 = 107.46 checks. My earlier note was wrong.
+- **Real inconsistency instead:** the "Still to renew" line mixes windows — its
+  sub-label `N THIS WEEK` counts the next 7 days, its value is the rest of the
+  calendar month. Seen as `2 THIS WEEK · $0.00` once Netflix went pending.
+  Needs a product call on which window the line means.
 - Midjourney's "Open cancellation page" renders disabled (grey) — catalog entry
   likely lacks a cancel URL. Adobe/Disney/Netflix have one.
 - The post-visit "Did you cancel it?" state does not survive a re-mount.
@@ -155,3 +161,47 @@ with a single-match / balanced-brace assertion, gate, rebuild, verify on device.
   to the kit component touches handler wiring for no visual gain.
 - Discover: the CSV how-to expander and Gmail bullets stay inline; the DS moves
   them into per-method sub-stages (a stage restructure, not chrome).
+
+---
+
+# Fourth pass — 2026-09-29, reduced motion + accessibility (release APK)
+
+Closes the two testing gaps named in the previous report. Method, not vibes:
+
+## Reduced motion
+RN on Android reports reduce-motion when `Settings.Global.TRANSITION_ANIMATION_SCALE`
+is `0` (read from RN's `AccessibilityInfoModule.kt`, not assumed). Set that plus the
+other two scales the OS toggle sets, cleared data, relaunched.
+- Onboarding beat 1 at **6s = 16s byte-identical** (125,827 / 125,829): the
+  print-in landed at its final state instantly — all five rows present.
+- Dashboard at **3s = 13s** (231,831 / 231,836): `$107.46` at final value, no
+  count-up frame.
+- Cancel Stamp at **1s = 3s** (193,669 / 193,669): stamp at rest, savings lines
+  printed, Done present.
+**No animation-gated element stuck invisible.** Scales restored to 1/1/1.
+
+## Accessibility
+`uiautomator dump` of the accessibility tree on **ten screens** (dashboard,
+subscriptions, detail, settings, add, cancel guide, insights, calendar, coach),
+parsed for clickable nodes with no text or content-desc on themselves or a
+descendant.
+- **Zero unlabeled controls on all ten.** Cancel guide's four: "Go back",
+  "Open Disney+ Family cancellation page", "Mark Disney+ Family as cancelled",
+  "Having trouble?".
+- One false positive investigated to the source: Calendar's month arrows
+  (`undefined.header.leftArrow/rightArrow`) have no label — but
+  react-native-calendars sets `importantForAccessibility='no-hide-descendants'`
+  on both (header/index.js:105) and exposes the header as an `accessible`
+  `adjustable` control with increment/decrement actions (line 125). The dump
+  confirms the header is focusable and carries "September 2026". TalkBack never
+  lands on the arrows; month changes by the adjustable gesture. **Not a defect.**
+  (Hygiene: the app passes no `testID` to `<Calendar>`, hence `undefined.*`.)
+- **TalkBack enabled for real** (`com.google.android.marvin.talkback` is on this
+  image): its focus rectangle landed on the first control (profile button) on
+  the dashboard. Its first-run permission dialog took focus once; dismissed.
+  Setting cleared afterwards with `settings delete` — `put ""` is rejected as
+  "Bad arguments" and silently leaves the service enabled.
+
+## Still not tested
+iOS (no simulator run, ever) · physical hardware · TalkBack gesture-by-gesture
+narration (the tree is verified; spoken output is not observable via adb).

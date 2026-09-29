@@ -55,6 +55,12 @@ Settings, Add form, Discover hub, Cancel guide, Login, and the last tinted icon
 tiles are ported to the ledger and verified on device (release-APK loop).
 Details and the deliberately-deferred items: `docs/DEVICE_TEST_FINDINGS.md`.
 
+### B1b. Reduced-motion + accessibility passes — DONE 2026-09-29
+Driven on device with the OS settings RN actually reads; zero animation-gated
+elements stuck, zero unlabeled controls across ten screens, TalkBack navigates.
+One false positive traced to library source and cleared. Details in
+`docs/DEVICE_TEST_FINDINGS.md`. **iOS remains untested.**
+
 ### B2. Remaining M7 items
 - Coverage ratchet (P5.5) — set a CI floor now that suites are stable.
 - Adversarial review of the M3-M6 diff.
