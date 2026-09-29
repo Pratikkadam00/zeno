@@ -152,7 +152,7 @@ export default function DashboardScreen() {
           <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: 14.5, color: c.textSecondary, lineHeight: 22, marginBottom: 24 }}>
             Run your first free scan — no bank login required, processed on your device — or write the first line yourself.
           </Text>
-          <Button variant="primary" size="lg" fullWidth onPress={() => router.push("/discover")} leftIcon={<Search size={18} color={c.textOnInk} strokeWidth={2} />}>
+          <Button variant="primary" size="lg" fullWidth onPress={() => router.push("/discover")} leftIcon={<Search size={18} color={c.buttonPrimaryText} strokeWidth={2} />}>
             Discover subscriptions
           </Button>
           <Button variant="ghost" size="md" fullWidth onPress={() => router.push("/subscription/add")} style={{ marginTop: 8 }}>
@@ -327,7 +327,7 @@ export default function DashboardScreen() {
 
         {/* Primary actions */}
         <View style={{ flexDirection: "row", columnGap: 10, paddingHorizontal: 16, paddingTop: 20 }}>
-          <Button variant="primary" size="lg" onPress={() => router.push("/discover")} style={{ flex: 1 }} leftIcon={<Search size={18} color={c.textOnInk} strokeWidth={2} />}>
+          <Button variant="primary" size="lg" onPress={() => router.push("/discover")} style={{ flex: 1 }} leftIcon={<Search size={18} color={c.buttonPrimaryText} strokeWidth={2} />}>
             Discover
           </Button>
           <Button variant="secondary" size="lg" onPress={() => router.push("/subscription/add")} style={{ flex: 1 }} leftIcon={<Plus size={18} color={c.textPrimary} strokeWidth={2} />}>
