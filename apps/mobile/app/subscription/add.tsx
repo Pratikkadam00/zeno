@@ -681,7 +681,7 @@ function createStyles(theme: ThemeTokens) {
     avatarText: { fontSize: 13, fontWeight: "700" },
 
     // ── Form step ──
-    formScrollContent: { paddingBottom: 120 },
+    formScrollContent: { paddingBottom: 24 },
 
     selectedHeader: {
       margin: spacing.screenH,
@@ -815,9 +815,11 @@ function createStyles(theme: ThemeTokens) {
     notifTextWrap: { flex: 1 },
 
     // Bottom save bar
+    // A normal flex sibling BELOW the scrolling body, not an absolute overlay.
+    // As an overlay it failed to cover content scrolling beneath it on Android
+    // (verified on device across two builds, with zIndex + elevation applied);
+    // as a sibling nothing ever passes under it, so there is nothing to cover.
     bottomBar: {
-      position: "absolute",
-      bottom: 0, left: 0, right: 0, zIndex: 10, elevation: 8,
       backgroundColor: theme.background,
       paddingHorizontal: 16,
       paddingBottom: Platform.OS === "ios" ? 40 : 24,
