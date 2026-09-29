@@ -60,3 +60,58 @@ M3/M4/M5/M6 were reported complete on structural grounds. They are complete in
 STRUCTURE and incomplete in FINISH. The remaining work is a consistent,
 mechanical pass over the un-ported chrome listed above, screen by screen, then
 re-verify on device using the now-working release-APK loop.
+
+---
+
+# Second pass — 2026-09-29, full drive (27 of 27 screens, 4 flows, dark mode)
+
+**Every screen has now been seen on device**, plus four flows end to end:
+Add (search → prefill → save → dashboard arithmetic exact: 107.46 → 117.46,
+cap 5 → 6/10), Settings → LedgerSheet (TearEdge, current value checked,
+currency-honesty footnote), Cancel (guide → external page → mark → **Stamp** →
+Done → dashboard), Login (16+ gate disables all three methods until checked).
+Dark mode verified across dashboard, settings, coach, cancel, detail, add.
+
+## Bugs found and fixed this pass (all verified on the rebuilt APK)
+1. **Cancel Stamp never rendered — TWO independent causes.** (a) setCancelSuccess
+   sat behind `await cancelNotificationsForSubscription()`, which stalls when
+   POST_NOTIFICATIONS was never granted; the `void` swallowed it. (b) The
+   success card lives inside `showConfirm ? … : null`, and the direct
+   "mark as cancelled" path never set showConfirm — state written into an
+   unmounted branch. Proven by three taps that persisted pending-verification
+   (Netflix, Adobe, Midjourney) without rendering, then a fourth (Disney) that
+   rendered after both fixes. Neither fix alone was sufficient.
+2. **Every primary button ~1.3:1 in dark mode.** darkScheme.inkPanel #171B2A on
+   the #0A0C13 desk. New buttonPrimaryBg/Pressed/Text tokens invert in dark
+   (paper on desk). Kit Button + four hand-painted primaries swept. Then the
+   Discover icon vanished (paper-on-paper) — fixed to follow the text token.
+3. **Add screen footer let the form paint over the button.** zIndex/elevation
+   did NOT fix it (verified); footer is now a flex sibling, not an overlay.
+4. **Green primaries → ink**: Security, Add Subscription, Send sign-in link
+   (brand tile + checked checkbox deliberately stay accent).
+5. **Profile banner** "…or your data" — false once AI coaching is on; removed.
+   A fixed-string sweep could not catch it (words split by "bank login or").
+6. **Header padding regressions** (my `<Screen>` removal) in wrapped, family,
+   backend, open-banking; widgets was a wholesale rewrite and already padded.
+7. **Insights "Monthly overview" icon invisible** — spend_summary's accent
+   equalled its tile background.
+
+## Findings logged, not changed
+- "Charged so far" sums active subs including ones not yet charged this month
+  (pre-existing semantic; label implies a charge occurred). Check against spec.
+- Midjourney's "Open cancellation page" renders disabled (grey) — catalog entry
+  likely lacks a cancel URL. Adobe/Disney/Netflix have one.
+- The post-visit "Did you cancel it?" state does not survive a re-mount.
+- "Yes, I cancelled" is green: defensible (money-positive act); confirm vs DS.
+- FAB "+" is the Discover tab's button by design (DiscoverTabButton). A plus
+  that doesn't add is a UX question for the DS TabBar spec, not a defect.
+- Still in the full-rewrite bucket (old chrome, no defects): Settings, Discover
+  hub, Add form (pill quick-picks, segmented billing), Login, Cancel guide
+  (circled steps, tinted cards), tinted icon tiles on Insights/Profile/Notifs.
+
+## Method notes that held
+Capture BEFORE every tap; size-guard taps against the last verified capture
+(guard reads the file length directly — an earlier guard returned an array and
+`$null -lt 0.01` is TRUE in PowerShell, so it "passed" while broken); deep-link
+between screens, never BACK from a root tab; re-verify every fix on a rebuilt
+APK — two "fixes" this pass did not work until re-tested.

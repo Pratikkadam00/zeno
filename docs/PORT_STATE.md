@@ -4,20 +4,17 @@ Purpose: everything needed to resume the mobile port WITHOUT re-deriving it.
 Companion to `docs/DELIVERY_PLAN.md` (the plan). This file is the *working state*.
 
 ## Where we are
-- **Track W (website): DONE** — W1–W4 shipped.
-- **M0 (tests): DONE** — 279 vitest + 8 RN component tests.
-- **M1 (foundation): DONE** — tokens/motion/haptics/Navy icon/Tear splash.
-- **M2 (core kit): DONE** — see kit inventory below.
-- **M3 (hot screens): DONE** — Chrome, Dashboard, Subscriptions, Detail, Add.
-- **M4 (flows): DONE (9 of 9)** — Cancel+Stamp (and fixed the celebration being
-  invisible: the screen used to toast + navigate away instantly), Settings →
-  LedgerSheet (closes the P4 Alert.alert debt), Paywall truthfulness (a free
-  promise was being sold as a Pro unlock), Discover (tear-edge receipt +
-  ScanLine), BudgetRecap (stamp + tally-mark streak), Onboarding (3 beats, the
-  ledger prints itself), Budget (typographic forecast, two-tone rule bar with a
-  cap rule, stamp verdict), Insights (categories = ledger lines with inline tick
-  bars, no donut), Calendar (one ledger summary block, no stat-card trio).
-- **M5, M6, M7: NOT STARTED.**
+- **Track W (website): DONE** — W1–W4 shipped; edge-drag + touch swipe added.
+- **M0 (tests): DONE** — 517 vitest + 22 RN component tests.
+- **M1 (foundation) · M2 (core kit) · M3 (hot screens) · M4 (flows): DONE.**
+- **M5 (Coach + Family) · M6 (7 new screens, legacy kit retired): DONE.**
+- **M7 (verification): device drive DONE — 27/27 screens + 4 flows + dark
+  mode seen on device (see docs/DEVICE_TEST_FINDINGS.md). Remaining M7:
+  reduced-motion/a11y passes, coverage ratchet, MASVS re-check, store assets,
+  EAS build (owner quota).**
+- Ship blockers unchanged and all OWNER: A1 domain (zeno.app in 19 files incl.
+  legal links — fails store review), A3 keys (also unblocks assembleRelease),
+  A7 export filing.
 
 ## The kit (import from `src/components/zeno`)
 `Button` (variants: primary=INK, money=the only green, secondary, ghost,
@@ -81,44 +78,12 @@ PowerShell here-string mangles em-dashes/arrows and silently breaks the commit.
   The emulator wedges under repeated captures; keep bursts small.
 - Expo **web** does not work (expo-sqlite `wa-sqlite.wasm` fails to resolve).
 
-## On-device verification log (emulator-5554, 2026-07-28)
-
-**VERIFIED ON DEVICE — the port renders correctly.** First real visual proof:
-- **Onboarding beat 1**: warm paper #FAF9F5, display headline, the ledger
-  printing itself with dotted leaders, `Committed $61.97/mo` in verified-green
-  — correctly COMPUTED from its own rows (15.99+10.99+20.00+2.99+12.00), which
-  is exactly why the total is derived and not hardcoded. "Sample figures — your
-  ledger starts empty." present. Ruled progress ticks. **"Continue" renders INK,
-  not green** → the M2 Button refresh confirmed on a real device.
-- **Beat 2**: green caps-mono "UNLIKE THE OTHERS" kicker, "No bank login
-  required." in defiant display type, two ticks lit.
-- **Beat 3**: all three ticks lit, CTA becomes "Sign in", local-only path shown.
-
-Also resolved: the **black screen seen at launch is NOT a bug** — it is Metro's
-cold bundle (96s with `--clear`). Wait for "Android Bundled" in the Metro log
-before screenshotting, or the capture lands mid-bundle.
-
-**STILL UNVERIFIED (blocked, not skipped):** dashboard and everything behind it.
-
-Failure mode, reproduced FOUR times with measurements: entering the app puts the
-process into `D` state (uninterruptible disk I/O, iowait 28% vs 4% idle), and
-`screencap`/`dumpsys` then hang indefinitely. The emulator recovers only once the
-app is killed; Android eventually OOM-killed it each time.
-
-Root cause is NOT app seeding — that was my first assumption and it is wrong.
-`seed-subscriptions.ts` writes only 5 rows via 5 sequential upserts, which is
-trivial. The cost is dev-build overhead on a slow virtual disk: SQLCipher
-database creation + key derivation on first open, plus expo-sqlite native init,
-plus Metro dev-mode module serving. **A release build on real hardware does not
-carry this**, so this is an emulator limitation on this machine and NOT evidence
-of a cold-start problem in the product.
-
-Practical notes for whoever picks this up:
-- Wait for "Android Bundled" in the Metro log before the FIRST screenshot
-  (cold bundle took 96s with `--clear`; a warm one is ~100ms).
-- `adb shell svc power stayon true` prevents the dim-screen captures.
-- Confirm the app is actually foregrounded (`dumpsys window | grep mCurrentFocus`)
-  before sending taps — otherwise input lands on the launcher.
+## On-device verification (current)
+Release APK, single ABI: `SENTRY_DISABLE_AUTO_UPLOAD=true ./gradlew
+assembleRelease -x lint -PreactNativeArchitectures=x86_64` → 71MB, installs in
+~5s, 0% iowait. **All 27 screens, four flows and dark mode verified** — full
+log and the bug list in `docs/DEVICE_TEST_FINDINGS.md`. Debug builds still
+saturate this emulator's disk; use the release loop.
 
 ## Open items / findings not yet actioned
 - **M3+M4 visuals have never been SEEN on a device.** Verified structurally
