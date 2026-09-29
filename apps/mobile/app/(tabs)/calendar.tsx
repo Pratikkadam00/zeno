@@ -454,7 +454,7 @@ function createStyles(theme: ThemeTokens) {
     emptyCheck: { fontSize: 40, color: theme.success, marginBottom: 16 },
     emptyTitle: { fontSize: 20, fontWeight: "600", color: theme.text, letterSpacing: -0.5, marginBottom: 8 },
     emptyBody: { fontSize: 15, color: theme.mutedText, textAlign: "center" },
-    emptyBtn: { marginTop: 20, backgroundColor: theme.inkPanel, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 13 },
-    emptyBtnText: { fontSize: 15, fontWeight: "600", color: theme.onInk }
+    emptyBtn: { marginTop: 20, backgroundColor: theme.buttonPrimaryBg, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 13 },
+    emptyBtnText: { fontSize: 15, fontWeight: "600", color: theme.buttonPrimaryText }
   });
 }

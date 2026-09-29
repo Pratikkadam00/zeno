@@ -97,6 +97,11 @@ export type ColorScheme = {
   textDisabled: string;
   textOnAccent: string; // dark ink on green = the Zeno look
   textOnInk: string; // paper on an ink-panel surface (primary buttons, statement blocks)
+  /** Primary button fill. Ink on paper in light; the INVERSE (paper on the desk) in dark —
+      an ink button on the #0A0C13 desk is ~1.3:1 and fails WCAG 1.4.11 (3:1 for control bounds). */
+  buttonPrimaryBg: string;
+  buttonPrimaryPressed: string;
+  buttonPrimaryText: string;
   textInverse: string;
 
   borderSubtle: string;
@@ -143,6 +148,9 @@ export const lightScheme: ColorScheme = {
   textDisabled: palette.ink[300],
   textOnAccent: palette.ink[900],
   textOnInk: palette.paper,
+  buttonPrimaryBg: palette.ledger.inkPanel,
+  buttonPrimaryPressed: palette.ink[700],
+  buttonPrimaryText: palette.paper,
   textInverse: palette.white,
 
   borderSubtle: palette.ledger.rule,
@@ -191,6 +199,9 @@ export const darkScheme: ColorScheme = {
   textOnAccent: "#0A0C13",
   // the ink panel stays dark in both schemes, so its text stays paper
   textOnInk: "#F2F1EA",
+  buttonPrimaryBg: "#F2F1EA", // paper on the desk — reads as a button at 11pm
+  buttonPrimaryPressed: "#DCDBD3",
+  buttonPrimaryText: "#0A0C13",
   textInverse: "#14161F",
 
   borderSubtle: "#262A38",

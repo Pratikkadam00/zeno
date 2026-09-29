@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { Pressable, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { useZenoTokens } from "../../theme/useZenoTokens";
-import { palette } from "../../theme/zeno";
 import { haptics } from "../../theme/haptics";
 
 /**
@@ -51,7 +50,7 @@ export function Button({
 
   const variants: Record<ButtonVariant, { bg: string; pressed: string; color: string; border: string; shadow?: object }> = {
     // solid ink — the default action, reads as a stamped statement line
-    primary: { bg: c.inkPanel, pressed: palette.ink[700], color: c.textOnInk, border: "transparent", shadow: t.shadow.xs },
+    primary: { bg: c.buttonPrimaryBg, pressed: c.buttonPrimaryPressed, color: c.buttonPrimaryText, border: "transparent", shadow: t.shadow.xs },
     // the ONLY green button: money-positive actions (savings, verified cancels)
     money: { bg: c.accent, pressed: c.accentPressed, color: c.textOnAccent, border: "transparent", shadow: t.shadow.xs },
     secondary: { bg: c.surfaceCard, pressed: c.surfaceSunken, color: c.textPrimary, border: c.borderDefault },

@@ -561,7 +561,7 @@ export default function DiscoverScreen() {
                 onPress={() => void handleConnectGmail()}
                 style={[styles.connectGmailBtn, (!request || isBusy) && styles.dimmed]}
               >
-                {scanStatus === "connecting" ? <ActivityIndicator color={theme.onInk} size="small" /> : (
+                {scanStatus === "connecting" ? <ActivityIndicator color={theme.buttonPrimaryText} size="small" /> : (
                   <>
                     <View style={styles.googleG} accessible={false} importantForAccessibility="no-hide-descendants">
                       <Text style={styles.googleGText}>G</Text>
@@ -793,10 +793,10 @@ function createStyles(theme: ThemeTokens) {
     privacyPointText:{ fontSize: 13, color: theme.mutedText, lineHeight: 18, letterSpacing: -0.1, flex: 1 },
 
     // Connect Gmail button
-    connectGmailBtn: { margin: 20, marginTop: 4, backgroundColor: theme.inkPanel, borderRadius: 12, paddingVertical: 15, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+    connectGmailBtn: { margin: 20, marginTop: 4, backgroundColor: theme.buttonPrimaryBg, borderRadius: 12, paddingVertical: 15, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
     googleG:         { width: 20, height: 20, borderRadius: 10, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" },
     googleGText:     { fontSize: 11, fontWeight: "700", color: GOOGLE_BRAND_BLUE },
-    connectBtnText:  { fontSize: 16, fontWeight: "600", color: theme.onInk },
+    connectBtnText:  { fontSize: 16, fontWeight: "600", color: theme.buttonPrimaryText },
 
     // Connected state
     connectedRow:  { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 20, paddingBottom: 12 },

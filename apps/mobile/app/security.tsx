@@ -98,11 +98,11 @@ export default function SecurityScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Turn on app lock"
-              style={[styles.btn, { backgroundColor: theme.inkPanel }]}
+              style={[styles.btn, { backgroundColor: theme.buttonPrimaryBg }]}
               disabled={busy}
               onPress={() => void turnOn()}
             >
-              <Text style={[styles.btnText, { color: theme.onInk }]}>Turn on app lock</Text>
+              <Text style={[styles.btnText, { color: theme.buttonPrimaryText }]}>Turn on app lock</Text>
             </Pressable>
           </>
         )}

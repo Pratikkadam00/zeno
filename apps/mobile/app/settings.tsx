@@ -414,8 +414,8 @@ function createStyles(theme: ThemeTokens) {
     profileInfo: { flex: 1, minWidth: 0 },
     profileName: { fontSize: 17, fontFamily: fonts.sans.semibold, letterSpacing: -0.3, color: theme.text },
     planText: { ...typography.caption1, color: theme.mutedText, marginTop: 3 },
-    goProBtn: { backgroundColor: theme.inkPanel, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7 },
-    goProText: { fontSize: 13, fontFamily: fonts.sans.semibold, color: theme.onInk },
+    goProBtn: { backgroundColor: theme.buttonPrimaryBg, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7 },
+    goProText: { fontSize: 13, fontFamily: fonts.sans.semibold, color: theme.buttonPrimaryText },
 
     privacyNote: { marginHorizontal: spacing.screenH, marginTop: 12, flexDirection: "row", alignItems: "flex-start", gap: 9, backgroundColor: theme.successSurface, borderRadius: 12, paddingHorizontal: 13, paddingVertical: 11 },
     privacyNoteText: { flex: 1, fontSize: 12.5, fontFamily: fonts.sans.regular, color: theme.mutedText, lineHeight: 18 },
