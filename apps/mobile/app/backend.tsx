@@ -27,7 +27,7 @@ export default function BackendScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ScrollView contentContainerStyle={{ gap: 16, paddingBottom: 32 }}>
-        <View>
+        <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
           <Text style={{ color: theme.text, fontSize: 30, lineHeight: 36, fontWeight: "900" }}>Backend</Text>
           <Text style={{ color: theme.mutedText, marginTop: 6, fontSize: 16 }}>
             Live connection check for the Fastify API.

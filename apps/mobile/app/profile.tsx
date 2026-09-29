@@ -92,7 +92,7 @@ export default function ProfileScreen() {
 
         <View style={styles.privacyNote}>
           <ShieldCheck size={16} color={theme.success} strokeWidth={2} />
-          <Text style={styles.privacyText}>Your financial data is encrypted on this device. We never see your bank login or your data.</Text>
+          <Text style={styles.privacyText}>Your financial data is encrypted on this device. We never see your bank login.</Text>
         </View>
 
         <Pressable accessibilityRole="button" accessibilityLabel={isLocalOnly ? "Exit local-only mode" : "Sign out"} style={styles.signOut} onPress={confirmSignOut}>

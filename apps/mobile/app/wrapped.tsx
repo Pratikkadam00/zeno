@@ -90,7 +90,7 @@ export default function WrappedScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ScrollView contentContainerStyle={{ gap: 16, paddingBottom: 32 }}>
-        <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+        <View style={{ flexDirection: "row", alignItems: "flex-start", paddingHorizontal: 20, paddingTop: 8 }}>
           <View style={{ flex: 1 }}>
             <Text style={{ color: theme.mutedText, fontFamily: theme.numberFontFamily, fontSize: 12, letterSpacing: 1, textTransform: "uppercase" }}>
               Your year in subscriptions
@@ -159,7 +159,9 @@ export default function WrappedScreen() {
           </Text>
         ) : null}
 
-        <Button variant="primary" size="lg" fullWidth onPress={shareSummary} style={{ marginHorizontal: 20 }}>Share my Wrapped</Button>
+        <View style={{ paddingHorizontal: 20 }}>
+          <Button variant="primary" size="lg" fullWidth onPress={shareSummary}>Share my Wrapped</Button>
+        </View>
       </ScrollView>
     </View>
   );
