@@ -46,7 +46,7 @@ import {
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LedgerSheet, ServiceAvatar } from "../src/components/zeno";
+import { LedgerSheet, SectionHead, ServiceAvatar } from "../src/components/zeno";
 import { useZenoTheme } from "../src/theme/theme-provider";
 import type { ThemeTokens } from "../src/theme/tokens";
 
@@ -269,7 +269,6 @@ export default function SettingsScreen() {
 
         {/* Privacy reassurance (CHANGE 8) */}
         <View style={styles.privacyNote}>
-          <ShieldCheck size={17} color={theme.success} strokeWidth={2} />
           <Text style={styles.privacyNoteText}>
             Your subscriptions are encrypted on this device. We never ask for your bank login, and nothing is shared unless you turn on a cloud feature.
           </Text>
@@ -277,14 +276,14 @@ export default function SettingsScreen() {
 
         {sections.map((section) => (
           <View key={section.title}>
-            <Text style={styles.sectionLabel}>{section.title}</Text>
+            <SectionHead>{section.title}</SectionHead>
             <View style={styles.sectionCard}>
               {section.rows.map((row, index) => {
                 const isLast = index === section.rows.length - 1;
                 const inner = (
                   <View style={styles.row}>
-                    <View style={[styles.rowIcon, { backgroundColor: row.iconBg }]} accessible={false} importantForAccessibility="no-hide-descendants">
-                      <row.Icon size={17} color="#FFFFFF" strokeWidth={2} />
+                    <View style={styles.rowIcon} accessible={false} importantForAccessibility="no-hide-descendants">
+                      <row.Icon size={18} color={row.danger ? theme.stampAlert : theme.mutedText} strokeWidth={2} />
                     </View>
                     <View style={styles.rowTextWrap}>
                       <Text style={[styles.rowTitle, row.danger ? { color: theme.danger } : undefined]} numberOfLines={1}>{row.label}</Text>
@@ -410,28 +409,26 @@ function createStyles(theme: ThemeTokens) {
     pageHeader: { paddingHorizontal: spacing.screenH, paddingTop: 16, paddingBottom: 4, color: theme.text, fontSize: 30, fontFamily: fonts.display.bold, letterSpacing: -0.6 },
 
     profileBlock: { paddingHorizontal: spacing.screenH, paddingTop: 16, paddingBottom: 4 },
-    profileCard: { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, padding: 16, flexDirection: "row", alignItems: "center", gap: 14 },
+    profileCard: { marginHorizontal: spacing.screenH, paddingBottom: 14, borderBottomWidth: 1, borderColor: theme.ruleStrong, flexDirection: "row", alignItems: "center", gap: 12 },
     profileInfo: { flex: 1, minWidth: 0 },
     profileName: { fontSize: 17, fontFamily: fonts.sans.semibold, letterSpacing: -0.3, color: theme.text },
     planText: { ...typography.caption1, color: theme.mutedText, marginTop: 3 },
-    goProBtn: { backgroundColor: theme.buttonPrimaryBg, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7 },
-    goProText: { fontSize: 13, fontFamily: fonts.sans.semibold, color: theme.buttonPrimaryText },
+    goProBtn: { borderWidth: 1, borderColor: theme.ruleStrong, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
+    goProText: { fontSize: 13, fontFamily: fonts.sans.semibold, color: theme.text },
 
-    privacyNote: { marginHorizontal: spacing.screenH, marginTop: 12, flexDirection: "row", alignItems: "flex-start", gap: 9, backgroundColor: theme.successSurface, borderRadius: 12, paddingHorizontal: 13, paddingVertical: 11 },
-    privacyNoteText: { flex: 1, fontSize: 12.5, fontFamily: fonts.sans.regular, color: theme.mutedText, lineHeight: 18 },
-
-    sectionLabel: { ...typography.sectionHeader, color: theme.mutedText, paddingHorizontal: spacing.screenH, paddingTop: 20, paddingBottom: 8 },
-    sectionCard: { marginHorizontal: spacing.screenH, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, overflow: "hidden" },
-    row: { position: "relative", minHeight: 44, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 14 },
-    rowIcon: { width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+    privacyNote: { marginHorizontal: spacing.screenH, marginTop: 16, paddingLeft: 14, paddingVertical: 2, borderLeftWidth: 3, borderLeftColor: theme.primary },
+    privacyNoteText: { fontSize: 14, fontFamily: fonts.sans.regular, color: theme.text, lineHeight: 21 },
+    sectionCard: { paddingHorizontal: spacing.screenH },
+    row: { position: "relative", minHeight: 48, flexDirection: "row", alignItems: "center", paddingVertical: 13, gap: 12 },
+    rowIcon: { width: 18, alignItems: "center", flexShrink: 0 },
     rowTextWrap: { flex: 1, minWidth: 0 },
-    rowTitle: { fontSize: 16, fontFamily: fonts.sans.regular, color: theme.text, letterSpacing: -0.2 },
-    rowSub: { ...typography.caption1, color: theme.mutedText, marginTop: 2 },
+    rowTitle: { fontSize: 14.5, fontFamily: fonts.sans.semibold, color: theme.text, letterSpacing: -0.1 },
+    rowSub: { fontFamily: fonts.mono.regular, fontSize: 9.5, letterSpacing: 0.8, textTransform: "uppercase", color: theme.quietText, marginTop: 3 },
     rowValue: { ...typography.subheadline, color: theme.mutedText, maxWidth: 140, textAlign: "right" },
     rowChevron: { color: theme.quietText, fontSize: 18, marginLeft: 2 },
-    separator: { position: "absolute", left: 60, right: 0, bottom: 0, height: 0.5, backgroundColor: theme.border },
+    separator: { position: "absolute", left: 0, right: 0, bottom: 0, height: 1, backgroundColor: theme.rule },
 
-    signOutCard: { marginHorizontal: spacing.screenH, marginTop: 18, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 16, flexDirection: "row", alignItems: "center", gap: 14 },
+    signOutCard: { marginHorizontal: spacing.screenH, marginTop: 8, paddingVertical: 13, borderBottomWidth: 1, borderColor: theme.rule, flexDirection: "row", alignItems: "center", gap: 12 },
     signOutIconWrap: { width: 30, height: 30, borderRadius: 8, backgroundColor: theme.surfaceAlt, alignItems: "center", justifyContent: "center" },
     signOutText: { fontSize: 16, fontFamily: fonts.sans.semibold, color: theme.text, letterSpacing: -0.2 },
 
