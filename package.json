@@ -17,6 +17,7 @@
     "typecheck:refs": "tsc -b --pretty false",
     "lint": "eslint . && npm --workspace @zeno/web run lint && npm --workspace @zeno/mobile run lint",
     "test": "vitest run",
+    "test:rn": "npm --workspace @zeno/mobile run test:rn",
     "test:watch": "vitest",
     "smoke": "node scripts/smoke-api.mjs"
   },

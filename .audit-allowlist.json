@@ -1,0 +1,17 @@
+{
+  "$comment": "Advisories the release gate may pass despite severity >= high. Each entry MUST say why it is safe and MUST expire, so acceptance is re-reviewed rather than forgotten. scripts/audit-gate.mjs fails on any high/critical advisory not listed here, and on any listed entry past its expiry.",
+  "accepted": [
+    {
+      "advisory": "GHSA-5p2g-fcmc-qvqq",
+      "package": "image-size",
+      "reason": "DoS via malformed JXL/HEIF images. Reached only through metro (the React Native BUILD-TIME bundler), which parses images from this repository's own assets, never attacker-supplied input, and ships nothing to users. The fix is image-size 2.x, a semver-major that metro 0.84 (pinned by Expo 56) does not accept.",
+      "expires": "2026-12-31"
+    },
+    {
+      "advisory": "GHSA-w3rx-r6r6-pgpr",
+      "package": "image-size",
+      "reason": "DoS via malformed ICNS images. Same build-time-only reachability and same blocked fix path as GHSA-5p2g-fcmc-qvqq.",
+      "expires": "2026-12-31"
+    }
+  ]
+}

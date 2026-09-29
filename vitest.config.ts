@@ -13,7 +13,8 @@ export default defineConfig({
       "apps/**/*.test.ts",
       "apps/**/*.test.tsx",
       "packages/**/*.test.ts",
-      "packages/**/*.test.tsx"
+      "packages/**/*.test.tsx",
+      "scripts/**/*.test.ts"
     ],
     // RN component tests (`*.rntest.tsx`) belong to the isolated jest project in
     // apps/mobile — react-native can't be parsed in this node environment. The
