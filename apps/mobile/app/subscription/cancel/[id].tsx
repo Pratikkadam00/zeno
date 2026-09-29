@@ -234,7 +234,7 @@ export default function SubscriptionCancelScreen() {
           {/* Difficulty badge + plain-language note */}
           {difficulty ? (
             <View
-              style={[styles.difficultyCard, { backgroundColor: difficulty.bg, borderColor: difficulty.border }]}
+              style={styles.difficultyCard}
               accessibilityLabel={`${difficulty.label}. ${difficulty.note}`}
             >
               <View style={styles.difficultyHeader}>
@@ -461,7 +461,7 @@ function createStyles(theme: ThemeTokens) {
     stepCircle: { width: 26, alignItems: "flex-start", flexShrink: 0, marginTop: 1 },
     stepCircleDone:    { backgroundColor: theme.success },
     stepCircleCurrent: { borderWidth: 0 },
-    stepCircleUpcoming:{ backgroundColor: "transparent", borderWidth: 1.5, borderColor: theme.border },
+    stepCircleUpcoming:{ borderWidth: 0 },
     stepCheckText: { fontSize: 11, fontWeight: "700", color: theme.onPrimary, textAlign: "center", lineHeight: 26 },
     stepNumText: { fontFamily: fonts.mono.bold, fontSize: 12, textAlign: "left", lineHeight: 20 },
     stepNumCurrent: { color: theme.text },
