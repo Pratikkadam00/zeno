@@ -120,7 +120,7 @@ export default function AnalyticsScreen() {
           style={styles.budgetEntry}
         >
           <View style={styles.budgetEntryIcon}>
-            <Target size={20} color={theme.primary} strokeWidth={2} />
+            <Target size={20} color={theme.mutedText} strokeWidth={2} />
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.budgetEntryTitle}>Budget</Text>
@@ -193,7 +193,7 @@ export default function AnalyticsScreen() {
                 <View style={[styles.insightAccent, { backgroundColor: insightAccentColor(insight.type, theme) }]} />
                 <View style={styles.insightContent}>
                   <View style={styles.insightTopRow}>
-                    <View style={[styles.insightIconWrap, { backgroundColor: iconMeta.bg }]} accessible={false} importantForAccessibility="no-hide-descendants">
+                    <View style={styles.insightIconWrap} accessible={false} importantForAccessibility="no-hide-descendants">
                       <iconMeta.Icon size={17} color={insightAccentColor(insight.type, theme)} strokeWidth={2} />
                     </View>
                     <View style={styles.insightTextWrap}>
@@ -337,16 +337,12 @@ function createStyles(theme: ThemeTokens) {
       paddingBottom: 4
     },
     pageTitle: { fontSize: 30, fontFamily: fonts.display.bold, color: theme.text, letterSpacing: -0.6 },
-    savingsPill: {
-      flexDirection: "row", alignItems: "center", gap: 6,
-      backgroundColor: theme.successSurface, borderWidth: 0.5,
-      borderColor: withAlpha(theme.success, 0.2), borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5
-    },
+    savingsPill: { flexDirection: "row", alignItems: "center", gap: 6, paddingBottom: 2, borderBottomWidth: 2.5, borderBottomColor: theme.stampVerified },
     savingsPillText: { fontSize: 12, fontFamily: fonts.sans.semibold, color: theme.success },
 
     // Budget entry
     budgetEntry: { marginHorizontal: 16, marginTop: 4, flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14 },
-    budgetEntryIcon: { width: 38, height: 38, borderRadius: 11, backgroundColor: theme.primarySurface, alignItems: "center", justifyContent: "center" },
+    budgetEntryIcon: { width: 38, height: 38, borderRadius: 8, borderWidth: 1, borderColor: theme.ruleStrong, alignItems: "center", justifyContent: "center" },
     budgetEntryTitle: { fontSize: 16, fontFamily: fonts.display.bold, color: theme.text },
     budgetEntrySub: { fontSize: 12.5, fontFamily: fonts.sans.regular, color: theme.mutedText, marginTop: 1 },
     budgetPill: { flexDirection: "row", alignItems: "center", gap: 5, paddingBottom: 2, borderBottomWidth: 2.5 },
@@ -376,7 +372,7 @@ function createStyles(theme: ThemeTokens) {
     insightAccent: { position: "absolute", left: 0, top: 0, bottom: 0, width: 3 },
     insightContent: { paddingVertical: 14, paddingLeft: 19, paddingRight: 16 },
     insightTopRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
-    insightIconWrap: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+    insightIconWrap: { width: 34, height: 34, borderRadius: 8, borderWidth: 1, borderColor: theme.ruleStrong, alignItems: "center", justifyContent: "center", flexShrink: 0 },
     insightIconText: { fontSize: 16, textAlign: "center", lineHeight: 34 },
     insightTextWrap: { flex: 1 },
     insightTitle: { fontSize: 15, fontWeight: "600", color: theme.text, letterSpacing: -0.2, marginBottom: 4 },

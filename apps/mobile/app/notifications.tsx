@@ -12,9 +12,9 @@ import { formatShortDate } from "../src/utils/subscription-ui";
 type IconCmp = ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
 
 // A small icon tile used as ListRow leading.
-function tile(Icon: IconCmp, color: string, bg: string, radius: number): ReactNode {
+function tile(Icon: IconCmp, color: string, border: string, radius: number): ReactNode {
   return (
-    <View style={{ width: 38, height: 38, borderRadius: radius, backgroundColor: bg, alignItems: "center", justifyContent: "center" }}>
+    <View style={{ width: 38, height: 38, borderRadius: radius, borderWidth: 1, borderColor: border, alignItems: "center", justifyContent: "center" }}>
       <Icon size={19} color={color} strokeWidth={2} />
     </View>
   );
@@ -67,7 +67,7 @@ export default function NotificationsScreen() {
                   <ListRow
                     key={`attn-${s.id}`}
                     divider={i < arr.length - 1 || pending.length > 0 || endingTrials.length > 0 || priceHikes.length > 0}
-                    leading={tile(AlertTriangle, c.danger, c.dangerSoft, t.radius.md)}
+                    leading={tile(AlertTriangle, c.danger, c.ruleStrong, 8)}
                     title={`${s.name} is still charging you`}
                     subtitle="Cancelled, but a charge appeared — needs attention"
                     chevron
@@ -78,7 +78,7 @@ export default function NotificationsScreen() {
                   <ListRow
                     key={`pend-${s.id}`}
                     divider={i < arr.length - 1 || endingTrials.length > 0 || priceHikes.length > 0}
-                    leading={tile(Clock, c.info, c.infoSoft, t.radius.md)}
+                    leading={tile(Clock, c.info, c.ruleStrong, 8)}
                     title={`Verifying ${s.name} cancellation`}
                     subtitle={`We'll confirm around ${formatShortDate(s.cancellationVerifyBy ?? s.nextRenewalDate)}`}
                     chevron
@@ -89,7 +89,7 @@ export default function NotificationsScreen() {
                   <ListRow
                     key={`trial-${trial.subscription.id}`}
                     divider={i < arr.length - 1 || priceHikes.length > 0}
-                    leading={tile(AlarmClock, c.warning, c.warningSoft, t.radius.md)}
+                    leading={tile(AlarmClock, c.warning, c.ruleStrong, 8)}
                     title={`${trial.subscription.name} trial ends ${trial.daysUntilEnd === 0 ? "today" : `in ${trial.daysUntilEnd} day${trial.daysUntilEnd === 1 ? "" : "s"}`}`}
                     subtitle={`Converts to ${formatMoney(trial.subscription.price.amountMinor, trial.subscription.price.currency)} — cancel before then?`}
                     chevron
@@ -100,7 +100,7 @@ export default function NotificationsScreen() {
                   <ListRow
                     key={`hike-${hike.subscription.id}`}
                     divider={i < arr.length - 1}
-                    leading={tile(TrendingUp, c.info, c.infoSoft, t.radius.md)}
+                    leading={tile(TrendingUp, c.info, c.ruleStrong, 8)}
                     title={`${hike.subscription.name} went up ${hike.increasePct}%`}
                     subtitle={`${formatMoney(hike.previousMinor, hike.subscription.price.currency)} → ${formatMoney(hike.currentMinor, hike.subscription.price.currency)}/mo`}
                     chevron
@@ -122,7 +122,7 @@ export default function NotificationsScreen() {
                   <ListRow
                     key={`${plan.subscriptionId}-${plan.kind}-${i}`}
                     divider={i < arr.length - 1}
-                    leading={tile(Bell, c.accent, c.accentSoft, t.radius.md)}
+                    leading={tile(Bell, c.textSecondary, c.ruleStrong, 8)}
                     title={`${notificationLabel(plan.kind)} — ${plan.serviceName}`}
                     subtitle={new Date(plan.triggerAt).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
                     chevron

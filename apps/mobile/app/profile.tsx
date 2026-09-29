@@ -59,8 +59,8 @@ export default function ProfileScreen() {
 
         <View style={styles.card}>
           <Pressable accessibilityRole="button" accessibilityLabel="Plan and billing" style={styles.row} onPress={() => router.push("/paywall")}>
-            <View style={[styles.rowIcon, { backgroundColor: palette.category.violet }]}>
-              <CreditCard size={17} color="#FFFFFF" strokeWidth={2} />
+            <View style={styles.rowIcon}>
+              <CreditCard size={17} color={theme.mutedText} strokeWidth={2} />
             </View>
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>Plan & billing</Text>
@@ -72,8 +72,8 @@ export default function ProfileScreen() {
           <View style={styles.separator} />
 
           <Pressable accessibilityRole="button" accessibilityLabel="Security" style={styles.row} onPress={() => router.push("/security" as never)}>
-            <View style={[styles.rowIcon, { backgroundColor: palette.category.green }]}>
-              <ShieldCheck size={17} color="#FFFFFF" strokeWidth={2} />
+            <View style={styles.rowIcon}>
+              <ShieldCheck size={17} color={theme.mutedText} strokeWidth={2} />
             </View>
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>App lock</Text>
@@ -114,7 +114,7 @@ function createStyles(theme: ThemeTokens) {
     planBadgeText: { fontFamily: fonts.mono.bold, fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase" as const },
     card: { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, overflow: "hidden" },
     row: { minHeight: 44, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 14 },
-    rowIcon: { width: 30, height: 30, borderRadius: 6, alignItems: "center", justifyContent: "center" },
+    rowIcon: { width: 30, height: 30, borderRadius: 6, borderWidth: 1, borderColor: theme.ruleStrong, alignItems: "center", justifyContent: "center" },
     rowText: { flex: 1, minWidth: 0 },
     rowTitle: { fontFamily: fonts.sans.semibold, fontSize: 15.5, color: theme.text },
     rowSub: { fontSize: 13, color: theme.mutedText, marginTop: 2 },
@@ -122,8 +122,8 @@ function createStyles(theme: ThemeTokens) {
     separator: { height: 1, backgroundColor: theme.rule, marginLeft: 60 },
     metaLabel: { fontFamily: fonts.mono.bold, fontSize: 10.5, letterSpacing: 1.8, textTransform: "uppercase" as const, color: theme.quietText, marginTop: 8, marginLeft: 4 },
     accountId: { fontSize: 14, color: theme.mutedText, fontFamily: theme.numberFontFamily },
-    privacyNote: { flexDirection: "row", alignItems: "flex-start", gap: 9, backgroundColor: theme.successSurface, borderRadius: 12, padding: 12, marginTop: 4 },
-    privacyText: { flex: 1, fontSize: 12.5, color: theme.mutedText, lineHeight: 18 },
+    privacyNote: { flexDirection: "row", alignItems: "flex-start", gap: 9, marginHorizontal: 20, marginTop: 16, paddingLeft: 12, paddingVertical: 2, borderLeftWidth: 3, borderLeftColor: theme.primary },
+    privacyText: { flex: 1, fontSize: 14, color: theme.text, lineHeight: 21 },
     signOut: { marginTop: 8, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, height: 50, borderRadius: 14, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border },
     signOutText: { fontSize: 16, fontWeight: "700", color: theme.text }
   });
