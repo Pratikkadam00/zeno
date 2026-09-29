@@ -817,7 +817,7 @@ function createStyles(theme: ThemeTokens) {
     // Bottom save bar
     bottomBar: {
       position: "absolute",
-      bottom: 0, left: 0, right: 0,
+      bottom: 0, left: 0, right: 0, zIndex: 10, elevation: 8,
       backgroundColor: theme.background,
       paddingHorizontal: 16,
       paddingBottom: Platform.OS === "ios" ? 40 : 24,
