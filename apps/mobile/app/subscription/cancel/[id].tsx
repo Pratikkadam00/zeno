@@ -147,17 +147,28 @@ export default function SubscriptionCancelScreen() {
     setShowConfirm(true);
   }
 
-  async function handleConfirmedCancel() {
+  function handleConfirmedCancel() {
     // CHANGE 4: self-report moves the sub to "pending verification", not
     // straight to "cancelled". Zeno re-checks around the next renewal date.
     requestCancellation(sub.id);
-    await cancelNotificationsForSubscription(sub.id);
     // Let the stamp land ON SCREEN and stay there — the user dismisses it with
     // Done. Previously this fired a toast (Android) or an alert (iOS) and
     // replaced straight to the dashboard, so the stamp was never actually seen;
     // a system toast is precisely the "lazy version" the DS rejects for this
     // moment. Screen readers get the outcome announced instead.
+    //
+    // The stamp is set BEFORE the notification cleanup, never after it. On a
+    // device where notification permission was never granted (Android 13+
+    // POST_NOTIFICATIONS), expo-notifications' getAllScheduledNotificationsAsync
+    // rejects or stalls; awaiting it here meant requestCancellation() persisted
+    // but setCancelSuccess() never ran, so the user tapped, saw nothing, and the
+    // cancellation silently went through. Verified on device. Cleanup is
+    // best-effort: its failure must never hide the outcome from the user.
     setCancelSuccess(true);
+    void cancelNotificationsForSubscription(sub.id).catch(() => {
+      // Reminders for a pending-verification sub are harmless if they survive;
+      // the reconcile pass reschedules from store state anyway.
+    });
   }
 
   return (
