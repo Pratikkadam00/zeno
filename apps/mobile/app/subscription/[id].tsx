@@ -664,11 +664,11 @@ function createStyles(theme: ThemeTokens) {
     heroName: { ...typography.title2, color: theme.text, letterSpacing: -0.5, textAlign: "center", marginBottom: 8 },
 
     chipRow: { flexDirection: "row", gap: 8, justifyContent: "center", marginBottom: 24 },
-    categoryChip: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, backgroundColor: theme.surfaceAlt },
+    categoryChip: { paddingBottom: 3, borderBottomWidth: 2.5, borderBottomColor: theme.ruleStrong },
     categoryChipText: { ...typography.caption1, fontWeight: "500", color: theme.mutedText },
-    dangerChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, backgroundColor: theme.dangerSurface },
+    dangerChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingBottom: 3, borderBottomWidth: 2.5, borderBottomColor: theme.stampAlert },
     dangerChipText: { ...typography.caption1, fontFamily: fonts.sans.semibold, color: theme.danger },
-    trialChip: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, backgroundColor: theme.warningSurface },
+    trialChip: { paddingBottom: 3, borderBottomWidth: 2.5, borderBottomColor: theme.warning },
     trialChipText: { ...typography.caption1, fontWeight: "600", color: theme.warning },
 
     amountRow: { flexDirection: "row", alignItems: "baseline", gap: 2, justifyContent: "center" },
@@ -680,7 +680,7 @@ function createStyles(theme: ThemeTokens) {
     amountVoided: { color: theme.quietText, textDecorationLine: "line-through" as const },
 
     // Urgency banner
-    urgencyCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: theme.card, borderRadius: 16, overflow: "hidden" },
+    urgencyCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, overflow: "hidden" },
     urgencyTopBar: { height: 3 },
     urgencyBody: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
     urgencyIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
@@ -688,11 +688,11 @@ function createStyles(theme: ThemeTokens) {
     urgencyTextWrap: { flex: 1 },
     urgencyTitle: { ...typography.subheadline, color: theme.text },
     urgencySub: { ...typography.caption1, color: theme.mutedText, marginTop: 2 },
-    urgencyCancelBtn: { backgroundColor: theme.danger, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
-    urgencyCancelText: { fontSize: 12, fontWeight: "600", color: theme.onPrimary },
+    urgencyCancelBtn: { borderWidth: 1.5, borderColor: theme.stampAlert, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7 },
+    urgencyCancelText: { fontSize: 12, fontWeight: "700", color: theme.stampAlert },
 
     // Verification lifecycle banner (CHANGE 4)
-    verifyBanner: { marginHorizontal: 16, marginBottom: 8, borderRadius: 16, padding: 16, gap: 12 },
+    verifyBanner: { marginHorizontal: 16, marginBottom: 8, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, padding: 16, gap: 12 },
     verifyTop: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
     verifyTitle: { ...typography.subheadline, fontFamily: fonts.sans.bold, color: theme.text },
     verifyBody: { ...typography.caption1, color: theme.mutedText, marginTop: 2, lineHeight: 18 },
@@ -716,7 +716,7 @@ function createStyles(theme: ThemeTokens) {
     notifSub: { ...typography.caption1, color: theme.mutedText, marginTop: 1 },
 
     // Notes
-    noteCard: { marginHorizontal: 16, backgroundColor: theme.card, borderRadius: 16, padding: 16 },
+    noteCard: { marginHorizontal: 16, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, padding: 16 },
     noteText: { ...typography.subheadline, color: theme.text, lineHeight: 22 },
     noteAdd: { ...typography.subheadline, color: theme.primary },
 
@@ -727,8 +727,8 @@ function createStyles(theme: ThemeTokens) {
       paddingBottom: 40, paddingTop: 12,
       borderTopWidth: 0.5, borderTopColor: theme.border
     },
-    dangerBtn: { backgroundColor: theme.danger, borderRadius: 14, paddingVertical: 17, alignItems: "center" },
-    dangerBtnText: { fontSize: 17, fontWeight: "600", color: theme.onPrimary },
+    dangerBtn: { borderWidth: 1.5, borderColor: theme.stampAlert, borderRadius: 12, paddingVertical: 16, alignItems: "center" },
+    dangerBtnText: { fontSize: 17, fontWeight: "700", color: theme.stampAlert },
     cancelledBtn: { backgroundColor: theme.surfaceAlt, borderRadius: 14, paddingVertical: 17, alignItems: "center" },
     cancelledBtnText: { fontSize: 17, fontWeight: "500", color: theme.mutedText },
     pausedBtn: { backgroundColor: theme.warningSurface, borderRadius: 14, paddingVertical: 17, alignItems: "center" },

@@ -410,18 +410,18 @@ function createStyles(theme: ThemeTokens) {
     pageHeader: { paddingHorizontal: spacing.screenH, paddingTop: 16, paddingBottom: 4, color: theme.text, fontSize: 30, fontFamily: fonts.display.bold, letterSpacing: -0.6 },
 
     profileBlock: { paddingHorizontal: spacing.screenH, paddingTop: 16, paddingBottom: 4 },
-    profileCard: { backgroundColor: theme.card, borderRadius: 20, padding: 16, flexDirection: "row", alignItems: "center", gap: 14 },
+    profileCard: { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, padding: 16, flexDirection: "row", alignItems: "center", gap: 14 },
     profileInfo: { flex: 1, minWidth: 0 },
     profileName: { fontSize: 17, fontFamily: fonts.sans.semibold, letterSpacing: -0.3, color: theme.text },
     planText: { ...typography.caption1, color: theme.mutedText, marginTop: 3 },
-    goProBtn: { backgroundColor: theme.primary, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
-    goProText: { fontSize: 13, fontFamily: fonts.sans.semibold, color: theme.onPrimary },
+    goProBtn: { backgroundColor: theme.inkPanel, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7 },
+    goProText: { fontSize: 13, fontFamily: fonts.sans.semibold, color: theme.onInk },
 
     privacyNote: { marginHorizontal: spacing.screenH, marginTop: 12, flexDirection: "row", alignItems: "flex-start", gap: 9, backgroundColor: theme.successSurface, borderRadius: 12, paddingHorizontal: 13, paddingVertical: 11 },
     privacyNoteText: { flex: 1, fontSize: 12.5, fontFamily: fonts.sans.regular, color: theme.mutedText, lineHeight: 18 },
 
     sectionLabel: { ...typography.sectionHeader, color: theme.mutedText, paddingHorizontal: spacing.screenH, paddingTop: 20, paddingBottom: 8 },
-    sectionCard: { marginHorizontal: spacing.screenH, backgroundColor: theme.card, borderRadius: 16, overflow: "hidden" },
+    sectionCard: { marginHorizontal: spacing.screenH, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, overflow: "hidden" },
     row: { position: "relative", minHeight: 44, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 14 },
     rowIcon: { width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center", flexShrink: 0 },
     rowTextWrap: { flex: 1, minWidth: 0 },
@@ -431,7 +431,7 @@ function createStyles(theme: ThemeTokens) {
     rowChevron: { color: theme.quietText, fontSize: 18, marginLeft: 2 },
     separator: { position: "absolute", left: 60, right: 0, bottom: 0, height: 0.5, backgroundColor: theme.border },
 
-    signOutCard: { marginHorizontal: spacing.screenH, marginTop: 18, backgroundColor: theme.card, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 16, flexDirection: "row", alignItems: "center", gap: 14 },
+    signOutCard: { marginHorizontal: spacing.screenH, marginTop: 18, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 16, flexDirection: "row", alignItems: "center", gap: 14 },
     signOutIconWrap: { width: 30, height: 30, borderRadius: 8, backgroundColor: theme.surfaceAlt, alignItems: "center", justifyContent: "center" },
     signOutText: { fontSize: 16, fontFamily: fonts.sans.semibold, color: theme.text, letterSpacing: -0.2 },
 

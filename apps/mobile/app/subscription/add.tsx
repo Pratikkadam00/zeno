@@ -1,4 +1,4 @@
-import { getPopularServices, type Service } from "@zeno/service-catalog";
+import { getPopularServices, services, type Service } from "@zeno/service-catalog";
 import type { BillingCycle, SubscriptionCategory } from "@zeno/shared";
 import { router, Stack } from "expo-router";
 import { useMemo, useState } from "react";
@@ -205,7 +205,7 @@ export default function AddSubscriptionScreen() {
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search 600+ services..."
+          placeholder={`Search ${services.length} services...`}
           placeholderTextColor={theme.quietText}
           style={styles.searchInput}
           autoFocus

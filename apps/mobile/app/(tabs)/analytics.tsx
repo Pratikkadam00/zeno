@@ -135,11 +135,10 @@ export default function AnalyticsScreen() {
           ) : (() => {
             const status = budgetStatus(budgetForecast.projectedMinor, budgetConfig.capMinor);
             const main = status === "over" ? theme.danger : status === "approaching" ? theme.warning : theme.success;
-            const soft = status === "over" ? theme.dangerSurface : status === "approaching" ? theme.warningSurface : theme.successSurface;
             const SIcon = status === "over" ? AlertTriangle : status === "approaching" ? TrendingUp : CircleCheck;
             const label = status === "over" ? "Over" : status === "approaching" ? "Close" : "On pace";
             return (
-              <View style={[styles.budgetPill, { backgroundColor: soft }]}>
+              <View style={[styles.budgetPill, { borderBottomColor: main }]}>
                 <SIcon size={13} color={main} strokeWidth={2} />
                 <Text style={[styles.budgetPillText, { color: main }]}>{label}</Text>
               </View>
@@ -346,11 +345,11 @@ function createStyles(theme: ThemeTokens) {
     savingsPillText: { fontSize: 12, fontFamily: fonts.sans.semibold, color: theme.success },
 
     // Budget entry
-    budgetEntry: { marginHorizontal: 16, marginTop: 4, flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: theme.card, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 14 },
+    budgetEntry: { marginHorizontal: 16, marginTop: 4, flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14 },
     budgetEntryIcon: { width: 38, height: 38, borderRadius: 11, backgroundColor: theme.primarySurface, alignItems: "center", justifyContent: "center" },
     budgetEntryTitle: { fontSize: 16, fontFamily: fonts.display.bold, color: theme.text },
     budgetEntrySub: { fontSize: 12.5, fontFamily: fonts.sans.regular, color: theme.mutedText, marginTop: 1 },
-    budgetPill: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 },
+    budgetPill: { flexDirection: "row", alignItems: "center", gap: 5, paddingBottom: 2, borderBottomWidth: 2.5 },
     budgetPillText: { fontSize: 12, fontFamily: fonts.sans.bold },
 
     sectionLabel: {
@@ -359,7 +358,7 @@ function createStyles(theme: ThemeTokens) {
     },
 
     // Chart
-    chartCard: { marginHorizontal: 16, backgroundColor: theme.card, borderRadius: 16, padding: 20, marginBottom: 8 },
+    chartCard: { marginHorizontal: 16, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, padding: 20, marginBottom: 8 },
     chartTotal: { fontSize: 34, fontFamily: fonts.mono.bold, color: theme.text, letterSpacing: -1.0, fontVariant: ["tabular-nums"] },
     chartTotalSub: { fontSize: 13, color: theme.mutedText, marginTop: 2 },
     excludedNote: { fontSize: 12, color: theme.mutedText, marginTop: 8 },
@@ -372,7 +371,7 @@ function createStyles(theme: ThemeTokens) {
     // Insight cards
     insightCard: {
       marginHorizontal: 16, marginBottom: 8,
-      backgroundColor: theme.card, borderRadius: 16, overflow: "hidden"
+      backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, overflow: "hidden"
     },
     insightAccent: { position: "absolute", left: 0, top: 0, bottom: 0, width: 3 },
     insightContent: { paddingVertical: 14, paddingLeft: 19, paddingRight: 16 },
@@ -382,7 +381,7 @@ function createStyles(theme: ThemeTokens) {
     insightTextWrap: { flex: 1 },
     insightTitle: { fontSize: 15, fontWeight: "600", color: theme.text, letterSpacing: -0.2, marginBottom: 4 },
     insightMessage: { fontSize: 13, color: theme.mutedText, lineHeight: 18, letterSpacing: -0.1 },
-    insightSavingPill: { marginTop: 10, alignSelf: "flex-start", backgroundColor: theme.successSurface, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+    insightSavingPill: { marginTop: 10, alignSelf: "flex-start", paddingBottom: 2, borderBottomWidth: 2.5, borderBottomColor: theme.stampVerified },
     insightSavingText: { fontSize: 11, fontWeight: "600", color: theme.success },
     insightAction: { fontSize: 13, fontWeight: "600", color: theme.primary, letterSpacing: -0.1, marginTop: 10 },
     dismissBtn: { padding: 4 },

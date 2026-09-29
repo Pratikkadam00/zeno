@@ -193,7 +193,7 @@ function RenewalGroup({
                 <View style={styles.renewalRight}>
                   <Text style={styles.renewalAmount}>{formatMoney(sub.price.amountMinor, sub.price.currency)}</Text>
                   {badge ? (
-                    <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+                    <View style={[styles.badge, { borderBottomColor: badge.text }]}>
                       <Text style={[styles.badgeText, { color: badge.text }]}>{badge.label}</Text>
                     </View>
                   ) : null}
@@ -401,11 +401,11 @@ function createStyles(theme: ThemeTokens) {
     summaryBlock: { marginHorizontal: 20, marginTop: 12, marginBottom: 8, borderTopWidth: 1, borderBottomWidth: 1, borderColor: theme.ruleStrong },
 
     // Calendar
-    calendarCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: theme.card, borderRadius: 16, overflow: "hidden" },
+    calendarCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, overflow: "hidden" },
     calendar: { paddingBottom: 4 },
 
     // Day panel
-    panelCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: theme.card, borderRadius: 16, overflow: "hidden" },
+    panelCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, overflow: "hidden" },
     panelHeader: { paddingHorizontal: 16, paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
     panelDate: { fontSize: 15, fontWeight: "600", color: theme.text, letterSpacing: -0.2 },
     panelClose: { fontSize: 20, color: theme.quietText },
@@ -432,7 +432,7 @@ function createStyles(theme: ThemeTokens) {
     groupHeaderRow: { paddingHorizontal: spacing.screenH, paddingBottom: 6, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
     groupTitle: { fontSize: 13, fontWeight: "600", color: theme.mutedText, letterSpacing: -0.1 },
     groupTotal: { fontSize: 13, fontFamily: fonts.mono.regular, color: theme.mutedText, fontVariant: ["tabular-nums"] },
-    groupCard: { marginHorizontal: 16, marginBottom: 12, backgroundColor: theme.card, borderRadius: 16, overflow: "hidden" },
+    groupCard: { marginHorizontal: 16, marginBottom: 12, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, overflow: "hidden" },
 
     // Renewal rows
     renewalRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 13, gap: 14, minHeight: spacing.rowH + 8 },
@@ -441,7 +441,7 @@ function createStyles(theme: ThemeTokens) {
     renewalMeta: { ...typography.caption1, color: theme.mutedText, marginTop: 1 },
     renewalRight: { alignItems: "flex-end" },
     renewalAmount: { fontSize: 15, fontFamily: fonts.mono.semibold, color: theme.text, fontVariant: ["tabular-nums"] },
-    badge: { borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3, marginTop: 3 },
+    badge: { marginTop: 3, paddingBottom: 2, borderBottomWidth: 2, alignSelf: "flex-end" },
     badgeText: { ...typography.caption1 },
     rowSep: { position: "absolute", left: 64, right: 0, bottom: 0, height: 0.5, backgroundColor: theme.border },
 
@@ -454,7 +454,7 @@ function createStyles(theme: ThemeTokens) {
     emptyCheck: { fontSize: 40, color: theme.success, marginBottom: 16 },
     emptyTitle: { fontSize: 20, fontWeight: "600", color: theme.text, letterSpacing: -0.5, marginBottom: 8 },
     emptyBody: { fontSize: 15, color: theme.mutedText, textAlign: "center" },
-    emptyBtn: { marginTop: 20, backgroundColor: theme.primary, borderRadius: 14, paddingHorizontal: 24, paddingVertical: 13 },
-    emptyBtnText: { fontSize: 15, fontWeight: "600", color: theme.onPrimary }
+    emptyBtn: { marginTop: 20, backgroundColor: theme.inkPanel, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 13 },
+    emptyBtnText: { fontSize: 15, fontWeight: "600", color: theme.onInk }
   });
 }

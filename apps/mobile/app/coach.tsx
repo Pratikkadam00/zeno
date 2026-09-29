@@ -119,8 +119,9 @@ export default function CoachScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ScrollView contentContainerStyle={{ gap: 16, paddingBottom: 32 }}>
-        <View>
-          <Text style={{ color: theme.text, fontSize: 30, lineHeight: 36, fontWeight: "900" }}>AI spend coach</Text>
+        <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
+          <Text style={{ fontFamily: fonts.mono.bold, fontSize: 10.5, letterSpacing: 1.8, color: theme.quietText, marginBottom: 6 }}>SPEND COACH</Text>
+          <Text style={{ fontFamily: fonts.display.bold, fontSize: 30, lineHeight: 34, letterSpacing: -0.8, color: theme.text }}>AI spend coach</Text>
           <Text style={{ color: theme.mutedText, marginTop: 6, fontSize: 16 }}>
             {!aiConsented
               ? "Deterministic insights, computed entirely on your device."
@@ -163,11 +164,11 @@ export default function CoachScreen() {
             {/* equal-weight choice — deliberately no dark pattern */}
             <View style={{ flexDirection: "row", columnGap: 10, marginTop: 18 }}>
               {coachAiConsent === "unset" ? (
-                <Button variant="secondary" size="lg" accessibilityLabel="Not now, keep insights on-device" onPress={() => setCoachAiConsent("declined")} style={{ flex: 1 }}>
+                <Button variant="secondary" size="lg" accessibilityLabel="Not now, keep insights on-device" onPress={() => setCoachAiConsent("declined")} style={{ flex: 0.8 }}>
                   Not now
                 </Button>
               ) : null}
-              <Button variant="primary" size="lg" accessibilityLabel="Enable AI coaching" onPress={() => setCoachAiConsent("granted")} style={{ flex: 1 }}>
+              <Button variant="primary" size="lg" accessibilityLabel="Enable AI coaching" onPress={() => setCoachAiConsent("granted")} style={{ flex: 1.45 }}>
                 Enable AI coaching
               </Button>
             </View>
