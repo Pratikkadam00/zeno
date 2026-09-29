@@ -442,51 +442,31 @@ function createStyles(theme: ThemeTokens) {
     heroRenewal: { ...typography.footnote, fontWeight: "600", color: theme.text, textAlign: "center", marginTop: 4 },
 
     // Savings card
-    savingsCard: {
-      marginHorizontal: 16,
-      marginBottom: 12,
-      backgroundColor: theme.successSurface,
-      borderWidth: 0.5,
-      borderColor: withAlpha(theme.success, 0.2),
-      borderRadius: 16,
-      paddingVertical: 14,
-      paddingHorizontal: 16,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 12
-    },
-    savingsIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: theme.successSurface, alignItems: "center", justifyContent: "center" },
+    savingsCard: { marginHorizontal: spacing.screenH, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 10, borderBottomWidth: 1, borderColor: theme.rule },
+    savingsIcon: { display: "none" },
     savingsIconText: { fontSize: 18, textAlign: "center", lineHeight: 36 },
     savingsLabel: { fontSize: 13, color: theme.success },
     savingsAmount: { fontSize: 17, fontWeight: "700", color: theme.success, fontVariant: ["tabular-nums"], letterSpacing: -0.5 },
 
     // Difficulty card
-    difficultyCard: {
-      marginHorizontal: 16,
-      marginBottom: 16,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      borderWidth: 0.5,
-      gap: 4
-    },
+    difficultyCard: { marginHorizontal: spacing.screenH, paddingVertical: 10, gap: 4, borderBottomWidth: 1, borderColor: theme.ruleStrong },
     difficultyHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
-    difficultyText: { fontSize: 13, fontFamily: fonts.sans.bold, letterSpacing: -0.1 },
-    difficultyNote: { fontSize: 13, lineHeight: 18, color: theme.mutedText },
+    difficultyText: { fontFamily: fonts.mono.bold, fontSize: 12, letterSpacing: 1.6, textTransform: "uppercase" },
+    difficultyNote: { fontSize: 12.5, lineHeight: 18, color: theme.quietText },
 
     // Steps
-    sectionLabel: { ...typography.sectionHeader, color: theme.mutedText, paddingHorizontal: spacing.screenH, paddingBottom: 12 },
+    sectionLabel: { fontFamily: fonts.mono.bold, fontSize: 10.5, letterSpacing: 1.8, color: theme.quietText, paddingHorizontal: spacing.screenH, paddingTop: 6, paddingBottom: 8 },
     stepsList: { paddingHorizontal: spacing.screenH },
-    stepRow: { flexDirection: "row", gap: 14, marginBottom: 16, alignItems: "flex-start" },
-    stepCircle: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 },
+    stepRow: { flexDirection: "row", gap: 14, paddingVertical: 12, alignItems: "flex-start", borderBottomWidth: 1, borderColor: theme.rule },
+    stepCircle: { width: 26, alignItems: "flex-start", flexShrink: 0, marginTop: 1 },
     stepCircleDone:    { backgroundColor: theme.success },
-    stepCircleCurrent: { backgroundColor: "transparent", borderWidth: 1.5, borderColor: theme.mutedText },
+    stepCircleCurrent: { borderWidth: 0 },
     stepCircleUpcoming:{ backgroundColor: "transparent", borderWidth: 1.5, borderColor: theme.border },
     stepCheckText: { fontSize: 11, fontWeight: "700", color: theme.onPrimary, textAlign: "center", lineHeight: 26 },
-    stepNumText: { fontSize: 11, fontWeight: "500", textAlign: "center", lineHeight: 22 },
+    stepNumText: { fontFamily: fonts.mono.bold, fontSize: 12, textAlign: "left", lineHeight: 20 },
     stepNumCurrent: { color: theme.text },
     stepNumUpcoming: { color: theme.quietText },
-    stepText: { flex: 1, fontSize: 13, lineHeight: 20 },
+    stepText: { flex: 1, fontSize: 14.5, lineHeight: 21 },
     stepTextCurrent: { color: theme.text },
     stepTextMuted: { color: theme.mutedText },
 
@@ -507,17 +487,7 @@ function createStyles(theme: ThemeTokens) {
     ctaText: { fontSize: 16, fontWeight: "600", color: theme.background, letterSpacing: -0.2 },
 
     // Mark-as-cancelled (secondary path)
-    markCancelledBtn: {
-      marginHorizontal: 16,
-      marginTop: 4,
-      marginBottom: 8,
-      minHeight: 44,
-      borderRadius: 14,
-      paddingVertical: 13,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: theme.surfaceAlt
-    },
+    markCancelledBtn: { marginHorizontal: spacing.screenH, marginTop: 10, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: theme.ruleStrong, alignItems: "center" },
     markCancelledText: { fontSize: 15, fontWeight: "600", color: theme.text, textAlign: "center" },
 
     // Confirm card
