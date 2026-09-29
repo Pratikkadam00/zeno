@@ -564,7 +564,7 @@ export default function AddSubscriptionScreen() {
             onPress={handleSave}
             style={[styles.saveButton, { backgroundColor: formValid ? theme.buttonPrimaryBg : withAlpha(theme.buttonPrimaryBg, 0.4) }]}
           >
-            <Text style={styles.saveButtonText}>Add Subscription</Text>
+            <Text style={styles.saveButtonText}>Write it in</Text>
           </Pressable>
         </View>
       ) : null}
@@ -698,13 +698,7 @@ function createStyles(theme: ThemeTokens) {
     selectedCategory: { ...typography.caption1, color: theme.mutedText, marginTop: 2, textTransform: "capitalize" },
     changeLink: { ...typography.footnote, color: theme.primary },
 
-    formCard: {
-      marginHorizontal: spacing.screenH,
-      marginBottom: 8,
-      backgroundColor: theme.card,
-      borderRadius: 16,
-      overflow: "hidden"
-    },
+    formCard: { marginHorizontal: spacing.screenH, marginBottom: 8, borderBottomWidth: 1, borderColor: theme.rule },
     formCardLast: { marginBottom: 32 },
 
     formRow: {
@@ -716,7 +710,7 @@ function createStyles(theme: ThemeTokens) {
       minHeight: spacing.rowH + 4,
       gap: 12
     },
-    formLabel: { ...typography.subheadline, color: theme.text },
+    formLabel: { fontFamily: fonts.mono.bold, fontSize: 10.5, letterSpacing: 1.8, textTransform: "uppercase", color: theme.quietText },
     formSub: { ...typography.caption1, color: theme.mutedText, marginTop: 2 },
 
     nameInput: { ...typography.subheadline, color: theme.text, flex: 1, paddingVertical: 0 },
@@ -734,16 +728,16 @@ function createStyles(theme: ThemeTokens) {
     renewalDate: { ...typography.subheadline, color: theme.primary },
 
     // Editable renewal date (CHANGE 5)
-    renewBlock: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16 },
+    renewBlock: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderColor: theme.ruleStrong, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10 },
     renewStepperRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10, backgroundColor: theme.surfaceAlt, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
     renewDateText: { ...typography.subheadline, fontFamily: fonts.sans.semibold, color: theme.text },
     renewSubText: { fontSize: 12, fontFamily: fonts.sans.regular, color: theme.mutedText, marginTop: 1 },
-    stepperBtn: { width: 34, height: 34, borderRadius: 8, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.card, alignItems: "center", justifyContent: "center" },
-    presetRow: { flexDirection: "row", gap: 6, marginTop: 8 },
-    presetChip: { flex: 1, height: 30, borderRadius: 999, borderWidth: 1, borderColor: theme.border, alignItems: "center", justifyContent: "center" },
-    presetChipActive: { borderColor: "transparent", backgroundColor: theme.text },
-    presetChipText: { fontSize: 11.5, fontFamily: fonts.sans.semibold, color: theme.mutedText },
-    presetChipTextActive: { color: theme.background },
+    stepperBtn: { width: 36, height: 36, borderRadius: 8, borderWidth: 1, borderColor: theme.ruleStrong, backgroundColor: theme.card, alignItems: "center", justifyContent: "center" },
+    presetRow: { flexDirection: "row", gap: 8, marginTop: 10 },
+    presetChip: { flex: 1, height: 30, alignItems: "center", justifyContent: "center", borderBottomWidth: 2, borderBottomColor: theme.rule },
+    presetChipActive: { borderBottomColor: theme.primary },
+    presetChipText: { fontFamily: fonts.mono.bold, fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase", color: theme.quietText },
+    presetChipTextActive: { color: theme.text },
 
     segmented: {
       flexDirection: "row",
