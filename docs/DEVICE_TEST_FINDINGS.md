@@ -105,8 +105,14 @@ Dark mode verified across dashboard, settings, coach, cancel, detail, add.
   sub-label `N THIS WEEK` counts the next 7 days, its value is the rest of the
   calendar month. Seen as `2 THIS WEEK · $0.00` once Netflix went pending.
   Needs a product call on which window the line means.
-- Midjourney's "Open cancellation page" renders disabled (grey) — catalog entry
-  likely lacks a cancel URL. Adobe/Disney/Netflix have one.
+- ~~Midjourney's "Open cancellation page" renders disabled — likely lacks a
+  cancel URL~~ **CORRECTED (fifth pass): the "likely" was wrong.** Midjourney's
+  catalog row carries `https://www.midjourney.com/account`; `parseRequestedRows`
+  skips any row without a URL and `parseExpansionRows` synthesizes one, so no
+  service can lack one; and the button has no URL-dependent disabled state
+  (`ctaButton` is a plain `theme.text` fill). The grey frame was transient and
+  is not reproducible from code. Lesson kept: "likely" does not belong in this
+  file.
 - The post-visit "Did you cancel it?" state does not survive a re-mount.
 - "Yes, I cancelled" is green: defensible (money-positive act); confirm vs DS.
 - FAB "+" is the Discover tab's button by design (DiscoverTabButton). A plus
@@ -205,3 +211,27 @@ descendant.
 ## Still not tested
 iOS (no simulator run, ever) · physical hardware · TalkBack gesture-by-gesture
 narration (the tree is verified; spoken output is not observable via adb).
+
+---
+
+# Fifth pass — 2026-09-29, CI and the release gate (read the workflows, not the badge)
+
+- **The 22 RN component tests never ran in CI.** `npm test` is `vitest run`,
+  which excludes `*.rntest.tsx` by design, and neither workflow had a jest step.
+  Fixed: root `test:rn` script + a step in ci.yml and release.yml.
+- **The release workflow could not pass.** Its blocking `npm audit
+  --audit-level=high` exits 1 today (verified) on the two `image-size`
+  advisories reachable only through Metro at build time, whose fix is a
+  semver-major Expo 56 pins against. Replaced with `scripts/audit-gate.mjs` +
+  `.audit-allowlist.json`: same high/critical bar, but each accepted advisory
+  carries a reason and an **expiry** (2026-12-31); an unlisted advisory or an
+  expired acceptance fails. Proven on the real tree in both directions; 8 unit
+  tests on the pure `evaluate()`.
+- **Coverage ratchet (P5.5) live.** Scoped to the logic vitest executes (RN
+  screens/components → jest; Next pages/components → web build). Floors are the
+  measured level — 62.81 / 55.77 / 62.93 / 63.43 — with `autoUpdate`, so they
+  only rise. `npm run test:coverage` is a CI step. **Consequence to know:** the
+  floor is exact, so a change that adds untested logic fails CI until tests
+  land. That is the intended discipline; the escape hatch is writing the test.
+- Mistake caught and fixed: my first workflow edit landed double-spaced (YAML
+  tolerated it, so CI still ran); collapsed and re-verified line by line.

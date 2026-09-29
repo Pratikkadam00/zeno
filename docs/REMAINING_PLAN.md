@@ -62,7 +62,9 @@ One false positive traced to library source and cleared. Details in
 `docs/DEVICE_TEST_FINDINGS.md`. **iOS remains untested.**
 
 ### B2. Remaining M7 items
-- Coverage ratchet (P5.5) — set a CI floor now that suites are stable.
+- ~~Coverage ratchet (P5.5)~~ DONE 2026-09-29: floors = measured level with
+  `autoUpdate`, enforced by the `Coverage floor` CI step. Also fixed: RN suite
+  now runs in CI; release audit gate uses an expiring allowlist.
 - Adversarial review of the M3-M6 diff.
 - MASVS spot re-check (`/security-review` on the track diff).
 - Store screenshots from `Zeno Design System/app_store/`.

@@ -37,13 +37,9 @@ jobs:
         run: npm test
 
       # RN component tests live in an isolated jest project (apps/mobile,
-
       # `*.rntest.tsx`) because react-native can't load under vitest's node
-
       # environment. `npm test` does not reach them; this step does.
-
       - name: RN component tests (jest)
-
         run: npm run test:rn
 
       - name: Build web

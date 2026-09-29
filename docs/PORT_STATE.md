@@ -12,8 +12,8 @@ Companion to `docs/DELIVERY_PLAN.md` (the plan). This file is the *working state
   mode seen on device, and the rewrite bucket (Settings, Add, Discover hub,
   Cancel guide, Login, last icon tiles) is ported and device-verified (see
   docs/DEVICE_TEST_FINDINGS.md). Reduced-motion and a11y passes DONE on device.
-  Remaining M7: coverage ratchet, MASVS re-check, store assets, EAS build
-  (owner quota). Never run on iOS.**
+  Coverage ratchet live in CI (P5.5). Remaining M7: MASVS re-check, store
+  assets, EAS build (owner quota). Never run on iOS.**
 - Ship blockers unchanged and all OWNER: A1 domain (zeno.app in 19 files incl.
   legal links — fails store review), A3 keys (also unblocks assembleRelease),
   A7 export filing.
