@@ -688,7 +688,7 @@ function createStyles(theme: ThemeTokens) {
     urgencyTextWrap: { flex: 1 },
     urgencyTitle: { ...typography.subheadline, color: theme.text },
     urgencySub: { ...typography.caption1, color: theme.mutedText, marginTop: 2 },
-    urgencyCancelBtn: { borderWidth: 1.5, borderColor: theme.stampAlert, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7 },
+    urgencyCancelBtn: { backgroundColor: theme.card, borderWidth: 1.5, borderColor: theme.stampAlert, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7 },
     urgencyCancelText: { fontSize: 12, fontWeight: "700", color: theme.stampAlert },
 
     // Verification lifecycle banner (CHANGE 4)
@@ -722,12 +722,12 @@ function createStyles(theme: ThemeTokens) {
 
     // Bottom bar
     bottomBar: {
-      position: "absolute", bottom: 0, left: 0, right: 0,
+      position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 10, elevation: 8,
       backgroundColor: theme.background, paddingHorizontal: 16,
       paddingBottom: 40, paddingTop: 12,
       borderTopWidth: 0.5, borderTopColor: theme.border
     },
-    dangerBtn: { borderWidth: 1.5, borderColor: theme.stampAlert, borderRadius: 12, paddingVertical: 16, alignItems: "center" },
+    dangerBtn: { backgroundColor: theme.background, borderWidth: 1.5, borderColor: theme.stampAlert, borderRadius: 12, paddingVertical: 16, alignItems: "center" },
     dangerBtnText: { fontSize: 17, fontWeight: "700", color: theme.stampAlert },
     cancelledBtn: { backgroundColor: theme.surfaceAlt, borderRadius: 14, paddingVertical: 17, alignItems: "center" },
     cancelledBtnText: { fontSize: 17, fontWeight: "500", color: theme.mutedText },
