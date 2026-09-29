@@ -164,6 +164,14 @@ export default function SubscriptionCancelScreen() {
     // but setCancelSuccess() never ran, so the user tapped, saw nothing, and the
     // cancellation silently went through. Verified on device. Cleanup is
     // best-effort: its failure must never hide the outcome from the user.
+    //
+    // The success card is rendered inside `showConfirm ? ... : null`, and until
+    // now this direct path never set showConfirm - it only becomes true after
+    // the user opens the cancellation page. So from "I've already cancelled",
+    // setCancelSuccess(true) wrote state into an UNMOUNTED branch: the button
+    // stayed, nothing rendered, and the cancellation went through silently.
+    // Verified on device across three taps and two builds. Mount the branch.
+    setShowConfirm(true);
     setCancelSuccess(true);
     void cancelNotificationsForSubscription(sub.id).catch(() => {
       // Reminders for a pending-verification sub are harmless if they survive;
