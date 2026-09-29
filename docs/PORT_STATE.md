@@ -9,9 +9,10 @@ Companion to `docs/DELIVERY_PLAN.md` (the plan). This file is the *working state
 - **M1 (foundation) · M2 (core kit) · M3 (hot screens) · M4 (flows): DONE.**
 - **M5 (Coach + Family) · M6 (7 new screens, legacy kit retired): DONE.**
 - **M7 (verification): device drive DONE — 27/27 screens + 4 flows + dark
-  mode seen on device (see docs/DEVICE_TEST_FINDINGS.md). Remaining M7:
-  reduced-motion/a11y passes, coverage ratchet, MASVS re-check, store assets,
-  EAS build (owner quota).**
+  mode seen on device, and the rewrite bucket (Settings, Add, Discover hub,
+  Cancel guide, Login, last icon tiles) is ported and device-verified (see
+  docs/DEVICE_TEST_FINDINGS.md). Remaining M7: reduced-motion/a11y passes,
+  coverage ratchet, MASVS re-check, store assets, EAS build (owner quota).**
 - Ship blockers unchanged and all OWNER: A1 domain (zeno.app in 19 files incl.
   legal links — fails store review), A3 keys (also unblocks assembleRelease),
   A7 export filing.

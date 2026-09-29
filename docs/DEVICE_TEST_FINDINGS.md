@@ -105,9 +105,10 @@ Dark mode verified across dashboard, settings, coach, cancel, detail, add.
 - "Yes, I cancelled" is green: defensible (money-positive act); confirm vs DS.
 - FAB "+" is the Discover tab's button by design (DiscoverTabButton). A plus
   that doesn't add is a UX question for the DS TabBar spec, not a defect.
-- Still in the full-rewrite bucket (old chrome, no defects): Settings, Discover
-  hub, Add form (pill quick-picks, segmented billing), Login, Cancel guide
-  (circled steps, tinted cards), tinted icon tiles on Insights/Profile/Notifs.
+- ~~Still in the full-rewrite bucket~~ **DONE 2026-09-29 (third pass):** Settings,
+  Discover hub, Add form, Login, Cancel guide, and the tinted icon tiles on
+  Insights / Profile / Notifications are all ported and verified on device.
+  See the third-pass section below.
 
 ## Method notes that held
 Capture BEFORE every tap; size-guard taps against the last verified capture
@@ -115,3 +116,42 @@ Capture BEFORE every tap; size-guard taps against the last verified capture
 `$null -lt 0.01` is TRUE in PowerShell, so it "passed" while broken); deep-link
 between screens, never BACK from a root tab; re-verify every fix on a rebuilt
 APK — two "fixes" this pass did not work until re-tested.
+
+---
+
+# Third pass — 2026-09-29, the rewrite bucket (7 commits, each verified on device)
+
+Every screen the second pass flagged as "old chrome, no defects" is now in the
+ledger language. Method per screen: read the DS mockup's SLOP AUDIT, port
+structure + copy, preserve every handler and a11y label, replace styles by key
+with a single-match / balanced-brace assertion, gate, rebuild, verify on device.
+
+| Screen | Slop-audit move | Verified |
+|---|---|---|
+| Settings | icon-tile rows → ink glyph rows; privacy as pull-quote; SectionHeads | light + dark |
+| Add form | pill quick-picks → text ticks; long card → sections on paper; rule-framed stepper | dark |
+| Discover hub | cards → ruled rows; tinted tiles → rule squares; "MOST COMPLETE" → "RECOMMENDED"; honest intro line | dark |
+| Cancel guide | tinted difficulty card → ink block; circled steps → mono 01/02 on ruled rows; savings as ledger line | dark |
+| Login | consent gate moved to TOP ("sign the line"); rule-framed input; outlined providers; alert-bar errors | light |
+| Notifications / Profile / Insights | last tinted icon tiles → rule squares with ink glyphs; Profile banner → pull-quote | light |
+
+## Mistakes caught by re-verifying on device (all fixed before the next commit)
+- Add: I rule-framed `renewBlock` (the section column) instead of
+  `renewStepperRow` (the date box) — inferred from a style NAME, not the markup.
+  Label wrapped, stepper pushed off-screen. Fixed by reading the JSX.
+- Cancel guide: the tier tint was applied INLINE per tier, overriding the style
+  I replaced; and `stepCircleUpcoming` never matched my key grep because those
+  keys are column-aligned (`key:    {`). The style helper now matches `:\s*{`.
+- Login: an assertion stopped me painting Apple's button black — the brand
+  constant is `#FFFFFF`. Apple's HIG allows white-with-outline; that is what
+  shipped. Google is outlined (permitted).
+
+## Deliberately NOT done (need product/logic decisions, not style)
+- Cancel guide: the DS's three difficulty tick bars, and its primary/secondary
+  role swap ("I cancelled it" primary, "Open …'s page" secondary).
+- Login: the DS's "Or keep it on this phone" local-only path — a new entry
+  point into the auth funnel; today local-only lives on onboarding beat 3.
+- Add: the hand-rolled billing control already has the Segmented shape; swapping
+  to the kit component touches handler wiring for no visual gain.
+- Discover: the CSV how-to expander and Gmail bullets stay inline; the DS moves
+  them into per-method sub-stages (a stage restructure, not chrome).

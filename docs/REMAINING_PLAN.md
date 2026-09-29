@@ -50,6 +50,11 @@ Both passed every test.
 Per screen: correct ledger rendering, dark mode, reduced motion, a11y labels,
 and that each flow completes. See "Device-testing rules" below before starting.
 
+### B1a. Rewrite bucket — DONE 2026-09-29
+Settings, Add form, Discover hub, Cancel guide, Login, and the last tinted icon
+tiles are ported to the ledger and verified on device (release-APK loop).
+Details and the deliberately-deferred items: `docs/DEVICE_TEST_FINDINGS.md`.
+
 ### B2. Remaining M7 items
 - Coverage ratchet (P5.5) — set a CI floor now that suites are stable.
 - Adversarial review of the M3-M6 diff.
