@@ -448,7 +448,7 @@ export default function DiscoverScreen() {
         {/* Page header */}
         <View style={styles.pageHeaderWrap}>
           <Text style={styles.pageTitle}>Discover</Text>
-          <Text style={styles.pageSubtitleSmall}>Find every subscription you pay for.</Text>
+          <Text style={styles.pageSubtitleSmall}>Three ways to find what you’re paying — none of them wants your bank login. Zeno scans only when you tap scan.</Text>
         </View>
 
         {/* Error */}
@@ -463,13 +463,13 @@ export default function DiscoverScreen() {
           {/* Icon + title */}
           <View style={styles.cardTop}>
             <View style={[styles.cardIconWrap, styles.cardIconWrapBank]} accessible={false} importantForAccessibility="no-hide-descendants">
-              <FileSpreadsheet size={24} color={theme.success} strokeWidth={2} />
+              <FileSpreadsheet size={24} color={theme.mutedText} strokeWidth={2} />
             </View>
             <View style={styles.cardTitleWrap}>
               <View style={styles.titleWithBadge}>
                 <Text style={styles.cardTitle}>Import bank statement</Text>
                 <View style={styles.recommendedBadge}>
-                  <Text style={styles.recommendedBadgeText}>MOST COMPLETE</Text>
+                  <Text style={styles.recommendedBadgeText}>RECOMMENDED</Text>
                 </View>
               </View>
               <Text style={styles.cardSub}>Catches every recurring charge — even App Store & annual plans</Text>
@@ -530,7 +530,7 @@ export default function DiscoverScreen() {
           {/* Icon + title */}
           <View style={styles.cardTop}>
             <View style={[styles.cardIconWrap, styles.cardIconWrapMail]} accessible={false} importantForAccessibility="no-hide-descendants">
-              <MailSearch size={24} color={theme.primary} strokeWidth={2} />
+              <MailSearch size={24} color={theme.mutedText} strokeWidth={2} />
             </View>
             <View style={styles.cardTitleWrap}>
               <Text style={styles.cardTitle}>Scan Gmail receipts</Text>
@@ -771,18 +771,18 @@ function createStyles(theme: ThemeTokens) {
     errorText:  { ...typography.footnote, color: theme.danger },
 
     // Discover cards
-    discoverCard: { marginHorizontal: 16, marginTop: 16, backgroundColor: theme.card, borderRadius: 20, overflow: "hidden" },
+    discoverCard: { marginHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderColor: theme.rule },
     cardTop:      { flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 },
-    cardIconWrap: { width: 48, height: 48, borderRadius: 14, borderWidth: 0.5, alignItems: "center", justifyContent: "center" },
-    cardIconWrapMail: { backgroundColor: theme.primarySurface, borderColor: withAlpha(theme.primary, 0.2) },
-    cardIconWrapBank: { backgroundColor: theme.successSurface, borderColor: withAlpha(theme.success, 0.2) },
+    cardIconWrap: { width: 42, height: 42, borderRadius: 8, borderWidth: 1, borderColor: theme.ruleStrong, alignItems: "center", justifyContent: "center" },
+    cardIconWrapMail: { backgroundColor: "transparent" },
+    cardIconWrapBank: { backgroundColor: "transparent" },
     cardIconText: { fontSize: 24 },
     cardTitleWrap:{ flex: 1 },
     cardTitle:    { fontSize: 17, fontWeight: "600", color: theme.text, letterSpacing: -0.3 },
     cardSub:      { fontSize: 13, color: theme.mutedText, marginTop: 3 },
     titleWithBadge: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
-    recommendedBadge: { backgroundColor: theme.successSurface, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-    recommendedBadgeText: { fontSize: 9, fontWeight: "700", letterSpacing: 0.4, color: theme.success },
+    recommendedBadge: { paddingHorizontal: 0, paddingVertical: 0 },
+    recommendedBadgeText: { fontFamily: fonts.mono.bold, fontSize: 8.5, letterSpacing: 1.6, color: theme.primary },
     addInboxBtn:  { paddingHorizontal: 20, paddingVertical: 10 },
     addInboxText: { fontSize: 14, fontWeight: "600", color: theme.primary },
 
@@ -836,7 +836,7 @@ function createStyles(theme: ThemeTokens) {
 
     // Empty state
     emptyState:    { paddingTop: 60, alignItems: "center", paddingHorizontal: 32 },
-    emptyIconWrap: { width: 80, height: 80, borderRadius: 24, backgroundColor: theme.card, alignItems: "center", justifyContent: "center", marginBottom: 24 },
+    emptyIconWrap: { alignItems: "center", marginBottom: 8 },
     emptyIconText: { fontSize: 36 },
     emptyTitle:    { fontSize: 20, fontWeight: "600", color: theme.text, letterSpacing: -0.5, marginBottom: 8, textAlign: "center" },
     emptyBody:     { fontSize: 15, color: theme.mutedText, textAlign: "center", lineHeight: 22 },
