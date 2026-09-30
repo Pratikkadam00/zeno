@@ -118,8 +118,8 @@ rule `generic-api-key`. Each was read at its commit, not judged from the rule na
 
 | Finding | What the line really is | Verdict |
 |---|---|---|
-| `apps/api/src/storage/pg.test.ts:5` @ `9bd56ae` | `TEST_KEY = "0011…ccddeeff"` ×2 — a sequential-hex throwaway AES key for the encryption round-trip test | False positive |
-| `apps/mobile/src/data/subscription-store.tsx:73` @ `788b30a` | `quietHoursMetaKey = "notification.quietHours.v1"` — the name of a local SQLite row | False positive |
+| `apps/api/src/storage/pg.test.ts:5` @ `9bd56ae` | the constant `TEST_KEY`, whose value is the sequential hex 0011…ccddeeff repeated twice: a throwaway AES key for the encryption round-trip test | False positive |
+| `apps/mobile/src/data/subscription-store.tsx:73` @ `788b30a` | the constant `quietHoursMetaKey`, whose value is the text notification.quietHours.v1: the name of a local SQLite row | False positive |
 
 Both are allowlisted in the new `.gitleaksignore` by **exact fingerprint**
 (commit:path:rule:line) with the reason, so any other line — or a new secret on

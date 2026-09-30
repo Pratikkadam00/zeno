@@ -13,3 +13,9 @@
 # "notification.quietHours.v1", the NAME of a local SQLite app-meta row.
 # Flagged only because the variable name ends in "Key" (entropy 3.80).
 788b30a1386e8850997e74b0936e0ae72c12c55b:apps/mobile/src/data/subscription-store.tsx:generic-api-key:73
+
+# docs/HARDENING_LOG.md:122 @ c8cdba2 — the hardening log QUOTED the line above
+# (a variable name ending in "Key" assigned the SQLite row name) while
+# documenting it. Already pushed, so history keeps it; the log was reworded in
+# the next commit so the pattern no longer appears in docs.
+c8cdba27e2e3d1fb6bdc3c2df935c73d7e8ae530:docs/HARDENING_LOG.md:generic-api-key:122
