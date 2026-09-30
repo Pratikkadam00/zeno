@@ -25,7 +25,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P1.3 `apps/mobile/src/discovery/*` (emailScanner 48 %, csvParser, helpers) + shared receipts — untrusted email/CSV input; **fixes F12, F17, F20**
   - [x] P1.4 `apps/mobile/src/auth/authStore.ts` (51 %) — token lifecycle; **fixes F10, F23, F24** (with the API side); F11 stays open (P3)
   - [x] P1.5 `apps/mobile/src/storage/database.ts` (59 %) + `subscription-repository.ts` (0 %) — on a REAL SQLite engine
-  - [ ] P1.6 `apps/mobile/src/billing/revenueCat.ts` (55 %)
+  - [x] P1.6 `apps/mobile/src/billing/revenueCat.ts` (55 %)
   - [ ] P1.7 `packages/service-catalog/src/services.ts` (0 %) — catalog invariants for all 509 entries
   - [ ] P1.8 React providers under jest with their own coverage floor: `subscription-store.tsx` (601 lines), `budget-store.tsx`, `theme-provider.tsx`, `LockOverlay.tsx`
   - [ ] P1.9 remaining 0 % / low files (theme, notifications, widgets, api/config, format, subscription-ui, open-banking, analytics-flag, utils, next.config, app.config)
@@ -607,3 +607,31 @@ F16 (P3).
 branches or functions** (were 59 % and 0 %). Tier 1 lines 74.82 % → **75.28 %**.
 
 Gates: typecheck 0 · lint 0 · vitest 825/825 (76 files) · RN 22/22 · semgrep 0.
+
+### P1.6 — Billing (RevenueCat) — 2026-09-30
+
+Plan mapping (`getPlanFromCustomerInfo`) was already well tested; the untested part
+was the SDK lifecycle, the failure modes, and the client/server trust decision.
+
+**Tests (+23, `revenueCat.flows.test.ts`, a fresh module per test because
+`initRevenueCat` caches its state):** never configured on web or on a platform
+without a key (incl. macOS); configured ONCE under concurrent and repeated calls; the
+per-platform key, with env winning over app config; no double configure when the native
+SDK already is; a throwing `isConfigured` treated as "not configured"; identify with the
+Zeno account id (what the server verifies against), skipping an empty id and an
+unconfigured SDK, swallowing failures; reset only when configured; offerings: empty
+when unconfigured, package lookup by product id with the offering's own
+monthly/annual/lifetime as fallbacks, `zeno_pro` / current / `zeno_family` lookups;
+price fallback; family purchase by package (+ funnel event); annual pro by store product
+when no package exists; the default period; a missing store product is a clear error
+with NO funnel event; the setup hint when unconfigured; restore.
+
+**F15, the client/server rule, now pinned:** a client that CLAIMS pro is overridden by
+the server's "free"; the client view is used only when server billing is unconfigured,
+returns nothing, or is unreachable. Whether paid SERVER features check the plan
+server-side is still P2's authorization matrix.
+
+**Coverage:** `revenueCat.ts` **0 uncovered lines, branches, functions** (was 55 %).
+Tier 1 lines 75.28 % → **76.43 %**.
+
+Gates: typecheck 0 · lint 0 · vitest 848/848 (77 files) · semgrep 0.
