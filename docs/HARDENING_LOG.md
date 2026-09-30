@@ -21,7 +21,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P0 gate: all standing gates green locally; new CI jobs green on GitHub
 - [~] **P1 — Tier 1 logic to 100 % coverage** (order = risk; each sub closes the findings named)
   - [x] P1.1 `apps/api/src/server.ts` (0 %) — boot, env matrix, logger; **fixes F9** (tokens in request logs)
-  - [ ] P1.2 `apps/mobile/src/security/*` — secure-store, lock-store (48 %), app-lock; **fixes F13** (Gmail SecureStore key)
+  - [x] P1.2 `apps/mobile/src/security/*` — secure-store, lock-store (48 %), app-lock; **fixes F13** (Gmail SecureStore key)
   - [ ] P1.3 `apps/mobile/src/discovery/emailScanner.ts` (48 %) — untrusted email input; **fixes F12**
   - [ ] P1.4 `apps/mobile/src/auth/authStore.ts` (51 %) — token lifecycle; **verdict on F10/F11** (with the API side)
   - [ ] P1.5 `apps/mobile/src/storage/database.ts` (59 %) + `subscription-repository.ts` (0 %)
@@ -56,10 +56,13 @@ that closes it.
 | F7 | **`main` is not protected** (GitHub API: `protected: false`, required checks `[]`): force-push and branch deletion are allowed, and nothing requires checks before code lands. | High (integrity of the deploy branch) | owner: the P0.6 steps below | P0.6 |
 | F8 | GitHub's own free protections for public repos are not verifiable without owner auth: secret-scanning **push protection** (rejects a push that contains a secret, server-side), Dependabot **alerts** and **security updates**. | Medium | owner: enable in Settings → Code security | P0.6 |
 | F9 | **FIXED in P1.1.** ~~Magic-link login tokens are written to production logs.~~ Fastify's default request log includes `req.url` with the query string, and `GET /api/v1/auth/verify?token=…` carries the raw token. Verified by a probe with the exact production logger config: the log line held `"url":"/api/v1/auth/verify?token=PROBE-SECRET-MAGIC-TOKEN-123"`. Single-use limits it, but a verify that fails before consuming the token (e.g. 429) leaves a working login token in Render's logs. | High (credential in logs) | me | P1 (`server.ts`) |
+| F14 | The PIN lockout window is measured with the device clock, so someone holding the unlocked phone can move the clock forward past the 15-minute lockout (each cycle still costs 10 attempts and a trip to Settings). No trusted time source on-device; rollback detection is possible. | Low | me | P3 (MASVS) |
+| F15 | `checkStatus` trusts the server's plan but falls back to the client's RevenueCat view when the server is unreachable. Client-only features are bypassable by any modified client regardless; what matters is that PAID SERVER features (coach, family, sync) check entitlement server-side. | Medium (to confirm) | me | P2 (authz matrix) |
+| F16 | Local DB encryption is configured (`useSQLCipher: true` in app.config; `expo.sqlite.useSQLCipher=true` in the generated gradle.properties), but never PROVEN at runtime: needs `PRAGMA cipher_version` on a device, or a check that the file header of `zeno.db` is not the plaintext "SQLite format 3". | Medium (unverified claim) | me | P3 (on device) |
 | F10 | Google sign-in: a nonce is sent to Google but NOT to our API (`/auth/google` gets only the token), so the server cannot bind the ID token to this sign-in (replay of a stolen token). Apple sign-in requests no nonce at all. Needs the server side read in full before a verdict. | Medium (to confirm) | me | P1 (`authStore.ts`) + P2 |
 | F11 | Google sign-in uses the implicit ID-token flow returned to the custom scheme `zeno://auth/google`. RFC 8252 recommends authorization code + PKCE for native apps; another Android app can register the same scheme. | Medium (to confirm) | me | P1/P3 |
 | F12 | Gmail: disconnect revokes with the token in the URL query (`…/revoke?token=`); the fallback account label embeds the first 8 characters of the access token; known billing senders are trusted from the spoofable `From` header alone (no DKIM/SPF check). | Low–Medium | me | P1 (`emailScanner.ts`) |
-| F13 | **Gmail connect fails on every real device.** Tokens are stored under `zeno.oauth.gmail.acct.<address>`, but expo-secure-store 56.0.4 rejects keys outside `/^[\w.-]+$/` (source: `ensureValidKey` in `build/SecureStore.js`, applied to get/set/delete), and an address contains `@`. The existing tests pass only because their fake SecureStore does not enforce that rule. | High (feature broken on device) | me | P1.2 |
+| F13 | **FIXED in P1.2.** ~~Gmail connect fails on every real device.~~ Tokens are stored under `zeno.oauth.gmail.acct.<address>`, but expo-secure-store 56.0.4 rejects keys outside `/^[\w.-]+$/` (source: `ensureValidKey` in `build/SecureStore.js`, applied to get/set/delete), and an address contains `@`. The existing tests pass only because their fake SecureStore does not enforce that rule. | High (feature broken on device) | me | P1.2 |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -411,3 +414,51 @@ branches, functions, statements. Tier 1 overall: lines 65.11 % → 66.28 %.
 
 Gates: typecheck 0 (forced) · lint 0 · vitest 631/631 (68 files) · semgrep 0 over
 275 files.
+
+### P1.2 — Mobile security modules + F13 — 2026-09-30
+
+Measured gaps first (per-line JSON coverage): `secure-store.ts` native path, legacy
+theme mappings, account removal, index parsing; `lock-store.ts` lockNow, enableWithPin,
+every failure/lockout path, biometrics; `app-lock.ts` 4 branches.
+
+**F13, fixed:** SecureStore rejects any key outside `/^[\w.-]+$/` in get/set/delete
+(expo-secure-store 56.0.4 `build/SecureStore.js`, `ensureValidKey`), and the Gmail
+token key embedded the raw address (`@`, often `+`), so connecting Gmail threw on every
+phone. The old tests passed because they all mock `Platform.OS = "web"` with a lenient
+fake. New `secureStoreKeySegment`: `[A-Za-z0-9.-]` pass through; every other UTF-16
+unit, including `_` itself, becomes `_` + 4 hex, which is injective and always valid.
+No migration: no key of the old form could ever have been written on a device.
+
+**Other changes:**
+- `app-lock.ts`: the four-field check now yields a typed tuple, which removes three
+  unreachable `?? ""` fallbacks instead of ignoring them.
+- `secure-store.ts`: `deleteItem` needs no sensitivity flag. On web it removes the key
+  from both stores. The old non-sensitive delete branch had no caller.
+
+**Tests (+27):**
+- New `secure-store.native.test.ts` (12). The fake enforces the real library's key
+  rule, copied from its source, and a test proves the fake rejects exactly what the
+  library rejects. Covers: key encoding (2,000 generated inputs, always valid, zero
+  collisions, plus hand-picked near-collisions); the F13 regression on iOS and Android
+  (connect, list, read, remove, re-save, with `+` and mixed case); device-only storage
+  options and no biometric prompt; corrupt, non-array and mixed indexes; the database
+  key created once; PIN hash and lock state round trips; theme mapping on native.
+- Web suite (+2): no `window` at all; delete clears both stores.
+- `app-lock` (+3): every malformed v3 field; the wrong field count; a wrong PIN against
+  legacy v1 (not upgraded).
+- `lock-store` (+10): lockNow; enableWithPin; wrong PIN with remaining count and
+  singular; the 10th failure starts a persisted 15-minute lockout; the correct PIN is
+  refused, unchecked, during a lockout; after expiry a wrong PIN re-locks at once and
+  the right PIN clears everything; hydrate restores a lockout; biometrics refused during
+  a lockout (no prompt), failure keeps the lock, success resets.
+
+**Bite check (F13):** with the raw-address key restored, 4 of the new tests fail
+("Invalid key provided to SecureStore"). With the fix, 12/12 pass.
+
+**Coverage:** `app-lock.ts`, `lock-store.ts`, `secure-store.ts`: **0 uncovered lines,
+branches or functions.** Tier 1 lines 66.28 % → 67.22 %.
+
+Gates: typecheck 0 · lint 0 · vitest 658/658 (69 files) · RN 22/22 · semgrep 0.
+New findings recorded while reading: F14 (clock-based lockout), F15 (paid features
+must check the plan on the server), F16 (SQLCipher configured but not proven on a
+device).

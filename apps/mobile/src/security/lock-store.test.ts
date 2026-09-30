@@ -103,3 +103,124 @@ describe("useLockStore.hydrate — re-lock after a sign-out/continue-local-only 
     expect(useLockStore.getState().locked).toBe(false);
   });
 });
+
+describe("useLockStore — attempts, lockout, biometrics, enable/lockNow", () => {
+  const initial = { ready: false, enabled: false, locked: false, biometricAvailable: false, failedAttempts: 0, lockedUntil: null };
+  beforeEach(() => {
+    resetFakeStore();
+    useLockStore.setState(initial);
+    biometricMocks.hasHardwareAsync.mockResolvedValue(false);
+    biometricMocks.isEnrolledAsync.mockResolvedValue(false);
+    biometricMocks.authenticateAsync.mockReset().mockResolvedValue({ success: true });
+  });
+
+  it("lockNow locks only when the lock is enabled", () => {
+    useLockStore.getState().lockNow();
+    expect(useLockStore.getState().locked).toBe(false);
+    useLockStore.setState({ enabled: true });
+    useLockStore.getState().lockNow();
+    expect(useLockStore.getState().locked).toBe(true);
+  });
+
+  it("enableWithPin stores a hash, clears prior lockout state, unlocks, and reads biometric availability", async () => {
+    fakeStore.lockState = JSON.stringify({ locked: true, failedAttempts: 7 });
+    useLockStore.setState({ failedAttempts: 7, lockedUntil: Date.now() + 60_000 });
+    biometricMocks.hasHardwareAsync.mockResolvedValue(true);
+    biometricMocks.isEnrolledAsync.mockResolvedValue(true);
+    await useLockStore.getState().enableWithPin("2468");
+    const s = useLockStore.getState();
+    expect(s).toMatchObject({ enabled: true, locked: false, failedAttempts: 0, lockedUntil: null, biometricAvailable: true });
+    expect(fakeStore.pinHash?.startsWith("v3$")).toBe(true);
+    expect(fakeStore.lockState).toBeNull();
+  });
+
+  it("a wrong PIN counts the attempt, persists it, and says how many are left", async () => {
+    await setPin("1357");
+    await useLockStore.getState().hydrate();
+    const r = await useLockStore.getState().tryPin("0000");
+    expect(r).toEqual({ ok: false, error: "Incorrect PIN. 9 attempts left." });
+    expect(useLockStore.getState().failedAttempts).toBe(1);
+    expect(JSON.parse(fakeStore.lockState!)).toMatchObject({ failedAttempts: 1 });
+    expect(useLockStore.getState().locked).toBe(true);
+  });
+
+  it("uses the singular when exactly one attempt remains", async () => {
+    await setPin("1357");
+    await useLockStore.getState().hydrate();
+    useLockStore.setState({ failedAttempts: 8 });
+    expect(await useLockStore.getState().tryPin("0000")).toEqual({ ok: false, error: "Incorrect PIN. 1 attempt left." });
+  });
+
+  it("the 10th wrong PIN starts a persisted 15-minute lockout", async () => {
+    await setPin("1357");
+    await useLockStore.getState().hydrate();
+    useLockStore.setState({ failedAttempts: 9 });
+    const before = Date.now();
+    const r = await useLockStore.getState().tryPin("0000");
+    expect(r).toEqual({ ok: false, error: "Too many attempts. Try again in 15 minutes." });
+    const until = useLockStore.getState().lockedUntil!;
+    expect(until - before).toBeGreaterThanOrEqual(15 * 60 * 1000 - 1000);
+    expect(until - before).toBeLessThanOrEqual(15 * 60 * 1000 + 1000);
+    expect(JSON.parse(fakeStore.lockState!)).toMatchObject({ locked: true, failedAttempts: 10 });
+  });
+
+  it("during a lockout even the CORRECT PIN is refused, without checking it", async () => {
+    await setPin("1357");
+    await useLockStore.getState().hydrate();
+    useLockStore.setState({ failedAttempts: 10, lockedUntil: Date.now() + 60_000 });
+    const hashBefore = fakeStore.pinHash;
+    expect(await useLockStore.getState().tryPin("1357")).toEqual({ ok: false, error: "Too many attempts. Try again later." });
+    expect(useLockStore.getState().locked).toBe(true);
+    expect(fakeStore.pinHash).toBe(hashBefore);
+  });
+
+  it("after the lockout has elapsed, a wrong PIN re-locks at once (the counter was kept)", async () => {
+    await setPin("1357");
+    await useLockStore.getState().hydrate();
+    useLockStore.setState({ failedAttempts: 10, lockedUntil: Date.now() - 1000 });
+    const r = await useLockStore.getState().tryPin("0000");
+    expect(r.error).toBe("Too many attempts. Try again in 15 minutes.");
+    expect(useLockStore.getState().failedAttempts).toBe(11);
+  });
+
+  it("after the lockout has elapsed, the correct PIN unlocks and clears everything", async () => {
+    await setPin("1357");
+    await useLockStore.getState().hydrate();
+    fakeStore.lockState = JSON.stringify({ locked: true, failedAttempts: 10 });
+    useLockStore.setState({ failedAttempts: 10, lockedUntil: Date.now() - 1000 });
+    expect(await useLockStore.getState().tryPin("1357")).toEqual({ ok: true });
+    expect(useLockStore.getState()).toMatchObject({ locked: false, failedAttempts: 0, lockedUntil: null });
+    expect(fakeStore.lockState).toBeNull();
+  });
+
+  it("hydrate restores a persisted lockout and the biometric capability", async () => {
+    await setPin("1357");
+    const until = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+    fakeStore.lockState = JSON.stringify({ locked: true, failedAttempts: 10, lockedUntil: until });
+    biometricMocks.hasHardwareAsync.mockResolvedValue(true);
+    biometricMocks.isEnrolledAsync.mockResolvedValue(true);
+    await useLockStore.getState().hydrate();
+    expect(useLockStore.getState()).toMatchObject({ ready: true, enabled: true, locked: true, failedAttempts: 10, lockedUntil: Date.parse(until), biometricAvailable: true });
+  });
+
+  it("biometrics: refused during a lockout without prompting; success unlocks; failure keeps the lock", async () => {
+    await setPin("1357");
+    await useLockStore.getState().hydrate();
+
+    useLockStore.setState({ lockedUntil: Date.now() + 60_000 });
+    expect(await useLockStore.getState().tryBiometric()).toBe(false);
+    expect(biometricMocks.authenticateAsync).not.toHaveBeenCalled();
+
+    useLockStore.setState({ lockedUntil: null });
+    biometricMocks.authenticateAsync.mockResolvedValueOnce({ success: false });
+    expect(await useLockStore.getState().tryBiometric()).toBe(false);
+    expect(useLockStore.getState().locked).toBe(true);
+
+    fakeStore.lockState = JSON.stringify({ locked: false, failedAttempts: 3 });
+    useLockStore.setState({ failedAttempts: 3 });
+    biometricMocks.authenticateAsync.mockResolvedValueOnce({ success: true });
+    expect(await useLockStore.getState().tryBiometric()).toBe(true);
+    expect(useLockStore.getState()).toMatchObject({ locked: false, failedAttempts: 0, lockedUntil: null });
+    expect(fakeStore.lockState).toBeNull();
+  });
+});

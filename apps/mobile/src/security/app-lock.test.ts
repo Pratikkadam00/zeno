@@ -171,6 +171,32 @@ describe("setPin / verifyPin / hasPin", () => {
     fakeStore.pinHash = "v2$not-a-number$salt$hash";
     expect(await verifyPin("1234")).toBe(false);
   });
+
+  it("rejects every malformed v3 field (zero/negative iterations, empty salt, empty hash)", async () => {
+    for (const bad of ["v3$0$salt$hash", "v3$-5$salt$hash", "v3$600000$$hash", "v3$600000$salt$", "v3$$$"]) {
+      resetFakeStore();
+      fakeStore.pinHash = bad;
+      expect(await verifyPin("1234"), bad).toBe(false);
+      expect(fakeStore.pinHash, bad).toBe(bad); // never rewritten on a failed check
+    }
+  });
+
+  it("a stored value with the wrong number of fields falls through to the legacy v1 check and fails closed", async () => {
+    for (const bad of ["v3$600000$salt", "v3$600000$salt$hash$extra", "v2$1000$salt"]) {
+      resetFakeStore();
+      fakeStore.pinHash = bad;
+      expect(await verifyPin("1234"), bad).toBe(false);
+      expect(fakeStore.pinHash, bad).toBe(bad);
+    }
+  });
+
+  it("a WRONG PIN against a legacy v1 hash is rejected and the hash is NOT upgraded", async () => {
+    resetFakeStore();
+    const v1 = createHash("sha256").update("zeno.pin.v1.1111").digest("hex");
+    fakeStore.pinHash = v1;
+    expect(await verifyPin("2222")).toBe(false);
+    expect(fakeStore.pinHash).toBe(v1);
+  });
 });
 
 describe("loadLockState", () => {

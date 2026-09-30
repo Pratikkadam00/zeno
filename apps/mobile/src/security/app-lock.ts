@@ -56,13 +56,21 @@ export async function hasPin(): Promise<boolean> {
   return (await loadPinHash()) !== null;
 }
 
-// Parses the common "$"-delimited "<iterations>$<salt>$<hash>" tail shared by
-// both the v2 and v3 stored formats. Returns null on any malformed field
-// rather than throwing.
-function parseSaltedHash(parts: string[]): { iterations: number; salt: string; expected: string } | null {
-  const iterations = Number.parseInt(parts[1] ?? "", 10);
-  const salt = parts[2] ?? "";
-  const expected = parts[3] ?? "";
+type StoredParts = [version: string, iterations: string, salt: string, hash: string];
+
+// The v2/v3 stored format is exactly four "$"-delimited fields. Returning a
+// typed tuple (the cast is sound: the length was just checked) lets the parser
+// below read every field without dead `?? ""` fallbacks.
+function splitStoredHash(stored: string): StoredParts | null {
+  const parts = stored.split("$");
+  return parts.length === 4 ? (parts as StoredParts) : null;
+}
+
+// Parses the common "<iterations>$<salt>$<hash>" tail shared by both the v2 and
+// v3 stored formats. Returns null on any malformed field rather than throwing.
+function parseSaltedHash(parts: StoredParts): { iterations: number; salt: string; expected: string } | null {
+  const [, iterationsRaw, salt, expected] = parts;
+  const iterations = Number.parseInt(iterationsRaw, 10);
   if (!Number.isInteger(iterations) || iterations < 1 || !salt || !expected) {
     return null;
   }
@@ -75,15 +83,15 @@ export async function verifyPin(pin: string): Promise<boolean> {
     return false;
   }
 
-  const parts = stored.split("$");
+  const parts = splitStoredHash(stored);
 
-  if (parts.length === 4 && parts[0] === pinHashVersion) {
+  if (parts && parts[0] === pinHashVersion) {
     const parsed = parseSaltedHash(parts);
     if (!parsed) return false;
     return constantTimeHexEqual(derivePinHash(pin, parsed.salt, parsed.iterations), parsed.expected);
   }
 
-  if (parts.length === 4 && parts[0] === "v2") {
+  if (parts && parts[0] === "v2") {
     // Legacy v2 (iterated SHA-256, pre-PBKDF2): verify against the old
     // derivation, then transparently upgrade straight to the current version.
     const parsed = parseSaltedHash(parts);

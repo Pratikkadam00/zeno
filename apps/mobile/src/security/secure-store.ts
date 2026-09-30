@@ -62,7 +62,7 @@ export async function loadPinHash(): Promise<string | null> {
 }
 
 export async function clearPinHash(): Promise<void> {
-  await deleteItem(keys.pinHash, { sensitive: true });
+  await deleteItem(keys.pinHash);
 }
 
 export async function saveLockStateValue(serialized: string): Promise<void> {
@@ -77,7 +77,7 @@ export async function loadLockStateValue(): Promise<string | null> {
 }
 
 export async function clearLockStateValue(): Promise<void> {
-  await deleteItem(keys.lockState, { sensitive: true });
+  await deleteItem(keys.lockState);
 }
 
 // ── Multi-account Gmail registry ───────────────────────────────────────────
@@ -87,9 +87,31 @@ export async function clearLockStateValue(): Promise<void> {
 const gmailIndexKey = "zeno.oauth.gmail.index.v1";
 const gmailAccountPrefix = "zeno.oauth.gmail.acct.";
 
+// expo-secure-store accepts only keys matching /^[\w.-]+$/ and THROWS on any
+// other key in get/set/delete (build/SecureStore.js, ensureValidKey, 56.0.4).
+// An email address contains "@" (often "+" too), so using it raw in the key
+// made every Gmail connect throw on a real device (finding F13) — the old tests
+// passed only because they ran on the web branch with a lenient fake.
+//
+// Injective encoding: [A-Za-z0-9.-] pass through unchanged; every other UTF-16
+// code unit — including "_", the escape character itself — becomes "_" + four
+// hex digits. Distinct inputs can never share a key, and every output is valid.
+export function secureStoreKeySegment(value: string): string {
+  let out = "";
+  for (let i = 0; i < value.length; i += 1) {
+    const ch = value[i]!;
+    out += /[A-Za-z0-9.-]/.test(ch) ? ch : `_${value.charCodeAt(i).toString(16).padStart(4, "0")}`;
+  }
+  return out;
+}
+
+function gmailAccountKey(address: string): string {
+  return `${gmailAccountPrefix}${secureStoreKeySegment(address.trim().toLowerCase())}`;
+}
+
 export async function saveGmailAccount(address: string, token: string): Promise<void> {
   const normalized = address.trim().toLowerCase();
-  await writeItem(`${gmailAccountPrefix}${normalized}`, token, {
+  await writeItem(gmailAccountKey(normalized), token, {
     sensitive: true,
     requireAuthentication: false,
     keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY
@@ -117,12 +139,12 @@ export async function listGmailAddresses(): Promise<string[]> {
 }
 
 export async function getGmailAccountToken(address: string): Promise<string | null> {
-  return readItem(`${gmailAccountPrefix}${address.trim().toLowerCase()}`, { sensitive: true });
+  return readItem(gmailAccountKey(address), { sensitive: true });
 }
 
 export async function removeGmailAccount(address: string): Promise<void> {
   const normalized = address.trim().toLowerCase();
-  await deleteItem(`${gmailAccountPrefix}${normalized}`, { sensitive: true });
+  await deleteItem(gmailAccountKey(normalized));
   const addresses = (await listGmailAddresses()).filter((value) => value !== normalized);
   await writeItem(gmailIndexKey, JSON.stringify(addresses), {
     sensitive: true,
@@ -155,13 +177,13 @@ async function writeItem(key: string, value: string, options: ItemOptions): Prom
   await SecureStore.setItemAsync(key, value, secureStoreOptions);
 }
 
-async function deleteItem(key: string, options: ItemOptions): Promise<void> {
+// Deleting needs no sensitivity flag: on web the key is removed from BOTH the
+// in-memory store and localStorage, which is correct whichever one held it (the
+// old per-flag branch for non-sensitive deletes had no caller at all).
+async function deleteItem(key: string): Promise<void> {
   if (Platform.OS === "web") {
-    if (options.sensitive) {
-      webMemoryStore.delete(key);
-    } else {
-      getWebStorage()?.removeItem(key);
-    }
+    webMemoryStore.delete(key);
+    getWebStorage()?.removeItem(key);
     return;
   }
   await SecureStore.deleteItemAsync(key);

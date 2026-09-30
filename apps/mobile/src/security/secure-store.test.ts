@@ -99,6 +99,26 @@ describe("secure-store — web platform sensitive/non-sensitive split", () => {
     expect(await loadThemePreference()).toBe("genx");
   });
 
+  it("with no window at all (server render / non-browser web runtime): reads return null, writes and deletes are no-ops", async () => {
+    vi.resetModules();
+    vi.stubGlobal("window", undefined);
+    const mod = await import("./secure-store");
+    await expect(mod.saveThemePreference("genz")).resolves.toBeUndefined();
+    expect(await mod.loadThemePreference()).toBeNull();
+    await mod.savePinHash("v3$1$s$h");
+    await expect(mod.clearPinHash()).resolves.toBeUndefined();
+    expect(await mod.loadPinHash()).toBeNull();
+  });
+
+  it("on web a delete removes the key from BOTH stores (no stale copy survives either way)", async () => {
+    const { savePinHash, loadPinHash, clearPinHash, fakeStorage } = await freshSecureStore();
+    fakeStorage.setItem("zeno.pin.hash.v1", "stale-copy");
+    await savePinHash("v3$1$s$h");
+    await clearPinHash();
+    expect(await loadPinHash()).toBeNull();
+    expect(fakeStorage.getItem("zeno.pin.hash.v1")).toBeNull();
+  });
+
   it("a full sensitive-data sequence never leaks into localStorage while theme preference does", async () => {
     const { savePinHash, saveLockStateValue, saveGmailAccount, saveThemePreference, fakeStorage } = await freshSecureStore();
     await savePinHash("v2$1000$salt$hash");
