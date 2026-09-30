@@ -68,7 +68,18 @@ export async function pushChanges(userId: string, changes: EncryptedChange[]): P
       // Await durability: we ack this change (accepted + cursor) to the client,
       // so the row must land before we return or a restart would lose an
       // "accepted" change the client believes is safely backed up.
-      await kvPersistAwait("sync", `${userId}|${key}`, { userId, ...record });
+      const durable = await kvPersistAwait("sync", `${userId}|${key}`, { userId, ...record });
+      if (!durable) {
+        // Not durable → not accepted: undo the in-memory write so pulls never
+        // serve a change a restart would lose; the client keeps it and retries.
+        // Only if it is still ours — a newer change may have landed meanwhile.
+        if (records.get(key) === record) {
+          if (existing) records.set(key, existing);
+          else records.delete(key);
+        }
+        rejected += 1;
+        continue;
+      }
       accepted += 1;
     } else {
       rejected += 1;
