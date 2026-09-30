@@ -9,5 +9,9 @@ const fallbackApiBaseUrl = "http://127.0.0.1:8787/api/v1";
 // without forming a require cycle between client and authStore (P4.5).
 export function getApiBaseUrl(): string {
   const extra = Constants.expoConfig?.extra as { apiBaseUrl?: string } | undefined;
-  return extra?.apiBaseUrl ?? fallbackApiBaseUrl;
+  // Same normalisation as config/site.ts: an env var that is set but empty
+  // arrives as "" and must mean "absent", and callers append "/path", so a
+  // trailing slash would double up ("…/v1//billing/…").
+  const raw = extra?.apiBaseUrl?.trim();
+  return (raw ? raw : fallbackApiBaseUrl).replace(/\/+$/, "");
 }
