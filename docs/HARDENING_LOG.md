@@ -43,7 +43,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P1.11 gate: Tier 1 at 100 % statements / functions / lines and 99.61 % branches (≥ 95 %); jest floors at 100 %; green on GitHub (CI 36744248345, CodeQL 36744248343)
 - [~] **P2 — API on real Postgres, authorization matrix, fuzzing** (inline, one item at a time; no parallel agents from here on, by the owner's instruction)
   - [x] P2.1 real Postgres in tests (PGlite locally, a `postgres` server in CI, proven by a server-mode test): schema from empty, upsert, a restart round trip for every store, account deletion leaves no row, the refresh race, concurrent sync replays; **fixes F75** (green: CI 36763417730, CodeQL 36763417620 on `229e114`)
-  - [~] P2.2 authorization matrix (table-driven from the route list); found and **fixed F76** while designing it
+  - [~] P2.2 authorization matrix (table-driven from the LIVE route list; 38 routes, 11 token attacks, cross-household), **fixes F76** (green: CI 36764219913, CodeQL 36764219994 on `b1b075c`); F77 open for the owner
   - [ ] P2.3 rate limits per route
   - [ ] P2.4 schema-driven fuzzing (fast-check)
   - [ ] P2.5 error and log hygiene
@@ -143,6 +143,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F74 | **FIXED.** ~~A new CRITICAL Next.js advisory, GHSA-vcvr-r3jv-pc5j ("Remote Code Execution in next/og ImageResponse", CVSS 9.5), turned CI red.~~ Affected: `>=16.2.0 <16.3.6`; we ran 16.3.3. Per the advisory, exploiting it requires the Node.js `ImageResponse` from `next/og` with attacker-controlled values in SVG content, attributes or styles. **Our website does not import `next/og` at all** (grep: no `next/og`, `ImageResponse` or OG-image routes), so it was not exploitable here, but the vulnerable code shipped in the dependency. Upgraded to **16.3.6**, the minimum fixed version, published 2026-09-22 and so past the repo's 7-day supply-chain cooldown. 16.3.8 is the latest, but it was published today, so we waited. | Critical upstream; not exploitable in our app | me | this slice |
 | F75 | **FIXED in P2.1.** ~~`DELETE /api/v1/account` said "deleted" before the data was gone, and could not finish a failed deletion.~~ Four of its five steps (entitlement, bank token, sync rows, households) were fire-and-forget, so the answer could arrive while Alice's rows were still in Postgres. Proven against real Postgres by making the unawaited writes slow: at the moment of `{ deleted: true }`, her billing, family, plaid and sync rows were all still there, and a crash then would restore them on the next boot. Separately, every failed delete was swallowed (the route still said deleted), and a retry could not find the rows again, because deletion was driven from memory, which had already forgotten them. Now: every step is awaited and reports whether it is durable; any refusal answers **503** (the app then keeps its data and does not tell the user it is done); and sessions and sync rows are deleted **in SQL by the owning account** (`value->>'accountId'` / `'userId'`), so a retry finds whatever is left. Households are JSON documents to rewrite, so a refused rewrite puts the in-memory household back and the retry redoes it. | High (the account-deletion promise; App Store requirement) | me | P2.1 |
 | F76 | **FIXED in P2.2.** ~~A DELETED account's access tokens kept working, and could re-create its data.~~ Access tokens are stateless 15-minute JWTs with no revocation. Proven with a probe: right after `DELETE /account` answered 200, the same token pushed a sync change (`accepted: 1`), pulled it back, and created a household, all persisted, for an account the user had just been told was deleted. The existing app test had even pinned this, with a comment saying the token "still verifies (stateless JWT, no revocation list)". Now, as the LAST step of a durable deletion, a per-account cut-off is persisted first (key = SHA-256 of the id, value = a timestamp only, so it is not a row of the user), then applied in memory. The auth check rejects any token for that account with `iat` at or before it; a token with no `iat` fails closed. It survives restarts, is swept after the 15-minute token lifetime, and is not set if the save is refused, so the user's token can still retry. | High (account deletion; data re-created after "deleted") | me | P2.2 |
+| F77 | **OPEN: owner decision.** Logout revokes the REFRESH token at once, but the stateless ACCESS token keeps working until it expires (at most 15 minutes). The matrix pins this as a named known gap. Options: (a) a session-id claim plus a server-side denylist checked by the auth guard (the mobile logout would also send the access token); (b) a shorter access-token life, e.g. 5 minutes, at the cost of more refreshes; (c) accept it as the standard stateless-JWT trade-off and document it. Account DELETION is already covered (F76). | Low-Medium | owner (decision), then me | P2 follow-up |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -1835,3 +1836,55 @@ Final: `tsc -b --force` 0 · lint 0 · vitest 123 files / 1576 tests at 100 % / 
 attack. Logout does not revoke the ACCESS token (only the refresh token, at once); that
 is the stateless design, and closing it would need a `sid` claim or a denylist. It will
 be a row in the matrix, with a decision for the owner.
+
+### P2.2 (part 2) — the authorization matrix — 2026-10-01
+
+**`apps/api/src/authz-matrix.test.ts`** (20 tests), table-driven from the LIVE routes. It
+parses Fastify's `printRoutes()` tree: 38 routes, with HEAD and the CORS `*` excluded.
+Adding the `onRoute` hook after `buildApp()` saw nothing (the routes were already
+registered), and parsing the tree avoided changing production code for a test.
+1. **Inventory in both directions:** every registered route has an `ACCESS` row
+   (`public` / `own-auth` / `token`), and every row is still registered. A new route
+   cannot ship without deciding who may call it, and it is then covered by everything
+   below automatically.
+2. **Deny by default:** every `token` route gets 401 with no credentials.
+3. **Eleven attacks × every token route** (18 routes), each 401 with ONE identical body
+   (`UNAUTHORIZED` / "Missing or invalid access token."), so nothing reveals which
+   check failed:
+   - no header, an empty bearer, the wrong scheme (Basic), garbage;
+   - expired, wrong issuer, wrong audience;
+   - `alg: none`, HS256 signed with the server's PUBLIC key, a foreign RSA key;
+   - a DELETED account's token (F76).
+4. **Positive control:** a genuinely valid token is never rejected by the guard on any
+   token route.
+5. **Public routes** answer without a token.
+6. **The webhook** rejects no secret, a wrong secret, and a USER token (not its
+   credential), and accepts the real secret.
+7. **Metrics** are open outside production, and 401 in production without
+   `METRICS_TOKEN`.
+8. **Households:** a stranger gets 403 on read, spend and leave, with identical bodies,
+   and the household is untouched. An unknown id is 404.
+9. **Sync** is scoped to the token's account.
+10. **Logout, the KNOWN GAP F77,** is pinned by name: the refresh token dies, the access
+    token lives until expiry.
+
+**Bite checks on the matrix** (each alone, then restored; re-run after a refactor, same
+result):
+- A new route with no row: the inventory fails.
+- A token route made public (`/api/v1/account` added to `PUBLIC_ROUTES`): 12 fail.
+- A different body for a missing header: that attack fails.
+- The household membership check dropped: the household test fails.
+
+**My own mistakes, caught before commit:**
+- The empty `onRoute` inventory.
+- The sign-in route's own 5/min limit throttling the suite; each sign-in now uses a fresh
+  instance (the stores are shared, the limiter is not).
+- The Bash tool collapsing a `\n`.
+- `inject()` option types that only `tsc` caught (Vitest does not typecheck), fixed with
+  one typed request helper.
+
+**Not covered here, on purpose:** timing. The guard always runs `verifyAccessToken`,
+whatever was sent (the CodeQL-driven design), so there is no separate fast path to time.
+
+Gates after the final edit: `tsc -b --force` 0 · lint 0 · vitest 124 files / 1596 tests
+at 100 / 99.62 / 100 / 100 · jest 114 / 114 · semgrep `apps/api` 0.
