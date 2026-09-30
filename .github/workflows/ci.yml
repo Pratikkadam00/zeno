@@ -6,10 +6,22 @@ on:
   pull_request:
     branches: [main]
 
+# Least privilege: the default GITHUB_TOKEN may only read the repo. No job here
+# writes anything back (no pushes, no comments, no releases).
+permissions:
+  contents: read
+
+# One run per ref; a newer push to the same PR cancels the stale run. Pushes to
+# main are never cancelled, so every main commit gets a complete verdict.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
     name: typecheck & test
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -17,7 +29,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version: 20
+          node-version-file: .node-version
           cache: npm
 
       - name: Install dependencies
@@ -48,13 +60,11 @@ jobs:
       - name: Build web
         run: npm run build --workspace @zeno/web
 
-      # Report dependency advisories on every PR/push, but DO NOT fail the build:
-      # nothing deploys from a PR, so a fresh upstream advisory shouldn't redden
-      # unrelated work (standards §11). The BLOCKING high/critical gate lives in
-      # release.yml, which runs before a release actually ships — that's where a
-      # new advisory must stop us.
-      - name: Dependency audit (report only)
-        continue-on-error: true
+      # BLOCKING on every push/PR (P0.4). main auto-deploys to production once
+      # checks pass (render.yaml autoDeployTrigger: checksPass), so a report-only
+      # audit here would let a known high/critical advisory ship. Exceptions are
+      # reviewed, reasoned and EXPIRING entries in .audit-allowlist.json.
+      - name: Dependency audit (blocking, with expiring allowlist)
         run: node scripts/audit-gate.mjs
 
   # Secret scan over EVERY commit on every ref, not just the diff: a secret that
@@ -65,6 +75,7 @@ jobs:
   secret-scan:
     name: secret scan (gitleaks, full history)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout (full history)
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -96,6 +107,7 @@ jobs:
   sast-semgrep:
     name: SAST (semgrep, zero findings)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     container:
       image: semgrep/semgrep:1.178.0@sha256:32e459968daabe7ab86968184a29109b9564aa00392401156f9788452b42786b
     steps:

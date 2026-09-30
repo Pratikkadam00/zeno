@@ -14,8 +14,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
 - [~] **P0 — Foundations: CI hardening, secret scan, coverage scope**
   - [x] P0.1 Coverage scope: exclude generated `.next/**`; guard against unexplained `v8 ignore`
   - [x] P0.2 Secret scan: gitleaks over full git history (local) + CI job on every push/PR
-  - [~] P0.3 Static analysis (SAST): CodeQL workflow + semgrep with zero-findings gate
-  - [ ] P0.4 Workflow hygiene: SHA-pinned actions, least-privilege `permissions`, `concurrency`, audit gate blocking in CI
+  - [x] P0.3 Static analysis (SAST): CodeQL workflow + semgrep with zero-findings gate
+  - [~] P0.4 Workflow hygiene: SHA-pinned actions, least-privilege `permissions`, `concurrency`, audit gate blocking in CI
   - [ ] P0.5 Dependabot (npm + GitHub Actions) + SBOM on release
   - [ ] P0.6 Branch protection on `main` (owner action — documented)
   - [ ] P0 gate: all standing gates green locally; new CI jobs green on GitHub
@@ -40,8 +40,8 @@ that closes it.
 | F1 | `apps/mobile/components/subscriptions/ServiceAutocomplete.tsx` (RN component, also exports `servicePriceLabel`) has no test in any runner | Test gap | me | P3 (screen/component tests) |
 | F2 | **Production API likely ran with per-client rate limiting broken** from the 2026-09-29 deploy of `9eb4721` until `064fc52` deploys: Fastify 5.12.5 made the numeric `trustProxy: 1` trust nobody, so every visitor shared the load balancer's rate-limit bucket (one noisy client could 429 everyone, incl. login). Render auto-deploys `main` and starts with `tsx` (no typecheck), so the type break did not stop the deploy. **Fixed in code**; the owner should confirm the Render deploy of `064fc52`+ is live. | High (availability of auth) | owner: confirm deploy | P0.2 (fixed) |
 | F3 | Whether the address Render's load balancer appends is the real client or a Cloudflare edge is unverified (Render staff, May 2021: "we set the first IP in the list to the real client IP"). With 1 trusted hop, request.ip is the LAST appended address. Check in Render logs: the pino request log's `remoteAddress` for your own request should equal your public IP. If it shows a Cloudflare IP, set `TRUST_PROXY_HOPS=2`. | Medium (rate-limit granularity) | owner: one log check | P8 |
-| F4 | Render builds with `npm install` (not `npm ci`) and deploys every push to `main` regardless of CI status (`autoDeploy: true`), and the start command (`tsx`) never typechecks. A red CI does not stop a deploy. | High (process) | me: propose render.yaml change; owner: apply in Render | P0.4 / P8 |
-| F5 | CI and production run **Node 20, end-of-life since 2026-04-30** (no security fixes): `ci.yml`/`release.yml` pin `node-version: 20`; `apps/api` `engines: >=20.11.0`. This machine runs Node 24. | High (unpatched runtime) | me | P0.4 |
+| F4 | Render builds with `npm install` (not `npm ci`) and deploys every push to `main` regardless of CI status (`autoDeploy: true`), and the start command (`tsx`) never typechecks. A red CI does not stop a deploy. | High (process) | **fixed in `render.yaml` (P0.4)**; owner: confirm the Render service is Blueprint-managed so the change applies (if it was created by hand, set "Auto-Deploy: After CI checks pass" in the dashboard) | P0.4 |
+| F5 | CI ran **Node 20, end-of-life since 2026-04-30**. Production was worse-defined: Render reads `engines`, and per Render's docs an unbounded range like our `>=20.11.0` "always resolves to the latest release" — whatever Node major is newest, not an LTS. | High (unpatched / unpinned runtime) | **fixed (P0.4)**: `.node-version` = 24 (Render reads it before `engines`), engines `>=24 <25`, CI via `node-version-file` | P0.4 |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -221,3 +221,31 @@ now written with the file-write tool.
 
 Local gates after the fixes: typecheck 0 · lint 0 · vitest 609/609 (65 files) · RN
 22/22 · lines 65.11 % · semgrep 0 results over 273 files.
+
+**P0.3 closed:** GitHub runs @ `ba5d7e3`: CI `36719137562` success (build, secret scan,
+semgrep); CodeQL `36719137564` success (**0 findings**: the scanner itself accepts all
+six fixes, including the hashed log reference).
+
+### P0.4 — Workflow hygiene, Node runtime, deploy gating — 2026-09-30
+
+- **Actions pinned by SHA** (done in P0.3 so the SAST gate went live green); semgrep's
+  `github-actions` pack now enforces it on every run.
+- **Least privilege:** `permissions: contents: read` at workflow level in `ci.yml` and
+  `release.yml` (CodeQL already job-scoped: `contents: read`, `security-events: write`,
+  `actions: read`). No job writes to the repo.
+- **Concurrency:** `ci-${{ github.ref }}`; a newer push to the same PR cancels the stale
+  run; `main` runs are never cancelled, so every main commit gets a full verdict.
+- **Timeouts:** build 25 min, secret scan 10, semgrep 15, CodeQL 30, release 25 (a hung
+  job can no longer burn the default 6 hours).
+- **Audit gate BLOCKING in CI** (was report-only). Reason: `main` now deploys once checks
+  pass, so a report-only audit would let a known high/critical ship. Exceptions stay
+  reviewed + expiring in `.audit-allowlist.json`.
+- **Node 24 everywhere (F5):** new `.node-version` = `24`; `engines` `>=24 <25` in the
+  root and `apps/api` (bounded, per Render's docs); CI, release and CodeQL read
+  `node-version-file: .node-version`. The lockfile change is metadata only
+  (`npm install --package-lock-only`: two `engines` fields, no package versions).
+- **Deploy gating (F4):** `render.yaml` `autoDeploy: true` → `autoDeployTrigger:
+  checksPass` (Render blueprint spec: "Trigger a deploy only if the linked branch's CI
+  checks pass"); build `npm install` → `npm ci` (exact lockfile; same dev-dependency
+  behaviour, and the build already needs `tsc` from dev dependencies).
+- semgrep over the edited workflows + `render.yaml` (github-actions + OWASP packs): 0.
