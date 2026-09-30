@@ -206,8 +206,11 @@ export async function getHousehold(householdId: string): Promise<ApiResult<House
   }
   const envelope = await response.json().catch(() => null) as ApiEnvelope<{ household: Household }> | null;
   const household = envelope?.data?.household;
-  // A successful response with no household means it was disbanded server-side.
-  return household ? { ok: true, data: household } : { ok: false, reason: "not_found" };
+  // The API reports a missing or disbanded household with 404 (handled above as
+  // "not_found"); it never answers 2xx without one. A 2xx with no household is
+  // therefore a malformed response, not "household gone": family.tsx deletes its
+  // stored household pointer on "not_found", so this must stay "server".
+  return household ? { ok: true, data: household } : { ok: false, reason: "server" };
 }
 
 // Removes the caller from the household server-side (disbanding it if they were
@@ -232,14 +235,18 @@ export async function leaveHousehold(householdId: string): Promise<boolean> {
 // data or sign out until the server confirms deletion, since doing so on a
 // failed request would tell the user their account is gone while server data
 // still exists (violates the account-deletion promise and, for App Store
-// review, Apple's in-app-deletion requirement).
+// review, Apple's in-app-deletion requirement). So `true` means the API's own
+// confirmation, ok({ deleted: true }), not merely some 2xx: a proxy, captive
+// page or misconfigured base URL answering 200 must not read as "deleted".
 export async function deleteAccountOnServer(): Promise<boolean> {
   try {
     const response = await timedFetch(`${getApiBaseUrl()}/account`, {
       method: "DELETE",
       headers: await authHeaders()
     });
-    return response.ok;
+    if (!response.ok) return false;
+    const envelope = await response.json().catch(() => null) as ApiEnvelope<{ deleted?: unknown }> | null;
+    return envelope?.data?.deleted === true;
   } catch {
     return false;
   }

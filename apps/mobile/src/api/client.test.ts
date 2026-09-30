@@ -123,7 +123,7 @@ describe("family ApiResult taxonomy — create/join/setMemberSpend (P5.3)", () =
   });
 });
 
-describe("getHousehold — 'success but empty' means not_found, distinct from a server error (P5.3)", () => {
+describe("getHousehold — 404 means not_found; a 2xx without a household is a server error (P5.3, P1.9b)", () => {
   const household = { id: "h1", shareCode: "ABC123", ownerId: "u1", members: [], createdAt: "2026-07-01T00:00:00.000Z" };
 
   it("network throw → 'offline'", async () => {
@@ -138,9 +138,14 @@ describe("getHousehold — 'success but empty' means not_found, distinct from a 
     expect(await client.getHousehold("h1")).toEqual({ ok: false, reason: "server" });
   });
 
-  it("200 with no household (disbanded server-side) → 'not_found', NOT 'server'", async () => {
+  // P1.9b: this used to expect 'not_found', on the premise that the API signals
+  // a disbanded household with a 200 and no household. It does not: GET
+  // /family/:id answers 404 for a missing household (app.ts), covered in
+  // client.edges.test.ts. A 2xx without a household is a malformed response,
+  // and 'not_found' would make family.tsx delete its stored household pointer.
+  it("200 with no household (a malformed response) → 'server', NOT 'not_found'", async () => {
     mockedFetch.mockResolvedValueOnce(res(200, { data: {} }));
-    expect(await client.getHousehold("h1")).toEqual({ ok: false, reason: "not_found" });
+    expect(await client.getHousehold("h1")).toEqual({ ok: false, reason: "server" });
   });
 
   it("returns the household on success", async () => {
@@ -162,7 +167,9 @@ describe("leaveHousehold — best-effort boolean", () => {
 
 describe("deleteAccountOnServer — failure must NOT be swallowed into success", () => {
   it("true only on a confirmed 2xx; false on non-ok and on network throw", async () => {
-    mockedFetch.mockResolvedValueOnce(res(200, {}));
+    // The API's confirmation envelope (app.ts: ok({ deleted: true })). A bare 2xx
+    // without it is no longer a confirmation (P1.9b, client.edges.test.ts).
+    mockedFetch.mockResolvedValueOnce(res(200, { data: { deleted: true } }));
     expect(await client.deleteAccountOnServer()).toBe(true);
     // A 500 or offline must report false so the caller does NOT wipe local data
     // and tell the user their account is gone while server data still exists.
