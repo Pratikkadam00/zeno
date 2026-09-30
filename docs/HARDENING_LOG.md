@@ -36,7 +36,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
     - [x] P1.8f "erase everything from this device" as one tested function — **fixes F27**
   - [~] P1.9 every remaining Tier 1 gap (since 2026-09-30, per the owner's choice, split across 5 parallel agents, each in its own git worktree with disjoint files; I merge, gate, push and verify each): 48 files, with 532 statements / 530 branches / 98 functions uncovered (measured 2026-09-30, `gaps.cjs` over `coverage-final.json`)
     - [~] P1.9a API (`app.ts` + `routes/auth.ts` by me; the rest by a parallel agent): `app.ts` ✅ (everything except the Plaid-configured paths, which are P1.10; **fixes F30, F31, F32, F33**), `routes/auth.ts` ✅ (0 uncovered lines / functions; 5 defensive branches), `coach.ts`, `billing.ts`, `family.ts`, `sync.ts`, `config.ts`, `storage/pg.ts`
-    - [~] P1.9b mobile logic (two parallel agents): `api/client.ts`, `notificationService.ts` + `notificationHandlers.ts` (0 %), `subscription-ui.ts` (51 %), `calendarUtils.ts`, `insightsEngine.ts`, `finance/budget.ts`, `format.ts`, `api/config.ts`, `seed-subscriptions.ts`, `open-banking.ts` (+ F18 note)
+    - [~] P1.9b mobile logic (two parallel agents): **part 1 ✅** (`api/client.ts`, `notificationService.ts`, `notificationHandlers.ts` at 100 / 100 / 100; fixes F38–F42); part 2 still running: `api/client.ts`, `notificationService.ts` + `notificationHandlers.ts` (0 %), `subscription-ui.ts` (51 %), `calendarUtils.ts`, `insightsEngine.ts`, `finance/budget.ts`, `format.ts`, `api/config.ts`, `seed-subscriptions.ts`, `open-banking.ts` (+ F18 note)
     - [~] P1.9c shared package (parallel agent): 14 files (csv parse-utils, spend history / coach / twin / year-in-review / price-radar, renewal-plan, widget snapshot, public-api keys, business, trial-guardian, family vault, analytics, open-banking)
     - [x] P1.9d thin config, theme and web files: all 13 at 0 uncovered statements, branches and functions (`motion.ts` and `useZenoTokens.ts` moved to jest with 100 % floors). **Fixes F35, F36, F37**
   - [x] P1.10 `apps/api/src/plaid.ts` (was 21 %; now 0 uncovered lines / functions, 1 defensive branch) and the Plaid routes in `app.ts` (now 100 %). Plaid's HTTP is faked, with no Plaid or sandbox calls, by standing instruction. **Fixes F34**
@@ -95,6 +95,13 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F35 | **FIXED in P1.9d.** ~~`useReducedMotion` leaked an unhandled promise rejection~~ whenever React Native's accessibility module rejected `isReduceMotionEnabled()` (unavailable native module, or an iOS-side error). Only `.then()` was chained, so every animated component that mounted in that state leaked one. Now `.catch()` keeps the default (motion on), and the change listener still applies later toggles. | Low | me (agent) | P1.9d |
 | F36 | **FIXED in P1.9d.** ~~The website's CSP added `'unsafe-eval'` for ANY non-production NODE_ENV.~~ `next build` / `next start` keep a pre-set NODE_ENV ("test" silently, anything else with a warning), so a real server started under e.g. `staging` shipped the relaxed dev policy. It is now keyed on `NODE_ENV === "development"` (the dev server only), so it fails closed. | Low (Vercel runs with production) | me (agent) | P1.9d |
 | F37 | **FIXED in P1.9d.** ~~The public `/analytics` page, which shows SYNTHETIC sample KPIs, was on for any non-production NODE_ENV~~, for the same reason as F36. A staging server would have shown fake business metrics to real visitors, which breaks the invented-statistics rule. It is now on only for the dev server, or when `SHOW_PUBLIC_ANALYTICS` is exactly `"1"`. Look-alike values ("true", " 1", "01", "") stay off. | Low (truthfulness) | me (agent) | P1.9d |
+| F38 | **FIXED in P1.9b.** ~~Account deletion accepted ANY 2xx as confirmed~~ (`deleteAccountOnServer`). Settings wipes the device and says the account is gone whenever this returns true, so a proxy page, captive portal or wrong base URL answering 200 counted as deleted. It now requires the API's own confirmation, `data.deleted === true` (`app.ts` returns exactly `ok({ deleted: true })`). | Medium (privacy promise) | me (agent) | P1.9b |
+| F39 | **FIXED in P1.9b.** ~~A malformed 2xx on `getHousehold` deleted the user's household link.~~ A 2xx without a household mapped to `not_found`, and `family.tsx:66-69` then deletes the stored household pointer. The API never answers that way: `GET /family/:id` returns 404 for a missing household. It is now `server`, so the pointer survives. | Low–Medium | me (agent) | P1.9b |
+| F40 | **FIXED in P1.9b.** ~~A notification tap spliced an unchecked id into the route.~~ `data.subscriptionId` (untrusted: a remote push to the device's Expo token can carry anything) went straight into `router.push`, including `../../settings`, `a/b` and `sub_1?next=/paywall`. Only `^[A-Za-z0-9_-]{1,128}$` is accepted now, which covers every id the app creates. | Low | me (agent) | P1.9b |
+| F41 | **FIXED in P1.9b.** ~~`registerForPushNotifications` could reject, and its only caller (`_layout.tsx:207`) fires it with a bare `void`.~~ A token-fetch (network), keychain or permission-API failure became an unhandled rejection. It now always resolves to `{ ok, token } | { ok: false, reason }`. | Low | me (agent) | P1.9b |
+| F42 | **FIXED in P1.9b.** ~~Reminders could be scheduled twice and the duplicates were never cleaned up.~~ The debounced data effect and the foreground listener each start a reconcile; two overlapping runs both read the queue before either scheduled, giving 12 pending notifications for 6 wanted. The diff also KEPT every copy whose key matched. Reconciles now run one at a time (a failed run does not block the next), and extra copies are cancelled. | Low–Medium (duplicate reminders) | me (agent) | P1.9b |
+| F43 | **OPEN, verified by reading.** A token refresh that fails for ANY reason signs the user out. `authStore.refreshToken()` (lines 298-301) clears the stored session in its catch, including when offline, on a timeout, or on a 502/503 while Render's free tier wakes up. Opening the app offline more than 15 minutes after the last token refresh therefore deletes the 30-day refresh token. Only a definitive server rejection (401) should end the session. | Medium (availability of sign-in) | me | next slice after the P1.9 merges |
+| F44 | **OPEN, verified by grep.** Banned "automatic discovery" copy: `app/open-banking.tsx:45` says "auto-discovers recurring charges" (it also claims "we only receive transactions", although the server holds the Plaid access token), and `app/(tabs)/discover.tsx:655` says "automatically discover what you pay for". Both violate the standing truthfulness rails. | Medium (truthfulness) | me | next slice after the P1.9 merges (exact wording shown to the owner) |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -1189,3 +1196,56 @@ with 100 % floors, and excluded in `vitest.config.ts` (I applied the two exclude
 (ratchet 92.16 / 86.32 / 93.76 / 92.79) · jest 8 suites / 113 tests, all 6
 jest-measured files at 100 % · semgrep (web + theme + app.config) 0 findings (3
 pre-existing parse warnings in the legal pages).
+
+### P1.9b (part 1) — mobile API client and notifications (agent, verified by me) — 2026-09-30
+
+**Done by a parallel agent** (branch `worktree-agent-ae9e186c6b66577cd`, 3 commits), then
+**merged and verified by me in `main`**:
+- **Read every changed source line** in `client.ts`, `notificationHandlers.ts` and
+  `notificationService.ts`.
+- **Checked each bug claim against the code it depends on.** `app.ts` returns
+  `ok({ deleted: true })`, and `GET /family/:id` returns 404. `family.tsx:66-69` deletes
+  the stored household on `not_found`. The only caller of `registerForPushNotifications`
+  (`_layout.tsx:207`) ignores the new return value.
+- **Reviewed the 2 edits to existing tests.** Both had pinned behaviour the API does
+  not have: a bare `200 {}` "deletion", and "200 without a household = not_found".
+  Nothing was loosened: each still asserts one exact value.
+- **Re-ran all bite checks myself in `main`,** each alone and then restored:
+  - deletion accepting any 2xx → 1 test fails
+  - malformed 2xx meaning `not_found` → 2 fail
+  - an unchecked tap id → 9 fail
+  - registration rejecting → 3 fail
+  - overlapping reconciles → 1 fails
+  - duplicate copies kept → 1 fails
+
+**Coverage** (statements / branches / functions):
+- `api/client.ts` → 81/81, 45/45, 22/22
+- `notificationHandlers.ts` → 20/20, 16/16, 5/5 (was 0 %)
+- `notificationService.ts` → 99/99, 65/65, 24/24
+
+**Tests:**
+- **`client.edges.test.ts` (35):** the deletion contract, family status mapping,
+  request shapes (retries only on GETs), and the open-banking intent paths.
+- **`notificationHandlers.test.ts` (20):** routing, and 10 hostile ids refused.
+- **`notificationService.effects.test.ts` (30),** against a fake OS pending queue:
+  registration on every platform and permission state, scheduling, quiet hours,
+  reconcile, and duplicates.
+
+**Observations from the agent** (recorded, not changed here):
+- **Android push:** there is no `googleServicesFile`, so the Expo token fetch likely
+  fails on Android. F41 makes that harmless, but push itself needs FCM config (P3/P8).
+- **A tap that cold-starts the app may be missed:** the listener is registered in an
+  effect, so `getLastNotificationResponse` should be checked at launch (P3).
+- **`deleteAccountOnServer` is still a boolean,** so a 401 shows "couldn't reach the
+  server". The result needs reasons (P3).
+- **Family 409 / 403 / 400 map to "try again".**
+- **`createOpenBankingIntentViaApi` has no callers** and no timeout (Plaid-adjacent, left
+  alone). `recordFunnelEvent` has no timeout.
+- **A 2xx with the wrong data shape passes as success** (§1 wants validation). This goes
+  to P2/P3.
+- **Two more findings came from this report, both verified by me and logged as open:**
+  F43 (sign-out on any refresh failure) and F44 (banned "automatic discovery" copy).
+
+**Gates in `main` after both merges:** typecheck 0 · lint 0 · vitest 95 files / 1154
+tests (ratchet 93.81 / 88.19 / 95.91 / 94.51) · jest 8 suites / 113 tests at 100 % ·
+semgrep (`mobile/src/api`, `notifications`) 0 / 0.
