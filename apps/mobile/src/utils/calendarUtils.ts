@@ -1,4 +1,4 @@
-import { convertMinor, type FxContext, type Subscription, type SubscriptionCategory } from "@zeno/shared";
+import { convertMinor, monthlyAmount, monthlyAmountIn, type FxContext, type Subscription, type SubscriptionCategory } from "@zeno/shared";
 
 export interface CalendarDot {
   key: string;
@@ -13,6 +13,16 @@ export interface MarkedDate {
 
 type DateCategory = "streaming" | "ai_tools" | "productivity" | "gaming" | "health" | "education" | "music" | "other";
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+type DatedSubscription = Subscription & { nextRenewalDate: string };
+
+// The calendar only ever shows active subscriptions that have a renewal date.
+// Narrowing the type here means no caller has to re-check nextRenewalDate.
+function activeWithRenewal(subscriptions: Subscription[]): DatedSubscription[] {
+  return subscriptions.filter((item): item is DatedSubscription => item.status === "active" && !!item.nextRenewalDate);
+}
+
 function normalizeDate(value: string): string | null {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -25,8 +35,12 @@ function normalizeDate(value: string): string | null {
   return `${year}-${month}-${day}`;
 }
 
-function withStartOfToday(date = new Date()) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+// UTC midnight of the instant's UTC day. Renewal dates are UTC days (§10), and
+// UTC has no DST, so the gap between two of these is an exact number of days.
+// (Local midnights made a spring-forward "day" 23 hours long, losing a day, and
+// disagreed with getDaysRemaining's UTC countdown west of UTC.)
+function utcDayStart(date: Date): number {
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
 }
 
 function dayDiffISO(dateValue: string, fromDate: Date): number | null {
@@ -35,10 +49,7 @@ function dayDiffISO(dateValue: string, fromDate: Date): number | null {
     return null;
   }
 
-  const startFrom = withStartOfToday(fromDate);
-  const target = withStartOfToday(date);
-  const dayMs = 24 * 60 * 60 * 1000;
-  return Math.floor((target.getTime() - startFrom.getTime()) / dayMs);
+  return Math.floor((utcDayStart(date) - utcDayStart(fromDate)) / DAY_MS);
 }
 
 function mapCategoryToColor(category: SubscriptionCategory): string {
@@ -72,13 +83,8 @@ function mapCategoryToColor(category: SubscriptionCategory): string {
 export function getMarkedDates(subscriptions: Subscription[]): Record<string, MarkedDate> {
   const grouped: Record<string, MarkedDate> = {};
 
-  for (const subscription of subscriptions.filter((item) => item.status === "active" && !!item.nextRenewalDate)) {
-    const nextRenewalDate = subscription.nextRenewalDate;
-    if (!nextRenewalDate) {
-      continue;
-    }
-
-    const dateKey = normalizeDate(nextRenewalDate);
+  for (const subscription of activeWithRenewal(subscriptions)) {
+    const dateKey = normalizeDate(subscription.nextRenewalDate);
     if (!dateKey) {
       continue;
     }
@@ -106,23 +112,14 @@ export function getSubscriptionsForDate(subscriptions: Subscription[], dateStrin
     return [];
   }
 
-  return subscriptions
-    .filter((subscription) => subscription.status === "active" && !!subscription.nextRenewalDate)
-    .filter((subscription) => {
-      const renewal = normalizeDate(subscription.nextRenewalDate ?? "");
-      return renewal === target;
-    })
+  return activeWithRenewal(subscriptions)
+    .filter((subscription) => normalizeDate(subscription.nextRenewalDate) === target)
     .sort((a, b) => Number(a.price.amountMinor) - Number(b.price.amountMinor));
 }
 
 export function getMonthlyTotal(subscriptions: Subscription[], year: number, month: number, fx?: FxContext): number {
-  return subscriptions
-    .filter((subscription) => subscription.status === "active" && !!subscription.nextRenewalDate)
+  return activeWithRenewal(subscriptions)
     .reduce((sum, subscription) => {
-      if (!subscription.nextRenewalDate) {
-        return sum;
-      }
-
       const key = normalizeDate(subscription.nextRenewalDate);
       if (!key) {
         return sum;
@@ -145,16 +142,15 @@ export function getWeeklyGroups(subscriptions: Subscription[]): {
   nextWeek: Subscription[];
   laterThisMonth: Subscription[];
 } {
-  const today = withStartOfToday(new Date());
+  const today = new Date();
   const groups = {
-    thisWeek: [] as Subscription[],
-    nextWeek: [] as Subscription[],
-    laterThisMonth: [] as Subscription[]
+    thisWeek: [] as DatedSubscription[],
+    nextWeek: [] as DatedSubscription[],
+    laterThisMonth: [] as DatedSubscription[]
   };
 
-  for (const subscription of subscriptions.filter((item) => item.status === "active" && !!item.nextRenewalDate)) {
-    const nextRenewalDate = subscription.nextRenewalDate ?? "";
-    const diff = dayDiffISO(nextRenewalDate, today);
+  for (const subscription of activeWithRenewal(subscriptions)) {
+    const diff = dayDiffISO(subscription.nextRenewalDate, today);
     if (diff === null || diff < 0) {
       continue;
     }
@@ -174,11 +170,8 @@ export function getWeeklyGroups(subscriptions: Subscription[]): {
     }
   }
 
-  const sortByDate = (a: Subscription, b: Subscription) => {
-    const dateA = a.nextRenewalDate ? Number(new Date(a.nextRenewalDate)) : 0;
-    const dateB = b.nextRenewalDate ? Number(new Date(b.nextRenewalDate)) : 0;
-    return dateA - dateB;
-  };
+  // Every grouped date parsed successfully (dayDiffISO returned a number).
+  const sortByDate = (a: DatedSubscription, b: DatedSubscription) => Date.parse(a.nextRenewalDate) - Date.parse(b.nextRenewalDate);
 
   return {
     thisWeek: groups.thisWeek.sort(sortByDate),
@@ -189,40 +182,41 @@ export function getWeeklyGroups(subscriptions: Subscription[]): {
 
 export function getProjectedAnnual(subscriptions: Subscription[], fx?: FxContext): number {
   const now = new Date();
-  const currentYear = now.getFullYear();
+  // UTC year and month, like the renewal days themselves (§10).
+  const currentYear = now.getUTCFullYear();
+  const remainingMonths = 12 - now.getUTCMonth();
   let projected = 0;
 
-  for (const subscription of subscriptions.filter((subscription) => subscription.status === "active")) {
-    if (!subscription.nextRenewalDate) {
-      continue;
-    }
-
-    // Convert into the home currency (or skip, never fabricate) so a
-    // mixed-currency portfolio isn't silently summed in raw minor units.
-    const amountMinor = fx ? convertMinor(subscription.price.amountMinor, subscription.price.currency, fx.homeCurrency, fx.rates) : subscription.price.amountMinor;
-    if (amountMinor === null) {
-      continue;
-    }
-    const amount = amountMinor / 100;
+  for (const subscription of activeWithRenewal(subscriptions)) {
     const nextRenewal = new Date(subscription.nextRenewalDate);
     if (Number.isNaN(nextRenewal.getTime())) {
       continue;
     }
 
-    if (subscription.billingCycle === "annual") {
-      if (nextRenewal.getFullYear() === currentYear) {
-        projected += amount;
+    // Both branches convert into the home currency (or skip, never fabricate)
+    // so a mixed-currency portfolio isn't silently summed in raw minor units.
+    const cycle = subscription.billingCycle;
+    if (cycle === "annual" || cycle === "trial") {
+      // One known charge — the annual renewal, or the trial converting to
+      // paid — counted once, and only if it lands in the current year.
+      if (nextRenewal.getUTCFullYear() !== currentYear) {
+        continue;
+      }
+      const amountMinor = fx ? convertMinor(subscription.price.amountMinor, subscription.price.currency, fx.homeCurrency, fx.rates) : subscription.price.amountMinor;
+      if (amountMinor !== null) {
+        projected += amountMinor / 100;
       }
       continue;
     }
 
-    if (subscription.billingCycle === "monthly") {
-      const remainingMonths = 12 - now.getMonth();
-      projected += amount * remainingMonths;
-      continue;
+    // Recurring cycles project their monthly equivalent over the remaining
+    // months (weekly × 52/12, quarterly ÷ 3 — the shared monthlyAmount rule).
+    // Treating every cycle as monthly made a quarterly plan 3× too high and a
+    // weekly one ~4× too low; "unknown" has no predictable charge, so it adds 0.
+    const monthlyMinor = fx ? monthlyAmountIn(subscription, fx.homeCurrency, fx.rates) : monthlyAmount(subscription);
+    if (monthlyMinor !== null) {
+      projected += (monthlyMinor / 100) * remainingMonths;
     }
-
-    projected += amount * (12 - now.getMonth());
   }
 
   return projected;
