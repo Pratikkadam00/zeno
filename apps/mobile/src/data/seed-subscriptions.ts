@@ -85,7 +85,10 @@ export const seedSubscriptions: Subscription[] = [
     createdAt: now,
     updatedAt: now,
     version: 1,
-    serviceSlug: "duolingo-super",
+    // The catalog lists this plan as "duolingo-plus" (Super is Duolingo's
+    // current name for it); a slug the catalog lacks leaves the demo's detail
+    // and cancel screens with no service to show.
+    serviceSlug: "duolingo-plus",
     name: "Super Duolingo",
     category: "education",
     price: { amountMinor: 1299, currency: "USD" },
