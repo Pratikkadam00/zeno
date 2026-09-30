@@ -42,7 +42,7 @@ export default function OpenBankingScreen() {
         <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
           <Text style={{ color: theme.text, fontSize: 30, lineHeight: 36, fontWeight: "900" }}>Connect your bank</Text>
           <Text style={{ color: theme.mutedText, marginTop: 6, fontSize: 16, lineHeight: 22 }}>
-            Optional. A read-only connection that auto-discovers recurring charges. Zeno never sees your bank login — Plaid handles it, and we only receive transactions.
+            Optional. A read-only bank connection through Plaid. You sign in to your bank on Plaid&apos;s screen, never Zeno&apos;s, and Zeno&apos;s server keeps the access token Plaid issues so it can fetch your recent transactions.
           </Text>
         </View>
 

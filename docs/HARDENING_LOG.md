@@ -101,7 +101,8 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F41 | **FIXED in P1.9b.** ~~`registerForPushNotifications` could reject, and its only caller (`_layout.tsx:207`) fires it with a bare `void`.~~ A token-fetch (network), keychain or permission-API failure became an unhandled rejection. It now always resolves to `{ ok, token } | { ok: false, reason }`. | Low | me (agent) | P1.9b |
 | F42 | **FIXED in P1.9b.** ~~Reminders could be scheduled twice and the duplicates were never cleaned up.~~ The debounced data effect and the foreground listener each start a reconcile; two overlapping runs both read the queue before either scheduled, giving 12 pending notifications for 6 wanted. The diff also KEPT every copy whose key matched. Reconciles now run one at a time (a failed run does not block the next), and extra copies are cancelled. | Low–Medium (duplicate reminders) | me (agent) | P1.9b |
 | F43 | **FIXED (P1.9 follow-up).** ~~A token refresh that fails for ANY reason signs the user out. `authStore.refreshToken()` (lines 298-301) clears the stored session in its catch, including when offline, on a timeout, or on a 502/503 while Render's free tier wakes up. Opening the app offline more than 15 minutes after the last token refresh therefore deletes the 30-day refresh token. Only a definitive server rejection (401) should end the session.~~ Now only a 401 or 400 ends it; offline, timeouts, 429 and 5xx keep the session and retry. | Medium (availability of sign-in) | me | P1.9 follow-up |
-| F44 | **OPEN, verified by grep.** Banned "automatic discovery" copy: `app/open-banking.tsx:45` says "auto-discovers recurring charges" (it also claims "we only receive transactions", although the server holds the Plaid access token), and `app/(tabs)/discover.tsx:655` says "automatically discover what you pay for". Both violate the standing truthfulness rails. | Medium (truthfulness) | me | next slice after the P1.9 merges (exact wording shown to the owner) |
+| F44 | **FIXED (P1.9 follow-up).** ~~Banned "automatic discovery" copy: `app/open-banking.tsx:45` says "auto-discovers recurring charges" (it also claims "we only receive transactions", although the server holds the Plaid access token), and `app/(tabs)/discover.tsx:655` says "automatically discover what you pay for". Both violate the standing truthfulness rails.~~ Both are reworded (exact text in the log entry below). | Medium (truthfulness) | me | P1.9 follow-up |
+| F45 | **OPEN: owner decision.** The paywall (`app/paywall.tsx:257`) says "…and we never see your bank." That is true in production today, where bank connect is dev-only, but it becomes false the day Plaid ships, because the server then stores the Plaid access token and fetches transactions. Suggested wording: "…and no bank login required." (the required phrase), or keep it and reword when Plaid ships. Not changed: it is paywall marketing copy. | Low now, High if Plaid ships (truthfulness) | owner | P4 or before Plaid ships |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -1281,3 +1282,44 @@ Restored: 55 / 55, and `authStore.ts` is at 100 / 100 / 100.
 
 Gates: typecheck 0 · lint 0 · vitest 95 files / 1163 tests (ratchet 93.83 / 88.22 / 95.92 /
 94.53) · semgrep `mobile/src/auth` 0 / 0.
+
+### F44 — banned "automatic discovery" copy removed — 2026-09-30
+
+**Scan:** a script (not a hand-typed grep; the Bash tool had mangled the first
+attempt's `$` escape, and the empty result was suspicious) checked every `.ts` / `.tsx`
+in the app, the website and the shared package for each banned phrase. There were 10
+hits:
+
+| Hit | Verdict |
+|---|---|
+| `app/open-banking.tsx:45` | Banned: fixed |
+| `app/(tabs)/discover.tsx:655` | Banned: fixed |
+| `app/paywall.tsx:257` | Borderline: owner decision, logged as F45 |
+| `app/profile.tsx:95`, "We never see your bank login." | True: kept |
+| Website FAQ / sections ("not in the background", "Background scanning: NONE", "no most-popular badge") | Truthful negations: kept |
+| 2 code comments in `LockOverlay.tsx` | Not copy |
+
+**The exact changes:**
+- **`open-banking.tsx`**
+  - Before: "Optional. A read-only connection that auto-discovers recurring charges.
+    Zeno never sees your bank login — Plaid handles it, and we only receive
+    transactions."
+  - After: "Optional. A read-only bank connection through Plaid. You sign in to your
+    bank on Plaid's screen, never Zeno's, and Zeno's server keeps the access token
+    Plaid issues so it can fetch your recent transactions."
+  - Why: "auto-discovers" is banned. "We only receive transactions" hid that the server
+    holds the Plaid access token. The screen today only reads a transaction count, so
+    even "finds recurring charges" would overclaim.
+- **`discover.tsx`**
+  - Before: "Connect Gmail or import a bank statement to automatically discover what
+    you pay for."
+  - After: "Connect Gmail or import a bank statement to find what you pay for."
+  - Why: the scan runs when you connect or import, not automatically.
+
+**Checks:**
+- **Lint caught my first version:** raw apostrophes in JSX text trip
+  `react/no-unescaped-entities`. They are now `&apos;`, as used in 18 other places in
+  the app.
+- lint 0 · typecheck 0.
+- No test pinned the old text (grep).
+- **Not verified on a device.** It is a two-line text change, and the emulator run is P5.

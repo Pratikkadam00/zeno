@@ -652,7 +652,7 @@ export default function DiscoverScreen() {
             </View>
             <Text style={styles.emptyTitle}>Find your subscriptions</Text>
             <Text style={styles.emptyBody}>
-              Connect Gmail or import a bank statement to automatically discover what you pay for.
+              Connect Gmail or import a bank statement to find what you pay for.
             </Text>
           </View>
         ) : null}
