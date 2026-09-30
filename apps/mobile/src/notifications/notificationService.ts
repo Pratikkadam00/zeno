@@ -81,37 +81,48 @@ export function shiftOutOfQuietHours(date: Date, quiet?: QuietHours): Date {
   return adjusted;
 }
 
-export async function registerForPushNotifications(): Promise<string | null> {
+export type PushRegistrationResult =
+  | { ok: true; token: string }
+  | { ok: false; reason: "unsupported" | "denied" | "failed" };
+
+// Resolves, never rejects: app/_layout.tsx fire-and-forgets this with `void`, so
+// a rejection would be an unhandled one (§7). Failure is routine here, not
+// exceptional: fetching the Expo token is a network call to Expo's service.
+export async function registerForPushNotifications(): Promise<PushRegistrationResult> {
   if (Platform.OS === "web" || !Device.isDevice) {
-    return null;
+    return { ok: false, reason: "unsupported" };
   }
 
-  if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync(notificationChannelId, {
-      name: "Renewal reminders",
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: notificationAccentColor
+  try {
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync(notificationChannelId, {
+        name: "Renewal reminders",
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: notificationAccentColor
+      });
+    }
+
+    const existingPermissions = await Notifications.getPermissionsAsync();
+    const finalPermissions = existingPermissions.granted
+      ? existingPermissions
+      : await Notifications.requestPermissionsAsync();
+
+    if (!finalPermissions.granted) {
+      return { ok: false, reason: "denied" };
+    }
+
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+    const tokenResult = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
+    const token = tokenResult.data;
+    await SecureStore.setItemAsync(pushTokenKey, token, {
+      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY
     });
+
+    return { ok: true, token };
+  } catch {
+    return { ok: false, reason: "failed" };
   }
-
-  const existingPermissions = await Notifications.getPermissionsAsync();
-  const finalPermissions = existingPermissions.granted
-    ? existingPermissions
-    : await Notifications.requestPermissionsAsync();
-
-  if (!finalPermissions.granted) {
-    return null;
-  }
-
-  const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-  const tokenResult = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
-  const token = tokenResult.data;
-  await SecureStore.setItemAsync(pushTokenKey, token, {
-    keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY
-  });
-
-  return token;
 }
 
 export async function clearStoredPushToken(): Promise<void> {
@@ -285,10 +296,27 @@ export async function cancelNotificationsForSubscription(subscriptionId: string)
   );
 }
 
-export async function rescheduleAllNotifications(
+// Reconciles run one at a time. app/_layout.tsx starts them from two independent
+// places (the debounced data effect and the foreground listener); two runs that
+// overlap both read the pending queue before either schedules, so both schedule
+// the same new reminders and the user gets each one twice. A failed run must
+// not block the next, hence the catch on the chain (the caller still sees it).
+let reconcileChain: Promise<void> = Promise.resolve();
+
+export function rescheduleAllNotifications(
   subscriptions: RenewalNotificationSubscription[],
   preferencesById: Record<string, RenewalNotificationPreferences> = {},
   quietHours?: QuietHours
+): Promise<void> {
+  const run = reconcileChain.then(() => reconcileNotifications(subscriptions, preferencesById, quietHours));
+  reconcileChain = run.catch(() => undefined);
+  return run;
+}
+
+async function reconcileNotifications(
+  subscriptions: RenewalNotificationSubscription[],
+  preferencesById: Record<string, RenewalNotificationPreferences>,
+  quietHours: QuietHours | undefined
 ): Promise<void> {
   const now = Date.now();
   // Build every candidate trigger across ALL subscriptions first, then keep the
@@ -324,11 +352,13 @@ export async function rescheduleAllNotifications(
   for (const notification of existing) {
     const data = notification.content.data as { key?: string } | undefined;
     const key = typeof data?.key === "string" ? data.key : undefined;
-    if (key && desiredByKey.has(key)) {
+    if (key && desiredByKey.has(key) && !keptKeys.has(key)) {
       keptKeys.add(key);
     } else {
-      // Not wanted, or a pre-upgrade notification with no key — cancel it. A
-      // pre-upgrade one is re-created below with a key (a one-time migration).
+      // Not wanted, a pre-upgrade notification with no key, or a second copy of
+      // a reminder already kept (left by an earlier overlapping schedule) —
+      // cancel it. A pre-upgrade one is re-created below with a key (a one-time
+      // migration).
       toCancel.push(notification.identifier);
     }
   }
