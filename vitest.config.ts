@@ -36,8 +36,15 @@ export default defineConfig({
       exclude: [
         "apps/mobile/app/**",
         "apps/mobile/src/components/**",
+        // Same kind of file as src/components (a React Native UI component that
+        // vitest's node environment cannot render); it lives outside src/ so the
+        // rule above missed it. Tier 2 (jest screen/component tests) owns it.
+        "apps/mobile/components/**",
         "apps/web/app/**",
         "apps/web/components/**",
+        // Next.js build output (generated route-type validators). Not our code;
+        // counting it made the scope depend on whether `next dev` had run.
+        "**/.next/**",
         "**/*.test.*",
         "**/*.rntest.*",
         "**/*.d.ts",
@@ -49,10 +56,10 @@ export default defineConfig({
       // these numbers in this file whenever a run exceeds them, so the floor
       // only ever rises; a drop below any floor fails `npm run test:coverage`.
       thresholds: {
-        statements: 62.84,
-        branches: 55.95,
-        functions: 63.01,
-        lines: 63.53,
+        statements: 63.95,
+        branches: 56.43,
+        functions: 63.72,
+        lines: 64.64,
         autoUpdate: true
       }
       // Known gap: a few dozen never-imported apps/web/*.tsx files (ones
