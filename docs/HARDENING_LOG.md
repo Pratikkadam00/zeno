@@ -22,7 +22,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
 - [~] **P1 — Tier 1 logic to 100 % coverage** (order = risk; each sub closes the findings named)
   - [x] P1.1 `apps/api/src/server.ts` (0 %) — boot, env matrix, logger; **fixes F9** (tokens in request logs)
   - [x] P1.2 `apps/mobile/src/security/*` — secure-store, lock-store (48 %), app-lock; **fixes F13** (Gmail SecureStore key)
-  - [ ] P1.3 `apps/mobile/src/discovery/emailScanner.ts` (48 %) — untrusted email input; **fixes F12**
+  - [x] P1.3 `apps/mobile/src/discovery/*` (emailScanner 48 %, csvParser, helpers) + shared receipts — untrusted email/CSV input; **fixes F12, F17, F20**
   - [ ] P1.4 `apps/mobile/src/auth/authStore.ts` (51 %) — token lifecycle; **verdict on F10/F11** (with the API side)
   - [ ] P1.5 `apps/mobile/src/storage/database.ts` (59 %) + `subscription-repository.ts` (0 %)
   - [ ] P1.6 `apps/mobile/src/billing/revenueCat.ts` (55 %)
@@ -60,9 +60,16 @@ that closes it.
 | F15 | `checkStatus` trusts the server's plan but falls back to the client's RevenueCat view when the server is unreachable. Client-only features are bypassable by any modified client regardless; what matters is that PAID SERVER features (coach, family, sync) check entitlement server-side. | Medium (to confirm) | me | P2 (authz matrix) |
 | F16 | Local DB encryption is configured (`useSQLCipher: true` in app.config; `expo.sqlite.useSQLCipher=true` in the generated gradle.properties), but never PROVEN at runtime: needs `PRAGMA cipher_version` on a device, or a check that the file header of `zeno.db` is not the plaintext "SQLite format 3". | Medium (unverified claim) | me | P3 (on device) |
 | F10 | Google sign-in: a nonce is sent to Google but NOT to our API (`/auth/google` gets only the token), so the server cannot bind the ID token to this sign-in (replay of a stolen token). Apple sign-in requests no nonce at all. Needs the server side read in full before a verdict. | Medium (to confirm) | me | P1 (`authStore.ts`) + P2 |
-| F11 | Google sign-in uses the implicit ID-token flow returned to the custom scheme `zeno://auth/google`. RFC 8252 recommends authorization code + PKCE for native apps; another Android app can register the same scheme. | Medium (to confirm) | me | P1/P3 |
-| F12 | Gmail: disconnect revokes with the token in the URL query (`…/revoke?token=`); the fallback account label embeds the first 8 characters of the access token; known billing senders are trusted from the spoofable `From` header alone (no DKIM/SPF check). | Low–Medium | me | P1 (`emailScanner.ts`) |
+| F11 | Google sign-in uses the implicit ID-token flow returned to the custom scheme `zeno://auth/google`, and Gmail connect also uses expo-auth-session. **Google's own native-app guide, verbatim: "Custom URI schemes are no longer supported on Android and Chrome apps."** So on Android these flows are likely REJECTED by Google, not just weaker. Cannot be confirmed at runtime without the real Google client IDs (A3). Likely fix: Google's native Credential Manager / Sign in with Google SDK, or App Links redirects. | **High (likely broken on Android)** | owner: client IDs (A3); me: migrate | P3 |
+| F12 | **FIXED in P1.3** (revocation, label); sender-spoofing part ACCEPTED as low with evidence (see P1.3). ~~Gmail: disconnect revokes with the token in the URL query (`…/revoke?token=`); the fallback account label embeds the first 8 characters of the access token; known billing senders are trusted from the spoofable `From` header alone (no DKIM/SPF check). | Low–Medium | me | P1 (`emailScanner.ts`) |
 | F13 | **FIXED in P1.2.** ~~Gmail connect fails on every real device.~~ Tokens are stored under `zeno.oauth.gmail.acct.<address>`, but expo-secure-store 56.0.4 rejects keys outside `/^[\w.-]+$/` (source: `ensureValidKey` in `build/SecureStore.js`, applied to get/set/delete), and an address contains `@`. The existing tests pass only because their fake SecureStore does not enforce that rule. | High (feature broken on device) | me | P1.2 |
+| F17 | **FIXED in P1.3.** ~~Store receipts: the app name ran across line breaks and kept heading words ("App Store receipt
+Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store receipt matched nothing.~~ | Medium (correctness) | me | P1.3 |
+| F18 | CSV import labels every detection USD. Correct for the five US bank formats it recognises; a "Generic" CSV from a non-US bank would be mislabelled (engineering standards: currency honesty). | Medium | me | P1.9 (with the shared money parser) |
+| F19 | Wells Fargo CSV: detected by a first row of 5 cells with ≥2 `*`, and that first row is then dropped as a "header". If real WF exports have no header row, the first transaction is silently lost; if their placeholder cells differ, the format is not detected at all. Needs a REAL (redacted) Wells Fargo export to verify. | Medium (unverified assumption) | owner: one sample file | P1.9 |
+| F20 | **FIXED in P1.3.** ~~CSV merchant cleanup stripped ANY last word of 2+ letters ("APPLE MUSIC" → "Apple", "DISNEY PLUS" → "Disney"): distinct subscriptions merged into one group with an averaged amount, and groups whose amounts then differed were dropped.~~ | High (wrong / missing detections) | me | P1.3 |
+| F21 | `Date.parse` is lenient: "02/30/2026" becomes 2 March, "February 31, 2026" becomes 3 March. Receipt/CSV dates can silently shift. | Low (correctness) | me | P6 (property tests) |
+| F22 | **A stale compiled `packages/service-catalog/src/services.js` (tracked, last changed 2026-06-14) SHADOWS `services.ts`.** `index.ts` exports from `"./services.js"`; a probe proved Vitest loads the `.js` file (a different module instance from `services.ts`). Data is identical today (probe: 0 differences over 509 entries, same exports), but any edit to `services.ts` is silently ignored wherever the `.js` wins, and coverage measured the wrong file (why `services.ts` showed 0 %). The `.js` may be load-bearing for Metro, which does not map `./x.js` to `x.ts`, so removal must be verified per consumer (Vitest, Next build, Metro bundle, API dist). | Medium (silent-edit trap) | me | P1.7 |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -462,3 +469,54 @@ Gates: typecheck 0 · lint 0 · vitest 658/658 (69 files) · RN 22/22 · semgrep
 New findings recorded while reading: F14 (clock-based lockout), F15 (paid features
 must check the plan on the server), F16 (SQLCipher configured but not proven on a
 device).
+
+### P1.3 — Discovery (Gmail, CSV, receipts): untrusted input — 2026-09-30
+
+Scope grew from `emailScanner.ts` to the whole discovery folder plus the shared receipt
+module: every file there parses untrusted input (emails, bank exports).
+
+**Measured start:** emailScanner 48 % (the whole Gmail network flow untested),
+csvParser with ~22 uncovered lines, helpers 4 branches, shared receipts 6.
+
+**Fixes:**
+- **F12 (token handling):** revocation now `POST https://oauth2.googleapis.com/revoke`
+  with the token in a form-encoded BODY (Google's documented endpoint; RFC 7009 §2.1),
+  not a GET with `?token=` on the legacy endpoint. The fallback account label is random
+  (`inbox-<uuid8>`), not the token's first 8 characters.
+- **F12 (sender spoofing) ACCEPTED as low, with evidence:** detections are opt-in (a
+  checkbox per result; only selected ones are added, `discover.tsx`), and the cancel
+  link ever opened comes from OUR catalog (`service.cancellationUrl`, `cancel/[id].tsx`),
+  never from the email. A forged "netflix.com" mail can show a misleading suggestion, not
+  plant a link. DKIM/DMARC parsing deferred: the header format can't be verified against
+  real Gmail here.
+- **F17:** `extractStoreAppName` (packages/shared): name words separated by spaces/tabs
+  only (a name no longer crosses lines), and a stray leading "store" is noise. Found by
+  PROBING the real functions rather than assuming.
+- **F20:** CSV merchant cleanup strips only a trailing US state/territory code (explicit
+  list) and/or US/USA. "APPLE MUSIC" now matches the catalog's `apple-music`.
+- **Dead code removed, not ignored:** `csvParser` credit block (null on both paths) and
+  an unreachable `amount <= 0`; `emailScanner` three `?? ""`/digit checks that could never
+  fire; a redundant id lookup (id === slug for all 509 entries, now PINNED by a catalog
+  invariant test); an unreachable re-check in `exchangeAuthorizationCode` (typed to the
+  success variant instead); the helpers median `?? 0` after an empty-list guard.
+
+**My own mistake, caught:** adding `expo-crypto` to the scanner broke the OLD test file
+(it didn't mock that module; the real one pulls in React Native, which Flow-parse fails).
+My check had filtered for `Tests ` and hid the "1 failed" line on `Test Files`. Fixed
+with the mock; every check now shows `Test Files`.
+
+**Tests (+95):** `emailScanner.flow.test.ts` (28; fake Gmail API: connect incl. PKCE and
+no-code error, registry, paging + 400 cap, sender/subject gate, per-message failure
+isolation, id encoding, every MIME body shape, UTF-8/Latin-1/invalid base64, date
+fallbacks, progress across inboxes, revocation per RFC 7009, revoke-failure still forgets
+locally); `emailScanner.parse.test.ts` (21); `csvParser.more.test.ts` (25; every bank
+format, every row-rejection reason, all four cadences, merchant cleanup, dedupe both
+ways, ordering); shared receipts (+11); helpers (+2); catalog invariant (+1).
+
+**Bite checks:** F12 → 2 tests fail on the old code; F17 → 2 fail; F20 → 6 fail. All pass
+with the fixes.
+
+**Coverage:** emailScanner, csvParser, discovery-helpers, shared email-receipts: **0
+uncovered lines, branches or functions.** Tier 1 lines 67.22 % → **71.20 %**.
+
+Gates: typecheck 0 · lint 0 · vitest 746/746 (72 files) · RN 22/22 · semgrep 0.

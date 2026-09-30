@@ -1,6 +1,7 @@
 import { getServiceBySlug, searchServices, services, type Service } from "@zeno/service-catalog";
 import { extractStoreAppName, type CurrencyCode } from "@zeno/shared";
 import { exchangeCodeAsync, type AuthRequest, type AuthSessionResult } from "expo-auth-session";
+import * as Crypto from "expo-crypto";
 import { discovery as googleDiscovery } from "expo-auth-session/providers/google";
 import { timedFetch } from "../api/http";
 import { getGmailAccountToken, listGmailAddresses, removeGmailAccount, saveGmailAccount } from "../security/secure-store";
@@ -165,7 +166,10 @@ export async function connectGmail(request: AuthRequest, result: AuthSessionResu
   }
 
   const accessToken = result.authentication?.accessToken ?? await exchangeAuthorizationCode(request, result);
-  const address = (await fetchGmailAddress(accessToken).catch(() => null)) ?? `inbox-${slugify(accessToken.slice(0, 8))}`;
+  // Fallback label when the profile lookup fails. Random, NOT derived from the
+  // token: the label is stored in the account index and shown in the UI, and it
+  // used to embed the token's first 8 characters (finding F12).
+  const address = (await fetchGmailAddress(accessToken).catch(() => null)) ?? `inbox-${Crypto.randomUUID().slice(0, 8)}`;
   await saveGmailAccount(address, accessToken);
   return { address, token: accessToken };
 }
@@ -395,11 +399,21 @@ export async function scanAllGmailAccounts(
   return processResults(all);
 }
 
+// Google's documented revocation endpoint, called per RFC 7009 §2.1: POST with
+// the token in an application/x-www-form-urlencoded BODY. The previous call was
+// a GET to the legacy accounts.google.com endpoint with the token in the URL
+// query, where proxies and server logs record it (finding F12).
+export const GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke";
+
 export async function disconnectGmailAccount(address: string): Promise<void> {
   const token = await getGmailAccountToken(address);
   try {
     if (token) {
-      await timedFetch(`https://accounts.google.com/o/oauth2/revoke?token=${encodeURIComponent(token)}`);
+      await timedFetch(GOOGLE_REVOKE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `token=${encodeURIComponent(token)}`
+      });
     }
   } finally {
     await removeGmailAccount(address);
@@ -411,11 +425,13 @@ export async function fetchGmailAddress(accessToken: string): Promise<string | n
   return profile.emailAddress ?? null;
 }
 
-async function exchangeAuthorizationCode(request: AuthRequest, result: AuthSessionResult): Promise<string> {
-  if (result.type !== "success") {
-    throw new Error("Google authorization did not complete successfully.");
-  }
+// Typed to the result variant that carries `params` (expo-auth-session puts
+// "error" | "success" in one union member): connectGmail, the only caller, has
+// already rejected every outcome except "success", so a second type check here
+// was unreachable.
+type AuthResultWithParams = Extract<AuthSessionResult, { params: Record<string, string> }>;
 
+async function exchangeAuthorizationCode(request: AuthRequest, result: AuthResultWithParams): Promise<string> {
   const code = result.params.code;
   if (!code) {
     throw new Error("Google did not return an authorization code.");
@@ -555,7 +571,10 @@ function extractSenderDomain(sender: string): string {
   if (emailMatch?.[1]) {
     return emailMatch[1].toLowerCase();
   }
-  return sender.toLowerCase().replace(/^https?:\/\//, "").split("/")[0] ?? "";
+  // Everything before the first "/" (a URL-style sender). A regex, not
+  // split("/")[0] ?? "", whose fallback could never run: split always returns
+  // at least one element.
+  return sender.toLowerCase().replace(/^https?:\/\//, "").replace(/\/[\s\S]*$/, "");
 }
 
 function getKnownBillingDomain(domain: string): string | null {
@@ -576,11 +595,11 @@ function detectStoreBiller(senderDomain: string, body: string): BilledThrough | 
 
 // Normalize a raw money token to a major-unit number, disambiguating grouping
 // vs decimal separators so "$1,299.00" -> 1299 (not 1) and "€10,99" -> 10.99.
+// `raw` is always a regex capture that starts and ends on a digit (see the
+// patterns in extractAmount), so `cleaned` always holds a digit; anything
+// unparseable still ends as null through the finite/positive check below.
 function parseAmountToken(raw: string): number | null {
   const cleaned = raw.replace(/[^\d.,]/g, "");
-  if (!/\d/.test(cleaned)) {
-    return null;
-  }
   const lastComma = cleaned.lastIndexOf(",");
   const lastDot = cleaned.lastIndexOf(".");
   let normalized: string;
@@ -729,7 +748,8 @@ function merchantFromDomain(senderDomain: string): string | null {
 }
 
 function parseMerchantFromSubject(body: string): string | null {
-  const firstLine = body.split(/\r?\n/)[0] ?? "";
+  // The first line (up to the first LF or CRLF), without a dead `?? ""`.
+  const firstLine = body.replace(/\r?\n[\s\S]*$/, "");
   const cleaned = firstLine
     .replace(/\b(receipt|invoice|subscription|payment|confirmation|billing|renewal|charged|charge|your|from|for)\b/gi, " ")
     .replace(/\$\s*\d+(?:\.\d{2})?/g, " ")
@@ -740,7 +760,10 @@ function parseMerchantFromSubject(body: string): string | null {
 
 function enrichWithCatalogMatch(subscription: ParsedSubscription): ParsedSubscription {
   if (subscription.serviceId) {
-    const service = getServiceBySlug(subscription.serviceId) ?? services.find((candidate) => candidate.id === subscription.serviceId);
+    // id === slug for every catalog entry (pinned by the catalog invariant
+    // test), so a lookup by slug is complete; a second lookup by id could
+    // never find anything the first missed.
+    const service = getServiceBySlug(subscription.serviceId);
     return service ? { ...subscription, serviceId: service.id, cancelUrl: service.cancelUrl, name: service.name } : subscription;
   }
 

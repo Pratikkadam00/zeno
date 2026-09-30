@@ -51,3 +51,18 @@ describe("parsePriceToMinorUnits", () => {
     expect(Number.isInteger(record.defaultMonthlyPrice?.amountMinor)).toBe(true);
   });
 });
+
+describe("catalog identity invariants", () => {
+  // Relied on by apps/mobile discovery (enrichWithCatalogMatch looks services up
+  // by slug only): an entry whose id differed from its slug would silently stop
+  // matching. Unique ids/slugs keep every lookup unambiguous.
+  it("every entry's id equals its slug, and both are unique", () => {
+    const ids = new Set<string>();
+    for (const s of services) {
+      expect(s.id, s.name).toBe(s.slug);
+      expect(ids.has(s.id), `duplicate id ${s.id}`).toBe(false);
+      ids.add(s.id);
+    }
+    expect(ids.size).toBe(services.length);
+  });
+});

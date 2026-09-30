@@ -158,3 +158,17 @@ describe("summarizeFoundMoney", () => {
     expect(summarizeFoundMoney([])).toEqual({ annualTotal: 0, currency: "USD", excludedCount: 0 });
   });
 });
+
+describe("quarterly cadence", () => {
+  it("infers quarterly from a ~90-day median gap, at both edges of the window", () => {
+    expect(inferRecurringCycle([91, 90])).toBe("quarterly");
+    expect(inferRecurringCycle([85])).toBe("quarterly");
+    expect(inferRecurringCycle([95])).toBe("quarterly");
+    expect(inferRecurringCycle([84])).toBeNull();
+    expect(inferRecurringCycle([96])).toBeNull();
+  });
+
+  it("annualizes a quarterly amount as ×4 (not ×12)", () => {
+    expect(summarizeFoundMoney([{ amount: 30, currency: "USD", billingCycle: "quarterly" }])).toEqual({ annualTotal: 120, currency: "USD", excludedCount: 0 });
+  });
+});

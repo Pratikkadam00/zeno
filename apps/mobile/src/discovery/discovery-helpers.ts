@@ -40,7 +40,8 @@ export function inferRecurringCycle(gaps: number[]): DiscoveryBillingCycle | nul
     return null;
   }
   const sorted = [...gaps].sort((a, b) => a - b);
-  const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
+  // Non-empty (returned above), so the middle element always exists.
+  const median = sorted[Math.floor(sorted.length / 2)]!;
   if (median >= 5 && median <= 9) return "weekly";
   if (median >= 24 && median <= 35) return "monthly";
   if (median >= 85 && median <= 95) return "quarterly";

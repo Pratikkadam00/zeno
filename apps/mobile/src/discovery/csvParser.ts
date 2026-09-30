@@ -20,9 +20,8 @@ type Transaction = {
 type ColumnMap = {
   date: number;
   description: number;
-  amount?: number;
-  debit?: number;
-  credit?: number;
+  amount?: number | undefined;
+  debit?: number | undefined;
 };
 
 export function parseCSV(csvContent: string): CSVParseResult {
@@ -76,14 +75,14 @@ function getColumnMap(header: string[], format: BankFormat): ColumnMap {
   const description = firstColumn(lowered, ["description", "merchant", "name"]);
   const amount = firstColumn(lowered, ["amount"]);
   const debit = firstColumn(lowered, ["debit", "withdrawal"]);
-  const credit = firstColumn(lowered, ["credit", "deposit"]);
 
+  // No credit/deposit column: a credit is never a charge, and the old credit
+  // check returned null on both of its paths (it could not change any result).
   return {
     date: date === -1 ? 0 : date,
     description: description === -1 ? 1 : description,
     amount: amount === -1 ? undefined : amount,
-    debit: debit === -1 ? undefined : debit,
-    credit: credit === -1 ? undefined : credit
+    debit: debit === -1 ? undefined : debit
   };
 }
 
@@ -93,8 +92,9 @@ function parseTransaction(row: string[], columns: ColumnMap): Transaction | null
     return null;
   }
 
+  // parseChargeAmount only ever returns a positive charge or null.
   const amount = parseChargeAmount(row, columns);
-  if (amount === null || amount <= 0) {
+  if (amount === null) {
     return null;
   }
 
@@ -114,17 +114,11 @@ function parseChargeAmount(row: string[], columns: ColumnMap): number | null {
     }
   }
 
+  // A signed amount column: negative = money out (a charge); positive = a credit.
   if (columns.amount !== undefined) {
     const amount = parseMoney(row[columns.amount]);
     if (amount !== null && amount < 0) {
       return Math.abs(amount);
-    }
-  }
-
-  if (columns.credit !== undefined) {
-    const credit = parseMoney(row[columns.credit]);
-    if (credit !== null && credit > 0) {
-      return null;
     }
   }
 
@@ -210,6 +204,18 @@ function dedupe(subscriptions: ParsedSubscription[]): ParsedSubscription[] {
   return [...grouped.values()].sort((a, b) => confidenceRank(b.confidence) - confidenceRank(a.confidence) || b.amount - a.amount);
 }
 
+// Trailing location noise on US card descriptors: a state/territory code
+// (optionally after " - "), optionally followed by US/USA, or a bare US/USA —
+// "… LOS GATOS CA", "… - NY", "SPOTIFY USA". Uppercase only, as banks export.
+//
+// Finding F20: the previous rule, /\s+[A-Z]{2,}(?:\s+US)?$/i, stripped ANY last
+// word of 2+ letters: "APPLE MUSIC" → "Apple", "DISNEY PLUS" → "Disney",
+// "ZZQX CLUB" → "Zzqx". Distinct subscriptions then merged into one group with
+// an averaged amount, and groups whose amounts then differed were dropped.
+const US_REGION_CODES =
+  "AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC|PR|VI|GU|AS|MP";
+const trailingLocation = new RegExp(`\\s+(?:-\\s+)?(?:${US_REGION_CODES})(?:\\s+USA?)?$|\\s+USA?$`);
+
 function cleanDescription(description: string): string {
   const cleaned = description
     .replace(/^(SQ \*|TST\*|PAYPAL \*|SP |APL\*)/i, "")
@@ -217,8 +223,7 @@ function cleanDescription(description: string): string {
     .replace(/\b(ending in|card|visa|mc|amex)\s*\d{4}\b/gi, "")
     .replace(/\b\d{4,}\b/g, "")
     .replace(/\s{2,}/g, " ")
-    .replace(/\s+-\s+[A-Z]{2}$/i, "")
-    .replace(/\s+[A-Z]{2,}(?:\s+US)?$/i, "")
+    .replace(trailingLocation, "")
     .trim();
 
   return titleCase(cleaned);

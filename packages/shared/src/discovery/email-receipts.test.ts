@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectEmailReceiptCandidates } from "./email-receipts";
+import { detectEmailReceiptCandidates, extractStoreAppName } from "./email-receipts";
 
 describe("email receipt detector", () => {
   it("detects receipt candidates without requiring email body upload", () => {
@@ -150,5 +150,65 @@ describe("email receipt detector", () => {
     // Only the Play-specific sender / "Google Play" text counts as a store biller.
     expect(candidate?.billedThrough).toBe("direct");
     expect(candidate?.amountMinor).toBe(199);
+  });
+});
+
+describe("extractStoreAppName", () => {
+  it("names the app on the '(Monthly)' line, never words from the line above", () => {
+    expect(extractStoreAppName("App Store receipt\nNetflix (Monthly) $15.49")).toBe("Netflix");
+    expect(extractStoreAppName("Receipt\r\nOrder ID MXYZ\r\nDuolingo Super (1 Year) $83.99")).toBe("Duolingo Super");
+  });
+
+  it("strips a leading heading on a single flattened line (HTML receipts are one line)", () => {
+    expect(extractStoreAppName("App Store receipt Netflix (Monthly) $15.49")).toBe("Netflix");
+    expect(extractStoreAppName("Your receipt from Apple Disney+ (Monthly) $13.99")).toBe("Disney+");
+  });
+
+  it("reads 'X subscription' and 'renewal for X' forms", () => {
+    expect(extractStoreAppName("Your Headspace subscription renewed for $12.99")).toBe("Headspace");
+    expect(extractStoreAppName("Google Play renewal for Zzqxgram Pro $3.99")).toBe("Zzqxgram Pro");
+  });
+
+  it("returns null when no app name can be read", () => {
+    expect(extractStoreAppName("App Store: your subscription renewed. $4.99")).toBeNull();
+    expect(extractStoreAppName("Google Play order receipt $2.99")).toBeNull();
+    expect(extractStoreAppName("")).toBeNull();
+  });
+});
+
+describe("detectEmailReceiptCandidates — missing fields", () => {
+  it("works without a snippet (subject only)", () => {
+    const [c] = detectEmailReceiptCandidates([{ provider: "gmail", receivedAt: "2026-09-01T00:00:00.000Z", sender: "Netflix <info@netflix.com>", subject: "Your Netflix receipt $15.49 monthly" }]);
+    expect(c).toMatchObject({ merchant: "Netflix", amountMinor: 1549 });
+  });
+
+  it("a store receipt without a snippet falls back to the generic store label", () => {
+    const [c] = detectEmailReceiptCandidates([{ provider: "gmail", receivedAt: "2026-09-01T00:00:00.000Z", sender: "Apple <no_reply@email.apple.com>", subject: "Your receipt from Apple $4.99" }]);
+    expect(c?.merchant).toBe("App Store subscription");
+  });
+
+  it("with no sender display name, the merchant comes from the subject before the billing word", () => {
+    const [c] = detectEmailReceiptCandidates([{ provider: "gmail", receivedAt: "2026-09-01T00:00:00.000Z", sender: "<billing@zzqx.example>", subject: "Zzqx Cloud invoice $9.00", snippet: "" }]);
+    expect(c?.merchant).toBe("Zzqx Cloud");
+  });
+
+  it("with neither a display name nor a subject lead: 'Unknown merchant'", () => {
+    const [c] = detectEmailReceiptCandidates([{ provider: "gmail", receivedAt: "2026-09-01T00:00:00.000Z", sender: "<billing@zzqx.example>", subject: "Receipt $9.00" }]);
+    expect(c?.merchant).toBe("Unknown merchant");
+  });
+
+  it("scores a billing email that says neither 'receipt' nor 'invoice' lower than one that does", () => {
+    const [withWord] = detectEmailReceiptCandidates([{ provider: "gmail", receivedAt: "2026-09-01T00:00:00.000Z", sender: "Zzqx <b@zzqx.example>", subject: "Zzqx receipt: subscription renewal $9.00" }]);
+    const [without] = detectEmailReceiptCandidates([{ provider: "gmail", receivedAt: "2026-09-01T00:00:00.000Z", sender: "Zzqx <b@zzqx.example>", subject: "Zzqx subscription renewal $9.00" }]);
+    expect(withWord).toBeDefined();
+    expect(without).toBeDefined();
+    expect(without!.confidence).toBeLessThan(withWord!.confidence);
+  });
+});
+
+describe("detectEmailReceiptCandidates — Play Store fallback label", () => {
+  it("a Play Store receipt whose app cannot be read is labelled 'Play Store subscription'", () => {
+    const [c] = detectEmailReceiptCandidates([{ provider: "gmail", receivedAt: "2026-09-01T00:00:00.000Z", sender: "Google Play <googleplay-noreply@google.com>", subject: "Your Google Play Order Receipt $2.99" }]);
+    expect(c).toMatchObject({ merchant: "Play Store subscription", billedThrough: "play_store" });
   });
 });

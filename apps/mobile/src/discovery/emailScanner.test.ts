@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 // parseEmailBody/processResults never touch. Stub just enough for the module
 // to load under Vitest.
 vi.mock("expo-auth-session", () => ({ exchangeCodeAsync: vi.fn() }));
+vi.mock("expo-crypto", () => ({ randomUUID: () => "00000000-0000-0000-0000-000000000000" }));
 vi.mock("expo-auth-session/providers/google", () => ({ discovery: {} }));
 vi.mock("../security/secure-store", () => ({
   getGmailAccountToken: vi.fn(),
