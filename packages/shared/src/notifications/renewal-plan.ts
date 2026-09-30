@@ -160,8 +160,10 @@ function applyQuietHours(
 }
 
 function parseHour(value: string): number | null {
-  const [hourText] = value.split(":");
-  const hour = Number.parseInt(hourText ?? "", 10);
+  // parseInt stops at the first ":", so "22:00" -> 22 (minutes are ignored).
+  // Same result as parsing the text before the colon, without the unreachable
+  // `?? ""` that split(":")[0] needed for the type checker.
+  const hour = Number.parseInt(value, 10);
   return Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : null;
 }
 
