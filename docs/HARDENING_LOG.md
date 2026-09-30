@@ -1116,3 +1116,19 @@ token trusting a body `userId`, and sandbox minting allowed in any environment.
 
 Gates: typecheck 0 · lint 0 · vitest 84 files / 954 tests (ratchet 90.95 / 85.6 / 90.72 /
 91.66) · semgrep `apps/api` 0 / 0.
+
+### P1.9 — two unassigned files (done by me) — 2026-09-30
+
+- **`mobile/src/fx/rates.ts`: 100 %.** New test: a successful response in which no
+  supported currency has a usable rate (only XAU, a negative EUR, a null GBP) returns
+  `null`, not `{}`. An empty table would read as "rates available" to the store.
+  Bite check: with the `length > 0` guard removed, the test fails; restored.
+  **Observation, not fixed:** `fetchLatestRates` uses a bare `fetch` with no deadline,
+  unlike the rest of the app (`timedFetch`). The store fires it best-effort and never
+  awaits it on the UI path, so a hang only leaves one pending promise. Worth moving to
+  `timedFetch` in P3.
+- **`mobile/src/config/site.ts`:** the only open branch is `split("/")[0] ?? ""`. A
+  `split` always yields at least one element, but the `??` is required by
+  `noUncheckedIndexedAccess`. It is unreachable and left as is (within the ≥ 95 %
+  branch allowance).
+

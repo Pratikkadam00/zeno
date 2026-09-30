@@ -49,6 +49,16 @@ describe("fetchLatestRates", () => {
     const rates = await fetchLatestRates();
     expect(rates).toEqual({ USD: 1 });
   });
+
+  it("returns null (not an empty table) when no supported currency has a usable rate", async () => {
+    // An empty table would read as "rates available" to the store and turn every
+    // total into a 0-conversion; null keeps it on honest native-currency totals.
+    mockFetch({
+      ok: true,
+      json: async () => ({ result: "success", rates: { XAU: 0.0004, EUR: -1, GBP: null } })
+    });
+    await expect(fetchLatestRates()).resolves.toBeNull();
+  });
 });
 
 describe("isRateTableStale", () => {
