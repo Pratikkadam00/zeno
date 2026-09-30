@@ -30,7 +30,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [~] P1.8 React providers under jest with their own coverage floor
     - [x] P1.8a jest coverage floor wired into CI; the four files moved from Vitest's scope to jest's
     - [x] P1.8b `budget-store.tsx` — **fixes F26** (lost updates)
-    - [ ] P1.8c `theme-provider.tsx`
+    - [x] P1.8c `theme-provider.tsx`
     - [ ] P1.8d `subscription-store.tsx` (601 lines) — incl. the same stale-merge in `setQuietHours`
     - [ ] P1.8e `LockOverlay.tsx`
     - [ ] P1.8f "erase everything from this device" as one tested function — **fixes F27**
@@ -745,3 +745,18 @@ real hook and provider):
 (1 of 14); restored, 14/14.
 
 Gates: typecheck 0 · lint 0 · vitest 872/872 · jest 36/36 with the floor met · semgrep 0.
+
+### P1.8c — Theme provider — 2026-09-30
+
+`theme-provider.rntest.tsx` (9 tests): defaults; a current id plus the dark scheme
+restored; each legacy id (`pulse`/`clarity`/`command`) migrated AND rewritten in storage;
+unknown ids and schemes ignored (not rewritten); unreadable storage falls back to
+defaults; `setScheme`, `toggleScheme` both ways, `setThemeId` (stored; the look is
+unchanged by design), each persisted; the guard outside the provider.
+
+A test-isolation bug of my own: a permanent `mockRejectedValue` on AsyncStorage's
+`getItem` (already a `jest.fn` in the package's mock) leaked into later tests, and
+`restoreAllMocks` cannot undo it. Now it rejects exactly the provider's two reads.
+
+`theme-provider.tsx`: **100 %** on every metric (was 63 %), with its per-file floor
+added. jest 45/45, both floors met.

@@ -41,6 +41,7 @@ module.exports = {
   ],
   coverageReporters: ["text", "json-summary"],
   coverageThreshold: {
-    "./src/data/budget-store.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 }
+    "./src/data/budget-store.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
+    "./src/theme/theme-provider.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 }
   }
 };
