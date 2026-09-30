@@ -49,6 +49,8 @@ export default defineConfig({
         "apps/mobile/src/data/budget-store.tsx",
         "apps/mobile/src/data/subscription-store.tsx",
         "apps/mobile/src/theme/theme-provider.tsx",
+        "apps/mobile/src/theme/useZenoTokens.ts",
+        "apps/mobile/src/theme/motion.ts",
         "apps/mobile/src/security/LockOverlay.tsx",
         // Next.js build output (generated route-type validators). Not our code;
         // counting it made the scope depend on whether `next dev` had run.
@@ -66,10 +68,10 @@ export default defineConfig({
       // these numbers in this file whenever a run exceeds them, so the floor
       // only ever rises; a drop below any floor fails `npm run test:coverage`.
       thresholds: {
-        statements: 90.95,
-        branches: 85.6,
-        functions: 90.72,
-        lines: 91.66,
+        statements: 92.16,
+        branches: 86.32,
+        functions: 93.76,
+        lines: 92.79,
         autoUpdate: true
       }
       // Known gap: a few dozen never-imported apps/web/*.tsx files (ones

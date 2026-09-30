@@ -38,7 +38,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
     - [~] P1.9a API (`app.ts` + `routes/auth.ts` by me; the rest by a parallel agent): `app.ts` ✅ (everything except the Plaid-configured paths, which are P1.10; **fixes F30, F31, F32, F33**), `routes/auth.ts` ✅ (0 uncovered lines / functions; 5 defensive branches), `coach.ts`, `billing.ts`, `family.ts`, `sync.ts`, `config.ts`, `storage/pg.ts`
     - [~] P1.9b mobile logic (two parallel agents): `api/client.ts`, `notificationService.ts` + `notificationHandlers.ts` (0 %), `subscription-ui.ts` (51 %), `calendarUtils.ts`, `insightsEngine.ts`, `finance/budget.ts`, `format.ts`, `api/config.ts`, `seed-subscriptions.ts`, `open-banking.ts` (+ F18 note)
     - [~] P1.9c shared package (parallel agent): 14 files (csv parse-utils, spend history / coach / twin / year-in-review / price-radar, renewal-plan, widget snapshot, public-api keys, business, trial-guardian, family vault, analytics, open-banking)
-    - [~] P1.9d thin config / theme / web files: haptics, motion, fonts, zeno, useZenoTokens, colors, spacing, typography, `next.config.ts`, `app.config.ts`, analytics-flag, web utils
+    - [x] P1.9d thin config, theme and web files: all 13 at 0 uncovered statements, branches and functions (`motion.ts` and `useZenoTokens.ts` moved to jest with 100 % floors). **Fixes F35, F36, F37**
   - [x] P1.10 `apps/api/src/plaid.ts` (was 21 %; now 0 uncovered lines / functions, 1 defensive branch) and the Plaid routes in `app.ts` (now 100 %). Plaid's HTTP is faked, with no Plaid or sandbox calls, by standing instruction. **Fixes F34**
   - [ ] P1.11 gate: Tier 1 at 100 % lines / statements / functions, ≥ 95 % branches; jest floor; green on GitHub
 - [ ] **P2 — API on real Postgres, authorization matrix, fuzzing**
@@ -92,6 +92,9 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F32 | **FIXED in P1.9a.** ~~The API claimed `serverStoresFinancialData: false`~~ on `/account`, `/capabilities`, `/business/summary` and both sync routes, but the server stores each household member's monthly spend (family) and whatever sync payload a client pushes (not end-to-end encrypted yet, per the capabilities comment). No client reads the flag, so it is removed rather than reworded. This is the machine-readable form of the banned "we never see your data". | Medium (truthfulness) | me | P1.9a |
 | F33 | **FIXED in P1.9a.** ~~Every Fastify client error became a 500 plus an alert.~~ The error handler treated anything without the rate-limit envelope as a server error, so malformed JSON (should be 400), a body over the limit (413) and an unsupported content type (415) all returned **500 INTERNAL**, logged at error level and paged the webhook. Verified by a probe on all three. A retrying client would also retry these. 4xx errors now keep their status and a fixed message. | Medium (alert flooding; wrong status) | me | P1.9a |
 | F34 | **FIXED in P1.10 (dev-only feature).** ~~Plaid transactions were normalized wrongly.~~ `Math.abs(amount)` turned every deposit and refund into a charge, although Plaid documents "positive values when money moves out of the account; negative values when money moves in". A paycheck could then look like a recurring subscription to the detector. Separately, `iso_currency_code ?? "USD"` labelled unofficial currencies (Plaid sets `iso_currency_code` to null for them) as USD, and `× 100` assumed every currency has 2 decimals (JPY has 0, KWD has 3). Now the sign is kept, unofficial currencies are skipped, and the exponent comes from ICU. The app only reads the count today, so nothing downstream breaks. | Low (dev-only today; data integrity once enabled) | me | P1.10 |
+| F35 | **FIXED in P1.9d.** ~~`useReducedMotion` leaked an unhandled promise rejection~~ whenever React Native's accessibility module rejected `isReduceMotionEnabled()` (unavailable native module, or an iOS-side error). Only `.then()` was chained, so every animated component that mounted in that state leaked one. Now `.catch()` keeps the default (motion on), and the change listener still applies later toggles. | Low | me (agent) | P1.9d |
+| F36 | **FIXED in P1.9d.** ~~The website's CSP added `'unsafe-eval'` for ANY non-production NODE_ENV.~~ `next build` / `next start` keep a pre-set NODE_ENV ("test" silently, anything else with a warning), so a real server started under e.g. `staging` shipped the relaxed dev policy. It is now keyed on `NODE_ENV === "development"` (the dev server only), so it fails closed. | Low (Vercel runs with production) | me (agent) | P1.9d |
+| F37 | **FIXED in P1.9d.** ~~The public `/analytics` page, which shows SYNTHETIC sample KPIs, was on for any non-production NODE_ENV~~, for the same reason as F36. A staging server would have shown fake business metrics to real visitors, which breaks the invented-statistics rule. It is now on only for the dev server, or when `SHOW_PUBLIC_ANALYTICS` is exactly `"1"`. Look-alike values ("true", " 1", "01", "") stay off. | Low (truthfulness) | me (agent) | P1.9d |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -1132,3 +1135,57 @@ Gates: typecheck 0 · lint 0 · vitest 84 files / 954 tests (ratchet 90.95 / 85.
   `noUncheckedIndexedAccess`. It is unreachable and left as is (within the ≥ 95 %
   branch allowance).
 
+### P1.9d — thin config, theme and web files (agent, verified by me) — 2026-09-30
+
+**Done by a parallel agent** in its own worktree (branch `worktree-agent-a230e74683c69c759`,
+6 commits on `fe783c5`), then **merged and verified by me in `main`**. I did not take the
+report on trust:
+- **Read every changed source line.** The three are `motion.ts` (+`.catch`), and
+  `next.config.ts` and `analytics-flag.ts` (a one-line rule each).
+- **Scanned every new test for weak assertions** (`|| true`, `expect(true)`, bare
+  `toBeTruthy`/`toBeDefined`, `.skip`/`.only`): none.
+- **Read the two security-relevant tests in full.** `next.config.test.ts` pins the
+  exact production CSP and every security header. `app.config.test.ts` first proves
+  its scan finds the API's real secrets, then sets every API env var to a marker and
+  asserts that no marker appears anywhere in the shipped Expo config.
+- **Re-ran all three bite checks myself in `main`.** The old CSP rule fails 2 tests,
+  the old analytics rule fails 3, and removing the `.catch` fails 1. All restored.
+
+**Coverage:** haptics, fonts, zeno, colors / spacing / typography, `next.config.ts`,
+`app.config.ts`, `analytics-flag.ts` and web `utils.ts` are all at 0 uncovered
+(statements / branches / functions) under Vitest. `motion.ts` and `useZenoTokens.ts`
+need React Native rendering, so they moved to jest: they are in `collectCoverageFrom`
+with 100 % floors, and excluded in `vitest.config.ts` (I applied the two exclude lines).
+
+**Tests added** (8 files, 129 tests):
+- **Haptics:** each entry calls the right expo-haptics function per platform; a
+  rejected haptic is swallowed.
+- **Fonts:** each maps to a real file.
+- **Tokens:** every legacy theme id resolves to the one brand. The WCAG claims in the
+  token comments are asserted in both schemes.
+- **Typography:** only fonts that are actually loaded, and weights match.
+- **Expo config:** no server secret, and https on the release profiles.
+- **Website config:** CSP and headers; www → apex redirect.
+- **Analytics flag:** fails closed.
+- **`cn()`:** conditional classes, flattening, and a later Tailwind utility winning.
+- **`printIn` and `useReducedMotion`** (jest).
+- **`useZenoTokens`** (jest): identity is stable until the scheme changes.
+
+**Observations from the agent** (not changed; left for the owner or later phases):
+- **`src/theme/colors.ts` is dead code** (only `theme/index.ts` re-exports it, and
+  nothing imports that barrel). It is also saved as Windows-1252. A candidate for P1.9
+  cleanup or P3.
+- **Contrast, for design review:** `textTertiary` is 3.45:1 on paper and
+  `stampVerified` is 4.17:1. The tokens claim AA for neither.
+- **`app.config.ts`** falls back to `http://127.0.0.1` when `PUBLIC_API_BASE_URL` is
+  unset. The release profiles set https, and that is now tested.
+- **The production CSP still allows `'unsafe-inline'` scripts.** This was already
+  known, and nonce-based CSP is P4 work.
+- **Worktree note:** `@react-native-async-storage/async-storage` exists only in the main
+  checkout's `apps/mobile/node_modules`. The agent worked around it without installing
+  anything, and I re-ran everything in `main`.
+
+**Gates in `main` after the merge:** typecheck 0 · lint 0 · vitest 92 files / 1069 tests
+(ratchet 92.16 / 86.32 / 93.76 / 92.79) · jest 8 suites / 113 tests, all 6
+jest-measured files at 100 % · semgrep (web + theme + app.config) 0 findings (3
+pre-existing parse warnings in the legal pages).
