@@ -461,7 +461,8 @@ describe("api app", () => {
     const body = pull.json();
     expect(body.data.encryptedChanges).toHaveLength(1);
     expect(body.data.encryptedChanges[0].encryptedPayload).toBe("cipher-v2");
-    expect(body.data.serverStoresFinancialData).toBe(false);
+    // F32: the server does store sync payloads, so it no longer claims otherwise.
+    expect(body.data).not.toHaveProperty("serverStoresFinancialData");
 
     // A DIFFERENT authenticated user (own token) sees none of user A's data.
     const b = await tokenFor(app, "sync-b@zeno.test");

@@ -7,7 +7,7 @@ import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest, 
 import { pingStorage } from "./storage/pg";
 import Redis from "ioredis";
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
-import { z, ZodError } from "zod";
+import { z } from "zod";
 import { authRoutes, revokeAllSessionsForAccount } from "./routes/auth";
 import { createLinkToken, deletePlaidItem, exchangePublicToken, getRecentTransactions, getStoredPlaidItem, plaidConfigured, sandboxPublicToken, storePlaidItem } from "./plaid";
 import { applyWebhookEvent, billingConfigured, deleteEntitlementForUser, fetchEntitlement, getCachedEntitlement, verifyWebhookAuth, webhookConfigured } from "./billing";
@@ -37,13 +37,18 @@ const limit = (max: number) => ({ config: { rateLimit: { max, timeWindow: "1 min
 // onRequest hook has set request.userId — coach is never a public route, so by
 // the time preHandler runs, userId is always populated or the request already
 // 401'd and never reached here.
+/** @internal exported for tests: the IP fallback is defensive (coach is never public). */
+export function accountRateLimitKey(req: FastifyRequest): string {
+  return req.userId ?? req.ip;
+}
+
 const limitByAccount = (max: number) => ({
   config: {
     rateLimit: {
       max,
       timeWindow: "1 minute",
       hook: "preHandler" as const,
-      keyGenerator: (req: FastifyRequest) => req.userId ?? req.ip
+      keyGenerator: accountRateLimitKey
     }
   }
 });
@@ -248,11 +253,11 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(cors, {
     origin: (origin, callback) => {
       // Requests without an Origin header (mobile app, server-to-server) are not CORS requests.
-      if (!origin || allowedOrigins.includes(origin) || isDevLocalhostOrigin(origin)) {
-        callback(null, true);
-        return;
-      }
-      callback(new Error("Origin not allowed."), false);
+      // A disallowed origin gets no CORS headers, so the browser withholds the
+      // response. It is NOT an error: passing one here made every such request a
+      // 500 plus an error log plus a monitoring alert, which any web page could
+      // trigger at will (finding F30).
+      callback(null, !origin || allowedOrigins.includes(origin) || isDevLocalhostOrigin(origin));
     }
   });
   // Optional shared rate-limit store. With REDIS_URL set, counters live in Redis
@@ -343,10 +348,12 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     return ok({ recorded: true }, request.id);
   });
 
+  // No "serverStoresFinancialData: false" here or anywhere else (finding F32):
+  // the server DOES store family members' monthly spend and sync payloads, so
+  // the flag was false for any household member or syncing device.
   app.get("/api/v1/account", async (request) => ok({
     accountId: request.userId,
-    plan: "free",
-    serverStoresFinancialData: false
+    plan: "free"
   }, request.id));
 
   // Account deletion: purges every server-side kv_store namespace tied to this
@@ -366,7 +373,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   });
 
   app.get("/api/v1/services", async (request) => {
-    const rawQuery = typeof request.query === "object" && request.query ? request.query as Record<string, unknown> : {};
+    // Fastify always parses the query string into an object ({} when empty).
+    const rawQuery = request.query as Record<string, unknown>;
     const query = String(rawQuery.q ?? "").slice(0, 100);
     const limit = clampInt(rawQuery.limit, DEFAULT_SERVICES_LIMIT, 1, MAX_SERVICES_LIMIT);
     const offset = clampInt(rawQuery.offset, 0, 0, Number.MAX_SAFE_INTEGER);
@@ -385,9 +393,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   });
 
   app.get("/api/v1/services/:slug", async (request, reply) => {
-    const slug = typeof request.params === "object" && request.params && "slug" in request.params
-      ? String((request.params as { slug?: unknown }).slug ?? "")
-      : "";
+    const { slug } = request.params as { slug: string };
     const service = findServiceBySlug(slug);
     if (!service) {
       reply.code(404);
@@ -398,7 +404,6 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 
   app.get("/api/v1/capabilities", async (request) => ok({
     phase: "phase_6_intelligence_scale",
-    serverStoresFinancialData: false,
     capabilities: [
       "top_50_service_catalog",
       "service_cancellation_guides",
@@ -433,8 +438,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   }, request.id));
 
   app.get("/api/v1/business/summary", async (request) => ok({
-    summary: createBusinessSummary(demoBusinessWorkspace, []),
-    serverStoresFinancialData: false
+    summary: createBusinessSummary(demoBusinessWorkspace, [])
   }, request.id));
 
   app.get("/api/v1/public-api/keys", async (request) => {
@@ -508,7 +512,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   });
 
   app.get("/api/v1/family/:householdId", async (request, reply) => {
-    const householdId = (request.params as { householdId?: string }).householdId ?? "";
+    const { householdId } = request.params as { householdId: string };
     const household = getHousehold(householdId);
     if (!household) {
       reply.code(404);
@@ -516,7 +520,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     }
     // AUTHORIZATION: a valid token is not enough — the caller must belong to this
     // household. Otherwise a logged-in user could read any household by id.
-    if (!isHouseholdMember(household, request.userId)) {
+    if (!isHouseholdMember(household, request.userId!)) {
       reply.code(403);
       return fail("FORBIDDEN", "You are not a member of this household.", request.id);
     }
@@ -524,7 +528,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   });
 
   app.post("/api/v1/family/:householdId/spend", limit(30), async (request, reply) => {
-    const householdId = (request.params as { householdId?: string }).householdId ?? "";
+    const { householdId } = request.params as { householdId: string };
     const parsed = parseBody(familySpendSchema, request.body, request.id);
     if (!parsed.ok) {
       reply.code(400);
@@ -536,7 +540,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       return fail("NOT_FOUND", "Household not found.", request.id);
     }
     // Must be a member, and may only set OWN spend (member id = the caller).
-    if (!isHouseholdMember(existing, request.userId)) {
+    if (!isHouseholdMember(existing, request.userId!)) {
       reply.code(403);
       return fail("FORBIDDEN", "You are not a member of this household.", request.id);
     }
@@ -545,13 +549,13 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   });
 
   app.post("/api/v1/family/:householdId/leave", limit(20), async (request, reply) => {
-    const householdId = (request.params as { householdId?: string }).householdId ?? "";
+    const { householdId } = request.params as { householdId: string };
     const existing = getHousehold(householdId);
     if (!existing) {
       reply.code(404);
       return fail("NOT_FOUND", "Household not found.", request.id);
     }
-    if (!isHouseholdMember(existing, request.userId)) {
+    if (!isHouseholdMember(existing, request.userId!)) {
       reply.code(403);
       return fail("FORBIDDEN", "You are not a member of this household.", request.id);
     }
@@ -574,8 +578,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     try {
       return ok(await generateCoaching(parsed.data), request.id);
     } catch (error) {
-      reply.code(502);
-      return fail("UPSTREAM_ERROR", error instanceof Error ? error.message : "AI coach request failed.", request.id);
+      return upstreamFailure(request, reply, error, "AI coach request failed.");
     }
   });
 
@@ -594,8 +597,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     try {
       return ok(await fetchEntitlement(appUserId), request.id);
     } catch (error) {
-      reply.code(502);
-      return fail("UPSTREAM_ERROR", error instanceof Error ? error.message : "Entitlement lookup failed.", request.id);
+      return upstreamFailure(request, reply, error, "Entitlement lookup failed.");
     }
   });
 
@@ -629,8 +631,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       // other identity-bearing route in this file (see /plaid/exchange below).
       return ok(await createLinkToken(request.userId!), request.id);
     } catch (error) {
-      reply.code(502);
-      return fail("UPSTREAM_ERROR", error instanceof Error ? error.message : "Plaid request failed.", request.id);
+      return upstreamFailure(request, reply, error, "Plaid request failed.");
     }
   });
 
@@ -651,8 +652,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       storePlaidItem(request.userId!, { accessToken, itemId });
       return ok({ itemId, connected: true }, request.id);
     } catch (error) {
-      reply.code(502);
-      return fail("UPSTREAM_ERROR", error instanceof Error ? error.message : "Plaid request failed.", request.id);
+      return upstreamFailure(request, reply, error, "Plaid request failed.");
     }
   });
 
@@ -671,8 +671,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       const transactions = await getRecentTransactions(item.accessToken);
       return ok({ transactions, count: transactions.length }, request.id);
     } catch (error) {
-      reply.code(502);
-      return fail("UPSTREAM_ERROR", error instanceof Error ? error.message : "Plaid request failed.", request.id);
+      return upstreamFailure(request, reply, error, "Plaid request failed.");
     }
   });
 
@@ -686,8 +685,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     try {
       return ok({ publicToken: await sandboxPublicToken() }, request.id);
     } catch (error) {
-      reply.code(502);
-      return fail("UPSTREAM_ERROR", error instanceof Error ? error.message : "Plaid request failed.", request.id);
+      return upstreamFailure(request, reply, error, "Plaid request failed.");
     }
   });
 
@@ -702,8 +700,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     return ok({
       encryptedChanges: result.changes,
       cursor: result.cursor,
-      hasMore: result.hasMore,
-      serverStoresFinancialData: false
+      hasMore: result.hasMore
     }, request.id);
   });
 
@@ -715,7 +712,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       return parsed.error;
     }
     const result = await pushChanges(userId, parsed.data.encryptedChanges as EncryptedChange[]);
-    return ok({ ...result, serverStoresFinancialData: false }, request.id);
+    return ok(result, request.id);
   });
 
   app.setNotFoundHandler((request, reply) => {
@@ -729,12 +726,37 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       reply.code(envelopeError.statusCode).send(envelopeError.envelope);
       return;
     }
+    // Fastify's own CLIENT errors (malformed JSON, a body over the limit, an
+    // unsupported content type) carry a 4xx statusCode. They are the caller's
+    // fault: answer with that status and a fixed message, and never log them as
+    // server errors or page the monitoring webhook. Before, every one was a 500
+    // plus an alert, which anyone could trigger with a bad body (finding F33).
+    const status = (error as { statusCode?: unknown }).statusCode;
+    if (typeof status === "number" && status >= 400 && status < 500) {
+      reply.code(status).send(fail("BAD_REQUEST", clientErrorMessage(status), request.id));
+      return;
+    }
     request.log.error(error);
     reportServerError(error, request);
     reply.code(500).send(fail("INTERNAL", "Unexpected server error.", request.id));
   });
 
   return app;
+}
+
+function clientErrorMessage(status: number): string {
+  if (status === 413) return "Request body is too large.";
+  if (status === 415) return "Unsupported content type.";
+  return "Malformed request.";
+}
+
+// An upstream provider's error text (an AI provider's raw error body, a Plaid
+// error code) can carry account details, so it stays in the server log; the
+// client gets a fixed message (finding F31). The mobile app reads only the status.
+function upstreamFailure(request: FastifyRequest, reply: FastifyReply, error: unknown, publicMessage: string) {
+  request.log.warn({ err: error }, publicMessage);
+  reply.code(502);
+  return fail("UPSTREAM_ERROR", publicMessage, request.id);
 }
 
 // Length-safe constant-time string comparison — timingSafeEqual throws on
@@ -756,26 +778,24 @@ type ParseResult<T extends z.ZodType> =
   | { ok: false; error: ReturnType<typeof fail> };
 
 function parseBody<T extends z.ZodType>(schema: T, body: unknown, requestId: string): ParseResult<T> {
-  try {
-    return { ok: true, data: schema.parse(body) };
-  } catch (error) {
-    if (error instanceof ZodError) {
-      return {
-        ok: false,
-        error: fail("BAD_REQUEST", "Request validation failed.", requestId, {
-          issues: error.issues.map((issue) => ({
-            path: issue.path.join("."),
-            message: issue.message
-          }))
-        })
-      };
-    }
-    return { ok: false, error: fail("BAD_REQUEST", "Request validation failed.", requestId) };
+  const result = schema.safeParse(body);
+  if (result.success) {
+    return { ok: true, data: result.data };
   }
+  return {
+    ok: false,
+    error: fail("BAD_REQUEST", "Request validation failed.", requestId, {
+      issues: result.error.issues.map((issue) => ({
+        path: issue.path.join("."),
+        message: issue.message
+      }))
+    })
+  };
 }
 
+// Query values are always strings (or absent).
 function clampInt(value: unknown, fallback: number, min: number, max: number): number {
-  const parsed = typeof value === "number" ? value : Number.parseInt(String(value ?? ""), 10);
+  const parsed = Number.parseInt(String(value ?? ""), 10);
   if (!Number.isFinite(parsed)) {
     return fallback;
   }
@@ -784,8 +804,7 @@ function clampInt(value: unknown, fallback: number, min: number, max: number): n
 
 // A caller belongs to a household if they own it or are listed as a member.
 // Used to authorize household reads/writes against the verified token's user id.
-function isHouseholdMember(household: Household, userId: string | undefined): boolean {
-  if (!userId) return false;
+function isHouseholdMember(household: Household, userId: string): boolean {
   return household.ownerId === userId || household.members.some((member) => member.id === userId);
 }
 
@@ -802,8 +821,6 @@ function isDevLocalhostOrigin(origin: string): boolean {
 }
 
 function readProviderParam(params: unknown): OpenBankingProvider | null {
-  const value = typeof params === "object" && params && "provider" in params
-    ? String((params as { provider?: unknown }).provider)
-    : "";
-  return value === "plaid" || value === "mx" ? value : null;
+  const { provider } = params as { provider: string };
+  return provider === "plaid" || provider === "mx" ? provider : null;
 }

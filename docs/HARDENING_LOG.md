@@ -34,7 +34,11 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
     - [x] P1.8d `subscription-store.tsx` — **finishes F26** (the `setQuietHours` stale merge)
     - [x] P1.8e `LockOverlay.tsx` — **fixes F28** (a keychain error wedged the lock screen)
     - [x] P1.8f "erase everything from this device" as one tested function — **fixes F27**
-  - [ ] P1.9 remaining 0 % / low files (theme, notifications, widgets, api/config, format, subscription-ui, open-banking, analytics-flag, utils, next.config, app.config)
+  - [~] P1.9 every remaining Tier 1 gap: 48 files, with 532 statements / 530 branches / 98 functions uncovered (measured 2026-09-30, `gaps.cjs` over `coverage-final.json`)
+    - [~] P1.9a API: `app.ts` ✅ (everything except the Plaid-configured paths, which are P1.10; **fixes F30, F31, F32, F33**), `routes/auth.ts` (84 %), `coach.ts`, `billing.ts`, `family.ts`, `sync.ts`, `config.ts`, `storage/pg.ts`
+    - [ ] P1.9b mobile logic: `api/client.ts`, `notificationService.ts` + `notificationHandlers.ts` (0 %), `subscription-ui.ts` (51 %), `calendarUtils.ts`, `insightsEngine.ts`, `finance/budget.ts`, `format.ts`, `api/config.ts`, `seed-subscriptions.ts`, `open-banking.ts` (+ F18 note)
+    - [ ] P1.9c shared package: 14 files (csv parse-utils, spend history / coach / twin / year-in-review / price-radar, renewal-plan, widget snapshot, public-api keys, business, trial-guardian, family vault, analytics, open-banking)
+    - [ ] P1.9d thin config / theme / web files: haptics, motion, fonts, zeno, useZenoTokens, colors, spacing, typography, `next.config.ts`, `app.config.ts`, analytics-flag, web utils
   - [ ] P1.10 `apps/api/src/plaid.ts` (21 %) — pure parts; sandbox flows stay dev-only by standing instruction
   - [ ] P1.11 gate: Tier 1 at 100 % lines / statements / functions, ≥ 95 % branches; jest floor; green on GitHub
 - [ ] **P2 — API on real Postgres, authorization matrix, fuzzing**
@@ -83,6 +87,10 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F27 | **FIXED in P1.8f.** ~~"Cancel my Zeno account" promises it "erases everything from this device", but leaves connected Gmail OAuth tokens in the keychain (not revoked at Google), the app-lock PIN hash and lockout state, and quiet hours / home currency / cached FX rates / theme.** Gmail access tokens expire within about an hour, which limits the impact, but the promise is false.~~ The inventory in P1.8f also found the home-screen widget snapshot (it names the next renewal) and the stored push token. | High (privacy promise) | me | P1.8f |
 | F28 | **FIXED in P1.8e.** ~~A keychain error wedges the lock screen.~~ The PIN check reads and writes SecureStore, and nothing between SecureStore and the overlay caught an error. A rejected `tryPin` skipped `setBusy(false)`, so the PIN field stayed read-only until the app restarted; the user could only sign out. It failed closed (still locked, not a bypass), plus an unhandled rejection. A throwing biometric attempt was also unhandled. | Medium (availability; fails closed) | me | P1.8e |
 | F29 | Settings' "Connected inboxes" row is hard-coded to **"None connected"** (`app/settings.tsx`), even with Gmail inboxes connected. A false statement in the UI. | Low (truthfulness) | me | P4 (UI truthfulness) |
+| F30 | **FIXED in P1.9a.** ~~A request from a disallowed CORS origin got HTTP **500**, not a quiet refusal.~~ The CORS origin callback passed an `Error`, so every such request, preflight included, went through the error handler as a server error: an error log plus a monitoring-webhook POST each time. Any web page could make visitors' browsers flood the logs and the alert channel. Verified by a probe: GET 500, preflight 500. | Medium (alert flooding; wrong status) | me | P1.9a |
+| F31 | **FIXED in P1.9a.** ~~Upstream error text reached the client.~~ When the AI provider failed, the coach 502 carried up to 200 characters of the provider's raw error body, which can name the provider account (e.g. an organization id in a rate-limit message). Billing and Plaid 502s echoed their `error.message` too. The text now goes to the server log (`warn`), and the client gets a fixed message. The app reads only the status. | Medium (information disclosure) | me | P1.9a |
+| F32 | **FIXED in P1.9a.** ~~The API claimed `serverStoresFinancialData: false`~~ on `/account`, `/capabilities`, `/business/summary` and both sync routes, but the server stores each household member's monthly spend (family) and whatever sync payload a client pushes (not end-to-end encrypted yet, per the capabilities comment). No client reads the flag, so it is removed rather than reworded. This is the machine-readable form of the banned "we never see your data". | Medium (truthfulness) | me | P1.9a |
+| F33 | **FIXED in P1.9a.** ~~Every Fastify client error became a 500 plus an alert.~~ The error handler treated anything without the rate-limit envelope as a server error, so malformed JSON (should be 400), a body over the limit (413) and an unsupported content type (415) all returned **500 INTERNAL**, logged at error level and paged the webhook. Verified by a probe on all three. A retrying client would also retry these. 4xx errors now keep their status and a fixed message. | Medium (alert flooding; wrong status) | me | P1.9a |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -941,3 +949,70 @@ Gates: typecheck 0 · lint 0 · vitest 80 files / 895 tests (ratchet 86.23 / 79.
 
 **P1.8 is complete:** all four React files that only jest can render are at 100 / 100 /
 100 / 100 with per-file floors in CI. Findings fixed along the way: F26, F27, F28.
+
+### P1.9a (part 1) — `apps/api/src/app.ts` — 2026-09-30
+
+**Measured first:** `gaps.cjs` over `coverage-final.json` lists every Tier 1 file with an
+uncovered statement, branch or function. That is 48 files (532 / 530 / 98), now split into
+P1.9a–d in the tracker. `app.ts` had the most: 80 statements, 67 branches and 10
+functions uncovered.
+
+**Four real bugs, each confirmed by a probe before any fix (F30–F33 above):**
+- A disallowed CORS origin got a 500 plus an alert.
+- Provider error text reached clients.
+- A false "server stores no financial data" flag.
+- Fastify's 400/413/415 client errors became 500s plus alerts.
+
+**Fixes:**
+- **F30:** CORS answers with `callback(null, allowed)`; a disallowed origin gets no
+  CORS headers.
+- **F31:** an `upstreamFailure()` helper (log `warn`, fixed 502 message) replaces all 6
+  upstream catch blocks.
+- **F32:** the flag is removed from all five responses.
+- **F33:** the error handler passes Fastify 4xx statuses through, with fixed messages
+  (400 / 413 / 415), no error log and no alert.
+
+**Dead defensive branches removed** (the 100 % branch target flagged them; each was
+checked unreachable):
+- Fastify always gives an object for `request.query` and `request.params`, so the
+  `typeof`/`?? ""` guards went.
+- `isHouseholdMember` no longer takes `undefined` (every caller is behind the auth
+  guard).
+- `clampInt` no longer has a number branch (query values are strings).
+- `parseBody` uses `safeParse`, so there is no unreachable non-Zod catch.
+- The coach limiter's key is a named, exported `accountRateLimitKey`, so its
+  defensive IP fallback is tested directly.
+
+**`app.routes.test.ts`** (21 tests). The only fakes are coach and billing
+(configured-ness and the upstream call), the storage ping, and ioredis.
+- **CORS:** an allow-listed origin is echoed; a disallowed one is served without CORS
+  headers (GET and preflight both under 500); localhost is allowed in dev, a lookalike
+  host is refused, and localhost is refused in production.
+- **Client errors:** 400 / 413 / 415, with no error log and no webhook.
+- **Server errors:** a 500 posts the route pattern and message only (a secret in the
+  query string never appears in the alert body), and a failing webhook is swallowed. A
+  non-Error throw is reported as its string; an error before routing reports route
+  `unknown`; there is no webhook without a URL.
+- **Redis:** a fail-fast client, errors logged, and **a Redis outage degrades open**
+  (requests still served).
+- **Readiness:** 503 when the database is down.
+- **Branches:** validation, not-found and not-configured branches for events, services,
+  open banking, family, sync pull, and the billing webhook. **All 4 Plaid routes answer
+  503 when unconfigured**, which is the production state.
+- **Upstreams:** the coach and billing success paths, and failures carrying a fake
+  `org_…` / `sk_live_…` string that must not appear in the response.
+- **Informational routes:** each carries no F32 flag.
+- `app.test.ts`: the sync test now asserts the flag is absent.
+
+**Bite checks** (each fix reverted alone, then restored; all caught):
+- F30 → 2 tests fail
+- F31 → 2 tests fail
+- F33 → 1 test fails
+- F32 → 1 test fails
+
+`app.ts` has **0 uncovered** statements, branches or functions outside the
+Plaid-configured handlers (lines 625–688). Those are P1.10: route wiring with the Plaid
+module faked, no network, and no sandbox runs, per the standing instruction.
+
+Gates: typecheck 0 · lint 0 · vitest 81 files / 916 tests (ratchet 87.71 / 81.74 / 89.12 /
+88.4) · semgrep on `apps/api`: 0 findings, 0 errors.

@@ -66,10 +66,10 @@ export default defineConfig({
       // these numbers in this file whenever a run exceeds them, so the floor
       // only ever rises; a drop below any floor fails `npm run test:coverage`.
       thresholds: {
-        statements: 86.23,
-        branches: 79.83,
-        functions: 87.85,
-        lines: 87.04,
+        statements: 87.71,
+        branches: 81.74,
+        functions: 89.12,
+        lines: 88.4,
         autoUpdate: true
       }
       // Known gap: a few dozen never-imported apps/web/*.tsx files (ones
