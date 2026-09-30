@@ -52,10 +52,18 @@ export function webhookConfigured(): boolean {
   return Boolean(process.env.REVENUECAT_WEBHOOK_AUTH);
 }
 
+// The prefix is optional on BOTH sides: the env value is documented as the
+// header value set in RevenueCat, which may itself be "Bearer <secret>".
+function withoutBearer(value: string): string {
+  return value.startsWith("Bearer ") ? value.slice(7) : value;
+}
+
 export function verifyWebhookAuth(authHeader: string | undefined): boolean {
-  const expected = process.env.REVENUECAT_WEBHOOK_AUTH;
-  if (!expected || !authHeader) return false;
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
+  const configured = process.env.REVENUECAT_WEBHOOK_AUTH;
+  if (!configured || !authHeader) return false;
+  const expected = withoutBearer(configured);
+  if (!expected) return false; // a bare "Bearer " is no secret at all
+  const token = withoutBearer(authHeader);
   // Constant-time compare so the shared secret can't be brute-forced by timing.
   const tokenBuffer = Buffer.from(token);
   const expectedBuffer = Buffer.from(expected);
@@ -117,9 +125,19 @@ export function applyWebhookEvent(body: unknown): void {
   }).event;
   if (!event?.app_user_id) return;
 
+  // RevenueCat removes access only on EXPIRATION. A CANCELLATION (auto-renew
+  // turned off — or a refund) and a SUBSCRIPTION_PAUSED ("Don't revoke access on
+  // this event") don't say whether access continues, so drop the cached answer
+  // and let the next read re-verify against RevenueCat instead of guessing.
+  if (event.type === "CANCELLATION" || event.type === "SUBSCRIPTION_PAUSED") {
+    deleteEntitlementForUser(event.app_user_id);
+    return;
+  }
+
   const ids = event.entitlement_ids ?? [];
-  const expiresAt = event.expiration_at_ms ? new Date(event.expiration_at_ms).toISOString() : null;
-  const downgrade = event.type === "EXPIRATION" || event.type === "CANCELLATION" || event.type === "SUBSCRIPTION_PAUSED";
+  // 0 is a real (past) timestamp; only an absent value means "no expiry".
+  const expiresAt = typeof event.expiration_at_ms === "number" ? new Date(event.expiration_at_ms).toISOString() : null;
+  const downgrade = event.type === "EXPIRATION";
 
   let plan: BillingPlan = "free";
   let active = false;
