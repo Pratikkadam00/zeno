@@ -1,4 +1,4 @@
-import { encryptionKeyStatus, pgEnabled } from "./storage/pg";
+import { encryptionKeyStatus, pgEnabled, pgSslMode } from "./storage/pg";
 
 // Boot-time configuration validation. Called once from server.ts BEFORE listen()
 // so misconfiguration surfaces as a single loud summary (or a hard exit for fatal
@@ -31,7 +31,21 @@ export function validateConfig(): ConfigReport {
     else warnings.push(message);
   }
 
+  // A typo'd DATABASE_SSL must never silently change how the database is
+  // reached. pg.ts already resolves an unknown value to the strictest mode
+  // ("verify"); say so loudly, and refuse to boot production on it.
+  const ssl = pgSslMode();
+  if (!ssl.valid) {
+    const shown = JSON.stringify(String(process.env.DATABASE_SSL).slice(0, 40));
+    const message = `DATABASE_SSL=${shown} is not one of require | verify | disable — using "verify" (the strictest).`;
+    if (isProd()) fatal.push(message);
+    else warnings.push(message);
+  }
+
   if (isProd()) {
+    if (pgEnabled() && ssl.mode === "disable") {
+      warnings.push("DATABASE_SSL=disable in production — database traffic is NOT encrypted.");
+    }
     // JWT signing keys are required in production (auth.ts throws lazily without
     // them; check at boot so a misconfigured deploy dies immediately, not on the
     // first login). Ephemeral keys would log everyone out on each restart.

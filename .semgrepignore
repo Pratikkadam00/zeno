@@ -1,0 +1,23 @@
+# Paths the SAST gate skips. Semgrep already scans only git-tracked files, so
+# node_modules / build output are excluded by .gitignore; these are the extras.
+#
+# Tests: they deliberately contain the insecure patterns they assert against
+# (e.g. pg.test.ts checks that the default TLS mode is rejectUnauthorized:false
+# for Render's self-signed internal certificates). Scanning them only produces
+# findings about the assertions themselves.
+*.test.ts
+*.test.tsx
+*.rntest.tsx
+**/__tests__/
+
+# Design-system mockups and handoff bundles: static prototype HTML/JS that never
+# ships (the site and app are the ported code under apps/).
+Zeno Design System/
+Zeno Design System-handoff/
+
+# Generated / vendored
+**/.next/
+**/dist/
+**/coverage/
+apps/mobile/android/
+apps/mobile/ios/

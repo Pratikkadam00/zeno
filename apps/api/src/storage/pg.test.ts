@@ -18,7 +18,9 @@ vi.mock("pg", () => ({
   })
 }));
 
-const { closeStorage, encryptionConfigured, initStorage, kvDelete, kvPersist, openValue, pgEnabled, registerHydrator, sealValue } = await import("./pg");
+const { closeStorage, encryptionConfigured, initStorage, kvDelete, kvPersist, kvPersistAwait, openValue, pgEnabled, pgSslConfig, pgSslMode, registerHydrator, sealValue } = await import("./pg");
+const { Pool } = await import("pg");
+const { createCipheriv, randomBytes } = await import("node:crypto");
 
 // A throwaway 32-byte key (64 hex chars) for the encryption round-trip tests.
 const TEST_KEY = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
@@ -206,5 +208,82 @@ describe("initStorage hydration (DATABASE_URL set, mocked pg client)", () => {
 
     await expect(initStorage()).resolves.toBeUndefined();
     expect(called).toBe(false);
+  });
+});
+
+describe("TLS mode to Postgres (DATABASE_SSL)", () => {
+  it("defaults to require: encrypted, certificate NOT verified (Render internal URL is self-signed)", () => {
+    expect(pgSslMode({})).toEqual({ mode: "require", valid: true });
+    expect(pgSslConfig({})).toEqual({ rejectUnauthorized: false });
+    expect(pgSslConfig({ DATABASE_SSL: "require" })).toEqual({ rejectUnauthorized: false });
+    expect(pgSslConfig({ DATABASE_SSL: "  " })).toEqual({ rejectUnauthorized: false });
+  });
+
+  it("verify: certificate verified, with an optional custom CA", () => {
+    expect(pgSslConfig({ DATABASE_SSL: "verify" })).toEqual({ rejectUnauthorized: true });
+    expect(pgSslConfig({ DATABASE_SSL: "VERIFY", DATABASE_CA_CERT: " -----BEGIN CERTIFICATE-----x " })).toEqual({
+      rejectUnauthorized: true,
+      ca: "-----BEGIN CERTIFICATE-----x"
+    });
+    // An empty CA value is "no custom CA", not an empty trust list.
+    expect(pgSslConfig({ DATABASE_SSL: "verify", DATABASE_CA_CERT: "   " })).toEqual({ rejectUnauthorized: true });
+  });
+
+  it("disable: no TLS at all (local development)", () => {
+    expect(pgSslConfig({ DATABASE_SSL: "disable" })).toBeUndefined();
+  });
+
+  it("an unknown value NEVER weakens the connection: it resolves to verify and is flagged invalid", () => {
+    for (const typo of ["verfiy", "true", "off", "no-verify", "prefer"]) {
+      expect(pgSslMode({ DATABASE_SSL: typo }), typo).toEqual({ mode: "verify", valid: false });
+      expect(pgSslConfig({ DATABASE_SSL: typo }), typo).toEqual({ rejectUnauthorized: true });
+    }
+  });
+
+  it("the pool is actually constructed with the resolved TLS config", async () => {
+    await closeStorage();
+    process.env.DATABASE_URL = "postgres://mock/db";
+    const original = process.env.DATABASE_SSL;
+    process.env.DATABASE_SSL = "verify";
+    try {
+      vi.mocked(Pool).mockClear();
+      await kvPersistAwait("tls-test", "k", 1);
+      const opts = vi.mocked(Pool).mock.calls.at(-1)?.[0] as { ssl?: unknown };
+      expect(opts.ssl).toEqual({ rejectUnauthorized: true });
+    } finally {
+      if (original === undefined) delete process.env.DATABASE_SSL;
+      else process.env.DATABASE_SSL = original;
+      await closeStorage();
+    }
+  });
+});
+
+describe("AES-GCM envelope hardening", () => {
+  it("rejects an envelope too short to hold iv + a full 16-byte tag + ciphertext", () => {
+    process.env.STORAGE_ENCRYPTION_KEY = TEST_KEY;
+    for (const len of [0, 1, 12, 16, 27, 28]) {
+      expect(openValue({ enc: Buffer.alloc(len).toString("base64") }), `len ${len}`).toBeNull();
+    }
+  });
+
+  it("rejects a value whose GCM tag was TRUNCATED (Node would otherwise accept a 4-byte tag)", () => {
+    process.env.STORAGE_ENCRYPTION_KEY = TEST_KEY;
+    const key = Buffer.from(TEST_KEY, "hex");
+    // A genuine ciphertext of valid JSON carrying only a 4-byte tag. Honest
+    // note: the pre-fix code also rejected this (its fixed 16-byte slice mixes
+    // tag and ciphertext), so this is a regression guard. The property that
+    // actually changed — the pinned tag length — is asserted in pg-gcm.test.ts.
+    const iv = randomBytes(12);
+    const cipher = createCipheriv("aes-256-gcm", key, iv, { authTagLength: 4 });
+    const ct = Buffer.concat([cipher.update(Buffer.from(JSON.stringify({ accessToken: "forged-but-valid-json" }), "utf8")), cipher.final()]);
+    const shortTag = cipher.getAuthTag();
+    expect(shortTag.length).toBe(4);
+    const forged = Buffer.concat([iv, shortTag, ct]).toString("base64");
+    expect(openValue({ enc: forged })).toBeNull();
+  });
+
+  it("a full-length envelope from sealValue still round-trips", () => {
+    process.env.STORAGE_ENCRYPTION_KEY = TEST_KEY;
+    expect(openValue(sealValue({ ok: true }))).toEqual({ ok: true });
   });
 });

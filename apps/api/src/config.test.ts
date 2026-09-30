@@ -9,7 +9,8 @@ const KEYS = [
   "JWT_PRIVATE_KEY",
   "JWT_PUBLIC_KEY",
   "RESEND_API_KEY",
-  "CORS_ALLOWED_ORIGINS"
+  "CORS_ALLOWED_ORIGINS",
+  "DATABASE_SSL"
 ] as const;
 
 const original: Record<string, string | undefined> = {};
@@ -69,6 +70,44 @@ describe("validateConfig", () => {
     const report = validateConfig();
     expect(report.warnings.some((w) => w.includes("DATABASE_URL is not set"))).toBe(true);
     expect(report.warnings.some((w) => w.includes("CORS_ALLOWED_ORIGINS is not set"))).toBe(true);
+  });
+
+  it("a typo'd DATABASE_SSL is a warning in development and FATAL in production", () => {
+    clear();
+    process.env.NODE_ENV = "development";
+    process.env.DATABASE_SSL = "verfiy";
+    expect(validateConfig().warnings.some((w) => w.includes('DATABASE_SSL="verfiy" is not one of'))).toBe(true);
+
+    process.env.NODE_ENV = "production";
+    process.env.JWT_PRIVATE_KEY = "x";
+    process.env.JWT_PUBLIC_KEY = "y";
+    const report = validateConfig();
+    expect(report.fatal.some((f) => f.includes('DATABASE_SSL="verfiy"') && f.includes("strictest"))).toBe(true);
+  });
+
+  it("caps an absurd DATABASE_SSL value in the message (no log flooding)", () => {
+    clear();
+    process.env.NODE_ENV = "development";
+    process.env.DATABASE_SSL = "x".repeat(5000);
+    const w = validateConfig().warnings.find((m) => m.includes("DATABASE_SSL="));
+    expect(w).toBeDefined();
+    expect(w!.length).toBeLessThan(200);
+  });
+
+  it("the valid DATABASE_SSL values produce no warning; disable with a DB in production warns", () => {
+    for (const value of ["require", "verify", "disable", "REQUIRE", " verify "]) {
+      clear();
+      process.env.NODE_ENV = "development";
+      process.env.DATABASE_SSL = value;
+      expect(validateConfig().warnings.filter((w) => w.includes("DATABASE_SSL")), value).toEqual([]);
+    }
+    clear();
+    process.env.NODE_ENV = "production";
+    process.env.JWT_PRIVATE_KEY = "x";
+    process.env.JWT_PUBLIC_KEY = "y";
+    process.env.DATABASE_URL = "postgres://example";
+    process.env.DATABASE_SSL = "disable";
+    expect(validateConfig().warnings.some((w) => w.includes("NOT encrypted"))).toBe(true);
   });
 
   it("is clean in production when everything required is present and valid", () => {

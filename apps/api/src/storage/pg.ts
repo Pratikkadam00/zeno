@@ -35,6 +35,42 @@ export function pgEnabled(): boolean {
   return Boolean(process.env.DATABASE_URL);
 }
 
+// TLS to Postgres — three explicit modes, chosen with DATABASE_SSL:
+//
+//  - "require" (default): encrypt, but do NOT verify the server certificate.
+//    This is what Render's INTERNAL connection string needs (render.yaml wires
+//    `fromDatabase.connectionString`). Render's docs, verbatim: "Because these
+//    certificates are self-signed, internal connections do not support
+//    sslmode=verify-ca or sslmode=verify-full." Traffic stays on Render's
+//    private network. Accepted risk, recorded in docs/HARDENING_LOG.md (P0.3).
+//  - "verify": encrypt AND verify the certificate against Node's CA store, or
+//    against DATABASE_CA_CERT (PEM) when set. Use it for ANY database reached
+//    over a public network (Render's external URL, another host).
+//  - "disable": no TLS. Local development only (config.ts warns in production).
+//
+// Anything else is a typo, and a typo must never WEAKEN the connection: an
+// unknown value resolves to "verify" (the strictest), and config.ts reports it
+// (fatal in production).
+export type PgSslMode = "require" | "verify" | "disable";
+
+export function pgSslMode(env: NodeJS.ProcessEnv = process.env): { mode: PgSslMode; valid: boolean } {
+  const raw = env.DATABASE_SSL?.trim().toLowerCase();
+  if (raw === undefined || raw === "" || raw === "require") return { mode: "require", valid: true };
+  if (raw === "verify" || raw === "disable") return { mode: raw, valid: true };
+  return { mode: "verify", valid: false };
+}
+
+export function pgSslConfig(env: NodeJS.ProcessEnv = process.env): undefined | { rejectUnauthorized: boolean; ca?: string } {
+  const { mode } = pgSslMode(env);
+  if (mode === "disable") return undefined;
+  if (mode === "verify") {
+    const ca = env.DATABASE_CA_CERT?.trim();
+    return ca ? { rejectUnauthorized: true, ca } : { rejectUnauthorized: true };
+  }
+  // nosemgrep: problem-based-packs.insecure-transport.js-node.bypass-tls-verification.bypass-tls-verification -- Render internal Postgres uses self-signed certs and does not support verification (see the block comment above); "verify" mode exists for every other host.
+  return { rejectUnauthorized: false };
+}
+
 let pool: Pool | null = null;
 
 function getPool(): Pool | null {
@@ -42,10 +78,7 @@ function getPool(): Pool | null {
   if (!pool) {
     pool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      // Render (and most hosted Postgres) require TLS; their managed certs aren't
-      // in Node's trust store, so relax verification rather than ship a CA bundle.
-      // Set DATABASE_SSL=disable for a local Postgres without TLS.
-      ssl: process.env.DATABASE_SSL === "disable" ? undefined : { rejectUnauthorized: false },
+      ssl: pgSslConfig(),
       max: 5,
       // Fail fast on a degraded DB instead of hanging: give up connecting after
       // 5s, reap idle clients after 30s, and cap any single statement at 10s.
@@ -119,7 +152,10 @@ export async function kvClear(namespace: string): Promise<void> {
 
 // ── Encryption at rest (for secrets like Plaid bank-access tokens) ──────────
 // AES-256-GCM with a random 96-bit IV per value; the sealed envelope is
-// iv(12) || tag(16) || ciphertext, base64-encoded inside a { enc, kid } object
+// iv(12) || tag(16) || ciphertext, base64-encoded inside a { enc, kid } object.
+// The tag length is PINNED to 16 bytes on both sides: Node otherwise accepts a
+// truncated GCM tag (as short as 4 bytes), which would cut forgery work from
+// 2^128 to as little as 2^32 for anyone able to write rows.
 // so it stays valid jsonb. `kid` is a short, non-secret fingerprint of the key
 // that sealed it, so rotation is NON-destructive: set STORAGE_ENCRYPTION_KEY to
 // the new key and STORAGE_ENCRYPTION_KEYS_PREVIOUS (comma-separated) to the old
@@ -174,19 +210,25 @@ export function encryptionKeyStatus(): "valid" | "malformed" | "unset" {
 export function sealValue(value: unknown): { enc: string; kid: string } {
   const key = encryptionKeyring()[0];
   if (!key) throw new Error("sealValue requires STORAGE_ENCRYPTION_KEY");
-  const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  const iv = randomBytes(GCM_IV_BYTES);
+  const cipher = createCipheriv("aes-256-gcm", key, iv, { authTagLength: GCM_TAG_BYTES });
   const ciphertext = Buffer.concat([cipher.update(Buffer.from(JSON.stringify(value), "utf8")), cipher.final()]);
   const tag = cipher.getAuthTag();
   return { enc: Buffer.concat([iv, tag, ciphertext]).toString("base64"), kid: keyFingerprint(key) };
 }
 
+const GCM_IV_BYTES = 12;
+const GCM_TAG_BYTES = 16;
+
 function tryDecrypt(enc: string, key: Buffer): unknown | null {
   try {
     const buf = Buffer.from(enc, "base64");
-    const decipher = createDecipheriv("aes-256-gcm", key, buf.subarray(0, 12));
-    decipher.setAuthTag(buf.subarray(12, 28));
-    const plaintext = Buffer.concat([decipher.update(buf.subarray(28)), decipher.final()]);
+    // iv + full tag + at least one ciphertext byte; anything shorter is not an
+    // envelope we produced (sealValue always encrypts non-empty JSON).
+    if (buf.length <= GCM_IV_BYTES + GCM_TAG_BYTES) return null;
+    const decipher = createDecipheriv("aes-256-gcm", key, buf.subarray(0, GCM_IV_BYTES), { authTagLength: GCM_TAG_BYTES });
+    decipher.setAuthTag(buf.subarray(GCM_IV_BYTES, GCM_IV_BYTES + GCM_TAG_BYTES));
+    const plaintext = Buffer.concat([decipher.update(buf.subarray(GCM_IV_BYTES + GCM_TAG_BYTES)), decipher.final()]);
     return JSON.parse(plaintext.toString("utf8"));
   } catch {
     return null;

@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 20
           cache: npm
@@ -86,3 +86,27 @@ jobs:
 
       - name: Scan every commit
         run: '"$RUNNER_TEMP/gitleaks" git --log-opts="--all" --redact --no-banner --exit-code 1 .'
+
+  # Static analysis (SAST) with a ZERO-findings gate. Rule packs: OWASP Top 10,
+  # Node, JavaScript, TypeScript, React, Next.js, and GitHub Actions (workflow
+  # injection, unpinned actions). Scope and the reasons for each skipped path:
+  # .semgrepignore. An accepted finding is suppressed IN the source with
+  # `nosemgrep: <rule-id> -- <reason>` next to it, never by widening an ignore.
+  # Image pinned by digest (semgrep 1.178.0, multi-arch index).
+  sast-semgrep:
+    name: SAST (semgrep, zero findings)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep:1.178.0@sha256:32e459968daabe7ab86968184a29109b9564aa00392401156f9788452b42786b
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Scan
+        run: >-
+          semgrep scan --metrics=off --disable-version-check --error
+          --config p/owasp-top-ten --config p/nodejs --config p/javascript
+          --config p/typescript --config p/react --config p/nextjs
+          --config p/github-actions .

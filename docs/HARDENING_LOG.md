@@ -13,8 +13,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
 
 - [~] **P0 — Foundations: CI hardening, secret scan, coverage scope**
   - [x] P0.1 Coverage scope: exclude generated `.next/**`; guard against unexplained `v8 ignore`
-  - [~] P0.2 Secret scan: gitleaks over full git history (local) + CI job on every push/PR
-  - [ ] P0.3 Static analysis (SAST): CodeQL workflow + semgrep with zero-findings gate
+  - [x] P0.2 Secret scan: gitleaks over full git history (local) + CI job on every push/PR
+  - [~] P0.3 Static analysis (SAST): CodeQL workflow + semgrep with zero-findings gate
   - [ ] P0.4 Workflow hygiene: SHA-pinned actions, least-privilege `permissions`, `concurrency`, audit gate blocking in CI
   - [ ] P0.5 Dependabot (npm + GitHub Actions) + SBOM on release
   - [ ] P0.6 Branch protection on `main` (owner action — documented)
@@ -165,3 +165,39 @@ since `9eb4721` (2026-09-29)**, while my local runs said green. Step: Typecheck,
   eol=lf`, binaries explicit); `git add --renormalize .` changed no stored content.
 - **Fresh clone + `npm ci`, every CI step:** typecheck 0 · lint 0 · vitest
   566/566 · RN 22/22 · coverage floor PASS · web build OK · audit gate PASS.
+
+**P0.2 closed:** GitHub run `36717148673` @ `b2e6ea3`: both jobs green (build, secret
+scan). The first CI run of the job (`c8cdba2`) had failed on a finding in THIS log (it
+quoted the flagged assignment); reproduced in a fresh GitHub clone with CI's exact
+command, allowlisted by fingerprint, reworded. Rule adopted: scan after committing,
+before pushing.
+
+### P0.3 — Static analysis (semgrep + CodeQL) — 2026-09-30
+
+**semgrep 1.178.0** (isolated venv in the scratchpad), packs: OWASP Top 10, Node,
+JavaScript, TypeScript, React, Next.js, GitHub Actions. First run over `apps packages
+scripts` (291 files): **2 findings**, both in `apps/api/src/storage/pg.ts`, both read in
+full before judging:
+
+| Finding | What it really is | Resolution |
+|---|---|---|
+| `bypass-tls-verification` pg.ts:48 | Postgres TLS with `rejectUnauthorized: false` for EVERY host | **Accepted for Render's internal URL, fixed everywhere else.** Render docs, verbatim: "Because these certificates are self-signed, internal connections do not support sslmode=verify-ca or sslmode=verify-full." `render.yaml` wires the internal connection string. New explicit `DATABASE_SSL` modes: `require` (default, Render internal), `verify` (full verification, optional `DATABASE_CA_CERT`), `disable` (local). A typo resolves to `verify` (never weaker) and is FATAL at production boot (`config.ts`). Inline `nosemgrep` with the reason; `--disable-nosem` proves the suppression is what hides it. |
+| `gcm-no-tag-length` pg.ts:187 | AES-256-GCM decipher without `authTagLength`: Node accepts tags down to 4 bytes | **Fixed:** tag length pinned to 16 on cipher and decipher; envelopes shorter than iv+tag+1 rejected. Honest note: not exploitable before, because the fixed 16-byte slice mixed tag and ciphertext, so a short tag never authenticated. The spy test `pg-gcm.test.ts` asserts the option and FAILS when it is removed (bite-checked). |
+
+- 4 semgrep parse errors are a semgrep JSX limitation (a literal `&` in page text:
+  discover.tsx, legal/cookies, legal/privacy, legal/terms); partial parsing still scans
+  the rest of each file. CodeQL parses them fully.
+- Scanning `.` also covered the workflows: **4 × `github-actions-mutable-action-tag`**
+  (`@v4` in ci.yml / release.yml). Fixed here so the gate goes live green: pinned to
+  `actions/checkout@d23441a4… # v6.1.0` and `actions/setup-node@24997072… # v6.5.0`
+  (SHAs from `git ls-remote`; manifests read at those commits: both `using: node24`).
+- `.semgrepignore`: tests (they contain the patterns they assert against), design
+  mockups, generated output. Final local scan: **0 results, 271 files, exit 0**.
+- CI: `sast-semgrep` job (image `semgrep/semgrep:1.178.0@sha256:32e45996…`, `--error`).
+- **CodeQL** (`.github/workflows/codeql.yml`): `github/codeql-action@2892aa5e… # v4.38.2`,
+  `security-extended`, build-mode none, weekly schedule; least-privilege permissions.
+  CodeQL never fails a job on findings by itself and the Security tab needs write
+  access, so new `scripts/sarif-gate.mjs` prints each result as a run annotation and
+  exits 1 on any; it refuses to pass when no SARIF exists. 11 tests.
+- Tests added: TLS modes (5), GCM (3 + spy), config validation (3). Local gates:
+  typecheck 0 · lint 0 · vitest 589/589 (64 files) · lines 64.97 %.
