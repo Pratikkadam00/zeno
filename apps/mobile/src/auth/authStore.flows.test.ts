@@ -290,6 +290,56 @@ describe("refresh", () => {
   });
 });
 
+describe("F43: only a definitive rejection ends the session", () => {
+  const nonJson = (status: number) => new Response("<html>Service Unavailable</html>", { status });
+  const transient: [string, () => Promise<Response>][] = [
+    ["offline (the request throws)", () => Promise.reject(new TypeError("Network request failed"))],
+    ["a timeout", () => Promise.reject(new DOMException("The operation was aborted.", "AbortError"))],
+    ["a 503 HTML page while the server wakes up", () => Promise.resolve(nonJson(503))],
+    ["a 502 error envelope", () => Promise.resolve(errorEnvelope("Bad gateway", 502))],
+    ["a 429", () => Promise.resolve(errorEnvelope("Rate limit exceeded", 429))],
+    ["a 500", () => Promise.resolve(errorEnvelope("Unexpected server error.", 500))]
+  ];
+
+  it.each(transient)("%s keeps the stored session and the signed-in state", async (_label, reply) => {
+    storeSession(1, Date.now() + 10_000); // near expiry: hydrate refreshes at once
+    http.timedFetch.mockImplementationOnce(reply);
+    await useAuthStore.getState().hydrate();
+    expect(vault.store.get("zeno.auth.refreshToken.v1")).toBe("refresh-1");
+    expect(useAuthStore.getState()).toMatchObject({ status: "authenticated", isAuthenticated: true, accountId: "acct_1" });
+    expect(useAuthStore.getState().error).toBeTruthy();
+  });
+
+  it("a 400 (the stored value is not a usable token) still ends the session", async () => {
+    storeSession();
+    http.timedFetch.mockResolvedValueOnce(errorEnvelope("Request validation failed.", 400));
+    await useAuthStore.getState().refreshToken();
+    expect(vault.store.has("zeno.auth.refreshToken.v1")).toBe(false);
+    expect(useAuthStore.getState().status).toBe("anonymous");
+  });
+
+  it("offline: getValidAccessToken returns no token (never the expired one), then recovers once online", async () => {
+    storeSession(1, Date.now() - 60_000); // already expired
+    http.timedFetch.mockRejectedValueOnce(new TypeError("Network request failed"));
+    expect(await useAuthStore.getState().getValidAccessToken()).toBeNull();
+    expect(vault.store.get("zeno.auth.refreshToken.v1")).toBe("refresh-1");
+    http.timedFetch.mockResolvedValueOnce(envelope(sessionData(2)));
+    expect(await useAuthStore.getState().getValidAccessToken()).toBe("access-2");
+    expect(calls().map((c) => c.body?.refreshToken)).toEqual(["refresh-1", "refresh-1"]);
+  });
+
+  it("after a transient failure the refresh timer keeps retrying on its own", async () => {
+    vi.useFakeTimers();
+    storeSession(1, Date.now() + 5_000);
+    http.timedFetch.mockRejectedValueOnce(new TypeError("Network request failed"));
+    await useAuthStore.getState().refreshToken();
+    http.timedFetch.mockResolvedValueOnce(envelope(sessionData(3)));
+    await vi.advanceTimersByTimeAsync(14 * 60_000);
+    expect(useAuthStore.getState()).toMatchObject({ status: "authenticated", accountId: "acct_3", error: null });
+    expect(vault.store.get("zeno.auth.refreshToken.v1")).toBe("refresh-3");
+  });
+});
+
 describe("logout and token access", () => {
   it("revokes the refresh token server-side, then clears everything", async () => {
     storeSession();

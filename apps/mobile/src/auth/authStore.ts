@@ -296,6 +296,16 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
         startRefreshTimer(get);
         setAuthenticated(set, toStoredSession(refreshed));
       } catch (error) {
+        if (!isDefinitiveRejection(error)) {
+          // Offline, a timeout, a 429 or a 5xx (Render's free tier returns 502/503
+          // while it wakes up) says nothing about the refresh token. Signing out
+          // here deleted a valid 30-day session every time the app opened
+          // offline with an expired access token (finding F43). Keep the
+          // session; the timer, or the next getValidAccessToken(), retries.
+          startRefreshTimer(get);
+          set({ error: getErrorMessage(error) });
+          return;
+        }
         stopRefreshTimer();
         await clearStoredSession();
         set({ status: "anonymous", isAuthenticated: false, accountId: null, accessTokenExpiresAt: null, error: getErrorMessage(error) });
@@ -339,7 +349,10 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
     }
     if (session.accessTokenExpiresAt && session.accessTokenExpiresAt - 30_000 <= Date.now()) {
       await get().refreshToken();
-      return (await readStoredSession())?.accessToken ?? null;
+      // A refresh that failed transiently keeps the (expired) session: that is
+      // not a token to send. Only a still-valid one is returned (F43).
+      const after = await readStoredSession();
+      return after && after.accessTokenExpiresAt > Date.now() ? after.accessToken : null;
     }
     return session.accessToken;
   },
@@ -401,6 +414,22 @@ async function apiPost<T = unknown>(path: string, body: Record<string, unknown>)
   return readEnvelope<T>(response);
 }
 
+// An auth request the SERVER answered with an error status. A network failure
+// or timeout is a plain Error from timedFetch instead: it carries no status.
+class AuthHttpError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = "AuthHttpError";
+  }
+}
+
+// Only the server saying the refresh token itself is bad ends the session:
+// 401 (invalid, expired, already rotated) or 400 (the stored value is not even
+// a well-formed token). Everything else is transient (F43).
+function isDefinitiveRejection(error: unknown): boolean {
+  return error instanceof AuthHttpError && (error.status === 401 || error.status === 400);
+}
+
 async function readEnvelope<T>(response: Response): Promise<T> {
   // A non-JSON error page (502/503 from a proxy) would make response.json()
   // throw a confusing parse error; surface the HTTP status instead.
@@ -408,10 +437,10 @@ async function readEnvelope<T>(response: Response): Promise<T> {
   try {
     envelope = await response.json() as ApiEnvelope<T>;
   } catch {
-    throw new Error(`Auth request failed with HTTP ${response.status}.`);
+    throw new AuthHttpError(`Auth request failed with HTTP ${response.status}.`, response.status);
   }
   if (!response.ok || envelope.error) {
-    throw new Error(envelope.error?.message ?? `Auth request failed with HTTP ${response.status}`);
+    throw new AuthHttpError(envelope.error?.message ?? `Auth request failed with HTTP ${response.status}`, response.status);
   }
   if (envelope.data === null) {
     throw new Error("Auth response did not include data.");

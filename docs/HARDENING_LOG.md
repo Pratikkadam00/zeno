@@ -100,7 +100,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F40 | **FIXED in P1.9b.** ~~A notification tap spliced an unchecked id into the route.~~ `data.subscriptionId` (untrusted: a remote push to the device's Expo token can carry anything) went straight into `router.push`, including `../../settings`, `a/b` and `sub_1?next=/paywall`. Only `^[A-Za-z0-9_-]{1,128}$` is accepted now, which covers every id the app creates. | Low | me (agent) | P1.9b |
 | F41 | **FIXED in P1.9b.** ~~`registerForPushNotifications` could reject, and its only caller (`_layout.tsx:207`) fires it with a bare `void`.~~ A token-fetch (network), keychain or permission-API failure became an unhandled rejection. It now always resolves to `{ ok, token } | { ok: false, reason }`. | Low | me (agent) | P1.9b |
 | F42 | **FIXED in P1.9b.** ~~Reminders could be scheduled twice and the duplicates were never cleaned up.~~ The debounced data effect and the foreground listener each start a reconcile; two overlapping runs both read the queue before either scheduled, giving 12 pending notifications for 6 wanted. The diff also KEPT every copy whose key matched. Reconciles now run one at a time (a failed run does not block the next), and extra copies are cancelled. | Low–Medium (duplicate reminders) | me (agent) | P1.9b |
-| F43 | **OPEN, verified by reading.** A token refresh that fails for ANY reason signs the user out. `authStore.refreshToken()` (lines 298-301) clears the stored session in its catch, including when offline, on a timeout, or on a 502/503 while Render's free tier wakes up. Opening the app offline more than 15 minutes after the last token refresh therefore deletes the 30-day refresh token. Only a definitive server rejection (401) should end the session. | Medium (availability of sign-in) | me | next slice after the P1.9 merges |
+| F43 | **FIXED (P1.9 follow-up).** ~~A token refresh that fails for ANY reason signs the user out. `authStore.refreshToken()` (lines 298-301) clears the stored session in its catch, including when offline, on a timeout, or on a 502/503 while Render's free tier wakes up. Opening the app offline more than 15 minutes after the last token refresh therefore deletes the 30-day refresh token. Only a definitive server rejection (401) should end the session.~~ Now only a 401 or 400 ends it; offline, timeouts, 429 and 5xx keep the session and retry. | Medium (availability of sign-in) | me | P1.9 follow-up |
 | F44 | **OPEN, verified by grep.** Banned "automatic discovery" copy: `app/open-banking.tsx:45` says "auto-discovers recurring charges" (it also claims "we only receive transactions", although the server holds the Plaid access token), and `app/(tabs)/discover.tsx:655` says "automatically discover what you pay for". Both violate the standing truthfulness rails. | Medium (truthfulness) | me | next slice after the P1.9 merges (exact wording shown to the owner) |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
@@ -1249,3 +1249,35 @@ pre-existing parse warnings in the legal pages).
 **Gates in `main` after both merges:** typecheck 0 · lint 0 · vitest 95 files / 1154
 tests (ratchet 93.81 / 88.19 / 95.91 / 94.51) · jest 8 suites / 113 tests at 100 % ·
 semgrep (`mobile/src/api`, `notifications`) 0 / 0.
+
+### F43 — a failed token refresh no longer signs the user out — 2026-09-30
+
+**The bug:** verified by reading `authStore.refreshToken()`. Its catch cleared the stored
+session on ANY error. `timedFetch` throws on no network or a timeout, and Render's free
+tier answers 502/503 while it wakes up. Opening the app offline more than 15 minutes
+after the last token refresh therefore deleted a valid 30-day refresh token.
+
+**The fix** (`apps/mobile/src/auth/authStore.ts`):
+- `readEnvelope` throws an `AuthHttpError` carrying the HTTP status.
+- `isDefinitiveRejection` is true only for 401 (invalid, expired or already rotated)
+  and 400 (the stored value is not a well-formed token).
+- On anything else the session is **kept**: the error is recorded (shown only on the
+  login screen, and `setAnonymous` clears it), and the 14-minute refresh timer is
+  started so it retries on its own.
+- `getValidAccessToken` never returns an EXPIRED token after a failed refresh. It
+  returns `null` until a refresh succeeds.
+
+**Tests** (`authStore.flows.test.ts`, +9):
+- Six transient failures each keep the stored session and the signed-in state: offline,
+  timeout, a 503 HTML page, a 502 envelope, a 429 and a 500.
+- A 400 still ends the session. The existing 401 test is unchanged and still passes.
+- Offline, `getValidAccessToken` returns `null`, never the expired token, and returns a
+  fresh token once online.
+- After a transient failure, the timer alone recovers the session 14 minutes later.
+
+**Bite check:** with the old `authStore.ts`, 8 of the new tests fail (47 / 55). The 400
+test passes on both versions, as it should, because both end the session on a 400.
+Restored: 55 / 55, and `authStore.ts` is at 100 / 100 / 100.
+
+Gates: typecheck 0 · lint 0 · vitest 95 files / 1163 tests (ratchet 93.83 / 88.22 / 95.92 /
+94.53) · semgrep `mobile/src/auth` 0 / 0.
