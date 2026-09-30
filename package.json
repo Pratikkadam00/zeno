@@ -14,7 +14,7 @@
     "dev:web": "npm --workspace @zeno/web run dev",
     "build": "npm run typecheck && npm --workspace @zeno/web run build",
     "typecheck": "npm run typecheck:refs && npm --workspace @zeno/mobile run typecheck && npm --workspace @zeno/web run typecheck",
-    "typecheck:refs": "tsc -b --pretty false",
+    "typecheck:refs": "tsc -b --force --pretty false",
     "lint": "eslint . && npm --workspace @zeno/web run lint && npm --workspace @zeno/mobile run lint",
     "test": "vitest run",
     "test:rn": "npm --workspace @zeno/mobile run test:rn",

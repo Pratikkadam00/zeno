@@ -48,16 +48,38 @@ const limitByAccount = (max: number) => ({
   }
 });
 
-// How many proxy hops to trust for client-IP resolution (rate-limit keying).
-// A number is safe (trusts exactly N upstream hops); `true` would trust any
-// X-Forwarded-For and is intentionally avoided.
-function resolveTrustProxy(): number | boolean {
-  const raw = process.env.TRUST_PROXY_HOPS;
-  if (raw !== undefined) {
-    const hops = Number.parseInt(raw, 10);
-    if (Number.isInteger(hops) && hops >= 0) return hops;
+// Client-IP resolution for rate-limit keying: trust exactly N proxy hops, so
+// request.ip is the address the Nth proxy APPENDED — never a value the client
+// wrote into X-Forwarded-For. Default: 1 hop in production (the platform load
+// balancer), none elsewhere. Override with TRUST_PROXY_HOPS (0–MAX_TRUST_HOPS).
+//
+// Stated as a function on purpose. Fastify >= 5.12 treats a NUMERIC trustProxy
+// as "trust nobody" (it cannot validate the immediate peer), which silently made
+// request.ip the load balancer for every visitor — one shared rate-limit bucket
+// for all users — when the 2026-09-29 dependency patch pulled in 5.12.5. Hop
+// count is sound here because the API is reachable only through the platform
+// proxy (the immediate peer is always that proxy); if the API ever becomes
+// directly reachable, switch to an IP/CIDR allowlist. `true` (trust any chain)
+// stays banned: it lets a client rotate its own limiter key.
+// Pinned by trust-proxy.test.ts.
+const MAX_TRUST_HOPS = 5;
+
+export function readTrustProxyHops(env: NodeJS.ProcessEnv = process.env): number {
+  const raw = env.TRUST_PROXY_HOPS?.trim();
+  if (raw !== undefined && /^\d+$/.test(raw)) {
+    const hops = Number(raw);
+    if (hops <= MAX_TRUST_HOPS) return hops;
   }
-  return process.env.NODE_ENV === "production" ? 1 : false;
+  return env.NODE_ENV === "production" ? 1 : 0;
+}
+
+function resolveTrustProxy(): false | ((address: string, hop: number) => boolean) {
+  const hops = readTrustProxyHops();
+  if (hops === 0) return false;
+  // proxy-addr calls this for the socket peer (hop 0) and then each
+  // X-Forwarded-For entry from the right (hop 1, 2, …); the first untrusted
+  // address becomes request.ip.
+  return (_address: string, hop: number) => hop < hops;
 }
 
 // Build the shared rate-limit backing store from REDIS_URL, or null to use the
