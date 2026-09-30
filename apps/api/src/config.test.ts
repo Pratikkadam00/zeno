@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { validateConfig } from "./config";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { assertConfigOrExit, validateConfig } from "./config";
 
 // Snapshot + restore every env var the validator reads so tests don't leak.
 const KEYS = [
@@ -21,6 +21,7 @@ afterEach(() => {
     if (original[key] === undefined) delete process.env[key];
     else process.env[key] = original[key];
   }
+  vi.restoreAllMocks();
 });
 
 function clear(): void {
@@ -122,5 +123,66 @@ describe("validateConfig", () => {
     const report = validateConfig();
     expect(report.fatal).toEqual([]);
     expect(report.warnings).toEqual([]);
+  });
+});
+
+describe("assertConfigOrExit (boot gate)", () => {
+  function spies() {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    // process.exit is replaced so the test runner survives; the gate is judged
+    // by whether (and how) it asked to exit.
+    const exit = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
+    return { warn, error, exit };
+  }
+
+  it("a clean production config logs nothing and never exits", () => {
+    clear();
+    process.env.NODE_ENV = "production";
+    process.env.JWT_PRIVATE_KEY = "x";
+    process.env.JWT_PUBLIC_KEY = "y";
+    process.env.DATABASE_URL = "postgres://example";
+    process.env.STORAGE_ENCRYPTION_KEY = "a".repeat(64);
+    process.env.RESEND_API_KEY = "re_test";
+    process.env.CORS_ALLOWED_ORIGINS = "https://app.example.com";
+    const { warn, error, exit } = spies();
+    assertConfigOrExit();
+    expect(warn).not.toHaveBeenCalled();
+    expect(error).not.toHaveBeenCalled();
+    expect(exit).not.toHaveBeenCalled();
+  });
+
+  it("warnings only: each is logged once with the WARN prefix, and the server is allowed to start", () => {
+    clear();
+    process.env.NODE_ENV = "development";
+    process.env.STORAGE_ENCRYPTION_KEY = "not-a-valid-key";
+    process.env.DATABASE_SSL = "verfiy";
+    const expected = validateConfig().warnings;
+    expect(expected).toHaveLength(2);
+    const { warn, error, exit } = spies();
+    assertConfigOrExit();
+    expect(warn.mock.calls).toEqual(expected.map((w) => [`[zeno][config] WARN: ${w}`]));
+    expect(error).not.toHaveBeenCalled();
+    expect(exit).not.toHaveBeenCalled();
+  });
+
+  it("any fatal item: logs every FATAL line plus a refusal summary, then exits with code 1", () => {
+    clear();
+    process.env.NODE_ENV = "production";
+    process.env.STORAGE_ENCRYPTION_KEY = "too-short"; // fatal in production
+    // JWT keys missing too: a second fatal item, so both must be reported.
+    const report = validateConfig();
+    expect(report.fatal).toHaveLength(2);
+    const { warn, error, exit } = spies();
+    assertConfigOrExit();
+    expect(error.mock.calls).toEqual([
+      ...report.fatal.map((f) => [`[zeno][config] FATAL: ${f}`]),
+      ["[zeno][config] refusing to start with fatal configuration errors."]
+    ]);
+    // Warnings are still printed before the exit so the operator sees everything.
+    expect(report.warnings.length).toBeGreaterThan(0);
+    expect(warn.mock.calls).toEqual(report.warnings.map((w) => [`[zeno][config] WARN: ${w}`]));
+    expect(exit).toHaveBeenCalledTimes(1);
+    expect(exit).toHaveBeenCalledWith(1);
   });
 });

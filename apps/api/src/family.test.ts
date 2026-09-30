@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { clearFamilyStore, createHousehold, joinHousehold, removeMember, setMemberSpend } from "./family";
+import { clearFamilyStore, createHousehold, getHousehold, joinHousehold, removeMember, removeUserFromAllHouseholds, setMemberSpend } from "./family";
 
 // Unit-level coverage for family.ts's own primitives, independent of the HTTP
 // route layer (app.test.ts covers the routes; this covers genCode's
@@ -162,5 +162,95 @@ describe("FamilyMember currency (Phase 5.2 gap fix)", () => {
     const rejoined = joinHousehold(household.shareCode, "rejoin-member", "Member Renamed", 3000, "CAD")!;
     const member = rejoined.members.find((m) => m.id === "rejoin-member");
     expect(member).toMatchObject({ name: "Member Renamed", monthlySpendMinor: 3000, currency: "CAD" });
+  });
+});
+
+describe("getHousehold", () => {
+  it("returns the household by id, and null for an unknown id", () => {
+    const household = createHousehold("get-owner", "Owner")!;
+    expect(getHousehold(household.id)).toBe(household);
+    expect(getHousehold("hh_unknown")).toBeNull();
+  });
+});
+
+describe("setMemberSpend edge cases", () => {
+  it("returns null for an unknown household", () => {
+    expect(setMemberSpend("hh_unknown", "someone", 100)).toBeNull();
+  });
+
+  it("never adds a member: a non-member id leaves every member's spend untouched", () => {
+    const household = createHousehold("spend-guard-owner", "Owner", 1000)!;
+    const result = setMemberSpend(household.id, "not-a-member", 9999, "EUR")!;
+    expect(result.members).toEqual([{ id: "spend-guard-owner", name: "Owner", monthlySpendMinor: 1000, currency: "USD" }]);
+  });
+});
+
+describe("leaving and disbanding", () => {
+  it("when the OWNER leaves, ownership passes to the earliest remaining member, and the departed owner is no longer referenced", () => {
+    const household = createHousehold("leaving-owner", "Owner")!;
+    joinHousehold(household.shareCode, "first-joiner", "First");
+    joinHousehold(household.shareCode, "second-joiner", "Second");
+    const after = removeMember(household.id, "leaving-owner")!;
+    expect(after.ownerId).toBe("first-joiner");
+    expect(after.members.map((m) => m.id)).toEqual(["first-joiner", "second-joiner"]);
+    expect(JSON.stringify(after)).not.toContain("leaving-owner");
+  });
+
+  it("a non-owner leaving keeps the owner", () => {
+    const household = createHousehold("staying-owner", "Owner")!;
+    joinHousehold(household.shareCode, "leaver", "Leaver");
+    expect(removeMember(household.id, "leaver")!.ownerId).toBe("staying-owner");
+  });
+
+  it("removing someone who is not a member changes nothing", () => {
+    const household = createHousehold("noop-owner", "Owner")!;
+    const after = removeMember(household.id, "stranger")!;
+    expect(after.ownerId).toBe("noop-owner");
+    expect(after.members.map((m) => m.id)).toEqual(["noop-owner"]);
+  });
+
+  it("a member who leaves frees a slot in a full household", () => {
+    const household = createHousehold("full-owner", "Owner")!;
+    for (let i = 0; i < 4; i += 1) joinHousehold(household.shareCode, `full-${i}`, `M${i}`);
+    expect(joinHousehold(household.shareCode, "waiting", "Waiting")).toBeNull();
+    removeMember(household.id, "full-2");
+    expect(joinHousehold(household.shareCode, "waiting", "Waiting")?.members).toHaveLength(5);
+  });
+
+  it("after the last member leaves, the household id is gone too (not just the code)", () => {
+    const household = createHousehold("gone-owner", "Owner")!;
+    removeMember(household.id, "gone-owner");
+    expect(getHousehold(household.id)).toBeNull();
+    expect(setMemberSpend(household.id, "gone-owner", 1)).toBeNull();
+  });
+});
+
+describe("removeUserFromAllHouseholds (account deletion)", () => {
+  it("removes the user from every household they are in — owner or member — disbanding any they were alone in, and touches no other household", () => {
+    const owned = createHousehold("deleted-user", "Me")!;
+    joinHousehold(owned.shareCode, "housemate", "Housemate");
+    const solo = createHousehold("deleted-user", "Me")!;
+    const joined = createHousehold("friend", "Friend")!;
+    joinHousehold(joined.shareCode, "deleted-user", "Me");
+    const unrelated = createHousehold("stranger", "Stranger")!;
+    const unrelatedBefore = JSON.stringify(unrelated);
+
+    removeUserFromAllHouseholds("deleted-user");
+
+    // Owned household survives with ownership handed to the remaining member.
+    expect(getHousehold(owned.id)).toMatchObject({ ownerId: "housemate", members: [{ id: "housemate" }] });
+    // The household they were alone in is disbanded and its code is dead.
+    expect(getHousehold(solo.id)).toBeNull();
+    expect(joinHousehold(solo.shareCode, "late", "Late")).toBeNull();
+    // Removed as a plain member elsewhere.
+    expect(getHousehold(joined.id)!.members.map((m) => m.id)).toEqual(["friend"]);
+    // Nobody else's household is touched.
+    expect(JSON.stringify(getHousehold(unrelated.id))).toBe(unrelatedBefore);
+  });
+
+  it("is a no-op for a user in no household", () => {
+    const household = createHousehold("someone-else", "Someone")!;
+    removeUserFromAllHouseholds("nobody");
+    expect(getHousehold(household.id)!.members).toHaveLength(1);
   });
 });

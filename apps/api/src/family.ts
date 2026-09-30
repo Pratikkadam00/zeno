@@ -22,7 +22,7 @@ const households = new Map<string, Household>();
 const codeIndex = new Map<string, string>();
 
 // Unambiguous alphabet (no 0/O/1/I/L) for a friendly share code. 8 chars over a
-// 30-symbol alphabet ≈ 6.5e11 combinations — far beyond brute-force at the join
+// 31-symbol alphabet ≈ 8.5e11 combinations — far beyond brute-force at the join
 // route's rate limit.
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const CODE_LENGTH = 8;
