@@ -29,12 +29,37 @@ vi.mock("node:crypto", async (importOriginal) => {
 
 const { openValue, sealValue } = await import("./pg");
 const originalKey = process.env.STORAGE_ENCRYPTION_KEY;
+const originalPrevious = process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS;
 
 afterEach(() => {
   if (originalKey === undefined) delete process.env.STORAGE_ENCRYPTION_KEY;
   else process.env.STORAGE_ENCRYPTION_KEY = originalKey;
+  if (originalPrevious === undefined) delete process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS;
+  else process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS = originalPrevious;
   calls.cipher.length = 0;
   calls.decipher.length = 0;
+});
+
+describe("keyring order on open", () => {
+  it("tries the key named by kid first; without a kid it walks the ring primary-first", () => {
+    const oldKey = "ab".repeat(32);
+    const newKey = "cd".repeat(32);
+    process.env.STORAGE_ENCRYPTION_KEY = oldKey;
+    delete process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS;
+    const sealed = sealValue({ accessToken: "x" });
+
+    // Rotate: the sealing key is now only a previous key.
+    process.env.STORAGE_ENCRYPTION_KEY = newKey;
+    process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS = oldKey;
+
+    calls.decipher.length = 0;
+    expect(openValue(sealed)).toEqual({ accessToken: "x" });
+    expect(calls.decipher.map((args) => args[1])).toEqual([Buffer.from(oldKey, "hex")]);
+
+    calls.decipher.length = 0;
+    expect(openValue({ enc: sealed.enc })).toEqual({ accessToken: "x" });
+    expect(calls.decipher.map((args) => args[1])).toEqual([Buffer.from(newKey, "hex"), Buffer.from(oldKey, "hex")]);
+  });
 });
 
 describe("AES-256-GCM tag length is pinned", () => {

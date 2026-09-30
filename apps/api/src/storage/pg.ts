@@ -111,10 +111,12 @@ function logStorageFailure(op: "persist" | "delete", namespace: string, key: str
  *  landed (or the attempt failed — errors are logged, never thrown, so a DB blip
  *  degrades to in-memory rather than failing the request). Use this for writes
  *  whose durability must be confirmed before the request is acked (auth
- *  sessions, sync). No-op without a configured DB. */
-export async function kvPersistAwait(namespace: string, key: string, value: unknown): Promise<void> {
+ *  sessions, sync). Resolves false only when a configured DB rejected the
+ *  write, so a caller that acks durability (sync) can refuse to; true when the
+ *  row landed or there is no DB to write to. */
+export async function kvPersistAwait(namespace: string, key: string, value: unknown): Promise<boolean> {
   const p = getPool();
-  if (!p) return;
+  if (!p) return true;
   try {
     await p.query(
       `INSERT INTO kv_store (namespace, key, value, updated_at)
@@ -122,8 +124,10 @@ export async function kvPersistAwait(namespace: string, key: string, value: unkn
        ON CONFLICT (namespace, key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
       [namespace, key, JSON.stringify(value)]
     );
+    return true;
   } catch (err) {
     logStorageFailure("persist", namespace, key, err);
+    return false;
   }
 }
 
@@ -190,14 +194,19 @@ function keyFingerprint(key: Buffer): string {
   return createHash("sha256").update(key).digest("hex").slice(0, 8);
 }
 
+// The only key that may seal NEW data. A previous key is for opening old rows,
+// never for sealing: with the primary missing or malformed, keyring()[0] would
+// otherwise be a retired key (possibly retired because it leaked).
+function primaryKey(): Buffer | null {
+  const primary = process.env.STORAGE_ENCRYPTION_KEY;
+  return primary ? parseKey(primary) : null;
+}
+
 // The primary (current) key first, then any previous keys — the decryption ring.
 function encryptionKeyring(): Buffer[] {
   const keys: Buffer[] = [];
-  const primary = process.env.STORAGE_ENCRYPTION_KEY;
-  if (primary) {
-    const k = parseKey(primary);
-    if (k) keys.push(k);
-  }
+  const primary = primaryKey();
+  if (primary) keys.push(primary);
   const previous = process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS;
   if (previous) {
     for (const raw of previous.split(",").map((s) => s.trim()).filter(Boolean)) {
@@ -209,7 +218,7 @@ function encryptionKeyring(): Buffer[] {
 }
 
 export function encryptionConfigured(): boolean {
-  return encryptionKeyring().length > 0;
+  return primaryKey() !== null;
 }
 
 // Boot-time diagnostic for STORAGE_ENCRYPTION_KEY: distinguishes "unset" from
@@ -224,7 +233,7 @@ export function encryptionKeyStatus(): "valid" | "malformed" | "unset" {
 /** Seal an object into an encrypted envelope with the primary key. Throws if no
  *  key is configured — callers must gate on encryptionConfigured() first. */
 export function sealValue(value: unknown): { enc: string; kid: string } {
-  const key = encryptionKeyring()[0];
+  const key = primaryKey();
   if (!key) throw new Error("sealValue requires STORAGE_ENCRYPTION_KEY");
   const iv = randomBytes(GCM_IV_BYTES);
   const cipher = createCipheriv("aes-256-gcm", key, iv, { authTagLength: GCM_TAG_BYTES });
@@ -301,9 +310,18 @@ export async function initStorage(): Promise<void> {
     let restored = 0;
     for (const [namespace, hydrate] of hydrators) {
       const entries = byNamespace.get(namespace) ?? [];
-      if (entries.length) {
+      if (!entries.length) continue;
+      // Isolated per namespace: one malformed row must not leave every later
+      // namespace (sessions, households, …) un-hydrated. Logged by namespace
+      // only — keys and values carry user data.
+      try {
         hydrate(entries);
         restored += entries.length;
+      } catch (err) {
+        console.error("[pg] rehydrate failed for one namespace; its rows stay in Postgres but were not loaded", {
+          namespace,
+          error: err instanceof Error ? err.message : String(err)
+        });
       }
     }
     console.log(`[pg] storage ready — rehydrated ${restored} record(s) from Postgres`);

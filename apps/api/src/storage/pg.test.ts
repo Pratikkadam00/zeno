@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the "pg" module so initStorage()'s hydration path (CREATE TABLE, SELECT,
 // group-by-namespace, per-namespace hydrator dispatch) can be exercised without
@@ -18,7 +18,7 @@ vi.mock("pg", () => ({
   })
 }));
 
-const { closeStorage, encryptionConfigured, initStorage, kvDelete, kvDeleteAwait, kvPersist, kvPersistAwait, openValue, pgEnabled, pgSslConfig, pgSslMode, registerHydrator, sealValue, storageKeyRef } = await import("./pg");
+const { closeStorage, encryptionConfigured, encryptionKeyStatus, initStorage, kvClear, kvDelete, kvDeleteAwait, kvPersist, kvPersistAwait, openValue, pgEnabled, pgSslConfig, pgSslMode, pingStorage, registerHydrator, sealValue, storageKeyRef } = await import("./pg");
 const { Pool } = await import("pg");
 const { createCipheriv, randomBytes } = await import("node:crypto");
 
@@ -322,5 +322,230 @@ describe("storage failure logs never carry the key (PII + log injection)", () =>
     expect(storageKeyRef("a@b.c")).toBe(storageKeyRef("a@b.c"));
     expect(storageKeyRef("a@b.c")).toMatch(/^[0-9a-f]{12}$/);
     expect(storageKeyRef("a@b.c")).not.toBe(storageKeyRef("a@b.d"));
+  });
+
+  it("a rejection that is not an Error is logged as its string, still without the key", async () => {
+    process.env.DATABASE_URL = "postgres://mock/db";
+    queryImpl = () => Promise.reject("socket hang up");
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await kvPersistAwait("sync", HOSTILE_KEY, { a: 1 });
+    expect(spy).toHaveBeenCalledWith("[pg] storage write failed", {
+      op: "persist", namespace: "sync", keyRef: storageKeyRef(HOSTILE_KEY), error: "socket hang up"
+    });
+  });
+});
+
+// The last Pool the module constructed (the mock returns a plain object per `new`).
+type PoolDouble = { on: ReturnType<typeof vi.fn>; end: ReturnType<typeof vi.fn> };
+function lastPool(): PoolDouble {
+  const result = vi.mocked(Pool).mock.results.at(-1);
+  if (!result) throw new Error("no Pool was constructed");
+  return result.value as PoolDouble;
+}
+
+describe("storage failure paths (DATABASE_URL set, mocked pg client)", () => {
+  beforeEach(async () => {
+    await closeStorage();
+    queryMock.mockClear();
+  });
+
+  afterEach(async () => {
+    await closeStorage();
+    queryImpl = () => Promise.resolve({ rows: [] });
+    queryMock.mockClear();
+    vi.restoreAllMocks();
+  });
+
+  it("kvPersistAwait reports whether the row landed: true on success, false on a failed write, true with no database", async () => {
+    // sync.ts acks a pushed change as "accepted" only when this is true, so a
+    // failed write must be distinguishable from a successful one.
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    delete process.env.DATABASE_URL;
+    expect(await kvPersistAwait("sync", "k", 1)).toBe(true);
+
+    process.env.DATABASE_URL = "postgres://mock/db";
+    expect(await kvPersistAwait("sync", "k", { v: 1 })).toBe(true);
+    expect(queryMock).toHaveBeenLastCalledWith(expect.stringContaining("INSERT INTO kv_store"), ["sync", "k", JSON.stringify({ v: 1 })]);
+
+    queryImpl = () => Promise.reject(new Error("connection terminated"));
+    expect(await kvPersistAwait("sync", "k", { v: 2 })).toBe(false);
+  });
+
+  it("kvClear: no database → no query; with one → deletes exactly that namespace; a failure is logged, never thrown", async () => {
+    delete process.env.DATABASE_URL;
+    await kvClear("family");
+    expect(queryMock).not.toHaveBeenCalled();
+
+    process.env.DATABASE_URL = "postgres://mock/db";
+    await kvClear("family");
+    expect(queryMock).toHaveBeenCalledWith("DELETE FROM kv_store WHERE namespace = $1", ["family"]);
+
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    queryImpl = () => Promise.reject(new Error("read-only transaction"));
+    await expect(kvClear("family")).resolves.toBeUndefined();
+    queryImpl = () => Promise.reject("not an Error");
+    await expect(kvClear("sync")).resolves.toBeUndefined();
+    expect(spy.mock.calls).toEqual([
+      ["[pg] storage clear failed", { namespace: "family", error: "read-only transaction" }],
+      ["[pg] storage clear failed", { namespace: "sync", error: "not an Error" }]
+    ]);
+  });
+
+  it("kvDeleteAwait deletes exactly one (namespace, key) row", async () => {
+    process.env.DATABASE_URL = "postgres://mock/db";
+    await kvDeleteAwait("billing", "acct_1");
+    expect(queryMock).toHaveBeenCalledWith("DELETE FROM kv_store WHERE namespace = $1 AND key = $2", ["billing", "acct_1"]);
+  });
+
+  it("pingStorage: skipped without a database, ok when SELECT 1 succeeds, error when it fails", async () => {
+    delete process.env.DATABASE_URL;
+    expect(await pingStorage()).toBe("skipped");
+    process.env.DATABASE_URL = "postgres://mock/db";
+    expect(await pingStorage()).toBe("ok");
+    expect(queryMock).toHaveBeenLastCalledWith("SELECT 1", undefined);
+    queryImpl = () => Promise.reject(new Error("ECONNREFUSED"));
+    expect(await pingStorage()).toBe("error");
+  });
+
+  it("an idle-client pool error is logged by message only (and cannot crash the process)", async () => {
+    process.env.DATABASE_URL = "postgres://mock/db";
+    await pingStorage(); // constructs the pool
+    const errorHandler = lastPool().on.mock.calls.find(([event]) => event === "error")?.[1] as ((err: Error) => void) | undefined;
+    expect(errorHandler).toBeTypeOf("function");
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    errorHandler!(new Error("terminating connection due to administrator command"));
+    expect(spy).toHaveBeenCalledWith("[pg] idle client error:", "terminating connection due to administrator command");
+  });
+
+  it("the pool is built once and reused; closeStorage swallows a failing end() and the next call builds a fresh pool", async () => {
+    process.env.DATABASE_URL = "postgres://mock/db";
+    vi.mocked(Pool).mockClear();
+    await pingStorage();
+    await kvPersistAwait("sync", "k", 1);
+    expect(Pool).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(Pool).mock.calls[0]?.[0]).toMatchObject({
+      connectionString: "postgres://mock/db", max: 5, connectionTimeoutMillis: 5_000, idleTimeoutMillis: 30_000, statement_timeout: 10_000
+    });
+
+    lastPool().end.mockRejectedValueOnce(new Error("pool already ended"));
+    await expect(closeStorage()).resolves.toBeUndefined();
+    await pingStorage();
+    expect(Pool).toHaveBeenCalledTimes(2);
+  });
+
+  it("closeStorage with no pool is a no-op", async () => {
+    delete process.env.DATABASE_URL;
+    vi.mocked(Pool).mockClear();
+    await expect(closeStorage()).resolves.toBeUndefined();
+    expect(Pool).not.toHaveBeenCalled();
+  });
+
+  it("one namespace's hydrator throwing on a bad row does not stop the other namespaces from loading", async () => {
+    // Before: a single hydrator throw aborted the whole replay loop, so every
+    // namespace registered after it (in production order: auth → plaid →
+    // billing → sync → family) booted empty although its rows were intact.
+    process.env.DATABASE_URL = "postgres://mock/db";
+    const rows = [
+      { namespace: "hydtest-broken", key: "bad", value: null },
+      { namespace: "hydtest-after", key: "good", value: { ok: true } }
+    ];
+    queryImpl = (sql) => Promise.resolve(sql.includes("SELECT") ? { rows } : { rows: [] });
+    registerHydrator("hydtest-broken", (entries) => {
+      for (const { value } of entries) void (value as { members: unknown[] }).members.length;
+    });
+    const after: unknown[] = [];
+    registerHydrator("hydtest-after", (entries) => after.push(...entries));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    await initStorage();
+
+    expect(after).toEqual([{ key: "good", value: { ok: true } }]);
+    // The failing namespace is named (never its keys or values), and the
+    // summary counts only what was actually restored.
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(error.mock.calls[0]?.[0]).toBe("[pg] rehydrate failed for one namespace; its rows stay in Postgres but were not loaded");
+    expect(error.mock.calls[0]?.[1]).toEqual({ namespace: "hydtest-broken", error: expect.stringContaining("null") });
+    expect(JSON.stringify(error.mock.calls)).not.toContain("bad");
+    expect(log).toHaveBeenCalledWith("[pg] storage ready — rehydrated 1 record(s) from Postgres");
+  });
+
+  it("a hydrator that throws a non-Error is reported as its string", async () => {
+    process.env.DATABASE_URL = "postgres://mock/db";
+    const rows = [{ namespace: "hydtest-throws-string", key: "k", value: 1 }];
+    queryImpl = (sql) => Promise.resolve(sql.includes("SELECT") ? { rows } : { rows: [] });
+    registerHydrator("hydtest-throws-string", () => {
+      throw "unexpected shape";
+    });
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    await initStorage();
+    expect(error.mock.calls[0]?.[1]).toEqual({ namespace: "hydtest-throws-string", error: "unexpected shape" });
+  });
+});
+
+describe("encryption keyring edge cases", () => {
+  it("sealValue refuses to run without a usable primary key (callers must gate on encryptionConfigured)", () => {
+    delete process.env.STORAGE_ENCRYPTION_KEY;
+    delete process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS;
+    expect(encryptionConfigured()).toBe(false);
+    expect(() => sealValue({ a: 1 })).toThrow("sealValue requires STORAGE_ENCRYPTION_KEY");
+  });
+
+  it("a retired (previous) key never seals NEW data: without a valid primary, encryption is not configured, but old rows still open", () => {
+    // Seal a row while TEST_KEY is the primary...
+    process.env.STORAGE_ENCRYPTION_KEY = TEST_KEY;
+    delete process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS;
+    const oldRow = sealValue({ accessToken: "old" });
+
+    // ...then TEST_KEY is retired to PREVIOUS while the primary is missing
+    // (unset, or a typo'd value). The module's contract: "Without a valid
+    // primary key, encryption is 'not configured'". Before the fix the retired
+    // key silently became the sealing key (and Plaid kept persisting with it,
+    // while config.ts told the operator tokens stay in-memory only).
+    process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS = TEST_KEY;
+    for (const primary of [undefined, "typo-not-a-key"]) {
+      if (primary === undefined) delete process.env.STORAGE_ENCRYPTION_KEY;
+      else process.env.STORAGE_ENCRYPTION_KEY = primary;
+      expect(encryptionConfigured(), String(primary)).toBe(false);
+      expect(() => sealValue({ accessToken: "new" }), String(primary)).toThrow("sealValue requires STORAGE_ENCRYPTION_KEY");
+      expect(openValue(oldRow), String(primary)).toEqual({ accessToken: "old" });
+    }
+  });
+
+  it("openValue returns null for anything that is not an envelope, never throws", () => {
+    process.env.STORAGE_ENCRYPTION_KEY = TEST_KEY;
+    for (const stored of [null, undefined, "enc", 42, {}, { enc: 123 }, { kid: "abc" }]) {
+      expect(openValue(stored), JSON.stringify(stored)).toBeNull();
+    }
+  });
+
+  it("malformed or blank previous keys are skipped; a valid one in the list still opens old data", () => {
+    process.env.STORAGE_ENCRYPTION_KEY = TEST_KEY;
+    delete process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS;
+    const sealed = sealValue({ legacy: true });
+    process.env.STORAGE_ENCRYPTION_KEY = ROTATED_KEY;
+    process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS = ` not-a-key , ,${TEST_KEY}, `;
+    expect(openValue(sealed)).toEqual({ legacy: true });
+  });
+
+  it("a value sealed without a kid (legacy row) still opens by trying every key in the ring", () => {
+    process.env.STORAGE_ENCRYPTION_KEY = TEST_KEY;
+    delete process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS;
+    const { enc } = sealValue({ legacy: "no-kid" });
+    process.env.STORAGE_ENCRYPTION_KEY = ROTATED_KEY;
+    process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS = TEST_KEY;
+    expect(openValue({ enc })).toEqual({ legacy: "no-kid" });
+  });
+
+  it("encryptionKeyStatus distinguishes unset, malformed and valid (hex or base64)", () => {
+    delete process.env.STORAGE_ENCRYPTION_KEY;
+    expect(encryptionKeyStatus()).toBe("unset");
+    process.env.STORAGE_ENCRYPTION_KEY = "abc";
+    expect(encryptionKeyStatus()).toBe("malformed");
+    process.env.STORAGE_ENCRYPTION_KEY = TEST_KEY;
+    expect(encryptionKeyStatus()).toBe("valid");
+    process.env.STORAGE_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString("base64");
+    expect(encryptionKeyStatus()).toBe("valid");
   });
 });
