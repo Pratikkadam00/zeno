@@ -14,7 +14,7 @@ import { generateInsights, getTotalSavingOpportunity } from "../../src/insights/
 import { useZenoTokens } from "../../src/theme/useZenoTokens";
 import { useZenoTheme } from "../../src/theme/theme-provider";
 import { currencySymbol, formatMoney } from "../../src/utils/format";
-import { categoryLabel, formatShortDate, getCategoryColor, getDaysRemaining } from "../../src/utils/subscription-ui";
+import { categoryLabel, formatShortDate, getCategoryColor } from "../../src/utils/subscription-ui";
 
 // D2 (locked): free tier tracks up to 10 subscriptions.
 const FREE_LIMIT = 10;
@@ -53,11 +53,6 @@ export default function DashboardScreen() {
   const attentionSubs = subscriptions.filter((s) => s.status === "attention");
   const trackedCount = subscriptions.filter((s) => s.status !== "cancelled").length;
   const atFreeLimit = trackedCount >= FREE_LIMIT;
-  const renewingThisWeek = upcoming.filter((s) => {
-    const d = getDaysRemaining(s.nextRenewalDate);
-    return d !== null && d <= 7;
-  });
-
   // The category rule-bar: the month's spend ruled proportionally. Reuses the
   // store's already-fx-aware byCategory breakdown (so it excludes the same
   // unconvertible currencies the total does) and the app's category palette.
@@ -212,7 +207,7 @@ export default function DashboardScreen() {
             <LedgerLine label="Charged so far" value={formatMoney(budgetForecast.committedMinor, homeCurrency)} />
             <LedgerLine
               label="Still to renew"
-              sub={`${renewingThisWeek.length} THIS WEEK`}
+              sub={`${budgetForecast.remaining.length} ${budgetForecast.remaining.length === 1 ? "RENEWAL" : "RENEWALS"}`}
               value={formatMoney(Math.max(0, budgetForecast.projectedMinor - budgetForecast.committedMinor), homeCurrency)}
             />
           </View>

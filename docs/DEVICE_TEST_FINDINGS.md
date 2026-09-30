@@ -101,10 +101,14 @@ Dark mode verified across dashboard, settings, coach, cancel, detail, add.
   is right — it sums subs whose charge already landed this calendar month
   (Adobe Sep 1, Midjourney Sep 4 …), and "Still to renew" is the rest of the
   month. 91.97 + 15.49 = 107.46 checks. My earlier note was wrong.
-- **Real inconsistency instead:** the "Still to renew" line mixes windows — its
-  sub-label `N THIS WEEK` counts the next 7 days, its value is the rest of the
-  calendar month. Seen as `2 THIS WEEK · $0.00` once Netflix went pending.
-  Needs a product call on which window the line means.
+- ~~"Still to renew" mixes windows — needs a product call~~ **FIXED (eighth
+  pass): it was a port drift, not a product question.** The DS HomeScreen
+  mockup specifies `sub="2 RENEWALS"` — the count of the charges that make up
+  the value. The app now uses `budgetForecast.remaining.length` (the exact list
+  behind `projected − committed`), pluralised; the orphaned 7-day filter and its
+  import are removed. Verified on device: `Still to renew · 0 RENEWALS · $0.00`
+  on Sep 30 with every seed renewal rolled into October — count and amount
+  agree. The singular branch ("1 RENEWAL") could not be exercised on this data.
 - ~~Midjourney's "Open cancellation page" renders disabled — likely lacks a
   cancel URL~~ **CORRECTED (fifth pass): the "likely" was wrong.** Midjourney's
   catalog row carries `https://www.midjourney.com/account`; `parseRequestedRows`
@@ -302,3 +306,19 @@ resume edge. Arguably correct (any pause is potential exposure); logged.
   Any reviewer tapping that link sees the same. This is not a code defect; it
   resolves the moment the domain exists (set NEXT_PUBLIC_SITE_URL and
   EXPO_PUBLIC_SITE_URL, or the two DEFAULT_SITE_URL lines).
+
+---
+
+# Eighth pass — 2026-09-30, Still-to-renew fix + store kit audit
+
+- **Dashboard "Still to renew":** fixed to the DS spec and verified on device
+  (see the corrected entry above).
+- **Store kit (`Zeno Design System/app_store/`), checked by bytes, not by eye:**
+  - Six screenshots, every one exactly **1290×2796** — the App Store 6.7"/6.9"
+    portrait spec. Usable for Apple as-is.
+  - Aspect ratio 2.167:1 **exceeds Google Play's 16:9 limit (max 1.778:1)**.
+    The kit is a renderer — six `<section class="fr shot" data-w="1188"
+    data-h="2576">` frames — so Play needs a second frame set at e.g.
+    1080×1920, which is a re-flow of the layouts, i.e. a design task (A6).
+  - Listing copy (519 words): **zero** banned-rail hits; the required "no bank
+    login" claim is present.

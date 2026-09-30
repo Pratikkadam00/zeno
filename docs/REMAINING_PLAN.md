@@ -76,7 +76,11 @@ One false positive traced to library source and cleared. Details in
 - ~~MASVS spot re-check~~ DONE 2026-09-30: PIN inputs opted out of autofill;
   app-lock now engages on background (switcher thumbnail is the cover), verified
   on device. See DEVICE_TEST_FINDINGS.md sixth pass.
-- Store screenshots from `Zeno Design System/app_store/`.
+- Store screenshots from `Zeno Design System/app_store/` — **audited 2026-09-30:**
+  the six PNGs are exactly 1290×2796 (App Store spec, ready) and the copy
+  passes the truthfulness rails. **Google Play needs a 16:9 frame set** (the
+  kit's frames are 2.17:1; Play caps at 1.78:1) — a re-flow in the kit's HTML,
+  design/owner (A6).
 - EAS preview build — ONLY after the owner confirms quota.
 
 ---
