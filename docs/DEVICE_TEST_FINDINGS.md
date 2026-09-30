@@ -163,8 +163,11 @@ with a single-match / balanced-brace assertion, gate, rebuild, verify on device.
   shipped. Google is outlined (permitted).
 
 ## Deliberately NOT done (need product/logic decisions, not style)
-- Cancel guide: the DS's three difficulty tick bars, and its primary/secondary
-  role swap ("I cancelled it" primary, "Open …'s page" secondary).
+- ~~Cancel guide: the DS's three difficulty tick bars~~ **PORTED (ninth pass)** —
+  I had mis-filed a DS-specified element as a product decision. Only the
+  primary/secondary role swap remains deferred: the app deliberately makes
+  "Open cancellation page" primary to send users to actually cancel first, and
+  swapping it changes the flow's guidance, not its chrome.
 - Login: the DS's "Or keep it on this phone" local-only path — a new entry
   point into the auth funnel; today local-only lives on onboarding beat 3.
 - Add: the hand-rolled billing control already has the Segmented shape; swapping
@@ -322,3 +325,22 @@ resume edge. Arguably correct (any pause is potential exposure); logged.
     1080×1920, which is a re-flow of the layouts, i.e. a design task (A6).
   - Listing copy (519 words): **zero** banned-rail hits; the required "no bank
     login" claim is present.
+
+---
+
+# Ninth pass — 2026-09-30, difficulty ticks + Calendar testID
+
+- **Cancel guide difficulty as ink ticks** (DS CancelFlowScreen: three 14×4
+  bars filled to the tier, beside the tier word in mono caps, under a
+  `DIFFICULTY` kicker). Tier → ticks: easy 1, moderate 2, hard 3, dark pattern 3
+  (alert red). The bars are `importantForAccessibility="no-hide-descendants"`;
+  the container's label already announces tier + note, confirmed in the tree
+  dump as one node ("Moderate steps. A few steps — follow them in order below.")
+  with no stray tick nodes. The per-tier `Icon` field and three lucide imports
+  were orphaned by the change and removed; an explicit return type kept `Icon`
+  and failed typecheck until it was removed too — the compiler caught what the
+  regex missed.
+  **Verified on device:** Netflix (dark pattern) = three alert bars; Midjourney
+  (moderate) = two warning bars + one rule-strong.
+- **Calendar `testID="calendar"`**: the month header's resource-ids no longer
+  read `undefined.header.*` for automation.

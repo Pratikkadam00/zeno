@@ -341,6 +341,7 @@ export default function CalendarScreen() {
         <View style={styles.calendarCard}>
           <Calendar
             key={scheme}
+            testID="calendar"
             style={styles.calendar}
             markedDates={markedDates}
             markingType="multi-dot"

@@ -8,7 +8,7 @@ import { useSubscriptionStore } from "../../../src/data/subscription-store";
 import { cancelNotificationsForSubscription } from "../../../src/notifications/notificationService";
 import { formatMoney } from "../../../src/utils/format";
 import { formatShortDate, getDaysRemaining, withAlpha } from "../../../src/utils/subscription-ui";
-import { AlertTriangle, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronUp, ExternalLink, Mail, Phone, PiggyBank, Search, XCircle, type LucideIcon } from "lucide-react-native";
+import { Check, ChevronDown, ChevronLeft, ChevronUp, ExternalLink, Mail, Phone, PiggyBank, Search } from "lucide-react-native";
 import { Button, LedgerLine, ServiceAvatar, Stamp } from "../../../src/components/zeno";
 import { useZenoTheme } from "../../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../../src/theme/tokens";
@@ -18,29 +18,29 @@ import { spacing } from "../../../src/theme/spacing";
 
 // ─── Pure helpers (logic unchanged) ──────────────────────────────────────────
 
-function getDifficultyMeta(difficulty: CancellationDifficulty, theme: ThemeTokens): { label: string; note: string; bg: string; border: string; color: string; Icon: LucideIcon } {
+function getDifficultyMeta(difficulty: CancellationDifficulty, theme: ThemeTokens): { ticks: 1 | 2 | 3; label: string; note: string; bg: string; border: string; color: string; } {
   if (difficulty === "easy")
     return {
       label: "Easy to cancel",
       note: "A couple of taps and you're done.",
-      bg: theme.successSurface, border: withAlpha(theme.success, 0.2), color: theme.success, Icon: CheckCircle2
+      ticks: 1, bg: theme.successSurface, border: withAlpha(theme.success, 0.2), color: theme.success
     };
   if (difficulty === "medium")
     return {
       label: "Moderate steps",
       note: "A few steps — follow them in order below.",
-      bg: theme.warningSurface, border: withAlpha(theme.warning, 0.2), color: theme.warning, Icon: AlertTriangle
+      ticks: 2, bg: theme.warningSurface, border: withAlpha(theme.warning, 0.2), color: theme.warning
     };
   if (difficulty === "hard")
     return {
       label: "Hard to cancel",
       note: "This one buries the cancel option. Follow the steps carefully.",
-      bg: theme.dangerSurface, border: withAlpha(theme.danger, 0.2), color: theme.danger, Icon: XCircle
+      ticks: 3, bg: theme.dangerSurface, border: withAlpha(theme.danger, 0.2), color: theme.danger
     };
   return {
     label: "Dark pattern",
     note: "Known for hard-to-cancel flows — they'll try to stop you. Follow these steps and don't accept any \"stay\" offers.",
-    bg: theme.dangerSurface, border: withAlpha(theme.danger, 0.25), color: theme.danger, Icon: AlertTriangle
+    ticks: 3, bg: theme.dangerSurface, border: withAlpha(theme.danger, 0.25), color: theme.danger
   };
 }
 
@@ -238,7 +238,14 @@ export default function SubscriptionCancelScreen() {
               accessibilityLabel={`${difficulty.label}. ${difficulty.note}`}
             >
               <View style={styles.difficultyHeader}>
-                <difficulty.Icon size={15} color={difficulty.color} strokeWidth={2} />
+                <Text style={styles.difficultyKicker}>DIFFICULTY</Text>
+                {/* DS: "difficulty as ink ticks" — three bars, filled to the tier.
+                    Decorative: the container's accessibilityLabel carries it. */}
+                <View style={styles.difficultyTicks} accessible={false} importantForAccessibility="no-hide-descendants">
+                  {([1, 2, 3] as const).map((n) => (
+                    <View key={n} style={[styles.difficultyTick, { backgroundColor: n <= difficulty.ticks ? difficulty.color : theme.ruleStrong }]} />
+                  ))}
+                </View>
                 <Text style={[styles.difficultyText, { color: difficulty.color }]}>{difficulty.label}</Text>
               </View>
               <Text style={styles.difficultyNote}>{difficulty.note}</Text>
@@ -450,7 +457,10 @@ function createStyles(theme: ThemeTokens) {
 
     // Difficulty card
     difficultyCard: { marginHorizontal: spacing.screenH, paddingVertical: 10, gap: 4, borderBottomWidth: 1, borderColor: theme.ruleStrong },
-    difficultyHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
+    difficultyHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+    difficultyKicker: { flex: 1, fontFamily: fonts.mono.bold, fontSize: 10, letterSpacing: 1.6, color: theme.quietText },
+    difficultyTicks: { flexDirection: "row", gap: 3 },
+    difficultyTick: { width: 14, height: 4 },
     difficultyText: { fontFamily: fonts.mono.bold, fontSize: 12, letterSpacing: 1.6, textTransform: "uppercase" },
     difficultyNote: { fontSize: 12.5, lineHeight: 18, color: theme.quietText },
 
