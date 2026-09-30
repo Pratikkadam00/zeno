@@ -4,6 +4,18 @@ import type { EventSubscription } from "expo-notifications";
 
 let responseSubscription: EventSubscription | null = null;
 
+// A tap's `data` is untrusted input (§8: validate deep-link params). Besides the
+// app's own local reminders, a remote push to this device's Expo push token can
+// carry any data, and the id is spliced into a route path. Only ids shaped like
+// the app's own (`sub_<uuid>`, seed ids such as `sub_netflix`) are accepted, so
+// "/", "?", "#", "%" or ".." can never re-target the navigation. The 128 cap
+// matches the shared schema's entity-id bound.
+const SUBSCRIPTION_ID = /^[A-Za-z0-9_-]{1,128}$/;
+
+function readSubscriptionId(value: unknown): string | null {
+  return typeof value === "string" && SUBSCRIPTION_ID.test(value) ? value : null;
+}
+
 export function setupNotificationHandlers(): void {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -18,7 +30,7 @@ export function setupNotificationHandlers(): void {
   responseSubscription?.remove();
   responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
     const data = response.notification.request.content.data;
-    const subscriptionId = typeof data?.subscriptionId === "string" ? data.subscriptionId : null;
+    const subscriptionId = readSubscriptionId(data?.subscriptionId);
     const action = typeof data?.action === "string" ? data.action : null;
 
     if (action === "cancel" && subscriptionId) {
