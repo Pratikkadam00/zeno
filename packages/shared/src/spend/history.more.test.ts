@@ -1,0 +1,108 @@
+import { describe, expect, it } from "vitest";
+import type { BillingCycle, Subscription } from "../domain";
+import type { FxContext } from "./coach";
+import { buildMonthlySpendHistory } from "./history";
+
+function sub(input: Partial<Subscription> & Pick<Subscription, "id">): Subscription {
+  return {
+    name: input.id,
+    createdAt: "2025-01-01T00:00:00.000Z",
+    updatedAt: "2025-01-01T00:00:00.000Z",
+    version: 1,
+    category: "other",
+    price: { amountMinor: 1000, currency: "USD" },
+    billingCycle: "monthly",
+    status: "active",
+    ownerProfileId: "p",
+    source: "manual",
+    ...input
+  };
+}
+
+const NOW = new Date(Date.UTC(2026, 5, 15)); // 15 June 2026
+const fx: FxContext = { homeCurrency: "USD", rates: { USD: 1, INR: 95 } };
+const amounts = (points: ReturnType<typeof buildMonthlySpendHistory>) => points.map((p) => p.amountMinor);
+
+describe("buildMonthlySpendHistory — calendar (UTC)", () => {
+  it("walks back across a year boundary with the right year and label", () => {
+    const points = buildMonthlySpendHistory([], 3, new Date(Date.UTC(2026, 0, 15)));
+    expect(points.map((p) => [p.year, p.month, p.label])).toEqual([
+      [2025, 10, "Nov"],
+      [2025, 11, "Dec"],
+      [2026, 0, "Jan"]
+    ]);
+  });
+
+  it("never skips or repeats a month when 'now' is a month end (31 March of a leap year)", () => {
+    const points = buildMonthlySpendHistory([], 3, new Date(Date.UTC(2024, 2, 31, 23, 59)));
+    expect(points.map((p) => p.label)).toEqual(["Jan", "Feb", "Mar"]);
+  });
+
+  it("uses the UTC month even when a local timezone would already be in the next month", () => {
+    // 23:30 UTC on 30 June is 1 July in UTC+1 and later zones.
+    const points = buildMonthlySpendHistory([], 1, new Date(Date.UTC(2026, 5, 30, 23, 30)));
+    expect(points[0]).toMatchObject({ year: 2026, month: 5, label: "Jun" });
+  });
+});
+
+describe("buildMonthlySpendHistory — cycles", () => {
+  it("charges the month-equivalent of a weekly price every month", () => {
+    const points = buildMonthlySpendHistory([sub({ id: "w", billingCycle: "weekly", price: { amountMinor: 300, currency: "USD" } })], 2, NOW);
+    expect(amounts(points)).toEqual([1300, 1300]); // 300 * 52 / 12
+  });
+
+  it("charges a quarterly price every third month from the renewal month, across the year boundary", () => {
+    // Renews in May -> charged Feb, May, Aug, Nov.
+    const quarterly = sub({ id: "q", billingCycle: "quarterly", price: { amountMinor: 3000, currency: "USD" }, nextRenewalDate: "2026-05-20T00:00:00.000Z" });
+    const points = buildMonthlySpendHistory([quarterly], 12, NOW); // Jul 2025 .. Jun 2026
+    expect(points.filter((p) => p.amountMinor > 0).map((p) => p.label)).toEqual(["Aug", "Nov", "Feb", "May"]);
+  });
+
+  it("anchors an annual or quarterly charge on createdAt when there is no renewal date", () => {
+    const annual = sub({ id: "a", billingCycle: "annual", price: { amountMinor: 12000, currency: "USD" }, createdAt: "2025-03-10T00:00:00.000Z" });
+    const points = buildMonthlySpendHistory([annual], 6, NOW); // Jan..Jun 2026
+    expect(points.filter((p) => p.amountMinor > 0).map((p) => p.label)).toEqual(["Mar"]);
+  });
+
+  it("anchors on createdAt when the renewal date cannot be parsed, instead of never charging", () => {
+    // Before the fix new Date("not a date").getUTCMonth() was NaN, so the
+    // annual charge matched no month and silently vanished from history.
+    const annual = sub({ id: "a", billingCycle: "annual", price: { amountMinor: 12000, currency: "USD" }, createdAt: "2025-03-10T00:00:00.000Z", nextRenewalDate: "not a date" });
+    const quarterly = sub({ id: "q", billingCycle: "quarterly", price: { amountMinor: 3000, currency: "USD" }, createdAt: "2025-03-10T00:00:00.000Z", nextRenewalDate: "" });
+    expect(amounts(buildMonthlySpendHistory([annual], 6, NOW))).toEqual([0, 0, 12000, 0, 0, 0]);
+    expect(amounts(buildMonthlySpendHistory([quarterly], 6, NOW))).toEqual([0, 0, 3000, 0, 0, 3000]);
+  });
+
+  it("charges nothing for inactive, unknown-cycle or unrecognised-cycle subscriptions", () => {
+    const points = buildMonthlySpendHistory([
+      sub({ id: "c", status: "cancelled" }),
+      sub({ id: "u", billingCycle: "unknown" }),
+      // Rows read back from storage are not re-validated; an unexpected cycle
+      // string must contribute nothing rather than throw or guess.
+      sub({ id: "x", billingCycle: "lifetime" as BillingCycle })
+    ], 2, NOW);
+    expect(amounts(points)).toEqual([0, 0]);
+  });
+});
+
+describe("buildMonthlySpendHistory — fx", () => {
+  it("converts every cycle into the home currency", () => {
+    const points = buildMonthlySpendHistory([
+      sub({ id: "m", price: { amountMinor: 9500, currency: "INR" } }), // $1.00
+      sub({ id: "w", billingCycle: "weekly", price: { amountMinor: 2280, currency: "INR" } }), // 2280*52/12 = 9880 paise = $1.04
+      sub({ id: "q", billingCycle: "quarterly", price: { amountMinor: 19000, currency: "INR" }, nextRenewalDate: "2026-06-01T00:00:00.000Z" }), // $2.00 in Jun
+      sub({ id: "a", billingCycle: "annual", price: { amountMinor: 1000, currency: "USD" }, nextRenewalDate: "2026-06-01T00:00:00.000Z" })
+    ], 1, NOW, fx);
+    expect(amounts(points)).toEqual([100 + 104 + 200 + 1000]);
+  });
+
+  it("contributes 0 (never a fabricated figure) for a currency with no rate, in every cycle", () => {
+    const points = buildMonthlySpendHistory([
+      sub({ id: "m", price: { amountMinor: 500, currency: "GBP" } }),
+      sub({ id: "w", billingCycle: "weekly", price: { amountMinor: 500, currency: "GBP" } }),
+      sub({ id: "a", billingCycle: "annual", price: { amountMinor: 500, currency: "GBP" }, nextRenewalDate: "2026-06-01T00:00:00.000Z" }),
+      sub({ id: "usd", price: { amountMinor: 700, currency: "USD" } })
+    ], 1, NOW, fx);
+    expect(amounts(points)).toEqual([700]);
+  });
+});

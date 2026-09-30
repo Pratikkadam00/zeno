@@ -41,7 +41,11 @@ export function buildMonthlySpendHistory(subscriptions: Subscription[], months =
 }
 
 function anchorMonth(subscription: Subscription): number {
-  const ref = subscription.nextRenewalDate ?? subscription.createdAt;
+  // The renewal date carries the anniversary month. Fall back to createdAt when
+  // it is absent OR unparseable: an unparseable (or empty) date gave a NaN
+  // month, so the charge matched no month and silently vanished from history.
+  const renewal = subscription.nextRenewalDate ? Date.parse(subscription.nextRenewalDate) : Number.NaN;
+  const ref = Number.isNaN(renewal) ? Date.parse(subscription.createdAt) : renewal;
   return new Date(ref).getUTCMonth();
 }
 
