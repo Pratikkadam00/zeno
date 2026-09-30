@@ -19,7 +19,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P0.5 Dependabot (npm + GitHub Actions) + SBOM on release
   - [!] P0.6 Branch protection on `main` (owner action — documented; `main` verified UNPROTECTED)
   - [x] P0 gate: all standing gates green locally; new CI jobs green on GitHub
-- [~] **P1 — Tier 1 logic to 100 % coverage** (order = risk; each sub closes the findings named)
+- [x] **P1 — Tier 1 logic to 100 % coverage** (gate passed 2026-09-30; evidence in the P1.11 entry) (order = risk; each sub closes the findings named)
   - [x] P1.1 `apps/api/src/server.ts` (0 %) — boot, env matrix, logger; **fixes F9** (tokens in request logs)
   - [x] P1.2 `apps/mobile/src/security/*` — secure-store, lock-store (48 %), app-lock; **fixes F13** (Gmail SecureStore key)
   - [x] P1.3 `apps/mobile/src/discovery/*` (emailScanner 48 %, csvParser, helpers) + shared receipts — untrusted email/CSV input; **fixes F12, F17, F20**
@@ -34,13 +34,13 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
     - [x] P1.8d `subscription-store.tsx` — **finishes F26** (the `setQuietHours` stale merge)
     - [x] P1.8e `LockOverlay.tsx` — **fixes F28** (a keychain error wedged the lock screen)
     - [x] P1.8f "erase everything from this device" as one tested function — **fixes F27**
-  - [~] P1.9 every remaining Tier 1 gap (since 2026-09-30, per the owner's choice, split across 5 parallel agents, each in its own git worktree with disjoint files; I merge, gate, push and verify each): 48 files, with 532 statements / 530 branches / 98 functions uncovered (measured 2026-09-30, `gaps.cjs` over `coverage-final.json`)
+  - [x] P1.9 every remaining Tier 1 gap (48 files; split across 5 parallel agents in their own worktrees, each branch merged and verified by me in `main`)
     - [x] P1.9a API: `app.ts` and `routes/auth.ts` (me), plus `coach`, `billing`, `family`, `sync`, `config` and `storage/pg` (agent, verified by me), all at 0 uncovered lines and functions. **Fixes F30-F33, F46-F53**
     - [x] P1.9b mobile logic (two parallel agents, both verified by me): **part 1** (`api/client.ts`, `notificationService.ts`, `notificationHandlers.ts`; fixes F38-F42) and **part 2** (`subscription-ui`, `calendarUtils`, `insightsEngine`, `budget`, `format`, `api/config`, `seed-subscriptions`, `open-banking`; fixes F65-F73), all at 100 % except one defensive branch in insightsEngine
     - [x] P1.9c shared package: all 14 files at 0 uncovered statements, branches and functions (agent, verified by me, with one regression found and corrected by me). **Fixes F55-F63**; F64 open
     - [x] P1.9d thin config, theme and web files: all 13 at 0 uncovered statements, branches and functions (`motion.ts` and `useZenoTokens.ts` moved to jest with 100 % floors). **Fixes F35, F36, F37**
   - [x] P1.10 `apps/api/src/plaid.ts` (was 21 %; now 0 uncovered lines / functions, 1 defensive branch) and the Plaid routes in `app.ts` (now 100 %). Plaid's HTTP is faked, with no Plaid or sandbox calls, by standing instruction. **Fixes F34**
-  - [ ] P1.11 gate: Tier 1 at 100 % lines / statements / functions, ≥ 95 % branches; jest floor; green on GitHub
+  - [x] P1.11 gate: Tier 1 at 100 % statements / functions / lines and 99.61 % branches (≥ 95 %); jest floors at 100 %; green on GitHub (CI 36744248345, CodeQL 36744248343)
 - [ ] **P2 — API on real Postgres, authorization matrix, fuzzing**
 - [ ] **P3 — Mobile hardening (MASVS) + tests for all 29 screens**
 - [ ] **P4 — Website component tests, Playwright, CSP, DAST**
@@ -1620,3 +1620,41 @@ $10 plan and a ₹999 plan and no rate table:
 
 Gates: typecheck 0 · lint 0 · vitest 122 files / 1555 tests at 100 / 99.61 / 100 / 100 ·
 jest 114 / 114, all floors at 100 %.
+
+### P1.11 — the P1 gate — 2026-09-30 — PASSED
+
+| Gate | Required | Measured | Evidence |
+|---|---|---|---|
+| Tier 1 statements | 100 % | **100 %** (3947 / 3947) | `npx vitest run --coverage`, and the ratchet in `vitest.config.ts` now enforces it in CI |
+| Tier 1 functions | 100 % | **100 %** (807 / 807) | same |
+| Tier 1 lines | 100 % | **100 %** (3671 / 3671) | same |
+| Tier 1 branches | ≥ 95 % | **99.61 %** (2604 / 2614) | same; the 10 open branches are listed below |
+| jest-owned files | 100 % per-file floors | **100 %** on all 6 (budget-store, subscription-store, theme-provider, LockOverlay, motion, useZenoTokens) | `npm run test:rn:coverage`, 114 tests |
+| GitHub | green | **CI and CodeQL success** on `1a99ce9` | CI run 36744248345, CodeQL run 36744248343 |
+
+**The 10 open branches, all defensive and documented where they are:**
+- `routes/auth.ts`, 7 arms on lines 288, 324, 332, 458 and 943: `?? ""` fallbacks after
+  zod `.refine()` guarantees, a non-Error `String(error)`, and one env-read fallback.
+- `plaid.ts:132`: `?? null` forced by TypeScript's lib on `maximumFractionDigits`.
+- `config/site.ts:29`: `split("/")[0] ?? ""` under `noUncheckedIndexedAccess`.
+- `insightsEngine.ts:392`: `insight.subscriptionIds ?? []`, a default the `Insight` type
+  requires.
+
+**What P1 found and fixed:** F9, F10, F12, F13, F17, F20, F22, F23, F24 and F26-F74, apart
+from those still open. Each fix has a test that fails on the old code (bite-checked),
+and each merged agent branch was re-verified by me in `main`.
+
+**Still open, carried to later phases or to the owner:**
+- **Owner:** F2 and F3 (confirm the Render deploy and the client IP), F7 and F8 (branch
+  protection and GitHub security settings), F45 (the paywall's "we never see your
+  bank"), F25 (how to present catalog `/account` links).
+- **P2:** sync vector-clock semantics, the pg boot-time memory-only question,
+  per-product webhook semantics, coach log hygiene.
+- **P3:** F11 (Google on Android), F14, F16, dates shown in device time vs UTC, DB row
+  validation on read, push FCM config, the cold-start notification tap.
+- **P4 / P6:** F1 and F15, F21 (a strict date parser), CSP nonces.
+
+**A note on CI going red today.** Two runs (`f9fc575`, `0356474`) failed ONLY at the
+last step, the dependency audit, because a new critical Next.js advisory was published
+today. Every code step passed on GitHub. It was fixed in F74 (Next 16.3.6), and CI has
+been green since.
