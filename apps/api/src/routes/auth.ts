@@ -131,6 +131,7 @@ type JwtPayload = {
   aud?: string | string[];
   email?: string;
   exp?: number;
+  iat?: number;
   iss?: string;
   nonce?: string;
   sub?: string;
@@ -143,6 +144,20 @@ type JwksResponse = {
 const magicLinksByHash = new Map<string, MagicLinkRecord>();
 const legacyCodesByEmail = new Map<string, MagicLinkRecord>();
 const refreshSessionsByHash = new Map<string, RefreshRecord>();
+// Account-level revocation cut-off (finding F76). Access tokens are stateless
+// RS256 JWTs valid for 15 minutes, so deleting an account used to leave every
+// already-issued token working: a deleted account could still push sync data
+// and create households, re-creating rows after "deleted". Account deletion
+// now records the second it happened; any token for that account issued at or
+// before it is rejected, on every instance and across restarts (persisted).
+// Keyed by a SHA-256 of the account id, holding only a timestamp, so the record
+// is not itself a row of the deleted user. Swept once every older token has
+// expired (accessTokenTtlSeconds later).
+const accountRevokedAtSeconds = new Map<string, number>();
+
+function revocationKey(accountId: string): string {
+  return createHash("sha256").update(accountId).digest("hex");
+}
 const jwksCache = new Map<string, { expiresAt: number; keys: JsonWebKey[] }>();
 const keyPair = loadSigningKeys();
 
@@ -161,6 +176,12 @@ registerHydrator("auth_magic", (entries: StoredEntry[]) => {
   for (const { key, value } of entries) {
     const record = value as MagicLinkRecord;
     if (record.expiresAt > now) magicLinksByHash.set(key, record);
+  }
+});
+registerHydrator("auth_revoked", (entries: StoredEntry[]) => {
+  for (const { key, value } of entries) {
+    const at = (value as { revokedAtSeconds?: unknown }).revokedAtSeconds;
+    if (typeof at === "number") accountRevokedAtSeconds.set(key, at);
   }
 });
 registerHydrator("auth_legacy", (entries: StoredEntry[]) => {
@@ -203,6 +224,15 @@ export function sweepExpiredAuth(): void {
       magicLinkEmailHits.delete(email);
     }
   }
+  // A revocation cut-off is only needed while a token issued before it could
+  // still be unexpired.
+  const nowSeconds = Math.floor(now / 1000);
+  for (const [key, revokedAt] of accountRevokedAtSeconds) {
+    if (revokedAt + accessTokenTtlSeconds < nowSeconds) {
+      accountRevokedAtSeconds.delete(key);
+      kvDelete("auth_revoked", key);
+    }
+  }
 }
 
 // Account deletion: revoke every session/magic-link record tied to this account
@@ -230,6 +260,21 @@ export async function revokeAllSessionsForAccount(accountId: string): Promise<bo
     ["auth_magic", "auth_legacy", "auth_refresh"].map((namespace) => kvDeleteByValueField(namespace, "accountId", accountId))
   );
   return results.every(Boolean);
+}
+
+// The last step of account deletion (finding F76): every access token issued so
+// far for this account stops working. Called only once all the account's data
+// is durably gone, so a failed deletion leaves the user's token able to retry.
+// The cut-off is persisted FIRST and applied in memory only if that landed, for
+// the same reason. Resolves false (nothing changed) if the database refused.
+export async function revokeAccessTokensForAccount(accountId: string): Promise<boolean> {
+  const revokedAtSeconds = Math.floor(Date.now() / 1000);
+  const key = revocationKey(accountId);
+  if (!(await kvPersistAwait("auth_revoked", key, { revokedAtSeconds }))) {
+    return false;
+  }
+  accountRevokedAtSeconds.set(key, revokedAtSeconds);
+  return true;
 }
 
 // Auth endpoints get much stricter limits than the global bucket: magic-link
@@ -611,6 +656,12 @@ export function verifyAccessToken(token: string): VerifiedAccessToken | null {
     }
     const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
     if (!audiences.includes(audience)) {
+      return null;
+    }
+    // Issued at or before its account was deleted: revoked (F76). A token with
+    // no iat is treated as issued at 0, so it fails closed.
+    const revokedAt = accountRevokedAtSeconds.get(revocationKey(payload.sub));
+    if (revokedAt !== undefined && (payload.iat ?? 0) <= revokedAt) {
       return null;
     }
     return { sub: payload.sub, email: payload.email ?? null };

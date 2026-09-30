@@ -8,7 +8,7 @@ import { pingStorage } from "./storage/pg";
 import Redis from "ioredis";
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import { authRoutes, revokeAllSessionsForAccount } from "./routes/auth";
+import { authRoutes, revokeAccessTokensForAccount, revokeAllSessionsForAccount } from "./routes/auth";
 import { createLinkToken, deletePlaidItem, exchangePublicToken, getRecentTransactions, getStoredPlaidItem, plaidConfigured, sandboxPublicToken, storePlaidItem } from "./plaid";
 import { applyWebhookEvent, billingConfigured, deleteEntitlementForUser, fetchEntitlement, getCachedEntitlement, verifyWebhookAuth, webhookConfigured } from "./billing";
 import { deleteUserSyncData, pullChanges, pushChanges, type EncryptedChange } from "./sync";
@@ -386,7 +386,10 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       removeUserFromAllHouseholds(userId),
       revokeAllSessionsForAccount(userId)
     ]);
-    if (durable.includes(false)) {
+    // Then, and only then, every access token already issued for the account
+    // stops working, so it cannot re-create data (finding F76). Last on
+    // purpose: a refused step above leaves the token able to retry.
+    if (durable.includes(false) || !(await revokeAccessTokensForAccount(userId))) {
       reply.code(503);
       return fail("SERVICE_UNAVAILABLE", "Account deletion could not be completed. Please try again.", request.id);
     }

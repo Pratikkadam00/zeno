@@ -20,7 +20,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const storage = vi.hoisted(() => ({
   hydrators: new Map<string, (entries: { key: string; value: unknown }[]) => void>(),
   deleted: [] as string[],
-  persisted: [] as string[]
+  persisted: [] as string[],
+  persistedValues: new Map<string, unknown>(),
+  persistResult: true
 }));
 vi.mock("../storage/pg", async (importOriginal) => {
   const real = await importOriginal<typeof import("../storage/pg")>();
@@ -34,7 +36,11 @@ vi.mock("../storage/pg", async (importOriginal) => {
     kvDeleteAwait: async (namespace: string, key: string) => { storage.deleted.push(`${namespace}:${key}`); return true; },
     kvDeleteByValueField: async (namespace: string, field: string, value: string) => { storage.deleted.push(`${namespace}:${field}=${value}`); return true; },
     kvPersist: (namespace: string, key: string) => { storage.persisted.push(`${namespace}:${key}`); },
-    kvPersistAwait: async (namespace: string, key: string) => { storage.persisted.push(`${namespace}:${key}`); }
+    kvPersistAwait: async (namespace: string, key: string, value: unknown) => {
+      storage.persisted.push(`${namespace}:${key}`);
+      storage.persistedValues.set(`${namespace}:${key}`, value);
+      return storage.persistResult;
+    }
   };
 });
 
@@ -49,6 +55,8 @@ beforeEach(() => {
   storage.hydrators.clear();
   storage.deleted.length = 0;
   storage.persisted.length = 0;
+  storage.persistedValues.clear();
+  storage.persistResult = true;
 });
 afterEach(() => {
   for (const [k, v] of Object.entries(saved)) {
@@ -228,6 +236,77 @@ describe("account deletion revokes pending sign-ins", () => {
     const byCode = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link/verify", payload: { email: "gone@zeno.test", code: pending.devCode } });
     const byRefresh = await app.inject({ method: "POST", url: "/api/v1/auth/refresh", payload: { refreshToken: session.refreshToken } });
     expect([byLink.statusCode, byCode.statusCode, byRefresh.statusCode]).toEqual([401, 401, 401]);
+  });
+});
+
+describe("F76: a deleted account's access tokens stop working", () => {
+  beforeEach(() => {
+    setEnv("JWT_PRIVATE_KEY", privateKey);
+    setEnv("JWT_PUBLIC_KEY", publicKey);
+    setEnv("JWT_ISSUER", undefined);
+    setEnv("JWT_AUDIENCE", undefined);
+  });
+  const claims = (over: Record<string, unknown> = {}) => ({ sub: "acct_gone", iss: "zeno-api", aud: "zeno-mobile", exp: now() + 600, ...over });
+
+  it("tokens issued at or before the cut-off are rejected; a token with no iat fails closed; others are untouched", async () => {
+    const { revokeAccessTokensForAccount, verifyAccessToken } = await loadAuth();
+    const before = sign(claims({ iat: now() - 60 }));
+    const sameSecond = sign(claims({ iat: now() }));
+    const noIat = sign(claims());
+    const otherAccount = sign(claims({ sub: "acct_other", iat: now() - 60 }));
+    expect(verifyAccessToken(before)?.sub).toBe("acct_gone");
+    expect(await revokeAccessTokensForAccount("acct_gone")).toBe(true);
+    expect(verifyAccessToken(before)).toBeNull();
+    expect(verifyAccessToken(sameSecond)).toBeNull();
+    expect(verifyAccessToken(noIat)).toBeNull();
+    expect(verifyAccessToken(otherAccount)?.sub).toBe("acct_other");
+    // A token issued after the cut-off (the same email signing up again) works.
+    expect(verifyAccessToken(sign(claims({ iat: now() + 2 }))))?.toMatchObject({ sub: "acct_gone" });
+  });
+
+  it("the stored record is keyed by a hash and holds only a timestamp (it is not a row of the deleted user)", async () => {
+    const { revokeAccessTokensForAccount } = await loadAuth();
+    await revokeAccessTokensForAccount("acct_gone");
+    const [entry] = [...storage.persistedValues.entries()].filter(([k]) => k.startsWith("auth_revoked:"));
+    expect(entry![0]).toMatch(/^auth_revoked:[0-9a-f]{64}$/);
+    expect(entry![0]).not.toContain("acct_gone");
+    expect(entry![1]).toEqual({ revokedAtSeconds: expect.any(Number) });
+  });
+
+  it("a refused save changes nothing: false, and the old token still works so the user can retry", async () => {
+    const { revokeAccessTokensForAccount, verifyAccessToken } = await loadAuth();
+    const before = sign(claims({ iat: now() - 60 }));
+    storage.persistResult = false;
+    expect(await revokeAccessTokensForAccount("acct_gone")).toBe(false);
+    expect(verifyAccessToken(before)?.sub).toBe("acct_gone");
+  });
+
+  it("the cut-off survives a restart, and is swept (row deleted) once every older token has expired", async () => {
+    const auth = await loadAuth();
+    const before = sign(claims({ iat: now() - 60 }));
+    await auth.revokeAccessTokensForAccount("acct_gone");
+    const stored = [...storage.persistedValues.entries()].find(([k]) => k.startsWith("auth_revoked:"));
+    expect(stored).toBeDefined();
+    const [key, value] = stored!;
+    // Restart: a fresh module graph, rebuilt only from the stored row.
+    vi.resetModules();
+    storage.hydrators.clear();
+    const restarted = await loadAuth();
+    storage.hydrators.get("auth_revoked")!([
+      { key: key.slice("auth_revoked:".length), value },
+      { key: "garbage", value: { revokedAtSeconds: "not a number" } }
+    ]);
+    expect(restarted.verifyAccessToken(before)).toBeNull();
+    // A sweep while older tokens could still be valid KEEPS the cut-off.
+    storage.deleted.length = 0;
+    restarted.sweepExpiredAuth();
+    expect(storage.deleted.filter((d) => d.startsWith("auth_revoked:"))).toEqual([]);
+    expect(restarted.verifyAccessToken(before)).toBeNull();
+    // 15 minutes and change later, nothing older than the cut-off can still be valid.
+    vi.useFakeTimers({ now: Date.now() + 16 * 60 * 1000 });
+    storage.deleted.length = 0;
+    restarted.sweepExpiredAuth();
+    expect(storage.deleted).toContain(key);
   });
 });
 

@@ -1,5 +1,16 @@
+import { generateKeyPairSync } from "node:crypto";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { startRealPg, type RealPg } from "./real-pg.testutil";
+
+// FIXED signing keys, as in production. Without them every boot generates an
+// ephemeral key pair, so after a "restart" every old token would fail on its
+// signature alone, and a test of revocation across restarts would prove
+// nothing.
+const signingKeys = generateKeyPairSync("rsa", {
+  modulusLength: 2048,
+  publicKeyEncoding: { type: "spki", format: "pem" },
+  privateKeyEncoding: { type: "pkcs8", format: "pem" }
+});
 
 /**
  * P2.1: the API against a REAL Postgres (PGlite locally, a postgres server in
@@ -54,6 +65,8 @@ beforeEach(async () => {
   setEnv("STORAGE_ENCRYPTION_KEY", "11".repeat(32));
   setEnv("REVENUECAT_WEBHOOK_AUTH", "hook-secret");
   setEnv("RESEND_API_KEY", undefined);
+  setEnv("JWT_PRIVATE_KEY", signingKeys.privateKey);
+  setEnv("JWT_PUBLIC_KEY", signingKeys.publicKey);
   await db.query("DROP TABLE IF EXISTS kv_store");
 });
 afterEach(async () => {
@@ -188,6 +201,14 @@ describe(`real Postgres (${process.env.TEST_DATABASE_URL ? "server" : "PGlite"})
     const left = (await rows()).filter(aliceRow);
     expect(left.map((r) => r.namespace)).toEqual([]);
 
+    // F76: Alice's old token is dead, and stays dead across a restart; the
+    // durable cut-off record holds no account id.
+    expect((await app.inject({ method: "GET", url: "/api/v1/sync/pull", headers: auth(alice.token) })).statusCode).toBe(401);
+    const tombstones = (await rows()).filter((r) => r.namespace === "auth_revoked");
+    expect(tombstones).toHaveLength(1);
+    expect(tombstones[0]!.key).toMatch(/^[0-9a-f]{64}$/);
+    expect(tombstones[0]!.value).toEqual({ revokedAtSeconds: expect.any(Number) });
+
     // Bob keeps his session, his sync row, and the shared household (now his).
     const bobRows = (await rows()).filter((r) => `${r.key} ${JSON.stringify(r.value)}`.includes(bob.accountId));
     expect(new Set(bobRows.map((r) => r.namespace))).toEqual(new Set(["auth_refresh", "family", "sync"]));
@@ -314,6 +335,17 @@ describe(`real Postgres (${process.env.TEST_DATABASE_URL ? "server" : "PGlite"})
     const familyRow = (await rows()).find((r) => r.namespace === "family")!;
     expect(JSON.stringify(familyRow.value)).not.toContain(alice.accountId);
     expect(familyRow.value).toMatchObject({ ownerId: bob.accountId });
+  });
+
+  it("F76: after a restart, a deleted account's old access token is still rejected (the cut-off is durable)", async () => {
+    const first = await boot();
+    const me = await signIn(first.app, "tombstone@zeno.test");
+    expect((await first.app.inject({ method: "DELETE", url: "/api/v1/account", headers: auth(me.token) })).json().data).toEqual({ deleted: true });
+    await shutdown(first);
+    const second = await boot();
+    const write = await second.app.inject({ method: "POST", url: "/api/v1/sync/push", headers: auth(me.token), payload: { encryptedChanges: [change("ghost", 1, "x")] } });
+    expect(write.statusCode).toBe(401);
+    expect((await rows()).filter((r) => r.namespace === "sync")).toEqual([]);
   });
 
   it("refresh-token rotation race: two concurrent refreshes of one token, exactly one wins, and the loss is durable across a restart", async () => {

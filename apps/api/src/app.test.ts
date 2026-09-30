@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { buildApp } from "./app";
 import { applyWebhookEvent, getCachedEntitlement } from "./billing";
 import { coachSystemPrompt } from "./coach";
+import { getHousehold } from "./family";
 import { getStoredPlaidItem, storePlaidItem } from "./plaid";
+import { pullChanges } from "./sync";
 
 function restoreEnv(key: string, value: string | undefined): void {
   if (value === undefined) delete process.env[key];
@@ -919,13 +921,23 @@ describe("api app", () => {
     expect(getCachedEntitlement(accountId)).toBeUndefined();
     expect(getStoredPlaidItem(accountId)).toBeUndefined();
 
-    // Sync data gone — even though the short-lived access token still verifies
-    // (stateless JWT, no revocation list), there is simply nothing left to pull.
+    // The deleted account's access token is revoked (F76): before, it kept
+    // working for up to 15 minutes and could re-create data after "deleted".
     const pullAfter = await app.inject({ method: "GET", url: "/api/v1/sync/pull", headers: authH(token) });
-    expect(pullAfter.json().data.encryptedChanges).toEqual([]);
+    expect(pullAfter.statusCode).toBe(401);
+    const pushAfter = await app.inject({
+      method: "POST",
+      url: "/api/v1/sync/push",
+      headers: authH(token),
+      payload: { encryptedChanges: [{ entityType: "subscription", entityId: "sub-ghost", operation: "create", encryptedPayload: "cipher", vectorClock: { device: 2 } }] }
+    });
+    expect(pushAfter.statusCode).toBe(401);
+    expect((await app.inject({ method: "POST", url: "/api/v1/family/create", headers: authH(token), payload: { ownerName: "Ghost" } })).statusCode).toBe(401);
 
-    // Household disbanded (this account was the sole member).
-    expect((await app.inject({ method: "GET", url: `/api/v1/family/${householdId}`, headers: authH(token) })).statusCode).toBe(404);
+    // Sync data gone and the household disbanded (this account was the sole
+    // member): checked in the stores directly, since the token no longer works.
+    expect(pullChanges(accountId, undefined, 100).changes).toEqual([]);
+    expect(getHousehold(householdId)).toBeNull();
 
     // The refresh session is revoked immediately — old refresh token rejected.
     const refreshAttempt = await app.inject({ method: "POST", url: "/api/v1/auth/refresh", payload: { refreshToken } });

@@ -42,8 +42,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P1.10 `apps/api/src/plaid.ts` (was 21 %; now 0 uncovered lines / functions, 1 defensive branch) and the Plaid routes in `app.ts` (now 100 %). Plaid's HTTP is faked, with no Plaid or sandbox calls, by standing instruction. **Fixes F34**
   - [x] P1.11 gate: Tier 1 at 100 % statements / functions / lines and 99.61 % branches (≥ 95 %); jest floors at 100 %; green on GitHub (CI 36744248345, CodeQL 36744248343)
 - [~] **P2 — API on real Postgres, authorization matrix, fuzzing** (inline, one item at a time; no parallel agents from here on, by the owner's instruction)
-  - [~] P2.1 real Postgres in tests (PGlite locally, a `postgres` server in CI): schema from empty, upsert, a restart round trip for every store, account deletion leaves no row, the refresh race, concurrent sync replays; **fixes F75**
-  - [ ] P2.2 authorization matrix (table-driven from the route list)
+  - [x] P2.1 real Postgres in tests (PGlite locally, a `postgres` server in CI, proven by a server-mode test): schema from empty, upsert, a restart round trip for every store, account deletion leaves no row, the refresh race, concurrent sync replays; **fixes F75** (green: CI 36763417730, CodeQL 36763417620 on `229e114`)
+  - [~] P2.2 authorization matrix (table-driven from the route list); found and **fixed F76** while designing it
   - [ ] P2.3 rate limits per route
   - [ ] P2.4 schema-driven fuzzing (fast-check)
   - [ ] P2.5 error and log hygiene
@@ -142,6 +142,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F73 | **FIXED in P1.9b.** ~~The demo Duolingo subscription pointed at `duolingo-super`, which is not in the catalog~~, so its detail and cancel screens found no service. It now points at `duolingo-plus`; I confirmed by lookup that it exists and the old slug does not. | Low | me (agent) | P1.9b |
 | F74 | **FIXED.** ~~A new CRITICAL Next.js advisory, GHSA-vcvr-r3jv-pc5j ("Remote Code Execution in next/og ImageResponse", CVSS 9.5), turned CI red.~~ Affected: `>=16.2.0 <16.3.6`; we ran 16.3.3. Per the advisory, exploiting it requires the Node.js `ImageResponse` from `next/og` with attacker-controlled values in SVG content, attributes or styles. **Our website does not import `next/og` at all** (grep: no `next/og`, `ImageResponse` or OG-image routes), so it was not exploitable here, but the vulnerable code shipped in the dependency. Upgraded to **16.3.6**, the minimum fixed version, published 2026-09-22 and so past the repo's 7-day supply-chain cooldown. 16.3.8 is the latest, but it was published today, so we waited. | Critical upstream; not exploitable in our app | me | this slice |
 | F75 | **FIXED in P2.1.** ~~`DELETE /api/v1/account` said "deleted" before the data was gone, and could not finish a failed deletion.~~ Four of its five steps (entitlement, bank token, sync rows, households) were fire-and-forget, so the answer could arrive while Alice's rows were still in Postgres. Proven against real Postgres by making the unawaited writes slow: at the moment of `{ deleted: true }`, her billing, family, plaid and sync rows were all still there, and a crash then would restore them on the next boot. Separately, every failed delete was swallowed (the route still said deleted), and a retry could not find the rows again, because deletion was driven from memory, which had already forgotten them. Now: every step is awaited and reports whether it is durable; any refusal answers **503** (the app then keeps its data and does not tell the user it is done); and sessions and sync rows are deleted **in SQL by the owning account** (`value->>'accountId'` / `'userId'`), so a retry finds whatever is left. Households are JSON documents to rewrite, so a refused rewrite puts the in-memory household back and the retry redoes it. | High (the account-deletion promise; App Store requirement) | me | P2.1 |
+| F76 | **FIXED in P2.2.** ~~A DELETED account's access tokens kept working, and could re-create its data.~~ Access tokens are stateless 15-minute JWTs with no revocation. Proven with a probe: right after `DELETE /account` answered 200, the same token pushed a sync change (`accepted: 1`), pulled it back, and created a household, all persisted, for an account the user had just been told was deleted. The existing app test had even pinned this, with a comment saying the token "still verifies (stateless JWT, no revocation list)". Now, as the LAST step of a durable deletion, a per-account cut-off is persisted first (key = SHA-256 of the id, value = a timestamp only, so it is not a row of the user), then applied in memory. The auth check rejects any token for that account with `iat` at or before it; a token with no `iat` fails closed. It survives restarts, is swept after the 15-minute token lifetime, and is not set if the save is refused, so the user's token can still retry. | High (account deletion; data re-created after "deleted") | me | P2.2 |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -1751,3 +1752,86 @@ loosened; each now asserts the new durable call AND the resulting table state:
   100 % / 100 % · jest 114 / 114 · semgrep (API + workflows) 0 · audit gate PASS.
 
 **Open:** P2.1 is marked done only after CI passes with the server-mode assertion.
+
+### P2.1 — done — 2026-10-01
+
+**CI went red once, and it was my own process slip.** The first P2.1 push (`cfdcd77`)
+failed CI's **Typecheck** on the server-mode test I added: under
+`noUncheckedIndexedAccess`, `const [{ version }] = ...` can be `undefined`. I had added
+that test after my last full local typecheck and then only ran Vitest. It was fixed in
+`229e114`.
+
+**The rule since then:** every gate is re-run after the final edit, with
+`tsc -b --force`. This caught two more problems before the F76 commit (below). The rule
+is also saved in memory.
+
+**Green on GitHub:** CI 36763417730 and CodeQL 36763417620 on `229e114`. That run
+includes the server-mode assertion, so it proves the real-PG suite ran against a real
+`postgres:18-alpine` server in CI.
+
+### P2.2 (part 1) — F76: a deleted account's access tokens are revoked — 2026-10-01
+
+**Found while designing the authorization matrix** (a "revoked token" row). Proven with a
+probe BEFORE any change: after `DELETE /account` answered 200, the same access token
+could still:
+- `sync/push`, which returned 200 and `accepted: 1`;
+- `sync/pull`, which returned the pushed change;
+- `family/create`, which returned 200.
+
+All of that was persisted, for an account just deleted, and it stays possible for the
+token's remaining lifetime (up to 15 minutes).
+
+**The fix** (`routes/auth.ts`, `app.ts`):
+- **The cut-off:** `revokeAccessTokensForAccount` persists a cut-off
+  `{ revokedAtSeconds }` under `sha256(accountId)`, and only then applies it in memory.
+- **The check:** `verifyAccessToken` rejects a token for that account whose `iat` is at
+  or before the cut-off. A token with no `iat` is treated as issued at 0, so it fails
+  closed. A token issued later is accepted, for example the same email signing up
+  again.
+- **Order inside `DELETE /account`:** the cut-off is set only AFTER every data step is
+  durable. My first version set it inside the session revocation, and the F75 retry
+  tests caught that it locked the user out of retrying after a 503. A refused save of
+  the cut-off also answers 503 and changes nothing.
+- **Restart and sweep:** a hydrator restores cut-offs on boot, and the sweep removes
+  each one once `accessTokenTtlSeconds` have passed.
+
+**Tests:**
+- **Unit tests** (`auth-internals.test.ts`, +4):
+  - Rejected: at the cut-off, in the same second, with no `iat`. Another account is
+    unaffected, and a later token works.
+  - The record is a 64-hex key holding a timestamp only, with no account id.
+  - A refused save returns false, and the old token still works (the retry path).
+  - The cut-off survives a restart (garbage rows ignored). A sweep KEEPS it while
+    older tokens could be live, and deletes it after 16 minutes.
+- **Real Postgres:**
+  - After deletion, the old token gets 401, and exactly one `auth_revoked` row exists
+    with a hex key and `{ revokedAtSeconds }`.
+  - **After a restart** the old token still gets 401 on `sync/push`, and no sync row is
+    written.
+- **`app.test.ts`:** the test that pinned the bug now asserts 401 on pull, push and
+  family create for the deleted account, and checks the stores directly to confirm the
+  data is gone.
+
+**A test that proved nothing, caught by the bite check.** With the verify check
+removed, the real-PG restart test still PASSED. The cause: without `JWT_PRIVATE_KEY`,
+each boot generated an ephemeral key pair, so after a "restart" every old token failed
+on its signature, revoked or not. The suite now sets fixed signing keys, as production
+does. Re-bitten with the check removed: the restart test and the no-row-remains test
+both fail (2 / 11); restored, 11 / 11. The other restart tests were unaffected, because
+they use refresh tokens, which are random values, not JWTs.
+
+**Bite check (whole API suite):** with the verify check removed, 4 tests fail (the app
+test, 2 unit tests, the real-PG deletion test); restored, 428 / 428.
+
+**Gates after the final edit** caught two more problems, both fixed before committing:
+- A nested destructure that `noUncheckedIndexedAccess` rejects.
+- Branches fell to 99.58 %, below the ratchet, because the sweep's "keep" arm was
+  untested; that test is now added.
+
+Final: `tsc -b --force` 0 · lint 0 · vitest 123 files / 1576 tests at 100 % / 99.62 % /
+100 % / 100 % · jest 114 / 114 · semgrep `apps/api` 0 / 0.
+
+**Still open (P2.2):** the matrix itself, every protected route against every token
+attack. Logout does not revoke the ACCESS token (only the refresh token, at once); that
+is the stateless design, and closing it would need a `sid` claim or a denylist. It will
+be a row in the matrix, with a decision for the owner.
