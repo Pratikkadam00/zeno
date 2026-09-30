@@ -19,11 +19,12 @@ vi.mock("expo-notifications", () => ({
   getAllScheduledNotificationsAsync: vi.fn(),
   cancelScheduledNotificationAsync: vi.fn()
 }));
-vi.mock("expo-secure-store", () => ({ setItemAsync: vi.fn(), WHEN_UNLOCKED_THIS_DEVICE_ONLY: "WHEN_UNLOCKED_THIS_DEVICE_ONLY" }));
+vi.mock("expo-secure-store", () => ({ setItemAsync: vi.fn(), deleteItemAsync: vi.fn(), WHEN_UNLOCKED_THIS_DEVICE_ONLY: "WHEN_UNLOCKED_THIS_DEVICE_ONLY" }));
 vi.mock("react-native", () => ({ Platform: { OS: "ios" } }));
 
 const Notifications = await import("expo-notifications");
-const { getNineAmTriggerDate, shiftOutOfQuietHours, buildRenewalTriggers, rescheduleAllNotifications } = await import("./notificationService");
+const SecureStore = await import("expo-secure-store");
+const { getNineAmTriggerDate, shiftOutOfQuietHours, buildRenewalTriggers, rescheduleAllNotifications, clearStoredPushToken } = await import("./notificationService");
 
 const ALL_ON = { sevenDay: true, threeDay: true, dayOf: true };
 // A fixed "now" with renewals far enough out that every ladder entry is future.
@@ -264,5 +265,17 @@ describe("getNineAmTriggerDate", () => {
     expect(trigger.getFullYear()).toBe(2026);
     expect(trigger.getMonth()).toBe(11); // December
     expect(trigger.getDate()).toBe(30);
+  });
+});
+
+describe("clearStoredPushToken (F27 erase)", () => {
+  it("deletes the stored Expo push token, under the same key it was saved with", async () => {
+    await clearStoredPushToken();
+    expect(vi.mocked(SecureStore.deleteItemAsync)).toHaveBeenCalledWith("zeno_push_token");
+  });
+
+  it("propagates a keychain failure so the erase can report it", async () => {
+    vi.mocked(SecureStore.deleteItemAsync).mockRejectedValueOnce(new Error("keychain"));
+    await expect(clearStoredPushToken()).rejects.toThrow("keychain");
   });
 });

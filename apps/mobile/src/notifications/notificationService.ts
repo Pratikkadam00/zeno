@@ -114,6 +114,10 @@ export async function registerForPushNotifications(): Promise<string | null> {
   return token;
 }
 
+export async function clearStoredPushToken(): Promise<void> {
+  await SecureStore.deleteItemAsync(pushTokenKey);
+}
+
 export async function scheduleRenewalNotifications(subscription: RenewalNotificationSubscription): Promise<void> {
   await scheduleRenewalNotificationsWithPreferences(subscription, {
     sevenDay: true,

@@ -66,6 +66,8 @@ describe("hydration", () => {
     expect(console.warn).toHaveBeenCalledWith("Budget store database unavailable; using in-memory config.", expect.any(Error));
     act(() => result.current.setCap(1000));
     expect(result.current.config.capMinor).toBe(1000);
+    await act(async () => { await result.current.reset(); });
+    expect(result.current.config.capMinor).toBeNull();
     expect(mockWrite).not.toHaveBeenCalled();
   });
 
@@ -139,9 +141,29 @@ describe("actions persist exactly what they set", () => {
   it("reset erases everything, the income figure included, and persists that", async () => {
     mockRead.mockResolvedValue(JSON.stringify({ capMinor: 5000, incomeMinor: 300000, envelopes: [{ id: "e", name: "x", icon: "i", fundedMinor: 1, spentMinor: 0 }], categoryCaps: [] }));
     const { result } = await mounted();
-    act(() => result.current.reset());
+    await act(async () => { await result.current.reset(); });
     expect(result.current.config).toEqual({ capMinor: null, incomeMinor: null, envelopes: [], categoryCaps: [] });
     expect(lastWritten()).toEqual({ capMinor: null, incomeMinor: null, envelopes: [], categoryCaps: [] });
+  });
+
+  it("F27: a reset whose write fails REJECTS (an erase must not report success), memory still reset", async () => {
+    mockRead.mockResolvedValue(JSON.stringify({ capMinor: 5000, incomeMinor: 300000, envelopes: [], categoryCaps: [] }));
+    const { result } = await mounted();
+    mockWrite.mockRejectedValueOnce(new Error("disk full"));
+    let rejected: unknown;
+    await act(async () => { await result.current.reset().catch((e: unknown) => { rejected = e; }); });
+    expect(rejected).toEqual(new Error("disk full"));
+    expect(result.current.config.incomeMinor).toBeNull();
+  });
+
+  it("a reset followed by an edit in the same event keeps the edit (the ref is reset too)", async () => {
+    mockRead.mockResolvedValue(JSON.stringify({ capMinor: 5000, incomeMinor: 300000, envelopes: [], categoryCaps: [] }));
+    const { result } = await mounted();
+    await act(async () => {
+      void result.current.reset();
+      result.current.setCap(100);
+    });
+    expect(result.current.config).toEqual({ capMinor: 100, incomeMinor: null, envelopes: [], categoryCaps: [] });
   });
 
   it("a failed write keeps the new state and warns", async () => {

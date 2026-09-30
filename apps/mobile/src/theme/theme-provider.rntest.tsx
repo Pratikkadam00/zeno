@@ -96,6 +96,27 @@ describe("setters", () => {
   });
 });
 
+describe("resetPreferences (F27 erase)", () => {
+  it("returns to the defaults and removes both stored keys", async () => {
+    await AsyncStorage.multiSet([[THEME_KEY, "genx"], [SCHEME_KEY, "dark"]]);
+    const { result } = await mounted();
+    await waitFor(() => expect(result.current.scheme).toBe("dark"));
+    await act(async () => { await result.current.resetPreferences(); });
+    expect(result.current).toMatchObject({ themeId: "millennial", scheme: "light" });
+    expect(result.current.theme).toBe(zenoLight);
+    expect(await AsyncStorage.getItem(THEME_KEY)).toBeNull();
+    expect(await AsyncStorage.getItem(SCHEME_KEY)).toBeNull();
+  });
+
+  it("rejects when storage fails, so the erase can report it", async () => {
+    const { result } = await mounted();
+    jest.spyOn(AsyncStorage, "multiRemove").mockRejectedValueOnce(new Error("storage unavailable"));
+    let rejected: unknown;
+    await act(async () => { await result.current.resetPreferences().catch((e: unknown) => { rejected = e; }); });
+    expect(rejected).toEqual(new Error("storage unavailable"));
+  });
+});
+
 describe("guard", () => {
   it("useZenoTheme outside the provider throws a clear error", () => {
     jest.spyOn(console, "error").mockImplementation(() => {});

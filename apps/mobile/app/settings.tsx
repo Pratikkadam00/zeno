@@ -6,6 +6,7 @@ import { getFeedbackMailto, getLegalUrls, getSiteUrl } from "../src/config/site"
 import { useAuthStore } from "../src/auth/authStore";
 import { useBudgetStore } from "../src/data/budget-store";
 import { useSubscriptionStore } from "../src/data/subscription-store";
+import { eraseDeviceData, type EraseScope } from "../src/security/erase-device";
 import { useLockStore } from "../src/security/lock-store";
 import { spacing } from "../src/theme/spacing";
 import { type as typography } from "../src/theme/typography";
@@ -82,7 +83,7 @@ function formatHour(hour: number): string {
 }
 
 export default function SettingsScreen() {
-  const { theme, scheme, toggleScheme } = useZenoTheme();
+  const { theme, scheme, toggleScheme, resetPreferences } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { plan, accountId, status, logout } = useAuthStore(
     useShallow((state) => ({
@@ -96,6 +97,7 @@ export default function SettingsScreen() {
   const { subscriptions, clearAllData, quietHours, setQuietHours, homeCurrency, setHomeCurrency, exchangeRatesAvailable, coachAiConsent, setCoachAiConsent } = useSubscriptionStore();
   const { reset: resetBudget } = useBudgetStore();
   const lockEnabled = useLockStore((s) => s.enabled);
+  const disableAppLock = useLockStore((s) => s.disable);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   // P4 debt closed: the option pickers are designed LedgerSheets, not system
   // Alert dialogs (which can't show the current value, can't be styled, and on
@@ -135,11 +137,35 @@ export default function SettingsScreen() {
     void Share.share({ message: csv, title: "Zeno subscriptions export" });
   }
 
+  // Both wipes go through one tested function (src/security/erase-device.ts,
+  // finding F27) that runs every step even when one fails and reports what could
+  // not be erased, so neither flow claims a wipe that did not fully happen.
+  function eraseDevice(scope: EraseScope) {
+    return eraseDeviceData(scope, {
+      clearSubscriptionData: clearAllData,
+      resetBudget,
+      disableAppLock,
+      resetAppearance: resetPreferences
+    });
+  }
+
+  async function deleteAllData() {
+    const { failed } = await eraseDevice("data");
+    router.replace("/dashboard");
+    if (failed.length > 0) {
+      Alert.alert("Some data couldn't be erased", `These are still on this device: ${failed.join(", ")}. Please try again.`);
+    }
+  }
+
   function confirmDelete() {
-    Alert.alert("Delete all data", "This will permanently remove all subscription records from this device.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => { resetBudget(); void clearAllData().then(() => router.replace("/dashboard")); } }
-    ]);
+    Alert.alert(
+      "Delete all data",
+      "This permanently removes your subscriptions, budgets, price history, reminder settings and connected Gmail inboxes from this device. Your app lock and appearance stay as they are.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: () => void deleteAllData() }
+      ]
+    );
   }
 
   // Deletes the account server-side FIRST (purges cloud sync, entitlement cache,
@@ -160,9 +186,14 @@ export default function SettingsScreen() {
         return;
       }
     }
-    resetBudget();
-    await clearAllData();
-    logout();
+    const { failed } = await eraseDevice("account");
+    await logout();
+    if (failed.length > 0) {
+      Alert.alert(
+        "Account deleted",
+        `Your account was deleted and you're signed out, but these couldn't be removed from this device: ${failed.join(", ")}.`
+      );
+    }
   }
 
   function confirmCancelAccount() {
@@ -232,7 +263,7 @@ export default function SettingsScreen() {
         },
         { id: "connected", Icon: MailSearch, iconBg: palette.category.blue, label: "Connected inboxes", value: "None connected", chevron: true, onPress: () => router.push("/discover") },
         { id: "export", Icon: Download, iconBg: palette.category.slate, label: "Export my data", sub: "Download everything as CSV", chevron: true, onPress: exportData },
-        { id: "delete", Icon: Trash2, iconBg: palette.semantic.danger, label: "Delete all my data", sub: "Erase everything from this device", chevron: true, onPress: confirmDelete }
+        { id: "delete", Icon: Trash2, iconBg: palette.semantic.danger, label: "Delete all my data", sub: "Erase all your data from this device", chevron: true, onPress: confirmDelete }
       ]
     },
     {

@@ -29,6 +29,12 @@ export function toWidgetPayload(snapshot: WidgetSnapshot): WidgetPayload {
   };
 }
 
+// Unlike the refresh below, this one REJECTS on failure: an erase must be able
+// to report that the snapshot (which names the next renewal) is still there.
+export async function clearWidgetSnapshot(): Promise<void> {
+  await AsyncStorage.removeItem(WIDGET_SNAPSHOT_KEY);
+}
+
 // Best-effort: persist the latest snapshot for the native widget to read.
 // Never throws — widget refresh must not affect the app.
 export async function refreshWidgetSnapshot(snapshot: WidgetSnapshot): Promise<void> {

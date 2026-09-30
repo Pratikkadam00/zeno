@@ -192,4 +192,11 @@ describe("other secrets on the native path", () => {
     secure.store.delete("zeno.theme.preference.v1");
     expect(await mod.loadThemePreference()).toBeNull();
   });
+
+  it("clearThemePreference removes the legacy v1 theme key (F27 erase)", async () => {
+    await mod.saveThemePreference("genz");
+    await mod.clearThemePreference();
+    expect(secure.store.has("zeno.theme.preference.v1")).toBe(false);
+    expect(secure.calls.at(-1)).toEqual({ op: "delete", key: "zeno.theme.preference.v1" });
+  });
 });

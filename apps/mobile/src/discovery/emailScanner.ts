@@ -420,6 +420,26 @@ export async function disconnectGmailAccount(address: string): Promise<void> {
   }
 }
 
+// One inbox at a time, on purpose: removeGmailAccount rewrites the shared
+// address index (read-filter-write), so parallel removals would race and could
+// leave an address behind. Every inbox is attempted; if any revoke or removal
+// failed, this rejects afterwards with the count, so an erase can say so.
+// disconnectGmailAccount forgets the local token even when the revoke fails.
+export async function disconnectAllGmailAccounts(): Promise<void> {
+  const addresses = await listGmailAddresses();
+  let failed = 0;
+  for (const address of addresses) {
+    try {
+      await disconnectGmailAccount(address);
+    } catch {
+      failed += 1;
+    }
+  }
+  if (failed > 0) {
+    throw new Error(`${failed} of ${addresses.length} Gmail inboxes could not be fully disconnected`);
+  }
+}
+
 export async function fetchGmailAddress(accessToken: string): Promise<string | null> {
   const profile = await gmailFetch<{ emailAddress?: string }>("https://gmail.googleapis.com/gmail/v1/users/me/profile", accessToken);
   return profile.emailAddress ?? null;

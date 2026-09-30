@@ -374,9 +374,21 @@ describe("with no database (it failed to open)", () => {
 });
 
 describe("clearAllData", () => {
-  it("empties everything in memory and on disk, resets AI consent, and cancels every notification", async () => {
-    const { result } = await mounted([sub({ id: "a" })], { "coach.aiConsent.v1": "granted" });
+  it("empties everything in memory and on disk, resets consent and preferences, and cancels every notification", async () => {
+    const { result } = await mounted([sub({ id: "a" })], {
+      "coach.aiConsent.v1": "granted",
+      "notification.quietHours.v1": JSON.stringify({ enabled: true, startHour: 21, endHour: 7 }),
+      "fx.homeCurrency.v1": "INR"
+    });
+    expect(result.current).toMatchObject({ homeCurrency: "INR", quietHours: { enabled: true } });
     await act(async () => { await result.current.clearAllData(); });
+    expect(result.current.homeCurrency).toBe("USD");
+    expect(result.current.quietHours).toEqual({ enabled: false, startHour: 22, endHour: 8 });
+    expect(mockMeta.get("fx.homeCurrency.v1")).toBe("USD");
+    expect(JSON.parse(mockMeta.get("notification.quietHours.v1")!)).toEqual({ enabled: false, startHour: 22, endHour: 8 });
+    // A quiet-hours change right after the wipe merges into the defaults, not the old value.
+    act(() => result.current.setQuietHours({ startHour: 23 }));
+    expect(result.current.quietHours).toEqual({ enabled: false, startHour: 23, endHour: 8 });
     expect(result.current.subscriptions).toEqual([]);
     expect(result.current.notificationSettings).toEqual({});
     expect(result.current.coachAiConsent).toBe("unset");
@@ -387,17 +399,34 @@ describe("clearAllData", () => {
     expect(mockCancelAll).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps going when individual steps fail, warning for each", async () => {
+  it("F27: attempts every step, then REJECTS naming exactly what could not be cleared", async () => {
     const { result } = await mounted([sub({ id: "a" })]);
     repo.clearAllSubscriptions.mockRejectedValueOnce(new Error("x"));
-    dbModule.writeAppMeta.mockRejectedValueOnce(new Error("x")).mockRejectedValueOnce(new Error("x")).mockRejectedValueOnce(new Error("x"));
+    dbModule.writeAppMeta
+      .mockRejectedValueOnce(new Error("x")) // price history
+      .mockRejectedValueOnce(new Error("x")) // notification settings
+      .mockRejectedValueOnce(new Error("x")) // AI-coach consent
+      .mockRejectedValueOnce(new Error("x")) // quiet hours
+      .mockRejectedValueOnce(new Error("x")); // home currency
     mockCancelAll.mockRejectedValueOnce(new Error("x"));
-    await act(async () => { await result.current.clearAllData(); });
+    let rejected: unknown;
+    await act(async () => { await result.current.clearAllData().catch((e: unknown) => { rejected = e; }); });
+    expect(rejected).toEqual(new Error("Could not clear: subscriptions, price history, notification settings, AI-coach consent, quiet hours, home currency, scheduled notifications"));
     const messages = (console.warn as jest.Mock).mock.calls.map((c) => c[0]);
-    for (const m of ["Failed to clear subscriptions.", "Failed to clear price history.", "Failed to clear notification settings.", "Failed to reset AI-coach consent.", "Failed to cancel scheduled notifications."]) {
-      expect(messages).toContain(m);
+    for (const m of ["subscriptions", "price history", "notification settings", "AI-coach consent", "quiet hours", "home currency", "scheduled notifications"]) {
+      expect(messages).toContain(`Failed to clear ${m}.`);
     }
     expect(result.current.subscriptions).toEqual([]);
+  });
+
+  it("one failing step still rejects, and every other step still ran", async () => {
+    const { result } = await mounted([sub({ id: "a" })]);
+    mockCancelAll.mockRejectedValueOnce(new Error("x"));
+    let rejected: unknown;
+    await act(async () => { await result.current.clearAllData().catch((e: unknown) => { rejected = e; }); });
+    expect(rejected).toEqual(new Error("Could not clear: scheduled notifications"));
+    expect(repo.clearAllSubscriptions).toHaveBeenCalledTimes(1);
+    expect(mockMeta.get("price.history.v1")).toBe("{}");
   });
 });
 

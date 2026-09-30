@@ -27,13 +27,13 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P1.5 `apps/mobile/src/storage/database.ts` (59 %) + `subscription-repository.ts` (0 %) — on a REAL SQLite engine
   - [x] P1.6 `apps/mobile/src/billing/revenueCat.ts` (55 %)
   - [x] P1.7 `packages/service-catalog/src/services.ts` (0 %) — catalog invariants for all 509 entries; **fixes F22**, raises F25
-  - [~] P1.8 React providers under jest with their own coverage floor
+  - [x] P1.8 React providers under jest with their own coverage floor
     - [x] P1.8a jest coverage floor wired into CI; the four files moved from Vitest's scope to jest's
     - [x] P1.8b `budget-store.tsx` — **fixes F26** (lost updates)
     - [x] P1.8c `theme-provider.tsx`
     - [x] P1.8d `subscription-store.tsx` — **finishes F26** (the `setQuietHours` stale merge)
     - [x] P1.8e `LockOverlay.tsx` — **fixes F28** (a keychain error wedged the lock screen)
-    - [ ] P1.8f "erase everything from this device" as one tested function — **fixes F27**
+    - [x] P1.8f "erase everything from this device" as one tested function — **fixes F27**
   - [ ] P1.9 remaining 0 % / low files (theme, notifications, widgets, api/config, format, subscription-ui, open-banking, analytics-flag, utils, next.config, app.config)
   - [ ] P1.10 `apps/api/src/plaid.ts` (21 %) — pure parts; sandbox flows stay dev-only by standing instruction
   - [ ] P1.11 gate: Tier 1 at 100 % lines / statements / functions, ≥ 95 % branches; jest floor; green on GitHub
@@ -80,8 +80,9 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F24 | **FIXED in P1.4.** ~~All three production-guard security tests were VACUOUS: with each guard removed they still passed. The OAuth tests set a client id, so the "unverified tokens" flag they claimed to test was never consulted; the demo test posted to a route that does not exist (`/auth/demo`), with no email and a 7-char password.~~ Lesson for P6: security tests must be mutation-tested first. | High (false assurance) | me | P1.4 / P6 |
 | F25 | **305 of the 509 catalog entries (60 %) carry UNRESEARCHED data shown as fact:** a generated cancel link (`<website>/account`, not verified to exist), a default difficulty of "medium", and generic cancel steps. The app opens that link as "Open cancellation page" and shows the difficulty; the website publishes 305 cancel-guide pages stating "difficulty: medium". 204 entries are curated. Conflicts with the project's truthfulness rules (no invented facts). Needs a product decision on presentation, e.g. an "unrated / general steps, not yet verified" label and a link to the homepage instead of a guessed path, or noindex until curated. | High (honesty, public pages) | owner: decide the presentation | P3 (app) + P4 (web) |
 | F26 | **FIXED — budget store in P1.8b, `setQuietHours` in P1.8d.** ~~Budget store loses updates.~~ Every action computes the next state from the `config` its render captured, so two actions before a re-render (a fast double-tap on "add envelope", or two edits in one event) start from the same stale state and the second write erases the first. The code's own comment fixes the duplicate-ID half of exactly this double-tap, not the lost write. `subscription-store` solved this with refs, but its `setQuietHours` has the same stale merge. | Medium (silent data loss) | me | P1.8b / P1.8d |
-| F27 | **"Cancel my Zeno account" promises it "erases everything from this device", but leaves connected Gmail OAuth tokens in the keychain (not revoked at Google), the app-lock PIN hash and lockout state, and quiet hours / home currency / cached FX rates / theme.** Gmail access tokens expire within about an hour, which limits the impact, but the promise is false. | High (privacy promise) | me | P1.8f |
+| F27 | **FIXED in P1.8f.** ~~"Cancel my Zeno account" promises it "erases everything from this device", but leaves connected Gmail OAuth tokens in the keychain (not revoked at Google), the app-lock PIN hash and lockout state, and quiet hours / home currency / cached FX rates / theme.** Gmail access tokens expire within about an hour, which limits the impact, but the promise is false.~~ The inventory in P1.8f also found the home-screen widget snapshot (it names the next renewal) and the stored push token. | High (privacy promise) | me | P1.8f |
 | F28 | **FIXED in P1.8e.** ~~A keychain error wedges the lock screen.~~ The PIN check reads and writes SecureStore, and nothing between SecureStore and the overlay caught an error. A rejected `tryPin` skipped `setBusy(false)`, so the PIN field stayed read-only until the app restarted; the user could only sign out. It failed closed (still locked, not a bypass), plus an unhandled rejection. A throwing biometric attempt was also unhandled. | Medium (availability; fails closed) | me | P1.8e |
+| F29 | Settings' "Connected inboxes" row is hard-coded to **"None connected"** (`app/settings.tsx`), even with Gmail inboxes connected. A false statement in the UI. | Low (truthfulness) | me | P4 (UI truthfulness) |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -859,3 +860,84 @@ My own test mistakes (the tests were fixed, not the code):
 `LockOverlay.tsx`: **100 %** on every metric (was 0 %), with its per-file floor added.
 All four jest-measured files are now at 100 / 100 / 100 / 100. Gates: typecheck 0 ·
 lint 0 · vitest 78 / 875 · jest 6 suites / 93 tests, all 4 floors met · semgrep 0.
+
+### P1.8f — Erasing the device (F27) — 2026-09-30
+
+**First, an inventory of every place the app stores data on the device** (by grep, not
+from memory):
+- **SQLCipher `app_meta`:** 7 subscription keys plus the budget config.
+- **SecureStore:** the database key, the legacy v1 theme, the PIN hash, the lock state,
+  the Gmail index and per-inbox tokens, the session tokens, the local-only flag, and the
+  Expo push token.
+- **AsyncStorage:** theme v2, the colour scheme, and the widget snapshot.
+
+Two leftovers were missing from F27: the **widget snapshot**, which names the next
+renewal and is not rewritten after sign-out, and the **stored push token**.
+
+**`src/security/erase-device.ts`** is one function for both Settings wipes. Every step
+runs even when one fails, and it returns `{ failed: [labels] }`.
+- **`"data"`, "Delete all my data":** Gmail inboxes (revoked at Google, then forgotten),
+  subscriptions, price history and reminder settings, budgets, and the widget snapshot.
+  The user stays signed in, and the app lock and appearance are kept.
+- **`"account"`, "Cancel my Zeno account"** (only after the server confirmed deletion):
+  all of the above, plus the app lock PIN, appearance (the v2 keys and the legacy v1
+  key, as separate steps), and the push token. Then sign-out clears the session tokens
+  and the local-only flag.
+- **Kept on purpose (not user data), and documented in the module:** the database and
+  its key (the rows are deleted and the database is reused), the "demo already seeded"
+  flag (otherwise the demo subscriptions would return), and the cached public
+  exchange-rate table.
+
+The pieces that could not report a failure before now can:
+- **`clearAllData` swallowed every storage error and resolved,** so a failed wipe looked
+  successful. It now attempts every step, then **rejects** naming what failed. It also
+  resets quiet hours and home currency, in memory and on disk.
+- **The budget `reset()` was fire-and-forget.** It now awaits its write and rejects on
+  failure.
+- **New helpers that reject on failure:** the theme provider's `resetPreferences()`,
+  `disconnectAllGmailAccounts()`, `clearWidgetSnapshot()`, `clearStoredPushToken()` and
+  `clearThemePreference()`.
+- **`disconnectAllGmailAccounts` runs one inbox at a time:** `removeGmailAccount`
+  read-filter-writes the shared index, so parallel removal would race and resurrect an
+  address.
+
+**Settings:** both flows call `eraseDeviceData`, and a partial failure shows an alert
+naming what is still on the device. Copy made true:
+- The delete-data dialog now lists what goes and what stays (it said "subscription
+  records" only).
+- The row now reads "Erase all your data from this device" (the lock and appearance are
+  kept by design).
+
+**Tests:**
+- `erase-device.test.ts` (7): each scope's steps and their order, labels, failures don't
+  stop the rest, exact failure list, a synchronous throw.
+- `widgetBridge.test.ts` (6, new, and the file is now 100 %).
+- Gmail (4, including a faithful racy index fake).
+- The push token (2) and the legacy theme key (1).
+- The subscription store (every step then rejects; one failure; preferences reset).
+- The budget store (reset rejects; reset + edit in one event; no-database reset).
+- The theme provider (reset; reset rejects).
+
+**Bite checks, 7 mutations, each applied alone and then restored, and each caught:**
+- parallel Gmail removal
+- the erase stopping at the first failure
+- the account erase skipping the PIN
+- `clearAllData` swallowing failures (the old behaviour)
+- `clearAllData` leaving quiet hours
+- the budget reset not awaiting its write (the old behaviour)
+- the theme reset leaving its keys
+
+The per-file jest floor also caught one untested branch while I was writing (the
+no-database budget reset); it now has a test.
+
+**Not verified here:** the two Settings handlers themselves are only type-checked. A
+screen test belongs to P5 (Tier 2), and an on-device run needs the emulator.
+
+**New finding F29:** the "Connected inboxes" row is hard-coded to "None connected".
+Logged for P4, not fixed here.
+
+Gates: typecheck 0 · lint 0 · vitest 80 files / 895 tests (ratchet 86.23 / 79.83 /
+87.85 / 87.04) · jest 6 suites / 98 tests, all 4 files at 100 % · semgrep 0 findings.
+
+**P1.8 is complete:** all four React files that only jest can render are at 100 / 100 /
+100 / 100 with per-file floors in CI. Findings fixed along the way: F26, F27, F28.

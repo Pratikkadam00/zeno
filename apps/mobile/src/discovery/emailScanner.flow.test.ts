@@ -343,3 +343,58 @@ describe("disconnectGmailAccount (F12: revoke per RFC 7009, token in the BODY)",
     expect(calls).toHaveLength(0);
   });
 });
+
+describe("disconnectAllGmailAccounts (F27: the erase disconnects every inbox)", () => {
+  it("revokes each inbox at Google and forgets it locally", async () => {
+    vault.accounts.set("a@x.com", "tok-a");
+    vault.accounts.set("b@x.com", "tok-b");
+    const calls = fakeGmail({});
+    await scanner.disconnectAllGmailAccounts();
+    expect(calls.map((c) => c.init.body)).toEqual(["token=tok-a", "token=tok-b"]);
+    expect(vault.accounts.size).toBe(0);
+  });
+
+  it("removes one inbox at a time, so the shared address index cannot race", async () => {
+    // A faithful removal: read the index, yield (a keychain round-trip), write it
+    // back filtered. Two of these in parallel both read the same index and the
+    // second write resurrects the first address.
+    const secureStore = await import("../security/secure-store");
+    vi.mocked(secureStore.removeGmailAccount).mockImplementation(async (address: string) => {
+      const snapshot = new Map(vault.accounts);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      snapshot.delete(address);
+      vault.accounts.clear();
+      for (const [k, v] of snapshot) vault.accounts.set(k, v);
+    });
+    try {
+      for (const a of ["a@x.com", "b@x.com", "c@x.com"]) vault.accounts.set(a, `tok-${a}`);
+      fakeGmail({});
+      await scanner.disconnectAllGmailAccounts();
+      expect([...vault.accounts.keys()]).toEqual([]);
+    } finally {
+      vi.mocked(secureStore.removeGmailAccount).mockImplementation(async (address: string) => {
+        vault.accounts.delete(address);
+      });
+    }
+  });
+
+  it("a failed revoke does not stop the others; every inbox is still forgotten, then it rejects", async () => {
+    vault.accounts.set("a@x.com", "tok-a");
+    vault.accounts.set("b@x.com", "tok-b");
+    const bodies: unknown[] = [];
+    http.timedFetch.mockImplementation(async (_url: string, init: RequestInit) => {
+      bodies.push(init.body);
+      if (init.body === "token=tok-a") throw new Error("offline");
+      return json({});
+    });
+    await expect(scanner.disconnectAllGmailAccounts()).rejects.toThrow("1 of 2 Gmail inboxes could not be fully disconnected");
+    expect(bodies).toEqual(["token=tok-a", "token=tok-b"]);
+    expect(vault.accounts.size).toBe(0);
+  });
+
+  it("with no inboxes connected, resolves without any network call", async () => {
+    const calls = fakeGmail({});
+    await scanner.disconnectAllGmailAccounts();
+    expect(calls).toHaveLength(0);
+  });
+});

@@ -559,6 +559,19 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         }
       },
       async clearAllData() {
+        // Every step is attempted even when an earlier one fails; the promise then
+        // REJECTS naming what could not be cleared, so an erase never reports a
+        // wipe that did not happen (F27). The cached FX table is kept: it holds
+        // public exchange rates, not user data, and would only be refetched.
+        const failures: string[] = [];
+        const attempt = async (what: string, run: () => Promise<unknown>) => {
+          try {
+            await run();
+          } catch (error) {
+            console.warn(`Failed to clear ${what}.`, error);
+            failures.push(what);
+          }
+        };
         // (a) empty in-memory subscriptions and (b) per-subscription notification settings.
         subscriptionsRef.current = [];
         setSubscriptions([]);
@@ -568,26 +581,25 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         setPriceHistory({});
         // A wiped/deleted account must re-consent before any future transmit.
         setCoachAiConsentState("unset");
-        // (c) clear the SQLite rows and the persisted notification-settings blob.
+        // Reminder and currency preferences go back to their defaults too.
+        quietHoursRef.current = defaultQuietHours;
+        setQuietHoursState(defaultQuietHours);
+        setHomeCurrencyState(defaultHomeCurrency);
+        // (c) clear the SQLite rows and every persisted per-user setting.
         const db = dbRef.current;
         if (db) {
-          await clearAllSubscriptions(db).catch((error) => {
-            console.warn("Failed to clear subscriptions.", error);
-          });
-          await writeAppMeta(db, priceHistoryMetaKey, JSON.stringify({})).catch((error) => {
-            console.warn("Failed to clear price history.", error);
-          });
-          await writeAppMeta(db, notificationSettingsMetaKey, JSON.stringify({})).catch((error) => {
-            console.warn("Failed to clear notification settings.", error);
-          });
-          await writeAppMeta(db, coachAiConsentMetaKey, "unset").catch((error) => {
-            console.warn("Failed to reset AI-coach consent.", error);
-          });
+          await attempt("subscriptions", () => clearAllSubscriptions(db));
+          await attempt("price history", () => writeAppMeta(db, priceHistoryMetaKey, JSON.stringify({})));
+          await attempt("notification settings", () => writeAppMeta(db, notificationSettingsMetaKey, JSON.stringify({})));
+          await attempt("AI-coach consent", () => writeAppMeta(db, coachAiConsentMetaKey, "unset"));
+          await attempt("quiet hours", () => writeAppMeta(db, quietHoursMetaKey, JSON.stringify(defaultQuietHours)));
+          await attempt("home currency", () => writeAppMeta(db, homeCurrencyMetaKey, defaultHomeCurrency));
         }
         // (d) cancel every scheduled renewal notification.
-        await cancelAllNotifications().catch((error) => {
-          console.warn("Failed to cancel scheduled notifications.", error);
-        });
+        await attempt("scheduled notifications", () => cancelAllNotifications());
+        if (failures.length > 0) {
+          throw new Error(`Could not clear: ${failures.join(", ")}`);
+        }
       },
       suggestions(query) {
         return searchServices(query, 8);

@@ -32,6 +32,12 @@ export async function saveThemePreference(theme: ThemePreference): Promise<void>
   await writeItem(keys.themePreference, theme, { sensitive: false });
 }
 
+// The v1 theme key predates the AsyncStorage-backed theme provider; a device
+// that ran an older build may still hold it, so an erase removes it too.
+export async function clearThemePreference(): Promise<void> {
+  await deleteItem(keys.themePreference);
+}
+
 export async function loadThemePreference(): Promise<ThemePreference | null> {
   const value = await readItem(keys.themePreference, { sensitive: false });
   if (value === "genz" || value === "millennial" || value === "genx") {

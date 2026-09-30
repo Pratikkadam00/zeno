@@ -19,6 +19,8 @@ type ThemeContextValue = {
   setThemeId: (theme: ThemePreference) => void;
   setScheme: (scheme: ColorSchemeName) => void;
   toggleScheme: () => void;
+  /** Back to the defaults with both stored keys removed; rejects if storage fails. */
+  resetPreferences: () => Promise<void>;
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -98,6 +100,11 @@ export function ZenoThemeProvider({ children }: { children: ReactNode }) {
         const next: ColorSchemeName = scheme === "dark" ? "light" : "dark";
         setSchemeState(next);
         void AsyncStorage.setItem(schemeStorageKey, next);
+      },
+      async resetPreferences() {
+        setThemeIdState("millennial");
+        setSchemeState("light");
+        await AsyncStorage.multiRemove([themeStorageKey, schemeStorageKey]);
       }
     };
   }, [themeId, scheme]);

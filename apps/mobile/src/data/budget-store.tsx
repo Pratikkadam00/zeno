@@ -30,7 +30,8 @@ type BudgetStore = {
   logEnvelope: (id: string, amountMinor: number) => void;
   removeEnvelope: (id: string) => void;
   setCategoryCap: (category: string, capMinor: number) => void;
-  reset: () => void;
+  /** Resolves once the defaults are on disk; rejects if that write fails (an erase must not claim success). */
+  reset: () => Promise<void>;
 };
 
 const BudgetContext = createContext<BudgetStore | null>(null);
@@ -128,8 +129,13 @@ export function BudgetStoreProvider({ children }: { children: ReactNode }) {
           categoryCaps: [...current.categoryCaps.filter((cap) => cap.category !== category), { category, capMinor }]
         }));
       },
-      reset() {
-        update(() => defaultConfig);
+      async reset() {
+        configRef.current = defaultConfig;
+        setConfig(defaultConfig);
+        const db = dbRef.current;
+        if (db) {
+          await writeAppMeta(db, META_KEY, JSON.stringify(defaultConfig));
+        }
       }
     };
   }, [config, hydrated]);
