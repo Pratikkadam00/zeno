@@ -1,4 +1,5 @@
 import { SITE_URL, siteUrl } from "@/lib/site";
+import { THEME_SCRIPT } from "@/lib/theme";
 import type { Metadata } from "next";
 import { Space_Grotesk, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
 import { MotionProvider } from "@/components/site/MotionProvider";
@@ -34,13 +35,6 @@ export const metadata: Metadata = {
     description: "Find every subscription, get warned before renewals, cancel with a verified guide. No bank login required."
   }
 };
-
-// Applies the saved theme (or OS preference) before first paint so neither
-// theme flashes, and arms the html.js class that gates ALL CSS-driven
-// entrance choreography (no-JS visitors get the finished page, never a
-// hidden one). Inline script is allowed by the CSP ('unsafe-inline' on
-// script-src is already required by Next's own hydration inlines).
-const THEME_SCRIPT = `document.documentElement.classList.add("js");try{var t=localStorage.getItem("zeno-theme");var d=t?t==="dark":window.matchMedia("(prefers-color-scheme: dark)").matches;if(d)document.documentElement.classList.add("dark");}catch(e){}`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

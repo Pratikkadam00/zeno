@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Moon, Sun } from "lucide-react";
+import { THEME_STORAGE_KEY } from "@/lib/theme";
 import styles from "../../app/home.module.css";
 
 const baseLinks = [
@@ -22,8 +23,8 @@ export type NavProps = {
 };
 
 /* Both themes are art-directed (paper / the 11pm ledger), so the toggle is
-   first-class chrome. Applies .dark + persists to zeno-theme; the inline
-   script in layout.tsx restores it before first paint. */
+   first-class chrome. Paper is the default (lib/theme.ts); this applies .dark
+   + persists the choice, and the inline script restores it before first paint. */
 function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
   const [dark, setDark] = useState(false);
@@ -40,7 +41,7 @@ function ThemeToggle() {
     setDark(next);
     document.documentElement.classList.toggle("dark", next);
     try {
-      localStorage.setItem("zeno-theme", next ? "dark" : "light");
+      localStorage.setItem(THEME_STORAGE_KEY, next ? "dark" : "light");
     } catch {
       /* private mode — theme just won't persist */
     }

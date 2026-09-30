@@ -104,6 +104,14 @@ One false positive traced to library source and cleared. Details in
   (build-time). Fix is semver-major and breaks the Expo 56 pin. Revisit when
   Expo bumps Metro.
 - **Plaid**: code retained, untested, stays in dev.
+- **Web Ledger Book on phones (owner decision, found 2026-09-30)**: the design's
+  own gate (`Website Preview v3 (Ledger Book).html`) turns the book on for every
+  viewport, touch included — swipe turns pages. The port additionally requires
+  `(min-width: 900px) and (pointer: fine)` (`LedgerBook.tsx`, eligibility effect),
+  so phones and tablets get the scrolling document. Deliberate bound (scroll-jack
+  and CLS/INP risk on small screens, per DELIVERY_PLAN W3) but it IS a divergence
+  from the design. Lifting it needs a real mobile verification pass (touch swipe,
+  in-page scroll winning, nav collapse) before it ships — not a one-line change.
 
 ---
 

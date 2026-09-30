@@ -12,10 +12,14 @@ into this plan. `docs/ENGINEERING_STANDARDS.md` remains binding for every change
   (concept **"The Audit"**), with `PORTING.md` (install map, gates, CWV reasoning,
   truthfulness diff, a11y) and `research/` (blueprint, codebase notes, motion plan).
 - `Zeno Design System/Website Preview v3 (Ledger Book).html` + `website-v3-book.js` —
-  the committed LATEST website presentation: the Audit content wrapped in a
-  feature-detected leafable-book engine; degrades to the v2 "Pen Pass" document when
-  JS/WAAPI/motion aren't available. Build order therefore: drop-in first (baseline),
-  book layer second (progressive enhancement).
+  the ONLY website design (owner ruling 2026-09-30: "this is our home page, nothing
+  else"). The Audit content wrapped in a feature-detected leafable-book engine; it
+  degrades to the same content as a scrolling document when JS/WAAPI/motion aren't
+  available. The earlier `Website Preview.html` ("The Audit") and `Website Preview
+  v2.html` ("The Pen Pass") were superseded LAYERS of this same page, not alternatives;
+  both files were removed on 2026-09-30 (git history keeps them) — their content and
+  motion identity live on inside v3 and inside the port. The design is paper-only:
+  paper is the default theme on the web; dark is an explicit toggle choice.
 - `Zeno Design System/Splash Animations.html` — mobile splash spec.
 - Fact corrections adopted from the design research: service catalog count is **509**
   (`services.length`, computed — never hardcoded).
@@ -81,8 +85,9 @@ verified (drop-in = Audit baseline; v3 book = enhancement layer with built-in fa
   into the homepage as a **progressive enhancement**: `html.book` set only when
   `prefers-reduced-motion` is off AND WAAPI + IntersectionObserver exist; sheet
   fold-over on scroll/swipe/keys/pager; transform+opacity only.
-- Fallback IS the W1 baseline (v2 Pen Pass document) — no-JS, reduced-motion, and
-  crawler experiences unchanged; SSG/SEO unaffected (book is presentation-only).
+- Fallback IS the W1 baseline (the same sheets as a scrolling document) — no-JS,
+  reduced-motion, and crawler experiences unchanged; SSG/SEO unaffected (book is
+  presentation-only).
 - Utility pages stay normal documents (blueprint's own ruling — 509 guides don't
   belong in a book).
 - Re-run all W2 verification in book mode + fallback mode; CLS/INP re-check (page-turn
