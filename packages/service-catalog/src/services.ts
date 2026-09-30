@@ -30,7 +30,7 @@ export interface Service {
   supportPhone: string | null;
 }
 
-type ServiceInput = {
+export type ServiceInput = {
   id?: string;
   name: string;
   slug?: string;
@@ -580,7 +580,7 @@ Frase|ai_tools|https://www.frase.io|15
 Surfer SEO|ai_tools|https://surferseo.com|89
 NeuronWriter|ai_tools|https://neuronwriter.com|23
 Todoist Pro|productivity|https://todoist.com|5
-Things Cloud|productivity|https://culturedcode.com/things|0
+Things Cloud|productivity|https://culturedcode.com/things|
 TickTick Premium|productivity|https://ticktick.com|3
 Evernote|productivity|https://evernote.com|14.99
 Obsidian Sync|productivity|https://obsidian.md|5
@@ -828,7 +828,8 @@ function slugify(value: string): string {
 
 function colorForSlug(slug: string): string {
   const sum = [...slug].reduce((total, char) => total + char.charCodeAt(0), 0);
-  return logoColors[sum % logoColors.length] ?? logoColors[0]!;
+  // A modulo index is always in range; no fallback needed.
+  return logoColors[sum % logoColors.length]!;
 }
 
 function defaultCancelGuide(name: string): string[] {
@@ -849,7 +850,8 @@ function parsePrice(value: string | undefined): number | null {
   return Number.isFinite(amount) ? amount : null;
 }
 
-function parseRequestedRows(rows: string): ServiceInput[] {
+/** @internal Exported only so the malformed-row guard can be tested. */
+export function parseRequestedRows(rows: string): ServiceInput[] {
   return rows
     .trim()
     .split(/\r?\n/)
@@ -877,7 +879,8 @@ function parseRequestedRows(rows: string): ServiceInput[] {
     });
 }
 
-function parseExpansionRows(rows: string): ServiceInput[] {
+/** @internal Exported only so the malformed-row guard can be tested. */
+export function parseExpansionRows(rows: string): ServiceInput[] {
   return rows
     .trim()
     .split(/\r?\n/)
@@ -921,7 +924,8 @@ function defineServices(inputs: readonly ServiceInput[]): Service[] {
   });
 }
 
-function uniqueBySlug(items: readonly Service[]): Service[] {
+/** @internal Exported only so the first-wins de-duplication can be tested. */
+export function uniqueBySlug(items: readonly Service[]): Service[] {
   const seen = new Set<string>();
   const unique: Service[] = [];
   for (const item of items) {
@@ -960,7 +964,8 @@ export function parsePriceToMinorUnits(value: number | string): number {
   const text = String(value).trim();
   const negative = text.startsWith("-");
   const unsigned = negative ? text.slice(1) : text;
-  const [wholeText = "", fractionText = ""] = unsigned.split(".");
+  // split always yields at least one part, so the whole part needs no default.
+  const [wholeText, fractionText = ""] = unsigned.split(".") as [string, string?];
   const whole = Number.parseInt(wholeText === "" ? "0" : wholeText, 10);
   const cents = Number.parseInt(`${fractionText}00`.slice(0, 2), 10);
   const amountMinor = whole * 100 + cents;
@@ -1025,7 +1030,7 @@ export function getServiceBySlug(slug: string): Service | undefined {
 
 export function searchServices(query: string, limit?: number): Service[] {
   const resultLimit = limit ?? 15;
-  if (!query || query.length < 1) {
+  if (!query) {
     return services.slice(0, limit ?? 20);
   }
   const q = query.toLowerCase();

@@ -26,7 +26,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P1.4 `apps/mobile/src/auth/authStore.ts` (51 %) — token lifecycle; **fixes F10, F23, F24** (with the API side); F11 stays open (P3)
   - [x] P1.5 `apps/mobile/src/storage/database.ts` (59 %) + `subscription-repository.ts` (0 %) — on a REAL SQLite engine
   - [x] P1.6 `apps/mobile/src/billing/revenueCat.ts` (55 %)
-  - [ ] P1.7 `packages/service-catalog/src/services.ts` (0 %) — catalog invariants for all 509 entries
+  - [x] P1.7 `packages/service-catalog/src/services.ts` (0 %) — catalog invariants for all 509 entries; **fixes F22**, raises F25
   - [ ] P1.8 React providers under jest with their own coverage floor: `subscription-store.tsx` (601 lines), `budget-store.tsx`, `theme-provider.tsx`, `LockOverlay.tsx`
   - [ ] P1.9 remaining 0 % / low files (theme, notifications, widgets, api/config, format, subscription-ui, open-banking, analytics-flag, utils, next.config, app.config)
   - [ ] P1.10 `apps/api/src/plaid.ts` (21 %) — pure parts; sandbox flows stay dev-only by standing instruction
@@ -69,9 +69,10 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F19 | Wells Fargo CSV: detected by a first row of 5 cells with ≥2 `*`, and that first row is then dropped as a "header". If real WF exports have no header row, the first transaction is silently lost; if their placeholder cells differ, the format is not detected at all. Needs a REAL (redacted) Wells Fargo export to verify. | Medium (unverified assumption) | owner: one sample file | P1.9 |
 | F20 | **FIXED in P1.3.** ~~CSV merchant cleanup stripped ANY last word of 2+ letters ("APPLE MUSIC" → "Apple", "DISNEY PLUS" → "Disney"): distinct subscriptions merged into one group with an averaged amount, and groups whose amounts then differed were dropped.~~ | High (wrong / missing detections) | me | P1.3 |
 | F21 | `Date.parse` is lenient: "02/30/2026" becomes 2 March, "February 31, 2026" becomes 3 March. Receipt/CSV dates can silently shift. | Low (correctness) | me | P6 (property tests) |
-| F22 | **A stale compiled `packages/service-catalog/src/services.js` (tracked, last changed 2026-06-14) SHADOWS `services.ts`.** `index.ts` exports from `"./services.js"`; a probe proved Vitest loads the `.js` file (a different module instance from `services.ts`). Data is identical today (probe: 0 differences over 509 entries, same exports), but any edit to `services.ts` is silently ignored wherever the `.js` wins, and coverage measured the wrong file (why `services.ts` showed 0 %). The `.js` may be load-bearing for Metro, which does not map `./x.js` to `x.ts`, so removal must be verified per consumer (Vitest, Next build, Metro bundle, API dist). | Medium (silent-edit trap) | me | P1.7 |
+| F22 | **FIXED in P1.7.** ~~A stale compiled `packages/service-catalog/src/services.js` (tracked, last changed 2026-06-14) SHADOWS `services.ts`.~~ `index.ts` exports from `"./services.js"`; a probe proved Vitest loads the `.js` file (a different module instance from `services.ts`). Data is identical today (probe: 0 differences over 509 entries, same exports), but any edit to `services.ts` is silently ignored wherever the `.js` wins, and coverage measured the wrong file (why `services.ts` showed 0 %). The `.js` may be load-bearing for Metro, which does not map `./x.js` to `x.ts`, so removal must be verified per consumer (Vitest, Next build, Metro bundle, API dist). | Medium (silent-edit trap) | me | P1.7 |
 | F23 | **FIXED in P1.4.** ~~Apple/Google routes put the CLIENT-SENT email into the session record and our signed access token (`parsed.data.email ?? verified.email`). No consumer reads that claim today, so it was latent, but our own token vouched for an unverified address.~~ | Medium (latent) | me | P1.4 |
 | F24 | **FIXED in P1.4.** ~~All three production-guard security tests were VACUOUS: with each guard removed they still passed. The OAuth tests set a client id, so the "unverified tokens" flag they claimed to test was never consulted; the demo test posted to a route that does not exist (`/auth/demo`), with no email and a 7-char password.~~ Lesson for P6: security tests must be mutation-tested first. | High (false assurance) | me | P1.4 / P6 |
+| F25 | **305 of the 509 catalog entries (60 %) carry UNRESEARCHED data shown as fact:** a generated cancel link (`<website>/account`, not verified to exist), a default difficulty of "medium", and generic cancel steps. The app opens that link as "Open cancellation page" and shows the difficulty; the website publishes 305 cancel-guide pages stating "difficulty: medium". 204 entries are curated. Conflicts with the project's truthfulness rules (no invented facts). Needs a product decision on presentation, e.g. an "unrated / general steps, not yet verified" label and a link to the homepage instead of a guessed path, or noindex until curated. | High (honesty, public pages) | owner: decide the presentation | P3 (app) + P4 (web) |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -635,3 +636,56 @@ server-side is still P2's authorization matrix.
 Tier 1 lines 75.28 % → **76.43 %**.
 
 Gates: typecheck 0 · lint 0 · vitest 848/848 (77 files) · semgrep 0.
+
+### P1.7 — Service catalog + F22 — 2026-09-30
+
+**F22, proved and fixed per consumer.** Deleting the stale `src/services.js` alone made
+the **Next.js production build FAIL** ("Module not found: Can't resolve './services.js'"):
+Turbopack resolves `@zeno/service-catalog` from SOURCE (tsconfig paths) and does not
+map `./x.js` to `x.ts`. So the website (and, by the same resolution, the app) had been
+SHIPPING the hand-regenerated `.js`, not `services.ts`: a catalog edit reached users only
+if someone also rebuilt that file. Fix: `index.ts` exports `"./services"`
+(extensionless), the pattern `packages/shared` already uses, and the stale file is
+deleted. Verified in every consumer:
+- Vitest: 848/848 pass, and coverage now measures `services.ts` itself.
+- Forced typecheck: 0 errors. Next.js production build: compiles.
+- API, exactly as Render runs it (`tsx` + compiled `dist/`): 509 entries load and
+  `GET /api/v1/services/netflix` returns 200.
+- Metro: a real Android production bundle (`expo export`, 12 MB Hermes, 72 s). The
+  bundle contains the catalog's Netflix cancel steps, a product id and a catalog entry.
+
+**Data finding F25** (above): 305 of 509 entries are generated, not researched.
+
+**Data fix:** Things Cloud (a free sync service) had a default monthly price of `0`,
+which the Add form prefilled as a "$0.00" subscription. The new invariant caught it on its
+first run. It is now `null` (no known subscription price). Whether a free service belongs
+in the catalog is left to the owner, since removing it changes the published 509 count.
+
+**Dead code removed:** a `?? logoColors[0]` after a modulo index; a redundant
+`query.length < 1`; an unreachable `wholeText = ""` default (a sound tuple cast instead).
+The row parsers and `uniqueBySlug` are exported (`@internal`) so their guards are
+testable.
+
+**Tests (+24, `services.test.ts`):**
+- Invariants over all 509 entries: count; kebab slugs, unique, equal to ids; https-only
+  links with real hostnames and no credentials; valid difficulty and category enums;
+  prices null or positive with at most 2 decimals; non-empty guides; palette colours;
+  every record converts; every "popular" id exists.
+- Parsers: malformed curated and expansion rows throw; price parsing; guide overrides;
+  blank lines skipped; first-wins de-duplication.
+- Search: empty query and limits; exact over prefix over substring over fuzzy;
+  case-insensitive; no match; default limits 15 and 10; equal scores sorted
+  alphabetically.
+- Lookups, category mapping, record optional fields (support contact parts, free-trial
+  days 0), exact minor units, and leading-dot and negative prices.
+
+**My own mistake, caught:** my first tie-break test ended in `|| true`, so it could
+never fail: the same hollowness as F24. Rewritten as a real check, it fails when the
+tie-break is reversed. A repo-wide scan found no other always-true assertion.
+
+**Coverage:** `services.ts` and `index.ts` **0 uncovered lines, branches or functions**
+(`services.ts` was 0 %, because the tests had been running the stale `.js`). Tier 1 lines
+76.43 % → **78.98 %**.
+
+Gates: typecheck 0 · lint 0 · vitest 872/872 (78 files) · RN 22/22 · web build OK ·
+semgrep 0.
