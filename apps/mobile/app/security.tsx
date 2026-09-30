@@ -53,6 +53,11 @@ export default function SecurityScreen() {
       }}
       keyboardType="number-pad"
       secureTextEntry
+      importantForAutofill="no"
+      autoComplete="off"
+      textContentType="oneTimeCode"
+      autoCorrect={false}
+      spellCheck={false}
       maxLength={MAX_PIN}
       editable={!busy}
       accessibilityLabel={label}

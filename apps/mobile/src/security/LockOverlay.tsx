@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { AppState, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Fingerprint, ShieldCheck } from "lucide-react-native";
 import { useAuthStore } from "../auth/authStore";
@@ -24,10 +24,20 @@ export function LockOverlay() {
   const attemptedBiometric = useRef(false);
 
   useEffect(() => {
-    if (ready && biometricAvailable && !attemptedBiometric.current) {
+    if (!ready || !biometricAvailable) return;
+    // The overlay can now be mounted while the app is in the BACKGROUND (the
+    // lock engages on the way out so the switcher thumbnail is the cover, not
+    // the ledger). Prompting for biometrics then would fire into a backgrounded
+    // activity and fail, burning the one automatic attempt. Attempt only while
+    // active; if we mounted in the background, attempt when we come back.
+    const attempt = () => {
+      if (attemptedBiometric.current || AppState.currentState !== "active") return;
       attemptedBiometric.current = true;
       void tryBiometric();
-    }
+    };
+    attempt();
+    const sub = AppState.addEventListener("change", (state) => { if (state === "active") attempt(); });
+    return () => sub.remove();
   }, [ready, biometricAvailable, tryBiometric]);
 
   // Before the lock store has hydrated we don't yet know whether a PIN is set, so
@@ -82,6 +92,17 @@ export function LockOverlay() {
           }}
           keyboardType="number-pad"
           secureTextEntry
+          // A secure field with no autofill opt-out is treated as a PASSWORD field
+          // by Android autofill / iOS password AutoFill: managers offer to save or
+          // fill it, and the keyboard may suggest. A device PIN must never reach
+          // any of those. oneTimeCode is the iOS content type that opts out of
+          // credential AutoFill without disabling the number pad.
+          importantForAutofill="no"
+          autoComplete="off"
+          textContentType="oneTimeCode"
+          autoCorrect={false}
+          spellCheck={false}
+          contextMenuHidden
           autoFocus
           maxLength={PIN_MAX}
           editable={!busy}

@@ -66,7 +66,9 @@ One false positive traced to library source and cleared. Details in
   `autoUpdate`, enforced by the `Coverage floor` CI step. Also fixed: RN suite
   now runs in CI; release audit gate uses an expiring allowlist.
 - Adversarial review of the M3-M6 diff.
-- MASVS spot re-check (`/security-review` on the track diff).
+- ~~MASVS spot re-check~~ DONE 2026-09-30: PIN inputs opted out of autofill;
+  app-lock now engages on background (switcher thumbnail is the cover), verified
+  on device. See DEVICE_TEST_FINDINGS.md sixth pass.
 - Store screenshots from `Zeno Design System/app_store/`.
 - EAS preview build — ONLY after the owner confirms quota.
 

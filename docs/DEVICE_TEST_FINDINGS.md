@@ -235,3 +235,47 @@ narration (the tree is verified; spoken output is not observable via adb).
   land. That is the intended discipline; the escape hatch is writing the test.
 - Mistake caught and fixed: my first workflow edit landed double-spaced (YAML
   tolerated it, so CI still ran); collapsed and re-verified line by line.
+
+---
+
+# Sixth pass — 2026-09-30, MASVS re-check of the mobile surface changed since the audit
+
+Scope: every mobile file changed since `bc3a46d` (the last full security audit)
+plus the new gate script. Checked by grep and by reading, then fixed on device.
+
+## Clean
+- No sensitive logging in any changed file.
+- Deep links: the only mount-time effects on `subscription/[id]` and
+  `subscription/cancel/[id]` reset animation values. No param triggers a write.
+- `scripts/audit-gate.mjs` shells out to a constant string; no interpolation.
+- PIN is rendered as dots only (`"•".repeat(pin.length)`), never as digits.
+
+## Fixed
+1. **PIN inputs were autofill targets.** The LockOverlay's hidden `TextInput`
+   and both Security-screen PIN fields had `secureTextEntry` but no autofill
+   opt-out — Android autofill and iOS Password AutoFill treat such a field as a
+   PASSWORD field and offer to save or fill it through a password manager. A
+   device PIN must never reach one. Added `importantForAutofill="no"`,
+   `autoComplete="off"`, `textContentType="oneTimeCode"` (opts out of credential
+   AutoFill without losing the number pad), `autoCorrect={false}`,
+   `spellCheck={false}`, `contextMenuHidden` (overlay only).
+2. **App-switcher thumbnail showed the live ledger (MASVS-PLATFORM-3).** The
+   lock engaged only on RETURN to foreground; the OS snapshots the app on the
+   way OUT, so recents showed amounts and services. Now `lockNow()` also fires
+   on active → inactive|background (iOS reports "inactive" first and snapshots
+   after, so that is the reliable point). Because the overlay can now mount
+   while backgrounded, its one automatic biometric attempt is deferred until
+   `AppState` is active — firing it into a backgrounded activity would fail and
+   burn the attempt. `lockNow` was already a no-op unless app-lock is enabled.
+
+   **Verified on device (release APK):** PIN set → dashboard unlocked → HOME →
+   recents switcher shows the LOCK COVER, not the ledger → return is locked →
+   PIN unlocks to the dashboard. The set of transitions that lock is unchanged
+   by construction (the old code fired on the return edge of the same cycle);
+   only the timing moved earlier. Not verifiable here: the biometric deferral —
+   this emulator has no enrolled biometrics.
+
+## Observed, pre-existing, left alone
+A foreground deep link (`am start` to a running app) cycles the activity
+through pause/resume and re-locks the app. The old code did the same on the
+resume edge. Arguably correct (any pause is potential exposure); logged.

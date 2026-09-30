@@ -250,11 +250,22 @@ function RootStack() {
       return;
     }
     const subscription = AppState.addEventListener("change", (nextState) => {
-      const wasBackgrounded = appState.current === "background" || appState.current === "inactive";
+      const prevState = appState.current;
+      const wasBackgrounded = prevState === "background" || prevState === "inactive";
       appState.current = nextState;
 
       const liveAuth = useAuthStore.getState();
       const liveCanUseApp = liveAuth.isAuthenticated || liveAuth.status === "local_only";
+      // Engage the lock on the way OUT, not only on the way back in. The OS
+      // snapshots the app for the switcher/recents as it leaves the foreground;
+      // locking only on return meant that thumbnail showed the live ledger
+      // (MASVS-PLATFORM-3). iOS reports "inactive" before "background" and takes
+      // its snapshot after; covering on "inactive" is the only reliable point.
+      // lockNow() is a no-op unless the user has enabled app-lock, and the
+      // overlay defers its biometric prompt until the app is active again.
+      if (prevState === "active" && (nextState === "inactive" || nextState === "background") && liveCanUseApp) {
+        lockNow();
+      }
       if (wasBackgrounded && nextState === "active" && liveCanUseApp) {
         // Re-engage the lock every time the app returns to the foreground.
         lockNow();
