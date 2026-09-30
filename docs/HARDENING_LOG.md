@@ -43,8 +43,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P1.11 gate: Tier 1 at 100 % statements / functions / lines and 99.61 % branches (≥ 95 %); jest floors at 100 %; green on GitHub (CI 36744248345, CodeQL 36744248343)
 - [~] **P2 — API on real Postgres, authorization matrix, fuzzing** (inline, one item at a time; no parallel agents from here on, by the owner's instruction)
   - [x] P2.1 real Postgres in tests (PGlite locally, a `postgres` server in CI, proven by a server-mode test): schema from empty, upsert, a restart round trip for every store, account deletion leaves no row, the refresh race, concurrent sync replays; **fixes F75** (green: CI 36763417730, CodeQL 36763417620 on `229e114`)
-  - [~] P2.2 authorization matrix (table-driven from the LIVE route list; 38 routes, 11 token attacks, cross-household), **fixes F76** (green: CI 36764219913, CodeQL 36764219994 on `b1b075c`); F77 open for the owner
-  - [ ] P2.3 rate limits per route
+  - [x] P2.2 authorization matrix (table-driven from the LIVE route list; 38 routes, 11 token attacks, cross-household), **fixes F76** (green: CI 36764785079, CodeQL 36764784910 on `8d4b5f0`); F77 open for the owner
+  - [~] P2.3 rate limits per route (table-driven from the live routes; window, key, 429 envelope, Retry-After); **fixes F78, F79**
   - [ ] P2.4 schema-driven fuzzing (fast-check)
   - [ ] P2.5 error and log hygiene
   - [ ] P2.6 auth flows (enumeration-safe magic link, production refusals)
@@ -144,6 +144,8 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F75 | **FIXED in P2.1.** ~~`DELETE /api/v1/account` said "deleted" before the data was gone, and could not finish a failed deletion.~~ Four of its five steps (entitlement, bank token, sync rows, households) were fire-and-forget, so the answer could arrive while Alice's rows were still in Postgres. Proven against real Postgres by making the unawaited writes slow: at the moment of `{ deleted: true }`, her billing, family, plaid and sync rows were all still there, and a crash then would restore them on the next boot. Separately, every failed delete was swallowed (the route still said deleted), and a retry could not find the rows again, because deletion was driven from memory, which had already forgotten them. Now: every step is awaited and reports whether it is durable; any refusal answers **503** (the app then keeps its data and does not tell the user it is done); and sessions and sync rows are deleted **in SQL by the owning account** (`value->>'accountId'` / `'userId'`), so a retry finds whatever is left. Households are JSON documents to rewrite, so a refused rewrite puts the in-memory household back and the retry redoes it. | High (the account-deletion promise; App Store requirement) | me | P2.1 |
 | F76 | **FIXED in P2.2.** ~~A DELETED account's access tokens kept working, and could re-create its data.~~ Access tokens are stateless 15-minute JWTs with no revocation. Proven with a probe: right after `DELETE /account` answered 200, the same token pushed a sync change (`accepted: 1`), pulled it back, and created a household, all persisted, for an account the user had just been told was deleted. The existing app test had even pinned this, with a comment saying the token "still verifies (stateless JWT, no revocation list)". Now, as the LAST step of a durable deletion, a per-account cut-off is persisted first (key = SHA-256 of the id, value = a timestamp only, so it is not a row of the user), then applied in memory. The auth check rejects any token for that account with `iat` at or before it; a token with no `iat` fails closed. It survives restarts, is swept after the 15-minute token lifetime, and is not set if the save is refused, so the user's token can still retry. | High (account deletion; data re-created after "deleted") | me | P2.2 |
 | F77 | **OPEN: owner decision.** Logout revokes the REFRESH token at once, but the stateless ACCESS token keeps working until it expires (at most 15 minutes). The matrix pins this as a named known gap. Options: (a) a session-id claim plus a server-side denylist checked by the auth guard (the mobile logout would also send the access token); (b) a shorter access-token life, e.g. 5 minutes, at the cost of more refreshes; (c) accept it as the standard stateless-JWT trade-off and document it. Account DELETION is already covered (F76). | Low-Medium | owner (decision), then me | P2 follow-up |
+| F78 | **FIXED in P2.3.** ~~Requests WITHOUT a token were never rate-limited on any protected route.~~ The auth guard was an app-level `onRequest` hook and the per-route limits are route-level `onRequest` hooks; app-level runs first, so an unauthenticated request got its 401 before any limiter counted it. Proven: 20 unauthenticated `DELETE /account` (limit 5) were all 401, never 429. Each one still cost an RSA signature check, so this was an unlimited, cheap-to-send load. The guard now runs in `preParsing`: after every limiter, still before the body is read. The AI coach had a second gap: its account-keyed limit ran after the guard, so unauthenticated coach floods were limited by nothing at all. A stacked second limiter does not work, because the plugin applies only the FIRST limiter per request (`req[rateLimitRan]`). The coach now has ONE limiter keyed per request: by account for a valid token, by IP otherwise. | Medium (DoS / cost) | me | P2.3 |
+| F79 | **FIXED in P2.3.** ~~The auth routes did not use the API's error handler.~~ `setErrorHandler` was called at the END of `buildApp`, but the awaited auth plugin had already built its routes with the handler that existed THEN, Fastify's default. Proven: a 429 on `/auth/magic-link` was Fastify's `{"statusCode":429,"error":"Too Many Requests",...}`, not our envelope, and malformed JSON on `/auth/refresh` returned `FST_ERR_CTP_INVALID_JSON_BODY` with the framework message. The F33 client-error mapping, the fixed 500 message and the 5xx monitoring alert therefore all bypassed every sign-in route. The handler is now set FIRST, before any plugin registers routes. | Medium (error hygiene on the auth surface) | me | P2.3 |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -1887,4 +1889,67 @@ result):
 whatever was sent (the CodeQL-driven design), so there is no separate fast path to time.
 
 Gates after the final edit: `tsc -b --force` 0 · lint 0 · vitest 124 files / 1596 tests
+at 100 / 99.62 / 100 / 100 · jest 114 / 114 · semgrep `apps/api` 0.
+
+### P2.2 — done — 2026-10-01
+
+Green on GitHub: CI 36764785079 and CodeQL 36764784910 on `8d4b5f0` (the matrix).
+
+### P2.3 — rate limits per route (F78, F79) — 2026-10-01
+
+**`apps/api/src/rate-limits.test.ts`** (43 tests), table-driven from the LIVE routes. The
+route-tree parser now lives in `route-inventory.testutil.ts`, shared with the matrix.
+- **Inventory:** every registered route has a `LIMITS` row, and every row is
+  registered.
+- **The strictest limit (5/min)** belongs exactly to sign-in (`magic-link`, its legacy
+  twin, demo login, logout) and account deletion.
+- **Each of the 39 IP-keyed routes** (on a fresh app, so each has its own limiter):
+  - the declared maximum is served;
+  - the next request is **429** with our envelope (`RATE_LIMITED`, `data: null`), a
+    positive `Retry-After`, and `x-ratelimit-limit` equal to the declared maximum;
+  - another IP is unaffected.
+- **The coach:**
+  - Keyed by ACCOUNT: 10 requests from 10 different IPs, then the 11th from yet
+    another IP is 429; another account from the same IP is unaffected.
+  - An unauthenticated flood is limited per IP: ten 401s, then 429 with our envelope;
+    another IP is unaffected.
+
+**What the table found:** building it exposed F78 and F79 (above). Both were probed
+before any change.
+
+**The fixes:**
+- **F78:** the auth guard moved from `onRequest` to `preParsing`; the hook now returns
+  `payload`.
+- **F78, the coach:** `accountRateLimitKey` verifies the bearer itself: its account when
+  the token is valid, otherwise the IP. The limiter runs in `onRequest`. My first
+  attempt stacked a second, per-IP limiter on the route; the account test caught that
+  the plugin then silently SKIPS the second one (it applies only one per request), so
+  it was replaced by the single per-request key.
+- **F79:** `app.setErrorHandler(...)` moved to directly after `Fastify()` is created.
+
+**New tests:**
+- F79: malformed JSON on `/auth/refresh` returns exactly our 400 envelope with no
+  `FST_` text. An unexpected error thrown inside `/auth/logout` returns our 500
+  envelope, never its message, and posts one monitoring alert.
+- The key function: no token, a forged token, or the wrong scheme → keyed by the IP.
+  The valid-token → account path is covered by the coach account test.
+- The matrix now gives each test its own client IP. Rate limits now count
+  unauthenticated requests (F78), and that suite is about authorization.
+
+**Bite checks** (each alone, then restored):
+- The guard back in `onRequest`: 19 fail (every token route's 429).
+- The coach back on the after-auth account limit: 1 fails (the unauthenticated flood).
+- The error handler set after the auth routes: 11 fail (the auth routes' 429 envelope,
+  and both F79 tests).
+
+**Per instance, not global:** without `REDIS_URL` every limit is per API process. The
+app limiter cannot replace an edge limiter or WAF in front of the API at scale; that is
+recorded for P8 (owner).
+
+**Observation, not changed:** the RevenueCat webhook is limited to 30/min per source IP.
+Every event from RevenueCat shares its IPs, so at real volume legitimate events could
+be refused. RevenueCat retries them, and the entitlement read also re-verifies. Size it
+before launch (P8).
+
+Gates after the final edit: `tsc -b --force` 0 · lint 0 · vitest 125 files / 1641 tests
 at 100 / 99.62 / 100 / 100 · jest 114 / 114 · semgrep `apps/api` 0.

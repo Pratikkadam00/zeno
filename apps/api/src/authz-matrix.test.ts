@@ -1,6 +1,6 @@
 import { createHmac, createSign, generateKeyPairSync, type KeyObject } from "node:crypto";
 import type { InjectOptions } from "fastify";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 /**
  * P2.2: the authorization matrix, table-driven from the LIVE route list.
@@ -33,6 +33,7 @@ delete process.env.JWT_AUDIENCE;
 process.env.REVENUECAT_WEBHOOK_AUTH = "matrix-webhook-secret";
 
 const { buildApp } = await import("./app");
+const { concreteUrl, routesFromTree } = await import("./route-inventory.testutil");
 type App = Awaited<ReturnType<typeof buildApp>>;
 
 type Access = "public" | "own-auth" | "token";
@@ -79,33 +80,10 @@ const ACCESS: Record<string, Access> = {
   "POST /api/v1/family/:householdId/spend": "token",
   "POST /api/v1/family/:householdId/leave": "token"
 };
-const concrete = (pattern: string) => pattern
-  .replace(":slug", "netflix")
-  .replace(":provider", "plaid")
-  .replace(":householdId", "hh_matrix");
+const concrete = concreteUrl;
 
 let app: App;
 let registered: string[] = [];
-
-/** Every "METHOD /path" in Fastify's printed route tree. Children print
- *  relative to their parent, 4 characters deeper per level. HEAD is Fastify's
- *  automatic twin of GET; the catch-all `*` (OPTIONS) is the CORS preflight. */
-function routesFromTree(tree: string): string[] {
-  const out: string[] = [];
-  const stack: string[] = [];
-  for (const line of tree.split("\n")) {
-    const match = /^([\s│├└─]*)(\S.*?)(?: \(([A-Z, ]+)\))?$/.exec(line);
-    if (!match || !match[2]) continue;
-    const depth = Math.floor(match[1]!.length / 4);
-    stack.length = depth;
-    const full = `${stack[depth - 1] ?? ""}${match[2]}`;
-    stack[depth] = full;
-    for (const method of (match[3] ?? "").split(", ").filter(Boolean)) {
-      if (method !== "HEAD" && full !== "*") out.push(`${method} ${full}`);
-    }
-  }
-  return out;
-}
 
 beforeAll(async () => {
   app = await buildApp();
@@ -142,9 +120,21 @@ const UNAUTHORIZED = { data: null, error: { code: "UNAUTHORIZED", message: "Miss
 const withoutRequestId = (body: Record<string, unknown>) => ({ ...body, meta: undefined });
 
 type Method = "GET" | "POST" | "DELETE";
+// Every test gets its own client IP. Rate limits count unauthenticated
+// requests too (F78), and this suite is about authorization, so no test may
+// spend another test's per-route budget.
+let nextIp = 1;
+let clientIp = "198.51.100.1";
+beforeEach(() => {
+  nextIp += 1;
+  clientIp = `198.51.${Math.floor(nextIp / 250)}.${nextIp % 250}`;
+});
+
 /** One matrix request: a body only where the method takes one. */
 function call(method: Method, url: string, headers: Record<string, string> = {}) {
-  const options: InjectOptions = method === "GET" ? { method, url, headers } : { method, url, headers, payload: {} };
+  const options: InjectOptions = method === "GET"
+    ? { method, url, headers, remoteAddress: clientIp }
+    : { method, url, headers, payload: {}, remoteAddress: clientIp };
   return app.inject(options);
 }
 

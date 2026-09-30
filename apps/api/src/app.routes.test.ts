@@ -152,6 +152,30 @@ describe("client errors keep their status (F33: never a 500 or an alert)", () =>
   });
 });
 
+describe("F79: the auth routes use the API's error handler too", () => {
+  it("malformed JSON on an auth route is our 400 envelope, never Fastify's default body with its internal code", async () => {
+    const app = await buildApp();
+    const r = await app.inject({ method: "POST", url: "/api/v1/auth/refresh", headers: { "content-type": "application/json" }, payload: "{bad" });
+    expect(r.statusCode).toBe(400);
+    expect(r.json()).toEqual({ data: null, error: { code: "BAD_REQUEST", message: "Malformed request." }, meta: { requestId: expect.any(String) } });
+    expect(r.body).not.toContain("FST_");
+  });
+
+  it("an unexpected error inside an auth route is our 500 envelope (and reaches the monitoring webhook)", async () => {
+    setEnv("MONITORING_WEBHOOK_URL", "https://alerts.example/hook");
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}"));
+    const app = await buildApp();
+    app.addHook("preHandler", async (request) => {
+      if (request.url === "/api/v1/auth/logout") throw new Error("internal detail that must not leak");
+    });
+    const r = await app.inject({ method: "POST", url: "/api/v1/auth/logout", payload: {} });
+    expect(r.statusCode).toBe(500);
+    expect(r.json().error).toEqual({ code: "INTERNAL", message: "Unexpected server error." });
+    expect(r.body).not.toContain("internal detail");
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("unexpected server errors", () => {
   it("→ 500 INTERNAL, and the webhook gets the route PATTERN and message only (no body or query)", async () => {
     setEnv("MONITORING_WEBHOOK_URL", "https://alerts.example/hook");
@@ -211,8 +235,10 @@ describe("rate limiting", () => {
   });
 
   it("the coach limit is keyed by account; the IP is only a defensive fallback", () => {
-    expect(accountRateLimitKey({ userId: "acct_1", ip: "203.0.113.9" } as FastifyRequest)).toBe("acct_1");
-    expect(accountRateLimitKey({ ip: "203.0.113.9" } as FastifyRequest)).toBe("203.0.113.9");
+    // A request with no, or no valid, access token is keyed by its IP.
+    expect(accountRateLimitKey({ headers: {}, ip: "203.0.113.9" } as FastifyRequest)).toBe("203.0.113.9");
+    expect(accountRateLimitKey({ headers: { authorization: "Bearer forged.token.value" }, ip: "203.0.113.9" } as unknown as FastifyRequest)).toBe("203.0.113.9");
+    expect(accountRateLimitKey({ headers: { authorization: "Basic abc" }, ip: "203.0.113.9" } as unknown as FastifyRequest)).toBe("203.0.113.9");
   });
 });
 

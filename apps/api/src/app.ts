@@ -8,7 +8,7 @@ import { pingStorage } from "./storage/pg";
 import Redis from "ioredis";
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import { authRoutes, revokeAccessTokensForAccount, revokeAllSessionsForAccount } from "./routes/auth";
+import { authRoutes, revokeAccessTokensForAccount, revokeAllSessionsForAccount, verifyAccessToken } from "./routes/auth";
 import { createLinkToken, deletePlaidItem, exchangePublicToken, getRecentTransactions, getStoredPlaidItem, plaidConfigured, sandboxPublicToken, storePlaidItem } from "./plaid";
 import { applyWebhookEvent, billingConfigured, deleteEntitlementForUser, fetchEntitlement, getCachedEntitlement, verifyWebhookAuth, webhookConfigured } from "./billing";
 import { deleteUserSyncData, pullChanges, pushChanges, type EncryptedChange } from "./sync";
@@ -30,16 +30,19 @@ const MAX_SERVICES_LIMIT = 100;
 // that are expensive (call paid upstreams like Groq/Plaid) or abuse-prone.
 const limit = (max: number) => ({ config: { rateLimit: { max, timeWindow: "1 minute" } } });
 
-// Keyed by account instead of IP: an IP-keyed limit lets one attacker with one
-// valid token evade it entirely by rotating source IPs, which matters here
-// because every request calls a paid LLM upstream. Uses the "preHandler" hook
-// (not the plugin's default "onRequest") so this runs after the auth guard's
-// onRequest hook has set request.userId — coach is never a public route, so by
-// the time preHandler runs, userId is always populated or the request already
-// 401'd and never reached here.
-/** @internal exported for tests: the IP fallback is defensive (coach is never public). */
+// ONE limiter keyed per request (finding F78): a request with a VALID access
+// token is keyed by its account, so one attacker with one token cannot evade
+// the limit by rotating source IPs (every coach request calls a paid LLM
+// upstream); any other request is keyed by its IP, so an unauthenticated flood
+// is capped too. It runs in onRequest, before the auth guard, because the
+// rate-limit plugin applies only the FIRST limiter that runs for a request
+// (req[rateLimitRan]): a second, stacked limiter is silently skipped. So the
+// token is checked here as well as in the guard: a cheap signature check.
+/** @internal exported for tests. */
 export function accountRateLimitKey(req: FastifyRequest): string {
-  return req.userId ?? req.ip;
+  const header = req.headers.authorization;
+  const token = header?.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  return verifyAccessToken(token)?.sub ?? req.ip;
 }
 
 const limitByAccount = (max: number) => ({
@@ -47,7 +50,6 @@ const limitByAccount = (max: number) => ({
     rateLimit: {
       max,
       timeWindow: "1 minute",
-      hook: "preHandler" as const,
       keyGenerator: accountRateLimitKey
     }
   }
@@ -221,6 +223,34 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     // Explicit body cap (Fastify defaults to 1 MB; make it deliberate). The
     // largest schema-bounded route (sync/push) is ~800 KB, so 1 MB is ample.
     bodyLimit: 1_048_576
+  });
+
+  // Set FIRST, before any plugin registers routes (finding F79). A plugin that
+  // is awaited builds its routes at once, and each route keeps the error
+  // handler that existed THEN: registered at the end, this handler never
+  // reached the auth routes, which answered with Fastify's default handler (a
+  // non-envelope 429, framework error codes on malformed JSON, and no 5xx
+  // alerting).
+  app.setErrorHandler((error, request, reply) => {
+    // Rate-limit rejections carry a pre-built fail envelope and a 429/403 status.
+    const envelopeError = error as Partial<RateLimitEnvelopeError>;
+    if (envelopeError.envelope && typeof envelopeError.statusCode === "number") {
+      reply.code(envelopeError.statusCode).send(envelopeError.envelope);
+      return;
+    }
+    // Fastify's own CLIENT errors (malformed JSON, a body over the limit, an
+    // unsupported content type) carry a 4xx statusCode. They are the caller's
+    // fault: answer with that status and a fixed message, and never log them as
+    // server errors or page the monitoring webhook. Before, every one was a 500
+    // plus an alert, which anyone could trigger with a bad body (finding F33).
+    const status = (error as { statusCode?: unknown }).statusCode;
+    if (typeof status === "number" && status >= 400 && status < 500) {
+      reply.code(status).send(fail("BAD_REQUEST", clientErrorMessage(status), request.id));
+      return;
+    }
+    request.log.error(error);
+    reportServerError(error, request);
+    reply.code(500).send(fail("INTERNAL", "Unexpected server error.", request.id));
   });
 
   // Expose the request id as a response header so a client (or a proxy that
@@ -743,27 +773,6 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     reply.code(404).send(fail("NOT_FOUND", "Route not found.", request.id));
   });
 
-  app.setErrorHandler((error, request, reply) => {
-    // Rate-limit rejections carry a pre-built fail envelope and a 429/403 status.
-    const envelopeError = error as Partial<RateLimitEnvelopeError>;
-    if (envelopeError.envelope && typeof envelopeError.statusCode === "number") {
-      reply.code(envelopeError.statusCode).send(envelopeError.envelope);
-      return;
-    }
-    // Fastify's own CLIENT errors (malformed JSON, a body over the limit, an
-    // unsupported content type) carry a 4xx statusCode. They are the caller's
-    // fault: answer with that status and a fixed message, and never log them as
-    // server errors or page the monitoring webhook. Before, every one was a 500
-    // plus an alert, which anyone could trigger with a bad body (finding F33).
-    const status = (error as { statusCode?: unknown }).statusCode;
-    if (typeof status === "number" && status >= 400 && status < 500) {
-      reply.code(status).send(fail("BAD_REQUEST", clientErrorMessage(status), request.id));
-      return;
-    }
-    request.log.error(error);
-    reportServerError(error, request);
-    reply.code(500).send(fail("INTERNAL", "Unexpected server error.", request.id));
-  });
 
   return app;
 }

@@ -48,13 +48,21 @@ function readBearer(authHeader: string | undefined): string | null {
   return authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
 }
 
-// Registers ONE onRequest hook that gates every protected route. Add it before
-// route registration so it covers all routes (including the auth plugin, which
-// is allowlisted above).
+// Registers ONE hook that gates every protected route. Add it before route
+// registration so it covers all routes (including the auth plugin, which is
+// allowlisted above).
+//
+// It runs in preParsing, not onRequest (finding F78). Route-level rate limits
+// are onRequest hooks, and app-level hooks run before route-level ones, so an
+// onRequest guard rejected an unauthenticated request with 401 before any
+// limiter counted it: floods without a token were never rate-limited on any
+// protected route. preParsing is after every onRequest hook and still BEFORE
+// the body is read, so an unauthenticated request is counted, and rejected
+// without the server parsing its body.
 export function registerAuthGuard(app: FastifyInstance): void {
-  app.addHook("onRequest", async (request: FastifyRequest, reply) => {
+  app.addHook("preParsing", async (request: FastifyRequest, reply, payload) => {
     if (isPublic(request.routeOptions?.url)) {
-      return;
+      return payload;
     }
     // Verify unconditionally, even when no token was sent: whether verification
     // runs must never depend on what the client chose to send (CodeQL
@@ -66,5 +74,6 @@ export function registerAuthGuard(app: FastifyInstance): void {
       return reply;
     }
     request.userId = verified.sub;
+    return payload;
   });
 }
