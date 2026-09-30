@@ -12,20 +12,36 @@ export function parseCsvRows(text: string): string[][] {
   let current = "";
   let row: string[] = [];
   let quoted = false;
+  // A quote opens a quoted section only as the FIRST character of a field
+  // (RFC 4180). Anywhere else it is a literal: a sloppy exporter's unquoted
+  // `BEST BUY 55" TV` used to open a section that swallowed every later
+  // delimiter and line break, silently dropping the rest of the file.
+  let atFieldStart = true;
+  // Excel's "CSV UTF-8" export starts with a byte-order mark. It is encoding
+  // metadata, not part of the first header.
+  const start = text.charCodeAt(0) === 0xfeff ? 1 : 0;
 
-  for (let i = 0; i < text.length; i += 1) {
-    const char = text[i];
-    const next = text[i + 1];
+  for (let i = start; i < text.length; i += 1) {
+    const char = text.charAt(i);
+    const next = text.charAt(i + 1);
 
-    if (char === "\"" && quoted && next === "\"") {
-      current += "\"";
-      i += 1;
-    } else if (char === "\"") {
-      quoted = !quoted;
-    } else if (char === "," && !quoted) {
+    if (quoted) {
+      if (char === "\"" && next === "\"") {
+        current += "\"";
+        i += 1;
+      } else if (char === "\"") {
+        quoted = false;
+      } else {
+        current += char;
+      }
+    } else if (char === "\"" && atFieldStart) {
+      quoted = true;
+      atFieldStart = false;
+    } else if (char === ",") {
       row.push(current);
       current = "";
-    } else if ((char === "\n" || char === "\r") && !quoted) {
+      atFieldStart = true;
+    } else if (char === "\n" || char === "\r") {
       if (char === "\r" && next === "\n") {
         i += 1;
       }
@@ -33,8 +49,10 @@ export function parseCsvRows(text: string): string[][] {
       rows.push(row);
       row = [];
       current = "";
+      atFieldStart = true;
     } else {
-      current += char ?? "";
+      current += char;
+      atFieldStart = false;
     }
   }
 
@@ -55,13 +73,46 @@ export function parseAmountMinor(input: string | undefined): number | null {
     return null;
   }
 
-  const negative = trimmed.startsWith("-") || /^\(.+\)$/.test(trimmed);
-
-  // Keep only digits and the two possible separators.
-  let s = trimmed.replace(/[^0-9.,]/g, "");
-  if (!s) {
+  // Split into the text before the first digit, the digits, and the text after
+  // the last digit, so a currency symbol/code on either side cannot hide a sign
+  // or be mistaken for part of the number.
+  const firstDigit = trimmed.search(/\d/);
+  if (firstDigit === -1) {
     return null;
   }
+  let lastDigit = firstDigit;
+  for (let i = trimmed.length - 1; i > firstDigit; i -= 1) {
+    const code = trimmed.charCodeAt(i);
+    if (code >= 48 && code <= 57) {
+      lastDigit = i;
+      break;
+    }
+  }
+  const prefix = trimmed.slice(0, firstDigit);
+  const digits = trimmed.slice(firstDigit, lastDigit + 1);
+  const suffix = trimmed.slice(lastDigit + 1);
+
+  // Between the first and last digit only separators and digit-group spacing
+  // (space, NBSP, narrow NBSP, ' or ’) may appear. Anything else means this is
+  // not one amount ("1.5E+2", "10 USD 50", a date), and stripping it would glue
+  // the digits into a different number. A plain character class, so the check
+  // stays linear on a huge hostile field.
+  if (/[^\d.,\s'’]/.test(digits)) {
+    return null;
+  }
+
+  // Sign markers may sit outside a currency symbol or code: a minus (ASCII or
+  // U+2212 "−") anywhere before the first digit ("-$10", "$-10", "USD -10"), a
+  // trailing minus ("10.00-"), or accounting parentheses around the number
+  // with the symbol inside or outside them ("(10.00)", "($10.00)", "$(10.00)").
+  // The mobile CSV import reads a signed column as "negative = a charge", so a
+  // lost sign turned a real charge into a credit that was then dropped.
+  const negative = /[-−]/.test(prefix) || /[-−]$/.test(suffix) || (prefix.includes("(") && suffix.includes(")"));
+
+  // A dot that ends a word before the number is an abbreviation ("Rs. 499"),
+  // not a decimal point: it used to turn "Rs. 499" into ".499", i.e. 0.50.
+  // Then keep only digits and the two possible separators.
+  let s = (prefix.replace(/([A-Za-z])\./g, "$1") + digits + suffix).replace(/[^0-9.,]/g, "");
 
   const hasDot = s.includes(".");
   const hasComma = s.includes(",");
@@ -82,13 +133,14 @@ export function parseAmountMinor(input: string | undefined): number | null {
 
   // Build minor units directly from the string so binary float rounding can't
   // bite (1.005 * 100 === 100.4999… would otherwise floor to 100, not 101).
+  // `s` always holds at least one digit (from `digits`), so a successful match
+  // always has a non-empty whole or fractional part.
   const match = /^(\d*)(?:\.(\d+))?$/.exec(s);
-  if (!match || (match[1] === "" && (match[2] ?? "") === "")) {
+  if (!match) {
     return null;
   }
-  const whole = match[1] ?? "";
-  const frac = match[2] ?? "";
-  let amountMinor = Number.parseInt(whole || "0", 10) * 100 + Number.parseInt((frac + "00").slice(0, 2) || "0", 10);
+  const [, whole = "", frac = ""] = match;
+  let amountMinor = Number.parseInt(whole || "0", 10) * 100 + Number.parseInt((frac + "00").slice(0, 2), 10);
   if (frac.length >= 3 && frac.charCodeAt(2) - 48 >= 5) {
     amountMinor += 1; // round the third decimal
   }
