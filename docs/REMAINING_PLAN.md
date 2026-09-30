@@ -1,5 +1,8 @@
 # Zeno — what's left (2026-08-25)
 
+> 2026-09-30: the testing + security programme that follows the items below lives in
+> `PRODUCTION_HARDENING_PLAN.md` (measured baseline, phases P0–P8, gates).
+
 Development is **complete**. Every screen is ported, the legacy kit is retired,
 security is patched. What remains is verification, owner actions, and deploy.
 
