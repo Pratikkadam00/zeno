@@ -1,0 +1,41 @@
+name: Nightly fuzz
+
+# P2.4: the property-based fuzz suite (apps/api/src/fuzz.test.ts) at 10 000
+# runs per route. Every CI run already runs it at 200 per route; this deeper
+# nightly pass is what finds the rare input. A failure prints fast-check's
+# seed and shrunk counterexample: reproduce it locally with
+#   FAST_CHECK_SEED=<seed> npx vitest run apps/api/src/fuzz.test.ts
+on:
+  schedule:
+    - cron: "17 3 * * *" # 03:17 UTC daily (off the hour, when runners are less busy)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-fuzz
+  cancel-in-progress: false
+
+jobs:
+  fuzz:
+    name: fuzz (10 000 runs per route)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fuzz every route
+        env:
+          FUZZ_RUNS: "10000"
+        run: npx vitest run apps/api/src/fuzz.test.ts

@@ -44,8 +44,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
 - [~] **P2 — API on real Postgres, authorization matrix, fuzzing** (inline, one item at a time; no parallel agents from here on, by the owner's instruction)
   - [x] P2.1 real Postgres in tests (PGlite locally, a `postgres` server in CI, proven by a server-mode test): schema from empty, upsert, a restart round trip for every store, account deletion leaves no row, the refresh race, concurrent sync replays; **fixes F75** (green: CI 36763417730, CodeQL 36763417620 on `229e114`)
   - [x] P2.2 authorization matrix (table-driven from the LIVE route list; 38 routes, 11 token attacks, cross-household), **fixes F76** (green: CI 36764785079, CodeQL 36764784910 on `8d4b5f0`); F77 open for the owner
-  - [~] P2.3 rate limits per route (table-driven from the live routes; window, key, 429 envelope, Retry-After); **fixes F78, F79**
-  - [ ] P2.4 schema-driven fuzzing (fast-check)
+  - [x] P2.3 rate limits per route (table-driven from the live routes; window, key, 429 envelope, Retry-After); **fixes F78, F79** (green: CI 36765749331, CodeQL 36765749502 on `73766ff`)
+  - [~] P2.4 property-based fuzzing of every route (fast-check; 200 runs per route in CI, 10 000 nightly); prototype poisoning pinned at the parser
   - [ ] P2.5 error and log hygiene
   - [ ] P2.6 auth flows (enumeration-safe magic link, production refusals)
   - [ ] P2.7 outbound-call inventory (host allowlist, no user-controlled URL)
@@ -1953,3 +1953,65 @@ before launch (P8).
 
 Gates after the final edit: `tsc -b --force` 0 · lint 0 · vitest 125 files / 1641 tests
 at 100 / 99.62 / 100 / 100 · jest 114 / 114 · semgrep `apps/api` 0.
+
+### P2.3 — done — 2026-10-01
+
+Green on GitHub: CI 36765749331 and CodeQL 36765749502 on `73766ff`.
+
+### P2.4 — property-based fuzzing of every route — 2026-10-01
+
+**Dependency:** `fast-check` 4.10.2 (MIT, by its author; published 2026-09-19, past the
+7-day cooldown) and its own `pure-rand`. Both are dev-only.
+
+**`apps/api/src/fuzz.test.ts`** (4 tests) runs over the LIVE route inventory (38 routes):
+1. **Arbitrary input:** JSON values of any shape and depth, including hostile keys and
+   binary strings; random query strings; with or without a valid token (signed directly
+   with a fixed test key, so the fuzz reaches the handlers behind the guard).
+2. **The properties checked on every answer:**
+   - the server **never answers 500**;
+   - every answer is the API's envelope (`data`, `error`, `meta.requestId`), with
+     Prometheus text accepted only for authorised `/metrics`;
+   - no answer contains internals: framework `FST_` codes, stack frames,
+     `node_modules`, `ZodError`, or Postgres's own error phrasing.
+3. **Every client IP is unique,** so rate limits never mask a handler.
+4. **Prototype poisoning** (`__proto__`, `constructor.prototype`, a nested `__proto__`)
+   is rejected **at the parser** on every body route: 400 "Malformed request.", before
+   any handler, and `Object.prototype` is never touched. This is pinned explicitly
+   with `onProtoPoisoning: "error"` / `onConstructorPoisoning: "error"` in `buildApp`.
+   Those are Fastify's defaults today; stating them means a future default change
+   cannot silently remove the protection.
+5. **Unusual input:** JSON nested 10 000 levels deep, null bytes, RTL overrides and
+   emoji on every body route never produce a 500 or a leak.
+
+**Reach:** a status tally (`FUZZ_STATS=<file>`) confirmed the fuzz gets past the guard
+and validator. 16 routes answered 2xx, alongside 400s, 401s and 503s (the unconfigured
+upstreams).
+
+**Runs:** `FUZZ_RUNS` sets runs per route: 200 in every CI run (about 4 s), and
+**10 000 nightly** in the new `.github/workflows/nightly-fuzz.yml` (SHA-pinned actions,
+read-only permissions, a 45-minute timeout). Locally, 10 000 per route (about 380 000
+requests) passed in 2 min 49 s. `FAST_CHECK_SEED` replays a failure exactly: two runs
+with seed 12345 and a planted failing check reported the identical seed and path.
+
+**The one failure it produced was MY detector, and was investigated, not dismissed:**
+- **What happened:** one run failed. I had not saved its output, so I looped the suite
+  (up to 40 runs) until it failed again, on run 3.
+- **The counterexample:** fast-check shrank it to the account id `" pG "`. `/account`
+  legitimately echoes that id, and every envelope contains an `"error"` key, so my
+  loose `/\bpg\b.*error/i` pattern matched harmless user data.
+- **The fix:** leak patterns now match Postgres's actual error phrasing, and fuzz
+  account ids come from a plain alphabet, so an echoed id cannot imitate a pattern.
+- **Afterwards:** 26 more clean runs.
+
+**Bite checks, planted bugs** (each alone, then restored):
+- A crash on one input shape (an array body with 2+ items on `/events`): caught, with
+  the shrunk counterexample `[["",0],...]` answering 500.
+- A stack trace leaked in a 400: caught (`node_modules` in the body).
+- A naive merge that pollutes `Object.prototype`: **not reachable**, because the parser
+  already rejects the payload. So the test now asserts the parser-level rejection
+  itself. With the protection turned off (`"ignore"`), the poison reaches the handler
+  and the test fails.
+
+Gates after the final edit (which caught a duplicated `headers` key that only `tsc`
+flags): `tsc -b --force` 0 · lint 0 · vitest 126 files / 1645 tests at 100 / 99.62 /
+100 / 100 · jest 114 / 114 · semgrep (API + workflows) 0 · audit gate PASS.

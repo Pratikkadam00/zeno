@@ -222,7 +222,14 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     requestTimeout: 30_000,
     // Explicit body cap (Fastify defaults to 1 MB; make it deliberate). The
     // largest schema-bounded route (sync/push) is ~800 KB, so 1 MB is ample.
-    bodyLimit: 1_048_576
+    bodyLimit: 1_048_576,
+    // Prototype poisoning: a JSON body with a `__proto__` or
+    // `constructor.prototype` key is rejected at the parser (400), before any
+    // handler sees it. These are Fastify's defaults today; stated here so a
+    // future default change cannot silently remove the protection (P2.4,
+    // pinned by fuzz.test.ts).
+    onProtoPoisoning: "error",
+    onConstructorPoisoning: "error"
   });
 
   // Set FIRST, before any plugin registers routes (finding F79). A plugin that
