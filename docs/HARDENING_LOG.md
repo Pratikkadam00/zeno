@@ -36,7 +36,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
     - [x] P1.8f "erase everything from this device" as one tested function — **fixes F27**
   - [~] P1.9 every remaining Tier 1 gap (since 2026-09-30, per the owner's choice, split across 5 parallel agents, each in its own git worktree with disjoint files; I merge, gate, push and verify each): 48 files, with 532 statements / 530 branches / 98 functions uncovered (measured 2026-09-30, `gaps.cjs` over `coverage-final.json`)
     - [x] P1.9a API: `app.ts` and `routes/auth.ts` (me), plus `coach`, `billing`, `family`, `sync`, `config` and `storage/pg` (agent, verified by me), all at 0 uncovered lines and functions. **Fixes F30-F33, F46-F53**
-    - [~] P1.9b mobile logic (two parallel agents): **part 1 ✅** (`api/client.ts`, `notificationService.ts`, `notificationHandlers.ts` at 100 / 100 / 100; fixes F38–F42); part 2 still running: `api/client.ts`, `notificationService.ts` + `notificationHandlers.ts` (0 %), `subscription-ui.ts` (51 %), `calendarUtils.ts`, `insightsEngine.ts`, `finance/budget.ts`, `format.ts`, `api/config.ts`, `seed-subscriptions.ts`, `open-banking.ts` (+ F18 note)
+    - [x] P1.9b mobile logic (two parallel agents, both verified by me): **part 1** (`api/client.ts`, `notificationService.ts`, `notificationHandlers.ts`; fixes F38-F42) and **part 2** (`subscription-ui`, `calendarUtils`, `insightsEngine`, `budget`, `format`, `api/config`, `seed-subscriptions`, `open-banking`; fixes F65-F73), all at 100 % except one defensive branch in insightsEngine
     - [x] P1.9c shared package: all 14 files at 0 uncovered statements, branches and functions (agent, verified by me, with one regression found and corrected by me). **Fixes F55-F63**; F64 open
     - [x] P1.9d thin config, theme and web files: all 13 at 0 uncovered statements, branches and functions (`motion.ts` and `useZenoTokens.ts` moved to jest with 100 % floors). **Fixes F35, F36, F37**
   - [x] P1.10 `apps/api/src/plaid.ts` (was 21 %; now 0 uncovered lines / functions, 1 defensive branch) and the Plaid routes in `app.ts` (now 100 %). Plaid's HTTP is faked, with no Plaid or sandbox calls, by standing instruction. **Fixes F34**
@@ -121,6 +121,15 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F62 | **FIXED in P1.9c.** ~~The business and family-vault summaries added raw minor units across currencies without rates and labelled the sum with the target currency~~ ($10 + ₹499 = "₹509"). Other currencies are now excluded and counted (`excludedCurrencyCount`). | Low (no screen reads these yet) | me (agent) | P1.9c |
 | F63 | **FIXED in P1.9c.** ~~An unparseable or empty `nextRenewalDate` silently dropped annual and quarterly charges from spend history~~ (a NaN month matched nothing, which also shrank Wrapped's total). It now falls back to `createdAt`, as it already did for a missing date. | Low | me (agent) | P1.9c |
 | F64 | **OPEN: the root of several currency findings.** `subscription-store.tsx` passes `fx = undefined` until exchange rates load (first launch, offline). Until then `createSpendSummary`, `createAnalyticsSnapshot`, `buildMonthlySpendHistory`, `buildYearInReview`, the calendar, budget and insights totals, and the store's own `totalMonthlyMinor` all add different currencies' raw minor units and label the result with the home currency. Flagged independently by two agents (P1.9b and P1.9c). Suggested fix: always pass `{ homeCurrency, rates: exchangeRates ?? {} }`, so same-currency amounts count and the rest are excluded with a disclosed count. | Medium (currency honesty) | me | next slice |
+| F65 | **FIXED in P1.9b.** ~~Every trial-ending insight said "Cancel now to avoid being charged $0".~~ The amount came from the monthly-equivalent figure, which is 0 for trials by definition; the live output read "...charged ₹0." It now shows the stored price, or no amount when the price is 0. | Medium-High (truthfulness, on every trial) | me (agent) | P1.9b |
+| F66 | **FIXED in P1.9b.** ~~The calendar's projected annual spend treated every billing cycle as monthly.~~ A $30 quarterly plan projected $240, a $5 weekly plan $40, and an unknown-cycle plan $79.92 of invented spend. It now uses the shared monthly-equivalent rule, counts a trial's conversion charge once (only if it lands this year), and adds 0 for "unknown". | Medium (a number on screen) | me (agent) | P1.9b |
+| F67 | **FIXED in P1.9b.** ~~The high-spend insight called a fixed constant an "Average"~~ ("Average is around $40/mo"), which is an invented statistic. It now reads "Zeno's benchmark for this category is $40/mo." | Medium (truthfulness) | me (agent) | P1.9b |
+| F68 | **FIXED in P1.9b.** ~~Calendar and insights did day arithmetic in DEVICE-local time.~~ An 8-day gap became 7 across a US DST change (putting a renewal in "this week"), a 7-day trial became 8 and dropped out of the insights, week buckets disagreed with the screen's own countdown west of UTC, and a Jan 1 annual renewal was counted in the previous year. All are now whole UTC days (standards section 10). | Low-Medium | me (agent) | P1.9b |
+| F69 | **FIXED in P1.9b.** ~~Budget charge dates lost the anchor day for good~~ (each step started from the previous, already-clamped date: Jan 31 → Feb 28 → Mar 28 → Apr 28, so Feb 29 never came back), and a 200-step walk dropped anchors more than about 4 years (weekly) or 17 years (monthly) away. Each charge is now computed from the anchor, jumping straight to the window. | Low-Medium | me (agent) | P1.9b |
+| F70 | **FIXED in P1.9b.** ~~`rollRenewalForward` gave up after 1000 steps~~, so a date more than about 19 years (weekly) or 83 years (monthly) overdue, such as an epoch-0 or spreadsheet zero-date import, came back still in the past and showed "TODAY" forever. It now jumps directly, with no cap needed. | Low | me (agent) | P1.9b |
+| F71 | **FIXED in P1.9b.** ~~Insights mixed currencies or stated unknowns.~~ A USD benchmark was printed with the home symbol ("₹40/mo" for $40) when no rate existed; the duplicate "high" bar was a bare 10 home-currency units (₹10, about 12 US cents); a cancelled subscription with an unparseable date claimed access "continues until the renewal date"; and the copy read "Two ai tools tools". | Low | me (agent) | P1.9b |
+| F72 | **FIXED in P1.9b.** ~~A blank `apiBaseUrl` became relative URLs, and a trailing slash produced `.../v1//billing/...`.~~ It is now normalised like `config/site.ts`. Latent: the current eas.json values are well-formed. | Low | me (agent) | P1.9b |
+| F73 | **FIXED in P1.9b.** ~~The demo Duolingo subscription pointed at `duolingo-super`, which is not in the catalog~~, so its detail and cancel screens found no service. It now points at `duolingo-plus`; I confirmed by lookup that it exists and the old slug does not. | Low | me (agent) | P1.9b |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -1466,3 +1475,60 @@ the shared `dist` that jest reads) · lint 0 · vitest 114 files / 1429 tests (r
 96.85 / 94.0 / 97.4 / 97.15) · jest 8 suites / 113 tests at 100 % · semgrep
 `packages/shared` 0 / 0 · **website production build OK**, since the website consumes
 the shared package.
+
+### P1.9b (part 2) — mobile logic utilities (agent, verified by me) — 2026-09-30
+
+**Done by a parallel agent** (branch `worktree-agent-a11af566efdfe4993`, 8 commits), then
+**merged and verified by me in `main`**.
+
+**What I checked:**
+- **Read every changed source line** in `subscription-ui`, `calendarUtils`,
+  `insightsEngine` (270 lines), `budget`, `api/config` and `seed-subscriptions`.
+- **Checked the new `rollRenewalForward` loop.** Its starting candidate is in today's
+  month or earlier, so the uncapped `while` runs at most once, and a NaN date falls
+  straight through.
+- **Checked the removed `.slice(0, 8)` in `generateInsights`.** The loop returns at 8,
+  so fewer than 8 always remain after it: the old slice was a no-op.
+- **Confirmed the seed slug by an actual catalog lookup,** not a grep (a first grep
+  missed it because slugs are generated from names): `duolingo-plus` returns "Duolingo
+  Plus" and `duolingo-super` returns null.
+- **File-level bite checks myself:** each fixed file, put back to its pre-agent version
+  alone, fails exactly its bug tests: subscription-ui 3, calendarUtils 7,
+  insightsEngine 13, budget 4, api/config 2, seed 1. All restored.
+- **Ran the mobile and shared suites under `TZ=UTC`** (what CI uses) as well as local
+  time (+05:30): 82 files / 1019 tests pass.
+
+**Coverage:** 7 files at 100 / 100 / 100. `insightsEngine.ts` is at 100 % statements and
+functions and 99.4 % branches; the one open branch is `insight.subscriptionIds ?? []`, a
+defensive default the `Insight` type requires.
+
+**Tests:** 125 in new files: `subscription-ui.behavior`, `calendarUtils.behavior`,
+`insightsEngine.behavior`, `budget.behavior`, `format.behavior`, `api/config`,
+`seed-subscriptions` and `open-banking`. Timezone cases switch `process.env.TZ` and
+restore it by name.
+
+**Reported by the agent, not fixed here:**
+- **The same root currency issue as F64:** the store passes no `fx` until rates load, and
+  `calendar.tsx` sums on its own. It is the next slice.
+- **F21 lenient date parsing confirmed:** `"2026-02-30"` becomes 2 March, and non-Z
+  strings are read as local time. This belongs to the strict shared parser (P6).
+- **Dates are displayed in device time while countdowns use UTC days,** so the two can
+  differ by a day. The add screen saves `toISOString()` straight from a device-time
+  picker, so both must change together. P3.
+- **Dark mode gets the light accent colours:** `zenoLight` and `zenoDark` share `id:
+  "millennial"`. A design call.
+- **`detectUnused` can never fire:** nothing sets `lastUsedDate`.
+- **Remaining "$0" figures** for trial and unknown-cycle plans in duplicate,
+  cancellation and summary copy. A copy decision.
+- **Database rows are not validated on read** (`subscription-repository` `mapRow`): a
+  malformed currency code would make Intl throw during render. P3.
+- **A production build without `PUBLIC_API_BASE_URL` falls back to cleartext
+  `http://127.0.0.1`.** The release profiles set https (now tested in P1.9d), but the
+  fallback remains. P3.
+- **Copy nits:** "Trial ends in 1 days", "across 1 subscriptions", sentences starting
+  in lowercase.
+
+**Gates in `main` after the merge:** typecheck 0 · lint 0 · **vitest 122 files / 1554
+tests: statements 100 %, branches 99.61 %, functions 100 %, lines 100 %** · jest 8 suites
+/ 113 tests at 100 % · UTC run 1019 / 1019 · semgrep `apps/mobile/src` 0 findings (1
+pre-existing parse warning in `emailScanner.ts`).
