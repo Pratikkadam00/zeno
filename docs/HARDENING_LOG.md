@@ -201,3 +201,24 @@ full before judging:
   exits 1 on any; it refuses to pass when no SARIF exists. 11 tests.
 - Tests added: TLS modes (5), GCM (3 + spy), config validation (3). Local gates:
   typecheck 0 · lint 0 · vitest 589/589 (64 files) · lines 64.97 %.
+
+#### CodeQL's first run: 6 findings (gate failed the job, as designed)
+
+GitHub run `36717800798` @ `a3fd4a7`: CI green (build, secret scan, semgrep); CodeQL's
+analysis succeeded and **the SARIF gate failed on 6 results**, read from the run
+annotations. Each was read in the code before judging:
+
+| Rule | Where | What it really was | Fix |
+|---|---|---|---|
+| `js/log-injection` ×2 + `js/tainted-format-string` ×2 | pg.ts persist/delete failure logs | **Real, and a privacy leak.** The key went into the FIRST `console.error` argument. Keys are raw **email addresses** (`auth_legacy`), client-chosen sync record ids, and RevenueCat user ids from webhook payloads, so a DB outage would write emails into production logs; a client could also forge log lines with CR/LF or garble them with `%s`/`%o`. | Constant message + `{ op, namespace, keyRef }`, where `keyRef` = first 12 hex of SHA-256(key): correlatable, not the key. Same treatment for the clear-failure log. Test plants an email + newline + `%s %o %c` key: only the constant message and hash are logged. **Bite-checked:** the old log line fails both tests. |
+| `js/user-controlled-bypass` | auth-guard.ts:60 | `token ? verifyAccessToken(token) : null`: whether verification RAN depended on the client. Not a bypass (both paths end in 401), but the pattern is the one real bypasses use. | Verify unconditionally: `verifyAccessToken(readBearer(h) ?? "")`; `verifyAccessToken("")` returns null at its first check (existing test). New `auth-guard.test.ts` (12 tests): 10 malformed header shapes incl. `alg: none` all return the SAME 401 body; an unknown route stays a 404. Confirmed from Fastify's source that the guard's public check uses the server-registered route pattern (`config.url = prefix + path`), and the 404 context has none. |
+| `js/bad-tag-filter` | emailScanner.ts:536 | The `<script>` stripper missed `</script >`, `</SCRIPT
+>`, `</script foo>`. Output is only parsed (no WebView/innerHTML in the app), so no XSS, but surviving script text fed the amount parser. | End tags with whitespace/attributes; comments stripped first. Test: three hidden `$0.99` in a spaced-end-tag script no longer outvote the real `$15.49`. **Bite-checked:** 4 new tests fail on the old regexes. |
+
+Tooling note learned the hard way: backslash escapes typed into a Bash command are
+collapsed by the tool layer (`\n` arrived as a real newline; `\b` as a backspace), which
+twice broke an edit and once silently voided a bite check. Scripts with backslashes are
+now written with the file-write tool.
+
+Local gates after the fixes: typecheck 0 · lint 0 · vitest 609/609 (65 files) · RN
+22/22 · lines 65.11 % · semgrep 0 results over 273 files.

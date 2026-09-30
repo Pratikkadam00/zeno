@@ -13,7 +13,7 @@ vi.mock("../security/secure-store", () => ({
   saveGmailAccount: vi.fn()
 }));
 
-const { parseEmailBody, processResults } = await import("./emailScanner");
+const { parseEmailBody, processResults, stripHtml } = await import("./emailScanner");
 
 describe("parseEmailBody", () => {
   it("returns null when no dollar amount can be found", () => {
@@ -154,5 +154,39 @@ describe("processResults", () => {
     const high = { name: "Zzq Not A Real Service High", amount: 5, currency: "USD", billingCycle: "unknown" as const, lastCharged: "2026-01-01T00:00:00.000Z", nextRenewal: "", confidence: "high" as const, rawMerchant: "Zzq Not A Real Service High" };
     const result = processResults([low, high]);
     expect(result.map((r) => r.name)).toEqual(["Zzq Not A Real Service High", "Zzq Not A Real Service Low"]);
+  });
+});
+
+describe("stripHtml (HTML receipt -> text for the parser)", () => {
+  it("keeps visible text, drops tags, decodes the two entities it handles, collapses whitespace", () => {
+    expect(stripHtml("<p>Total:&nbsp;<b>$9.99</b></p>\n<p>Tom &amp; Jerry</p>")).toBe("Total: $9.99 Tom & Jerry");
+  });
+
+  it("removes script blocks whose END tag has whitespace, a newline, attributes, or odd case (CodeQL js/bad-tag-filter)", () => {
+    const variants = [
+      "<script>var price='$0.01';</script >",
+      "<SCRIPT type='text/javascript'>var price='$0.01';</SCRIPT\n>",
+      "<script>var price='$0.01';</script foo='bar'>",
+      "<script src=x>var price='$0.01';</script\t>"
+    ];
+    for (const v of variants) expect(stripHtml(`Plan $9.99/month ${v} thanks`), v).toBe("Plan $9.99/month thanks");
+  });
+
+  it("removes style blocks the same way", () => {
+    expect(stripHtml("A<style media='x'>.p:after{content:'$1.00'}</style >B")).toBe("A B");
+  });
+
+  it("removes HTML comments first, so hidden text and a '>' inside them can't leak into the parse", () => {
+    expect(stripHtml("Paid $9.99 <!-- old price > $99.99 --> today")).toBe("Paid $9.99 today");
+  });
+
+  it("the parser no longer sees a price hidden in a script with a spaced end tag", () => {
+    const html = "<div>Your Netflix plan renews for $15.49 per month.</div>" +
+      "<script>/* tracker */ var x = '$0.99'; var y = '$0.99'; var z = '$0.99';</script >";
+    // The parser picks the most-mentioned amount, so three hidden $0.99s would
+    // outvote the real $15.49 if the script body survived.
+    const parsed = parseEmailBody(stripHtml(html), "netflix.com");
+    expect(parsed).not.toBeNull();
+    expect(parsed!.amount).toBe(15.49);
   });
 });

@@ -56,8 +56,11 @@ export function registerAuthGuard(app: FastifyInstance): void {
     if (isPublic(request.routeOptions?.url)) {
       return;
     }
-    const token = readBearer(request.headers.authorization);
-    const verified = token ? verifyAccessToken(token) : null;
+    // Verify unconditionally, even when no token was sent: whether verification
+    // runs must never depend on what the client chose to send (CodeQL
+    // js/user-controlled-bypass). An absent/malformed header verifies as "" and
+    // verifyAccessToken("") returns null at its first check → 401 below.
+    const verified = verifyAccessToken(readBearer(request.headers.authorization) ?? "");
     if (!verified) {
       reply.code(401).send(fail("UNAUTHORIZED", "Missing or invalid access token.", request.id));
       return reply;

@@ -531,10 +531,18 @@ function decodeBase64Url(value: string): string {
   }
 }
 
-function stripHtml(value: string): string {
+// HTML email → plain text for amount/merchant parsing. The output is only ever
+// PARSED, never rendered (no WebView/innerHTML anywhere in the app), so this is
+// a correctness filter, not an XSS sanitizer. It still has to be complete: text
+// left behind by a missed tag is fed to the amount parser as if it were the
+// visible receipt. Hence end tags with whitespace/attributes (`</script >`,
+// `</SCRIPT\n>` — CodeQL js/bad-tag-filter) and comments removed first (a `>`
+// inside a comment would otherwise end the generic tag match early).
+export function stripHtml(value: string): string {
   return value
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")

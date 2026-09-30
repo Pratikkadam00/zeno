@@ -18,7 +18,7 @@ vi.mock("pg", () => ({
   })
 }));
 
-const { closeStorage, encryptionConfigured, initStorage, kvDelete, kvPersist, kvPersistAwait, openValue, pgEnabled, pgSslConfig, pgSslMode, registerHydrator, sealValue } = await import("./pg");
+const { closeStorage, encryptionConfigured, initStorage, kvDelete, kvDeleteAwait, kvPersist, kvPersistAwait, openValue, pgEnabled, pgSslConfig, pgSslMode, registerHydrator, sealValue, storageKeyRef } = await import("./pg");
 const { Pool } = await import("pg");
 const { createCipheriv, randomBytes } = await import("node:crypto");
 
@@ -285,5 +285,42 @@ describe("AES-GCM envelope hardening", () => {
   it("a full-length envelope from sealValue still round-trips", () => {
     process.env.STORAGE_ENCRYPTION_KEY = TEST_KEY;
     expect(openValue(sealValue({ ok: true }))).toEqual({ ok: true });
+  });
+});
+
+describe("storage failure logs never carry the key (PII + log injection)", () => {
+  afterEach(async () => {
+    await closeStorage();
+    queryImpl = () => Promise.resolve({ rows: [] });
+    vi.restoreAllMocks();
+  });
+
+  // A key as an attacker or a real user could produce it: an email address
+  // (auth_legacy keys ARE emails), a forged log line, and printf directives.
+  const HOSTILE_KEY = ["victim@example.com", "[pg] FORGED entry %s %o %c"].join(String.fromCharCode(10));
+
+  for (const op of ["persist", "delete"] as const) {
+    it(`${op}: constant message, hashed key reference, no email, no CR/LF, no format directives`, async () => {
+      process.env.DATABASE_URL = "postgres://mock/db";
+      queryImpl = () => Promise.reject(new Error("connection terminated"));
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      if (op === "persist") await kvPersistAwait("auth_legacy", HOSTILE_KEY, { a: 1 });
+      else await kvDeleteAwait("auth_legacy", HOSTILE_KEY);
+
+      expect(spy).toHaveBeenCalledTimes(1);
+      const [first, detail] = spy.mock.calls[0] as [string, Record<string, string>];
+      expect(first).toBe("[pg] storage write failed");
+      expect(detail).toEqual({ op, namespace: "auth_legacy", keyRef: storageKeyRef(HOSTILE_KEY), error: "connection terminated" });
+      const everything = JSON.stringify(spy.mock.calls);
+      expect(everything).not.toContain("victim@example.com");
+      expect(everything).not.toContain("FORGED");
+    });
+  }
+
+  it("storageKeyRef is stable, short, and not the key", () => {
+    expect(storageKeyRef("a@b.c")).toBe(storageKeyRef("a@b.c"));
+    expect(storageKeyRef("a@b.c")).toMatch(/^[0-9a-f]{12}$/);
+    expect(storageKeyRef("a@b.c")).not.toBe(storageKeyRef("a@b.d"));
   });
 });

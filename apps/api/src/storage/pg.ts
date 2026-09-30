@@ -91,6 +91,22 @@ function getPool(): Pool | null {
   return pool;
 }
 
+// A storage failure is logged WITHOUT the key. Keys carry user data: raw email
+// addresses (auth_legacy), client-chosen sync record ids, RevenueCat user ids
+// from webhook payloads. Logging them leaked PII into production logs and let a
+// client forge log lines (CR/LF) or garble them (printf-style %s/%o in the
+// FIRST console argument). CodeQL: js/log-injection, js/tainted-format-string.
+// The format string is constant; the key is replaced by a short, non-reversible
+// reference that still lets two log lines about the same key be correlated.
+export function storageKeyRef(key: string): string {
+  return createHash("sha256").update(key).digest("hex").slice(0, 12);
+}
+
+function logStorageFailure(op: "persist" | "delete", namespace: string, key: string, err: unknown): void {
+  const error = err instanceof Error ? err.message : String(err);
+  console.error("[pg] storage write failed", { op, namespace, keyRef: storageKeyRef(key), error });
+}
+
 /** Mirror a single key's latest value (upsert), awaiting until the row has
  *  landed (or the attempt failed — errors are logged, never thrown, so a DB blip
  *  degrades to in-memory rather than failing the request). Use this for writes
@@ -107,7 +123,7 @@ export async function kvPersistAwait(namespace: string, key: string, value: unkn
       [namespace, key, JSON.stringify(value)]
     );
   } catch (err) {
-    console.error(`[pg] persist ${namespace}/${key} failed:`, (err as Error).message);
+    logStorageFailure("persist", namespace, key, err);
   }
 }
 
@@ -129,7 +145,7 @@ export async function kvDeleteAwait(namespace: string, key: string): Promise<voi
   try {
     await p.query("DELETE FROM kv_store WHERE namespace = $1 AND key = $2", [namespace, key]);
   } catch (err) {
-    console.error(`[pg] delete ${namespace}/${key} failed:`, (err as Error).message);
+    logStorageFailure("delete", namespace, key, err);
   }
 }
 
@@ -146,7 +162,7 @@ export async function kvClear(namespace: string): Promise<void> {
   try {
     await p.query("DELETE FROM kv_store WHERE namespace = $1", [namespace]);
   } catch (err) {
-    console.error(`[pg] clear ${namespace} failed:`, (err as Error).message);
+    console.error("[pg] storage clear failed", { namespace, error: err instanceof Error ? err.message : String(err) });
   }
 }
 
