@@ -26,5 +26,21 @@ module.exports = {
   // our own workspace packages transformed too.
   transformIgnorePatterns: [
     "node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|react-native-reanimated|@gorhom/.*|@zeno/.*))"
-  ]
+  ],
+
+  // Coverage for the React providers/components that only this runner can
+  // render (P1.8). They are EXCLUDED from Vitest's Tier 1 scope
+  // (vitest.config.ts) and measured here instead, so no file drops out of every
+  // floor. A file gets a per-file 100 % floor in coverageThreshold as soon as
+  // its tests land; `npm run test:rn:coverage` (CI) fails below any floor.
+  collectCoverageFrom: [
+    "src/data/budget-store.tsx",
+    "src/data/subscription-store.tsx",
+    "src/theme/theme-provider.tsx",
+    "src/security/LockOverlay.tsx"
+  ],
+  coverageReporters: ["text", "json-summary"],
+  coverageThreshold: {
+    "./src/data/budget-store.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 }
+  }
 };

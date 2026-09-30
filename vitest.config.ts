@@ -42,6 +42,14 @@ export default defineConfig({
         "apps/mobile/components/**",
         "apps/web/app/**",
         "apps/web/components/**",
+        // React Native providers/components that vitest's node environment cannot
+        // render. Measured by the jest project instead, with per-file floors
+        // (apps/mobile/jest.config.js collectCoverageFrom / coverageThreshold) —
+        // moved, not dropped: CI runs `npm run test:rn:coverage`.
+        "apps/mobile/src/data/budget-store.tsx",
+        "apps/mobile/src/data/subscription-store.tsx",
+        "apps/mobile/src/theme/theme-provider.tsx",
+        "apps/mobile/src/security/LockOverlay.tsx",
         // Next.js build output (generated route-type validators). Not our code;
         // counting it made the scope depend on whether `next dev` had run.
         "**/.next/**",
@@ -58,10 +66,10 @@ export default defineConfig({
       // these numbers in this file whenever a run exceeds them, so the floor
       // only ever rises; a drop below any floor fails `npm run test:coverage`.
       thresholds: {
-        statements: 78.3,
-        branches: 74.5,
-        functions: 77.23,
-        lines: 78.98,
+        statements: 86.03,
+        branches: 79.54,
+        functions: 87.48,
+        lines: 86.83,
         autoUpdate: true
       }
       // Known gap: a few dozen never-imported apps/web/*.tsx files (ones

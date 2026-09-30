@@ -28,8 +28,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P1.6 `apps/mobile/src/billing/revenueCat.ts` (55 %)
   - [x] P1.7 `packages/service-catalog/src/services.ts` (0 %) — catalog invariants for all 509 entries; **fixes F22**, raises F25
   - [~] P1.8 React providers under jest with their own coverage floor
-    - [ ] P1.8a jest coverage floor wired into CI; the four files moved from Vitest's scope to jest's
-    - [ ] P1.8b `budget-store.tsx` — **fixes F26** (lost updates)
+    - [x] P1.8a jest coverage floor wired into CI; the four files moved from Vitest's scope to jest's
+    - [x] P1.8b `budget-store.tsx` — **fixes F26** (lost updates)
     - [ ] P1.8c `theme-provider.tsx`
     - [ ] P1.8d `subscription-store.tsx` (601 lines) — incl. the same stale-merge in `setQuietHours`
     - [ ] P1.8e `LockOverlay.tsx`
@@ -79,7 +79,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F23 | **FIXED in P1.4.** ~~Apple/Google routes put the CLIENT-SENT email into the session record and our signed access token (`parsed.data.email ?? verified.email`). No consumer reads that claim today, so it was latent, but our own token vouched for an unverified address.~~ | Medium (latent) | me | P1.4 |
 | F24 | **FIXED in P1.4.** ~~All three production-guard security tests were VACUOUS: with each guard removed they still passed. The OAuth tests set a client id, so the "unverified tokens" flag they claimed to test was never consulted; the demo test posted to a route that does not exist (`/auth/demo`), with no email and a 7-char password.~~ Lesson for P6: security tests must be mutation-tested first. | High (false assurance) | me | P1.4 / P6 |
 | F25 | **305 of the 509 catalog entries (60 %) carry UNRESEARCHED data shown as fact:** a generated cancel link (`<website>/account`, not verified to exist), a default difficulty of "medium", and generic cancel steps. The app opens that link as "Open cancellation page" and shows the difficulty; the website publishes 305 cancel-guide pages stating "difficulty: medium". 204 entries are curated. Conflicts with the project's truthfulness rules (no invented facts). Needs a product decision on presentation, e.g. an "unrated / general steps, not yet verified" label and a link to the homepage instead of a guessed path, or noindex until curated. | High (honesty, public pages) | owner: decide the presentation | P3 (app) + P4 (web) |
-| F26 | **Budget store loses updates.** Every action computes the next state from the `config` its render captured, so two actions before a re-render (a fast double-tap on "add envelope", or two edits in one event) start from the same stale state and the second write erases the first. The code's own comment fixes the duplicate-ID half of exactly this double-tap, not the lost write. `subscription-store` solved this with refs, but its `setQuietHours` has the same stale merge. | Medium (silent data loss) | me | P1.8b / P1.8d |
+| F26 | **FIXED in P1.8b (budget store; `setQuietHours` in P1.8d).** ~~Budget store loses updates.~~ Every action computes the next state from the `config` its render captured, so two actions before a re-render (a fast double-tap on "add envelope", or two edits in one event) start from the same stale state and the second write erases the first. The code's own comment fixes the duplicate-ID half of exactly this double-tap, not the lost write. `subscription-store` solved this with refs, but its `setQuietHours` has the same stale merge. | Medium (silent data loss) | me | P1.8b / P1.8d |
 | F27 | **"Cancel my Zeno account" promises it "erases everything from this device", but leaves connected Gmail OAuth tokens in the keychain (not revoked at Google), the app-lock PIN hash and lockout state, and quiet hours / home currency / cached FX rates / theme.** Gmail access tokens expire within about an hour, which limits the impact, but the promise is false. | High (privacy promise) | me | P1.8f |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
@@ -707,3 +707,41 @@ from GitHub WITH all 12 Dependabot branches, scanned with CI's exact command, fo
 Fix: the download now uses `curl --retry 3 --retry-delay 5 --retry-all-errors` (the
 checksum check still runs on whatever arrives), so a transient CDN error no longer
 reddens CI.
+
+**CI fix verified:** GitHub @ `d670bc4`: CI `36729975314` and CodeQL `36729975425` both
+success, including the secret-scan job with the retrying download.
+
+### P1.8a + P1.8b — jest coverage floor + budget store (F26) — 2026-09-30
+
+**P1.8a, the floor:** `apps/mobile/jest.config.js` now collects coverage for the four
+React files only this runner can render (`collectCoverageFrom`), with a per-file 100 %
+floor in `coverageThreshold` as each file's tests land (budget-store first). New scripts:
+`test:rn:coverage` (mobile and root); both workflows run it instead of `test:rn`. The four
+files are EXCLUDED from Vitest's Tier 1 scope with the reason stated in
+`vitest.config.ts`: moved, not dropped. **Bite check:** a partial run (`-t hydration`)
+fails with 4 threshold messages and exit 1; the full run exits 0.
+
+Honesty note on the numbers: Vitest's line coverage jumped 78.98 % → 86.83 %, but its
+covered count is UNCHANGED (3,100 lines). The rise is the move of 355 mostly-untested
+lines into jest's scope, where they are measured separately. Right now that is
+budget-store 100 %, theme-provider 63 %, subscription-store 0 %, LockOverlay 0 %.
+
+**P1.8b, the budget store and F26:** a `configRef` mirror, the same pattern
+`subscription-store` already uses. Every action derives its next state from the ref, so
+two actions in one event both land. Tests (`budget-store.rntest.tsx`, 14, through the
+real hook and provider):
+- Hydration: the stored config merged over defaults; nothing stored; corrupt JSON warns
+  and keeps defaults; database down means in-memory only and nothing written; unmounting
+  before the open resolves, or while the stored value is read, applies nothing.
+- Every action and exactly what it persists (cap, income, envelopes add/log/remove,
+  category caps replace-or-append).
+- **F26: four actions in ONE `act()` all land.**
+- `reset` erases everything, including the income figure (sensitive), and persists it.
+- A failed write keeps state and warns; the hook throws outside its provider; on web
+  there is no database (isolated module registry with `Platform.OS = "web"`, using the
+  renderer's `pure` entry).
+
+**Bite check (F26):** with the old `budget-store.tsx` swapped back in, the F26 test fails
+(1 of 14); restored, 14/14.
+
+Gates: typecheck 0 · lint 0 · vitest 872/872 · jest 36/36 with the floor met · semgrep 0.

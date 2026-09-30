@@ -39,6 +39,13 @@ export function BudgetStoreProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<BudgetConfig>(defaultConfig);
   const [hydrated, setHydrated] = useState(!persistenceEnabled);
   const dbRef = useRef<ZenoDatabase | null>(null);
+  // Event-time mirror of `config` (finding F26), the same pattern as
+  // subscription-store: every action derives its next state from THIS, not from
+  // the `config` its render captured. Two actions before a re-render (a fast
+  // double-tap, two edits in one event) otherwise both start from the same stale
+  // state and the second write silently erases the first. Written only from the
+  // hydration effect and from actions, never during render.
+  const configRef = useRef(config);
 
   useEffect(() => {
     if (!persistenceEnabled) {
@@ -55,7 +62,9 @@ export function BudgetStoreProvider({ children }: { children: ReactNode }) {
         const raw = await readAppMeta(db, META_KEY);
         if (raw && !cancelled) {
           try {
-            setConfig({ ...defaultConfig, ...(JSON.parse(raw) as Partial<BudgetConfig>) });
+            const stored = { ...defaultConfig, ...(JSON.parse(raw) as Partial<BudgetConfig>) };
+            configRef.current = stored;
+            setConfig(stored);
           } catch (error) {
             console.warn("Corrupt budget config; using defaults.", error);
           }
@@ -74,7 +83,11 @@ export function BudgetStoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<BudgetStore>(() => {
-    const persist = (next: BudgetConfig) => {
+    // Derive from the latest state (configRef), never the render-captured
+    // `config` — see configRef above (F26).
+    const update = (mutate: (current: BudgetConfig) => BudgetConfig) => {
+      const next = mutate(configRef.current);
+      configRef.current = next;
       setConfig(next);
       const db = dbRef.current;
       if (db) {
@@ -87,37 +100,36 @@ export function BudgetStoreProvider({ children }: { children: ReactNode }) {
       config,
       hydrated,
       setCap(capMinor) {
-        persist({ ...config, capMinor });
+        update((current) => ({ ...current, capMinor }));
       },
       setIncome(incomeMinor) {
-        persist({ ...config, incomeMinor });
+        update((current) => ({ ...current, incomeMinor }));
       },
       addEnvelope(name, fundedMinor, icon = "wallet") {
-        // A random id, not one derived from envelopes.length: two addEnvelope
-        // calls fired before a re-render (e.g. a fast double-tap) would
-        // otherwise close over the same stale `config` and compute the exact
-        // same length-derived id, silently merging two distinct envelopes
-        // under one id (logEnvelope/removeEnvelope both key by id).
+        // A random id, not one derived from envelopes.length, so two envelopes
+        // added in one event can never share an id.
         const id = `env_${Crypto.randomUUID()}`;
-        persist({ ...config, envelopes: [...config.envelopes, { id, name, icon, fundedMinor, spentMinor: 0 }] });
+        update((current) => ({ ...current, envelopes: [...current.envelopes, { id, name, icon, fundedMinor, spentMinor: 0 }] }));
       },
       logEnvelope(id, amountMinor) {
-        persist({
-          ...config,
-          envelopes: config.envelopes.map((envelope) =>
+        update((current) => ({
+          ...current,
+          envelopes: current.envelopes.map((envelope) =>
             envelope.id === id ? { ...envelope, spentMinor: envelope.spentMinor + amountMinor } : envelope
           )
-        });
+        }));
       },
       removeEnvelope(id) {
-        persist({ ...config, envelopes: config.envelopes.filter((envelope) => envelope.id !== id) });
+        update((current) => ({ ...current, envelopes: current.envelopes.filter((envelope) => envelope.id !== id) }));
       },
       setCategoryCap(category, capMinor) {
-        const others = config.categoryCaps.filter((cap) => cap.category !== category);
-        persist({ ...config, categoryCaps: [...others, { category, capMinor }] });
+        update((current) => ({
+          ...current,
+          categoryCaps: [...current.categoryCaps.filter((cap) => cap.category !== category), { category, capMinor }]
+        }));
       },
       reset() {
-        persist(defaultConfig);
+        update(() => defaultConfig);
       }
     };
   }, [config, hydrated]);

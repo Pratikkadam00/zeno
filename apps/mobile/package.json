@@ -10,6 +10,7 @@
     "web": "expo start --web",
     "test": "vitest run --root ../.. apps/mobile",
     "test:rn": "jest --config jest.config.js",
+    "test:rn:coverage": "jest --config jest.config.js --coverage",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint ."
   },
