@@ -13,7 +13,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
 
 - [~] **P0 — Foundations: CI hardening, secret scan, coverage scope**
   - [x] P0.1 Coverage scope: exclude generated `.next/**`; guard against unexplained `v8 ignore`
-  - [ ] P0.2 Secret scan: gitleaks over full git history (local) + CI job on every push/PR
+  - [~] P0.2 Secret scan: gitleaks over full git history (local) + CI job on every push/PR
   - [ ] P0.3 Static analysis (SAST): CodeQL workflow + semgrep with zero-findings gate
   - [ ] P0.4 Workflow hygiene: SHA-pinned actions, least-privilege `permissions`, `concurrency`, audit gate blocking in CI
   - [ ] P0.5 Dependabot (npm + GitHub Actions) + SBOM on release
@@ -38,6 +38,11 @@ that closes it.
 | # | Finding | Severity | Owner | Closes in |
 |---|---|---|---|---|
 | F1 | `apps/mobile/components/subscriptions/ServiceAutocomplete.tsx` (RN component, also exports `servicePriceLabel`) has no test in any runner | Test gap | me | P3 (screen/component tests) |
+| F2 | **Production API likely ran with per-client rate limiting broken** from the 2026-09-29 deploy of `9eb4721` until `064fc52` deploys: Fastify 5.12.5 made the numeric `trustProxy: 1` trust nobody, so every visitor shared the load balancer's rate-limit bucket (one noisy client could 429 everyone, incl. login). Render auto-deploys `main` and starts with `tsx` (no typecheck), so the type break did not stop the deploy. **Fixed in code**; the owner should confirm the Render deploy of `064fc52`+ is live. | High (availability of auth) | owner: confirm deploy | P0.2 (fixed) |
+| F3 | Whether the address Render's load balancer appends is the real client or a Cloudflare edge is unverified (Render staff, May 2021: "we set the first IP in the list to the real client IP"). With 1 trusted hop, request.ip is the LAST appended address. Check in Render logs: the pino request log's `remoteAddress` for your own request should equal your public IP. If it shows a Cloudflare IP, set `TRUST_PROXY_HOPS=2`. | Medium (rate-limit granularity) | owner: one log check | P8 |
+| F4 | Render builds with `npm install` (not `npm ci`) and deploys every push to `main` regardless of CI status (`autoDeploy: true`), and the start command (`tsx`) never typechecks. A red CI does not stop a deploy. | High (process) | me: propose render.yaml change; owner: apply in Render | P0.4 / P8 |
+| F5 | CI and production run **Node 20, end-of-life since 2026-04-30** (no security fixes): `ci.yml`/`release.yml` pin `node-version: 20`; `apps/api` `engines: >=20.11.0`. This machine runs Node 24. | High (unpatched runtime) | me | P0.4 |
+| F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
 
@@ -101,3 +106,62 @@ Tooling on this machine: `gitleaks`, `semgrep`, `docker`, `go`, `gh` absent;
 
 The rise is **only** the removal of 66 uncovered lines that were never ours to test,
 not new testing. The ratchet wrote the new floors into `vitest.config.ts`.
+
+### P0.2 — Secret scan (gitleaks) — and the CI outage it uncovered — 2026-09-30
+
+**Tool:** gitleaks 8.30.1, installed with `winget install --id Gitleaks.Gitleaks --scope user`
+(official package: publisher Gitleaks LLC, MIT; winget verified the installer hash).
+
+**Full-history scan (every commit, every ref):**
+`gitleaks git --log-opts="--all" --redact` → 253 commits, 6.19 MB, **2 findings**, both
+rule `generic-api-key`. Each was read at its commit, not judged from the rule name:
+
+| Finding | What the line really is | Verdict |
+|---|---|---|
+| `apps/api/src/storage/pg.test.ts:5` @ `9bd56ae` | `TEST_KEY = "0011…ccddeeff"` ×2 — a sequential-hex throwaway AES key for the encryption round-trip test | False positive |
+| `apps/mobile/src/data/subscription-store.tsx:73` @ `788b30a` | `quietHoursMetaKey = "notification.quietHours.v1"` — the name of a local SQLite row | False positive |
+
+Both are allowlisted in the new `.gitleaksignore` by **exact fingerprint**
+(commit:path:rule:line) with the reason, so any other line — or a new secret on
+the same line later — still fails. Re-scan: **no leaks found**, exit 0. Also clean:
+uncommitted changes (`--pre-commit`) and the untracked design-handoff folder
+(`gitleaks dir`, 1.24 MB) in case it is ever committed by accident.
+
+**Bite test:** a throwaway repo in the scratchpad with a randomly generated
+GitHub-token-shaped string → `leaks found: 1`. Repo deleted.
+
+**CI job:** new `secret-scan` job in `ci.yml` — full-history checkout
+(`fetch-depth: 0`, `persist-credentials: false`), gitleaks 8.30.1 downloaded and
+verified against the SHA-256 from the release's official checksums file
+(`551f6fc8…70eb`; verified locally: `sha256sum --check` → OK, archive holds the
+`gitleaks` binary at its root), then the same redacted full-history scan.
+
+#### Incident found while checking CI: GitHub CI red on 13 consecutive pushes
+
+Reading the GitHub API (the repo is public) showed CI **failing on every push
+since `9eb4721` (2026-09-29)**, while my local runs said green. Step: Typecheck,
+6 errors in `apps/api/src/app.ts`.
+
+- **Root cause (code):** `9eb4721` moved fastify 5.8.5 → 5.12.5. In 5.12 a
+  numeric `trustProxy` is fail-closed at runtime (`lib/request.js`: "Hop-count-only
+  trust cannot validate the immediate peer. Fail closed") and the types dropped
+  `number`. Our production default was the number `1`.
+- **Root cause (why local was green):** `tsc -b` trusts `.tsbuildinfo` and does
+  not notice upgraded `node_modules`; `tsc -b --force` reproduced CI's 6 errors
+  exactly. Every installed package matched the lockfile (1,573 checked, 0 drift).
+- **Security impact (reproduced by test before the fix):** in production mode
+  `request.ip` was the load balancer (`10.20.30.40`) for every visitor, and a
+  second client got `429` after the first exhausted the limit → finding F2.
+- **Fix `064fc52`:** explicit hop function `(addr, hop) => hop < N` (the
+  semantics production ran before the upgrade), strict `TRUST_PROXY_HOPS` parsing
+  (digits only, max 5). No code reads `request.host`/`protocol`, so trusting the
+  proxy hop opens no host-header path (grep-verified). `typecheck:refs` now uses
+  `tsc -b --force` (+1.5 s). New `trust-proxy.test.ts`: 9 tests, 5 of which
+  failed on the old code.
+- **Second defect found by a fresh-clone run (`253016e`):** a Windows clone
+  (`core.autocrlf=true`) checked `scripts/audit-gate.mjs` out with CRLF (66 CR
+  bytes; git blob 0) and vitest could not import it — 10 tests silently dropped.
+  Converting to LF → 10/10 pass. Fixed with `.gitattributes` (`* text=auto
+  eol=lf`, binaries explicit); `git add --renormalize .` changed no stored content.
+- **Fresh clone + `npm ci`, every CI step:** typecheck 0 · lint 0 · vitest
+  566/566 · RN 22/22 · coverage floor PASS · web build OK · audit gate PASS.

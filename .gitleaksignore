@@ -1,0 +1,15 @@
+# gitleaks allowlist — EXACT fingerprints only (commit:path:rule:line).
+# Each entry was read at its commit and judged a false positive on 2026-09-30.
+# A fingerprint pins one line in one commit, so a real secret added anywhere
+# else — or on this same line later — is still reported. Never add a rule- or
+# path-wide exemption here; add a reviewed fingerprint with its reason.
+
+# apps/api/src/storage/pg.test.ts:5 — TEST_KEY, a throwaway AES key for the
+# encryption round-trip test: the sequential hex pattern 0011…ccddeeff ×2.
+# Not used outside the test. Flagged by generic-api-key (entropy 4.00).
+9bd56ae158b0ad1da0d85e50cd1ef975a0c12534:apps/api/src/storage/pg.test.ts:generic-api-key:5
+
+# apps/mobile/src/data/subscription-store.tsx:73 — quietHoursMetaKey =
+# "notification.quietHours.v1", the NAME of a local SQLite app-meta row.
+# Flagged only because the variable name ends in "Key" (entropy 3.80).
+788b30a1386e8850997e74b0936e0ae72c12c55b:apps/mobile/src/data/subscription-store.tsx:generic-api-key:73
