@@ -10,7 +10,11 @@ const KEYS = [
   "JWT_PUBLIC_KEY",
   "RESEND_API_KEY",
   "CORS_ALLOWED_ORIGINS",
-  "DATABASE_SSL"
+  "DATABASE_SSL",
+  "MAGIC_LINK_REDIRECT_URL",
+  "DEMO_LOGIN_PASSWORD",
+  "ALLOW_UNVERIFIED_OAUTH_TOKENS",
+  "MONITORING_WEBHOOK_URL"
 ] as const;
 
 const original: Record<string, string | undefined> = {};
@@ -123,6 +127,59 @@ describe("validateConfig", () => {
     const report = validateConfig();
     expect(report.fatal).toEqual([]);
     expect(report.warnings).toEqual([]);
+  });
+});
+
+describe("P2.6 production refusals and warnings", () => {
+  const prodBase = () => {
+    clear();
+    process.env.NODE_ENV = "production";
+    process.env.JWT_PRIVATE_KEY = "k";
+    process.env.JWT_PUBLIC_KEY = "k";
+  };
+
+  it("an http:// magic-link redirect is FATAL in production; https://, the zeno:// scheme and unset are not", () => {
+    prodBase();
+    process.env.MAGIC_LINK_REDIRECT_URL = "http://zeno.app/verify";
+    expect(validateConfig().fatal).toContain("MAGIC_LINK_REDIRECT_URL uses http:// in production — magic-link login tokens would travel in cleartext.");
+    process.env.MAGIC_LINK_REDIRECT_URL = " HTTP://ZENO.APP/verify ";
+    expect(validateConfig().fatal.some((f) => f.startsWith("MAGIC_LINK_REDIRECT_URL"))).toBe(true);
+    for (const safe of ["https://zeno.app/verify", "zeno://auth/verify", ""]) {
+      process.env.MAGIC_LINK_REDIRECT_URL = safe;
+      expect(validateConfig().fatal.some((f) => f.startsWith("MAGIC_LINK_REDIRECT_URL")), safe).toBe(false);
+    }
+  });
+
+  it("warns in production about a stray demo password, the unverified-OAuth flag, a wildcard or cleartext CORS origin, and a cleartext alert webhook", () => {
+    prodBase();
+    process.env.DEMO_LOGIN_PASSWORD = "anything";
+    process.env.ALLOW_UNVERIFIED_OAUTH_TOKENS = "true";
+    process.env.CORS_ALLOWED_ORIGINS = "https://zeno.app, *, http://legacy.example";
+    process.env.MONITORING_WEBHOOK_URL = "http://alerts.example/hook";
+    const { warnings, fatal } = validateConfig();
+    expect(warnings).toEqual(expect.arrayContaining([
+      "DEMO_LOGIN_PASSWORD is set in production — demo login stays disabled here; remove the variable.",
+      "ALLOW_UNVERIFIED_OAUTH_TOKENS=true in production — it is ignored (tokens are always verified); remove the variable.",
+      'CORS_ALLOWED_ORIGINS contains "*" — the API matches exact origins only, so it allows nothing; list real origins.',
+      "CORS_ALLOWED_ORIGINS allows a cleartext origin (http://legacy.example) in production.",
+      "MONITORING_WEBHOOK_URL uses http:// — error alerts would travel in cleartext."
+    ]));
+    expect(warnings.some((w) => w.includes("https://zeno.app"))).toBe(false);
+    // None of these may take production down: they are already enforced at request time.
+    expect(fatal).toEqual([]);
+  });
+
+  it("none of these is flagged outside production, and an unflagged value (flag=false, https webhook) is silent", () => {
+    clear();
+    process.env.DEMO_LOGIN_PASSWORD = "anything";
+    process.env.ALLOW_UNVERIFIED_OAUTH_TOKENS = "true";
+    process.env.MAGIC_LINK_REDIRECT_URL = "http://localhost/verify";
+    expect(validateConfig()).toEqual({ fatal: [], warnings: [] });
+    prodBase();
+    process.env.ALLOW_UNVERIFIED_OAUTH_TOKENS = "false";
+    process.env.MONITORING_WEBHOOK_URL = "https://alerts.example/hook";
+    process.env.CORS_ALLOWED_ORIGINS = "https://zeno.app";
+    expect(validateConfig().warnings.filter((w) => /ALLOW_UNVERIFIED|MONITORING|CORS/.test(w))).toEqual([]);
   });
 });
 

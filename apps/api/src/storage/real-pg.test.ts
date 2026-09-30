@@ -177,13 +177,32 @@ describe(`real Postgres (${process.env.TEST_DATABASE_URL ? "server" : "PGlite"})
     expect(second.plaid.getStoredPlaidItem(me.accountId)).toEqual({ accessToken: "access-bank-credential", itemId: "item-1" });
   });
 
+  it("F81: a sign-in record that expired while the process was down is DELETED at boot, not just skipped; a live one loads", async () => {
+    await shutdown(await boot()); // creates the schema
+    const past = Date.now() - 1000;
+    const future = Date.now() + 60 * 60 * 1000;
+    const insert = (namespace: string, key: string, value: unknown) =>
+      db.query("INSERT INTO kv_store (namespace, key, value) VALUES ($1, $2, $3::jsonb)", [namespace, key, JSON.stringify(value)]);
+    const staleBudget = "f".repeat(64);
+    await insert("auth_refresh", "stale-refresh", { accountId: "acct_s", email: "gone@zeno.test", provider: "magic_link", expiresAt: past, rotatedAt: null });
+    await insert("auth_refresh", "live-refresh", { accountId: "acct_l", email: "here@zeno.test", provider: "magic_link", expiresAt: future, rotatedAt: null });
+    await insert("auth_magic", "stale-link", { accountId: "acct_s", email: "gone@zeno.test", tokenHash: "stale-link", code: "123456", expiresAt: past });
+    await insert("auth_legacy", "gone@zeno.test", { accountId: "acct_s", email: "gone@zeno.test", tokenHash: "stale-link", code: "123456", expiresAt: past });
+    await insert("auth_code_fail", staleBudget, { accountId: "acct_s", count: 10, reset: past });
+    await boot();
+    await until(async () => !(await rows()).some((r) => r.key.startsWith("stale") || r.key === "gone@zeno.test" || r.key === staleBudget), "the expired rows deleted");
+    expect((await rows()).map((r) => `${r.namespace}:${r.key}`)).toEqual(["auth_refresh:live-refresh"]);
+  });
+
   it("DELETE /account: once it answers, NO row of that user remains in the database, and other users are untouched", async () => {
     const { app, plaid } = await boot();
     const alice = await signIn(app, "alice@zeno.test");
     const bob = await signIn(app, "bob@zeno.test");
-    // Alice: a pending magic link + code, two sessions, an owned household Bob
-    // joined, a solo household, sync rows, an entitlement, a sealed bank token.
-    await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email: "alice@zeno.test" } });
+    // Alice: a pending magic link + code (and one wrong guess at it, which opens
+    // her wrong-guess budget, F80), two sessions, an owned household Bob joined,
+    // a solo household, sync rows, an entitlement, a sealed bank token.
+    const pending = (await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email: "alice@zeno.test" } })).json().data as { devCode: string };
+    await app.inject({ method: "POST", url: "/api/v1/auth/magic-link/verify", payload: { email: "alice@zeno.test", code: pending.devCode === "000000" ? "000001" : "000000" } });
     const shared = (await app.inject({ method: "POST", url: "/api/v1/family/create", headers: auth(alice.token), payload: { ownerName: "Alice" } })).json().data.household;
     await app.inject({ method: "POST", url: "/api/v1/family/join", headers: auth(bob.token), payload: { shareCode: shared.shareCode, memberName: "Bob" } });
     await app.inject({ method: "POST", url: "/api/v1/family/create", headers: auth(alice.token), payload: { ownerName: "Alice solo" } });
@@ -191,9 +210,9 @@ describe(`real Postgres (${process.env.TEST_DATABASE_URL ? "server" : "PGlite"})
     await app.inject({ method: "POST", url: "/api/v1/sync/push", headers: auth(bob.token), payload: { encryptedChanges: [change("b1", 1, "bob-cipher")] } });
     await app.inject({ method: "POST", url: "/api/v1/billing/webhook", headers: { authorization: "Bearer hook-secret" }, payload: { event: { app_user_id: alice.accountId, type: "INITIAL_PURCHASE", entitlement_ids: ["pro"] } } });
     plaid.storePlaidItem(alice.accountId, { accessToken: "alice-bank", itemId: "item-a" });
-    await until(async () => (await rows()).some((r) => r.namespace === "plaid") && (await rows()).filter((r) => r.namespace === "family").length === 2 && (await rows()).some((r) => r.namespace === "billing"), "Alice's data in every namespace");
+    await until(async () => (await rows()).some((r) => r.namespace === "plaid") && (await rows()).filter((r) => r.namespace === "family").length === 2 && (await rows()).some((r) => r.namespace === "billing") && (await rows()).some((r) => r.namespace === "auth_code_fail"), "Alice's data in every namespace");
     const aliceRow = (r: { key: string; value: unknown }) => `${r.key} ${JSON.stringify(r.value)}`.includes(alice.accountId) || `${r.key} ${JSON.stringify(r.value)}`.includes("alice@zeno.test");
-    expect(new Set((await rows()).filter(aliceRow).map((r) => r.namespace))).toEqual(new Set(["auth_legacy", "auth_magic", "auth_refresh", "billing", "family", "plaid", "sync"]));
+    expect(new Set((await rows()).filter(aliceRow).map((r) => r.namespace))).toEqual(new Set(["auth_code_fail", "auth_legacy", "auth_magic", "auth_refresh", "billing", "family", "plaid", "sync"]));
 
     const deleted = await app.inject({ method: "DELETE", url: "/api/v1/account", headers: auth(alice.token) });
     expect(deleted.json().data).toEqual({ deleted: true });

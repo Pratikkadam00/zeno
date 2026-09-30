@@ -46,8 +46,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P2.2 authorization matrix (table-driven from the LIVE route list; 38 routes, 11 token attacks, cross-household), **fixes F76** (green: CI 36764785079, CodeQL 36764784910 on `8d4b5f0`); F77 open for the owner
   - [x] P2.3 rate limits per route (table-driven from the live routes; window, key, 429 envelope, Retry-After); **fixes F78, F79** (green: CI 36765749331, CodeQL 36765749502 on `73766ff`)
   - [x] P2.4 property-based fuzzing of every route (fast-check; 200 runs per route in CI, 10 000 nightly); prototype poisoning pinned at the parser (green: CI 36767472709, CodeQL 36767472774 on `eea3f24`)
-  - [~] P2.5 error and log hygiene: the production logger config under real traffic carrying marked secrets; error bodies carry the request id and no internals
-  - [ ] P2.6 auth flows (enumeration-safe magic link, production refusals)
+  - [x] P2.5 error and log hygiene: the production logger config under real traffic carrying marked secrets; error bodies carry the request id and no internals (green: CI 36768319235, CodeQL 36768319305 on `d5716ed`)
+  - [~] P2.6 auth flows: enumeration-safe magic link, 10-minute expiry, single use, production refusals; **fixes F80** (the 6-digit code could be brute-forced) **and F81** (expired sign-in rows kept in Postgres for good)
   - [ ] P2.7 outbound-call inventory (host allowlist, no user-controlled URL)
   - [ ] P2.8 webhooks (replay, idempotency)
   - [ ] P2 gate: route-inventory test green; real-PG suite green locally and in CI
@@ -146,6 +146,8 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F77 | **OPEN: owner decision.** Logout revokes the REFRESH token at once, but the stateless ACCESS token keeps working until it expires (at most 15 minutes). The matrix pins this as a named known gap. Options: (a) a session-id claim plus a server-side denylist checked by the auth guard (the mobile logout would also send the access token); (b) a shorter access-token life, e.g. 5 minutes, at the cost of more refreshes; (c) accept it as the standard stateless-JWT trade-off and document it. Account DELETION is already covered (F76). | Low-Medium | owner (decision), then me | P2 follow-up |
 | F78 | **FIXED in P2.3.** ~~Requests WITHOUT a token were never rate-limited on any protected route.~~ The auth guard was an app-level `onRequest` hook and the per-route limits are route-level `onRequest` hooks; app-level runs first, so an unauthenticated request got its 401 before any limiter counted it. Proven: 20 unauthenticated `DELETE /account` (limit 5) were all 401, never 429. Each one still cost an RSA signature check, so this was an unlimited, cheap-to-send load. The guard now runs in `preParsing`: after every limiter, still before the body is read. The AI coach had a second gap: its account-keyed limit ran after the guard, so unauthenticated coach floods were limited by nothing at all. A stacked second limiter does not work, because the plugin applies only the FIRST limiter per request (`req[rateLimitRan]`). The coach now has ONE limiter keyed per request: by account for a valid token, by IP otherwise. | Medium (DoS / cost) | me | P2.3 |
 | F79 | **FIXED in P2.3.** ~~The auth routes did not use the API's error handler.~~ `setErrorHandler` was called at the END of `buildApp`, but the awaited auth plugin had already built its routes with the handler that existed THEN, Fastify's default. Proven: a 429 on `/auth/magic-link` was Fastify's `{"statusCode":429,"error":"Too Many Requests",...}`, not our envelope, and malformed JSON on `/auth/refresh` returned `FST_ERR_CTP_INVALID_JSON_BODY` with the framework message. The F33 client-error mapping, the fixed 500 message and the 5xx monitoring alert therefore all bypassed every sign-in route. The handler is now set FIRST, before any plugin registers routes. | Medium (error hygiene on the auth surface) | me | P2.3 |
+| F80 | **FIXED in P2.6.** ~~The 6-digit sign-in code could be brute-forced by anyone who knows the address.~~ Its 5-guess cap was per CODE, and every new request sent a new code with a fresh cap. The per-recipient send cap allows 5 codes per 15 minutes, so a caller rotating nothing but the request could make 25 guesses per 15 minutes: about 2,400 a day from ONE IP (the per-IP limits, 5 requests and 10 verifies a minute, both allow it). That is roughly a 0.24 % chance a day, about 7 % a month, of signing in as the account. Proven on the old code: after 10 wrong guesses across two codes, the right third code still signed in. Now a per-ADDRESS budget of 10 wrong codes per 24 hours spans every code sent; once spent, no code is taken, not even the right one. It is persisted (else the free tier's idle spin-down would refill it), keyed by a hash of the address, swept when its window ends, and deleted with the account. Links (256-bit tokens) are unaffected; no current client signs in by code (mobile uses the link). | High (account takeover, slow but unattended) | me | P2.6 |
+| F81 | **FIXED in P2.6.** ~~Expired sign-in rows stayed in Postgres indefinitely.~~ On boot the auth hydrators SKIPPED expired records, and the sweep only walks memory, so a record that expired while the process was down (the free tier sleeps when idle) was never deleted. Every refresh session of a user who stops using the app kept its email and account id in `kv_store` until the account was deleted; an unused magic link kept the email and its (expired) code. The four hydrators that drop expired records (`auth_refresh`, `auth_magic`, `auth_legacy`, `auth_code_fail`) now delete their rows. Proven on real Postgres: seeded expired rows are gone after a boot and the live one loads. | Low (data retention; the records were already refused on use) | me | P2.6 |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -2057,3 +2059,90 @@ real production configuration. No new finding in P2.5.
 
 Gates after the final edit: `tsc -b --force` 0 · lint 0 · vitest 127 files / 1648 tests
 at 100 / 99.62 / 100 / 100 · jest 114 / 114.
+
+### P2.5 — done — 2026-10-01
+
+Green on GitHub: CI 36768319235 and CodeQL 36768319305 on `d5716ed`.
+
+### P2.6 — auth flows (F80, F81) — 2026-10-01
+
+**1. Production refusals (`apps/api/src/config.ts`, 3 new tests in `config.test.ts`)**
+- **Fatal in production:** an `http://` `MAGIC_LINK_REDIRECT_URL`. The link carries a
+  one-time login token, so it must never travel in cleartext. `render.yaml` sets
+  `zeno://auth/verify` (checked), so this cannot stop the current deploy.
+- **Warnings in production:** a set `DEMO_LOGIN_PASSWORD`, `ALLOW_UNVERIFIED_OAUTH_TOKENS=true`,
+  a `*` or `http://` CORS origin, and an `http://` `MONITORING_WEBHOOK_URL`. These are
+  warnings, not refusals, because each is already enforced at request time (demo login
+  is off in production, and the OAuth flag is ignored there; both tested in P1). `main`
+  auto-deploys, and a new boot refusal on a dashboard value nobody can see from the repo
+  could take the API down for no security gain.
+- Outside production none of these is flagged; `https://`, the `zeno://` scheme, and
+  unset values are silent.
+
+**2. Magic-link flow (`routes/auth-internals.test.ts`)**
+- **Enumeration safety:** with real delivery configured (`RESEND_API_KEY`, `fetch`
+  faked), an address that already has an account and a never-seen address get the same
+  status and the same body (minus the request id). Each gets exactly one email. By
+  construction there is no lookup to leak: the account id is derived from the address.
+- **Expiry:** at 10 minutes and 1 second, both the link and its code answer 401.
+- **Single use:** a link signs in once; the second use is 401.
+
+**3. What the flow review found**
+- **F80 (High, fixed): the 6-digit code could be brute-forced.** Each new code reset the
+  5-guess cap: 25 guesses per 15 minutes from one IP, about 2,400 a day. The fix is a
+  persisted per-address budget, 10 wrong codes per 24 hours across every code sent.
+  4 tests pin it:
+  - 9 wrong guesses leave the right code working; the 10th spends the budget. Then even
+    the right code is refused. The link still works, and another address is untouched.
+  - The budget row is keyed by a 64-hex hash (no address), holds only
+    `accountId`/`count`/`reset`, survives a restart, and an ended window is not revived.
+  - After 24 hours it refills even before a sweep: the next wrong guess opens a new window
+    at 1, not 11. The sweep keeps an open window and deletes an ended one.
+  - Account deletion removes it from memory and from the database, and leaves another
+    account's part-spent budget alone.
+
+  The real-Postgres deletion test now includes a wrong guess: Alice's `auth_code_fail`
+  row is gone once `DELETE /account` answers.
+- **F81 (Low, fixed): expired sign-in rows were never deleted.** They were skipped at
+  boot and never seen by the sweep. The four hydrators now delete them. This is pinned in
+  the unit hydration test (exactly the 3 stale keys are deleted, the live ones are not),
+  in the F80 restart test, and on real Postgres (seeded expired rows in all four
+  namespaces are gone after a boot; the live refresh row stays).
+- Observed, no change: the per-recipient send cap (5 per 15 minutes) lets anyone delay a
+  victim's NEW link for up to 15 minutes. The links those 5 requests sent are valid and
+  went to the victim, and Apple and Google sign-in are unaffected. This is kept as the
+  email-bomb guard, and noted for P8's edge limiter.
+- Observed, no change: loading an EXPIRED budget into memory has no visible effect,
+  because the window check ignores it. What is visible, and pinned, is that its row is
+  deleted.
+
+**Bite checks** (each mutation alone, then restored): 29 in all; 28 caught. The one
+NOT caught was loading an expired budget into memory (explained above). It cannot be
+seen through the API; only the row deletion that F81 added can be, and that is pinned.
+- **F80 (13):**
+  - the budget never checked;
+  - `>` instead of `>=`;
+  - a budget of 9;
+  - wrong codes never recorded;
+  - the budget not persisted;
+  - the hydrator dropping live rows;
+  - an ended window still counting;
+  - the window never restarting;
+  - the sweep never deleting the row;
+  - deletion leaving the memory entry;
+  - deletion leaving the database row (caught by 2 unit tests, and separately on real
+    Postgres);
+  - deletion clearing EVERY account's budget.
+- **F81 (4):** each hydrator's delete removed, one at a time. Every one is caught by a
+  unit test and by the real-Postgres test.
+- **Flows (5):**
+  - never-seen addresses get no email;
+  - known addresses get a different `channel`;
+  - link expiry not checked;
+  - code expiry not checked;
+  - the link kept after use.
+- **Config (6):** each of the fatal check and the five warnings removed.
+
+Gates after the final edit: `tsc -b --force` and every workspace typecheck 0 · lint 0 ·
+vitest 127 files / 1659 tests at 100 / 99.62 / 100 / 100 (the same 10 documented
+defensive branches) · jest 114 / 114.

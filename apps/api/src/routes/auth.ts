@@ -158,17 +158,56 @@ const accountRevokedAtSeconds = new Map<string, number>();
 function revocationKey(accountId: string): string {
   return createHash("sha256").update(accountId).digest("hex");
 }
+
+// Finding F80. The 5-guess cap on a code (maxLegacyCodeAttempts) is per CODE,
+// and every new request sends a new code with a fresh cap: knowing only an
+// address, a caller could request 5 codes per 15 minutes (the per-recipient
+// send cap) and guess 25 times, about 2,400 guesses a day from one IP, roughly
+// a 0.24% chance a day of signing in as that account. This budget counts wrong
+// codes per ADDRESS across every code sent to it; once spent, no code for that
+// address is accepted, not even the right one, until its window ends.
+// Persisted, so a restart (the free tier spins down when idle) does not refill
+// it; keyed by a hash of the address. Links (256-bit tokens) are unaffected,
+// and no current client signs in by code.
+const CODE_FAILURE_WINDOW_MS = 24 * 60 * 60 * 1000;
+const CODE_FAILURE_MAX = 10;
+type CodeFailures = { accountId: string; count: number; reset: number };
+const codeFailuresByAddress = new Map<string, CodeFailures>();
+
+function codeFailureKey(email: string): string {
+  return createHash("sha256").update(email).digest("hex");
+}
+
+function codeBudgetSpent(email: string): boolean {
+  const entry = codeFailuresByAddress.get(codeFailureKey(email));
+  return entry !== undefined && entry.reset > Date.now() && entry.count >= CODE_FAILURE_MAX;
+}
+
+function recordWrongCode(email: string, accountId: string): void {
+  const key = codeFailureKey(email);
+  const now = Date.now();
+  const entry = codeFailuresByAddress.get(key);
+  const next: CodeFailures = !entry || entry.reset <= now
+    ? { accountId, count: 1, reset: now + CODE_FAILURE_WINDOW_MS }
+    : { ...entry, count: entry.count + 1 };
+  codeFailuresByAddress.set(key, next);
+  kvPersist("auth_code_fail", key, next);
+}
 const jwksCache = new Map<string, { expiresAt: number; keys: JsonWebKey[] }>();
 const keyPair = loadSigningKeys();
 
 // Replay persisted auth state on boot so a deploy/restart doesn't log everyone
 // out (refresh sessions) or invalidate a magic link mid-flight. Expired records
-// are dropped rather than resurrected. No-op without DATABASE_URL.
+// are dropped rather than resurrected, and their rows deleted (finding F81):
+// the sweep only walks memory, so a record that expired while the process was
+// down (the free tier sleeps when idle) used to stay in Postgres for good,
+// holding the address it was sent to. No-op without DATABASE_URL.
 registerHydrator("auth_refresh", (entries: StoredEntry[]) => {
   const now = Date.now();
   for (const { key, value } of entries) {
     const record = value as RefreshRecord;
     if (record.expiresAt > now) refreshSessionsByHash.set(key, record);
+    else kvDelete("auth_refresh", key);
   }
 });
 registerHydrator("auth_magic", (entries: StoredEntry[]) => {
@@ -176,6 +215,7 @@ registerHydrator("auth_magic", (entries: StoredEntry[]) => {
   for (const { key, value } of entries) {
     const record = value as MagicLinkRecord;
     if (record.expiresAt > now) magicLinksByHash.set(key, record);
+    else kvDelete("auth_magic", key);
   }
 });
 registerHydrator("auth_revoked", (entries: StoredEntry[]) => {
@@ -189,6 +229,15 @@ registerHydrator("auth_legacy", (entries: StoredEntry[]) => {
   for (const { key, value } of entries) {
     const record = value as MagicLinkRecord;
     if (record.expiresAt > now) legacyCodesByEmail.set(key, record);
+    else kvDelete("auth_legacy", key);
+  }
+});
+registerHydrator("auth_code_fail", (entries: StoredEntry[]) => {
+  const now = Date.now();
+  for (const { key, value } of entries) {
+    const entry = value as CodeFailures;
+    if (entry.reset > now) codeFailuresByAddress.set(key, entry);
+    else kvDelete("auth_code_fail", key);
   }
 });
 
@@ -224,6 +273,12 @@ export function sweepExpiredAuth(): void {
       magicLinkEmailHits.delete(email);
     }
   }
+  for (const [key, entry] of codeFailuresByAddress) {
+    if (entry.reset <= now) {
+      codeFailuresByAddress.delete(key);
+      kvDelete("auth_code_fail", key);
+    }
+  }
   // A revocation cut-off is only needed while a token issued before it could
   // still be unexpired.
   const nowSeconds = Math.floor(now / 1000);
@@ -236,7 +291,7 @@ export function sweepExpiredAuth(): void {
 }
 
 // Account deletion: revoke every session/magic-link record tied to this account
-// (in-memory + persisted), across all three maps — each holds accountId on its
+// (in-memory + persisted), across all four maps — each holds accountId on its
 // record even though the map key is a token hash/email, not the account id.
 // In memory it is immediate: a refresh attempt right after this call is already
 // rejected. In Postgres it is DURABLE before this resolves, and driven by the
@@ -256,8 +311,11 @@ export async function revokeAllSessionsForAccount(accountId: string): Promise<bo
   for (const [hash, record] of refreshSessionsByHash) {
     if (record.accountId === accountId) refreshSessionsByHash.delete(hash);
   }
+  for (const [key, entry] of codeFailuresByAddress) {
+    if (entry.accountId === accountId) codeFailuresByAddress.delete(key);
+  }
   const results = await Promise.all(
-    ["auth_magic", "auth_legacy", "auth_refresh"].map((namespace) => kvDeleteByValueField(namespace, "accountId", accountId))
+    ["auth_magic", "auth_legacy", "auth_refresh", "auth_code_fail"].map((namespace) => kvDeleteByValueField(namespace, "accountId", accountId))
   );
   return results.every(Boolean);
 }
@@ -561,9 +619,18 @@ function consumeLegacyCode(email: string, code: string): MagicLinkRecord | null 
     return null;
   }
 
+  // F80: once this address has spent its wrong-guess budget, no code is taken,
+  // not even the right one; otherwise the guessing would simply go on.
+  if (codeBudgetSpent(normalized)) {
+    legacyCodesByEmail.delete(normalized);
+    kvDelete("auth_legacy", normalized);
+    return null;
+  }
+
   // Constant-time code comparison (consistent with the demo-password check) so
   // a 6-digit code can't be narrowed by timing.
   if (!constantTimeEqual(code, record.code)) {
+    recordWrongCode(normalized, record.accountId);
     // Cap wrong guesses instead of invalidating on the very first mismatch:
     // this route is unauthenticated and keyed only by EMAIL, so a caller who
     // knows nothing but a victim's address (not their code) could otherwise

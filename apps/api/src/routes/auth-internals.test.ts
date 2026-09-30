@@ -1,4 +1,4 @@
-import { createSign, generateKeyPairSync } from "node:crypto";
+import { createHash, createSign, generateKeyPairSync } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -10,6 +10,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  *  - key loading (env PEM with escaped newlines; refusing ephemeral keys in production);
  *  - boot hydration and the expiry sweep, observed through the storage calls;
  *  - account deletion revoking pending magic links and codes;
+ *  - the magic-link flow end to end (P2.6): enumeration safety, 10-minute
+ *    expiry, single use, and the per-address wrong-code budget (F80);
  *  - real email delivery through Resend (request shape, HTML escaping, failures
  *    that never leak the address), demo login, legacy routes, and the dev-only
  *    unverified social flag (ignored in production).
@@ -35,7 +37,10 @@ vi.mock("../storage/pg", async (importOriginal) => {
     kvDelete: (namespace: string, key: string) => { storage.deleted.push(`${namespace}:${key}`); },
     kvDeleteAwait: async (namespace: string, key: string) => { storage.deleted.push(`${namespace}:${key}`); return true; },
     kvDeleteByValueField: async (namespace: string, field: string, value: string) => { storage.deleted.push(`${namespace}:${field}=${value}`); return true; },
-    kvPersist: (namespace: string, key: string) => { storage.persisted.push(`${namespace}:${key}`); },
+    kvPersist: (namespace: string, key: string, value: unknown) => {
+      storage.persisted.push(`${namespace}:${key}`);
+      storage.persistedValues.set(`${namespace}:${key}`, value);
+    },
     kvPersistAwait: async (namespace: string, key: string, value: unknown) => {
       storage.persisted.push(`${namespace}:${key}`);
       storage.persistedValues.set(`${namespace}:${key}`, value);
@@ -92,8 +97,8 @@ async function loadApp() {
   return buildApp();
 }
 type App = Awaited<ReturnType<typeof loadApp>>;
-async function requestLink(app: App, email: string) {
-  return (await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email } })).json().data as { devCode: string; devLink: string };
+async function requestLink(app: App, email: string, remoteAddress = "127.0.0.1") {
+  return (await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", remoteAddress, payload: { email } })).json().data as { devCode: string; devLink: string };
 }
 const tokenOf = (devLink: string) => decodeURIComponent(devLink.split("token=")[1]!);
 
@@ -179,6 +184,9 @@ describe("boot hydration and the expiry sweep", () => {
       { key: "th", value: { accountId: "acct_l", email: "legacy@x.com", tokenHash: "th", code, expiresAt: future } },
       { key: "th-old", value: { accountId: "acct_o", email: "old@x.com", tokenHash: "th-old", code, expiresAt: past } }
     ]);
+    // F81: the expired rows are deleted from the database, not just skipped;
+    // the live ones are left alone.
+    expect(storage.deleted.sort()).toEqual(["auth_legacy:old@x.com", "auth_magic:th-old", "auth_refresh:stale"]);
     const refreshed = await app.inject({ method: "POST", url: "/api/v1/auth/refresh", payload: { refreshToken } });
     expect(refreshed.statusCode).toBe(200);
     expect(refreshed.json().data.accountId).toBe("acct_h");
@@ -227,6 +235,7 @@ describe("account deletion revokes pending sign-ins", () => {
     // One database-side delete per namespace, by the accountId every auth record
     // carries (F75), so a retry also finds rows memory has already forgotten.
     expect(storage.deleted.sort()).toEqual([
+      `auth_code_fail:accountId=${session.accountId}`,
       `auth_legacy:accountId=${session.accountId}`,
       `auth_magic:accountId=${session.accountId}`,
       `auth_refresh:accountId=${session.accountId}`
@@ -307,6 +316,177 @@ describe("F76: a deleted account's access tokens stop working", () => {
     storage.deleted.length = 0;
     restarted.sweepExpiredAuth();
     expect(storage.deleted).toContain(key);
+  });
+});
+
+describe("P2.6: magic links are enumeration-safe, expire, and work once", () => {
+  it("an EXISTING account's email and a never-seen email are indistinguishable: same status, same body, same work", async () => {
+    setEnv("RESEND_API_KEY", "re_test_key");
+    const sent: string[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
+      sent.push(String(init?.body));
+      return new Response("{}", { status: 200 });
+    });
+    const app = await loadApp();
+    // Make "known" a real account: request a link and verify it from the email.
+    await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", remoteAddress: "192.0.2.1", payload: { email: "known@zeno.test" } });
+    const emailed = JSON.parse(sent[0]!) as { text: string };
+    const token = /token=([^\s]+)/.exec(emailed.text)![1]!;
+    expect((await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${token}`, remoteAddress: "192.0.2.1" })).statusCode).toBe(200);
+    sent.length = 0;
+
+    const known = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", remoteAddress: "192.0.2.2", payload: { email: "known@zeno.test" } });
+    const unknown = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", remoteAddress: "192.0.2.3", payload: { email: "never-seen@zeno.test" } });
+    expect(known.statusCode).toBe(200);
+    expect(unknown.statusCode).toBe(known.statusCode);
+    const strip = (b: Record<string, unknown>) => ({ ...b, meta: undefined });
+    expect(strip(unknown.json())).toEqual(strip(known.json()));
+    expect(known.json().data).toEqual({ delivered: true, channel: "resend", expiresInSeconds: 600 });
+    // The same work for both: exactly one email each, no lookup that differs.
+    expect(sent).toHaveLength(2);
+  });
+
+  it("a link and its code stop working after 10 minutes", async () => {
+    const app = await loadApp();
+    const { devLink, devCode } = await requestLink(app, "expiry@zeno.test");
+    const now = Date.now();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(now + 10 * 60 * 1000 + 1000);
+    const byLink = await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(tokenOf(devLink))}` });
+    const byCode = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link/verify", payload: { email: "expiry@zeno.test", code: devCode } });
+    expect([byLink.statusCode, byCode.statusCode]).toEqual([401, 401]);
+  });
+
+  it("a link works exactly once", async () => {
+    const app = await loadApp();
+    const { devLink } = await requestLink(app, "once@zeno.test");
+    const url = `/api/v1/auth/verify?token=${encodeURIComponent(tokenOf(devLink))}`;
+    expect((await app.inject({ method: "GET", url })).statusCode).toBe(200);
+    expect((await app.inject({ method: "GET", url })).statusCode).toBe(401);
+  });
+});
+
+describe("F80: the 6-digit code has a per-address budget of wrong guesses, across every code sent", () => {
+  // Each guess from its own address, as an attacker rotating IPs would (and so
+  // the per-IP verify limit, 10/min, is not what stops these).
+  let ip = 0;
+  const guess = (app: App, email: string, code: string) =>
+    app.inject({ method: "POST", url: "/api/v1/auth/magic-link/verify", remoteAddress: `198.51.100.${(ip++ % 250) + 1}`, payload: { email, code } });
+  const wrongFor = (code: string) => (code === "000000" ? "000001" : "000000");
+  async function wrongGuesses(app: App, email: string, code: string, n: number) {
+    for (let i = 0; i < n; i += 1) expect((await guess(app, email, wrongFor(code))).statusCode).toBe(401);
+  }
+  const budgetRows = () => [...storage.persistedValues.entries()].filter(([k]) => k.startsWith("auth_code_fail:"));
+
+  it("a fresh code does not refill it: 9 wrong guesses leave the right code working, the 10th spends it, and then even the RIGHT code is refused; the link still works", async () => {
+    const app = await loadApp();
+    const email = "target@zeno.test";
+    const a = await requestLink(app, email);
+    await wrongGuesses(app, email, a.devCode, 5); // code A is gone (its own 5-guess cap)
+    const b = await requestLink(app, email);
+    await wrongGuesses(app, email, b.devCode, 4); // 9 wrong for this address so far
+    expect((await guess(app, email, b.devCode)).statusCode).toBe(200);
+    const c = await requestLink(app, email);
+    await wrongGuesses(app, email, c.devCode, 1); // the 10th: budget spent
+    const refused = await guess(app, email, c.devCode);
+    expect(refused.statusCode).toBe(401);
+    expect(refused.json().error.message).toBe("Invalid or expired magic link code.");
+    // The link is a 256-bit token, not guessable: the code budget does not touch it.
+    expect((await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(tokenOf(c.devLink))}` })).statusCode).toBe(200);
+    // Another address is unaffected.
+    const other = await requestLink(app, "bystander@zeno.test");
+    expect((await guess(app, "bystander@zeno.test", other.devCode)).statusCode).toBe(200);
+  });
+
+  it("the budget is persisted, keyed by a hash of the address (holding a count, a window end and the account id), and survives a restart", async () => {
+    const email = "restart@zeno.test";
+    const first = await loadApp();
+    for (let round = 0; round < 2; round += 1) {
+      const { devCode } = await requestLink(first, email);
+      await wrongGuesses(first, email, devCode, 5);
+    }
+    const rows = budgetRows();
+    expect(rows).toHaveLength(1);
+    const [key, value] = rows[0]!;
+    expect(key).toMatch(/^auth_code_fail:[0-9a-f]{64}$/);
+    expect(key).not.toContain("restart");
+    expect(Object.keys(value as object).sort()).toEqual(["accountId", "count", "reset"]);
+    expect(value).toMatchObject({ count: 10 });
+
+    // A restart (the free tier spins down when idle) must not refill it.
+    vi.resetModules();
+    storage.hydrators.clear();
+    const second = await loadApp();
+    const expiredKey = createHash("sha256").update("expired@zeno.test").digest("hex");
+    storage.hydrators.get("auth_code_fail")!([
+      { key: key.slice("auth_code_fail:".length), value },
+      { key: expiredKey, value: { accountId: "acct_x", count: 10, reset: Date.now() - 1 } }
+    ]);
+    const after = await requestLink(second, email);
+    expect((await guess(second, email, after.devCode)).statusCode).toBe(401);
+    // A spent budget whose window already ended is not brought back, and its
+    // row is deleted (F81).
+    expect(storage.deleted).toContain(`auth_code_fail:${expiredKey}`);
+    const expired = await requestLink(second, "expired@zeno.test");
+    expect((await guess(second, "expired@zeno.test", expired.devCode)).statusCode).toBe(200);
+  });
+
+  it("it refills after 24 hours (even before a sweep: a new window starts at 1), and the sweep reclaims the row once its window ends", async () => {
+    const app = await loadApp();
+    const { sweepExpiredAuth } = await loadAuth();
+    const email = "window@zeno.test";
+    for (let round = 0; round < 2; round += 1) {
+      const { devCode } = await requestLink(app, email);
+      await wrongGuesses(app, email, devCode, 5);
+    }
+    const [key] = budgetRows()[0]!;
+    const start = Date.now();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(start + 23 * 60 * 60 * 1000);
+    storage.deleted.length = 0;
+    sweepExpiredAuth();
+    expect(storage.deleted).not.toContain(key);
+    const early = await requestLink(app, email);
+    expect((await guess(app, email, early.devCode)).statusCode).toBe(401);
+
+    // Window over, no sweep yet: the spent budget no longer counts, and the
+    // next wrong guess opens a NEW window at 1 (not 11).
+    vi.setSystemTime(start + 24 * 60 * 60 * 1000 + 1000);
+    const later = await requestLink(app, email);
+    await wrongGuesses(app, email, later.devCode, 1);
+    expect(storage.persistedValues.get(key)).toMatchObject({ count: 1 });
+    expect((await guess(app, email, later.devCode)).statusCode).toBe(200);
+
+    sweepExpiredAuth(); // the new window is still open: kept
+    expect(storage.deleted).not.toContain(key);
+    vi.setSystemTime(start + 48 * 60 * 60 * 1000 + 2000);
+    sweepExpiredAuth();
+    expect(storage.deleted).toContain(key);
+  });
+
+  it("deleting the account removes its budget (memory and database), like every other auth record", async () => {
+    const app = await loadApp();
+    const { revokeAllSessionsForAccount } = await loadAuth();
+    const email = "leaving@zeno.test";
+    for (let round = 0; round < 2; round += 1) {
+      const { devCode } = await requestLink(app, email);
+      await wrongGuesses(app, email, devCode, 5);
+    }
+    const accountId = (budgetRows()[0]![1] as { accountId: string }).accountId;
+    // Another address's budget, part-spent (5 of 10), must survive this deletion.
+    const bystander = "stays@zeno.test";
+    const s1 = await requestLink(app, bystander, "203.0.113.1");
+    await wrongGuesses(app, bystander, s1.devCode, 5);
+    storage.deleted.length = 0;
+    expect(await revokeAllSessionsForAccount(accountId)).toBe(true);
+    expect(storage.deleted).toContain(`auth_code_fail:accountId=${accountId}`);
+    const fresh = await requestLink(app, email);
+    expect((await guess(app, email, fresh.devCode)).statusCode).toBe(200);
+    // The bystander's 5 still count: 5 more spend the budget.
+    const s2 = await requestLink(app, bystander, "203.0.113.1");
+    await wrongGuesses(app, bystander, s2.devCode, 5);
+    const s3 = await requestLink(app, bystander, "203.0.113.1");
+    expect((await guess(app, bystander, s3.devCode)).statusCode).toBe(401);
   });
 });
 

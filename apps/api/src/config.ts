@@ -65,6 +65,35 @@ export function validateConfig(): ConfigReport {
     if (!process.env.CORS_ALLOWED_ORIGINS) {
       warnings.push("CORS_ALLOWED_ORIGINS is not set — browsers from other origins will be blocked (mobile/native are unaffected).");
     }
+
+    // P2.6. The magic link carries a one-time login token, so it must never
+    // travel over cleartext: an http:// redirect is fatal. (render.yaml sets
+    // the custom scheme zeno://auth/verify.)
+    const redirect = process.env.MAGIC_LINK_REDIRECT_URL?.trim();
+    if (redirect && /^http:\/\//i.test(redirect)) {
+      fatal.push("MAGIC_LINK_REDIRECT_URL uses http:// in production — magic-link login tokens would travel in cleartext.");
+    }
+    // Already impossible at request time in production (fail-closed, tested):
+    // demo login is off and the unverified-OAuth flag is ignored. Flagged at
+    // boot so a stray value is removed, but as a WARNING: main auto-deploys, and
+    // a new boot refusal on a dashboard value nobody can see from the repo
+    // would take the API down for no security gain.
+    if (process.env.DEMO_LOGIN_PASSWORD) {
+      warnings.push("DEMO_LOGIN_PASSWORD is set in production — demo login stays disabled here; remove the variable.");
+    }
+    if (process.env.ALLOW_UNVERIFIED_OAUTH_TOKENS === "true") {
+      warnings.push("ALLOW_UNVERIFIED_OAUTH_TOKENS=true in production — it is ignored (tokens are always verified); remove the variable.");
+    }
+    const origins = (process.env.CORS_ALLOWED_ORIGINS ?? "").split(",").map((o) => o.trim()).filter(Boolean);
+    if (origins.includes("*")) {
+      warnings.push("CORS_ALLOWED_ORIGINS contains \"*\" — the API matches exact origins only, so it allows nothing; list real origins.");
+    }
+    for (const origin of origins.filter((o) => /^http:\/\//i.test(o))) {
+      warnings.push(`CORS_ALLOWED_ORIGINS allows a cleartext origin (${origin.slice(0, 60)}) in production.`);
+    }
+    if (/^http:\/\//i.test(process.env.MONITORING_WEBHOOK_URL?.trim() ?? "")) {
+      warnings.push("MONITORING_WEBHOOK_URL uses http:// — error alerts would travel in cleartext.");
+    }
   }
 
   return { fatal, warnings };
