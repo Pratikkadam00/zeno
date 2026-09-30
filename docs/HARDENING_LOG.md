@@ -111,6 +111,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F51 | **FIXED in P1.9a.** ~~`expiration_at_ms: 0` was read as "never expires"~~ (a truthiness check). Only an absent value means no expiry. | Low | me (agent) | P1.9a |
 | F52 | **FIXED in P1.9a.** ~~AI-coach model output reached the app unvalidated.~~ Recommendations were filtered on title and detail, then passed through as-is. An object `estimatedMonthlySavingsLabel` would crash `coach.tsx` ("Objects are not valid as a React child"), and invented fields reached the client. Each recommendation is now rebuilt from its string fields. | Low-Medium | me (agent) | P1.9a |
 | F53 | **FIXED in P1.9a.** ~~The coach labelled an amount in a currency Intl cannot format as dollars.~~ It now prints the amount with its currency code. (Unreachable through the route today: the schema allows six codes.) | Low | me (agent) | P1.9a |
+| F54 | **FIXED (P1.9 follow-up).** ~~The billing webhook rejected RevenueCat's documented nulls, and an absurd timestamp crashed it.~~ RevenueCat's docs: `expiration_at_ms` "can be null for non-subscription purchases or lifetime products"; `entitlement_ids` "can be null if the product_id is not mapped to any entitlements". Our schema answered both with a **400**, so every LIFETIME purchase webhook was refused and never granted Pro server-side. An `expiration_at_ms` of 9e15 or more passed validation and then threw a `RangeError` in `toISOString()`, giving a **500**. The schema now accepts both nulls and caps the timestamp at the largest instant a JS Date can hold (8.64e15). | Medium (lifetime purchases not recognised by the webhook) | me | P1.9 follow-up |
 | F55 | **FIXED in P1.9c (+ my correction).** ~~A quote in the middle of an unquoted CSV field swallowed the rest of the file.~~ An unquoted `BEST BUY 55" TV` opened a quoted section, so every later row landed in one cell: silent data loss on import. The agent's fix (a quote opens a section only as a field's first character) **regressed** the common `a, "Netflix, Inc.", 15.49` shape (a space after the comma), splitting the name and shifting the amount column. I confirmed this by running the old and new parsers side by side. My correction: a quote also opens a section when only spaces or tabs precede it, and that padding is dropped. | Medium (import data loss) | me (agent + me) | P1.9c |
 | F56 | **FIXED in P1.9c.** ~~CSV amounts lost their sign.~~ `$-15.49`, `USD -15.49`, `15.49-`, `−15.49` (U+2212) and `$(15.49)` all parsed as positive. The importer reads negative as a charge, so these real charges were dropped. | Medium | me (agent) | P1.9c |
 | F57 | **FIXED in P1.9c.** ~~CSV amount parsing invented numbers.~~ `"Rs. 499"` parsed as 0.50 (the abbreviation dot became a decimal point). Letters between digits were stripped and the digits glued together (`1.5E+2` became 1.52, `10 USD 50` became 1050); these now return null. A leading BOM stayed in the first header cell. | Medium | me (agent) | P1.9c |
@@ -1532,3 +1533,28 @@ restore it by name.
 tests: statements 100 %, branches 99.61 %, functions 100 %, lines 100 %** · jest 8 suites
 / 113 tests at 100 % · UTC run 1019 / 1019 · semgrep `apps/mobile/src` 0 findings (1
 pre-existing parse warning in `emailScanner.ts`).
+
+### F54 — the billing webhook accepts RevenueCat's nulls — 2026-09-30
+
+**Reported by the P1.9a agent; verified by me before any change:**
+- **Read RevenueCat's own field docs** (quotes in the F54 row).
+- **Wrote the test first and ran it on the current code:** a lifetime event
+  (`expiration_at_ms: null`) got **400**.
+
+**The fix** (`app.ts` `revenueCatWebhookSchema`): `.nullable()` on `entitlement_ids` and
+`expiration_at_ms`, plus `.max(8_640_000_000_000_000)` on the timestamp. `billing.ts`
+already handles null in both places (`?? []`, and the `typeof === "number"` check from
+F51).
+
+**Test** (`app.routes.test.ts`, "F54: ..."):
+- A `NON_RENEWING_PURCHASE` with a null expiry returns 200 **and** caches Pro, active,
+  with `expiresAt: null`.
+- An `INITIAL_PURCHASE` with null entitlements returns 200 and stays free.
+- A timestamp of 9e15 returns 400.
+
+**Bite checks, both halves separately:**
+- The old schema: the test fails (400 instead of 200).
+- Nulls fixed but no upper bound: the test fails with **500** instead of 400.
+
+Both restored. Gates: typecheck 0 · lint 0 · vitest 122 files / 1555 tests at 100 % /
+99.61 % / 100 % / 100 %.

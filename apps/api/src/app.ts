@@ -185,12 +185,19 @@ const coachRequestSchema = z.object({
   question: z.string().max(500).optional(),
   budgetCapMinor: z.number().int().min(0).optional()
 });
+// RevenueCat documents null for both optional fields: expiration_at_ms "can be
+// null for non-subscription purchases or lifetime products", and
+// entitlement_ids "can be null if the product_id is not mapped to any
+// entitlements". Rejecting null answered every lifetime purchase with a 400
+// (finding F54). The upper bound is the largest instant a JS Date can hold, so
+// an absurd timestamp is a 400 here rather than a RangeError (500) later.
+const MAX_DATE_MS = 8_640_000_000_000_000;
 const revenueCatWebhookSchema = z.object({
   event: z.object({
     app_user_id: z.string().min(1).max(256),
     type: z.string().max(64).optional(),
-    entitlement_ids: z.array(z.string().max(128)).max(50).optional(),
-    expiration_at_ms: z.number().int().nonnegative().optional()
+    entitlement_ids: z.array(z.string().max(128)).max(50).nullable().optional(),
+    expiration_at_ms: z.number().int().nonnegative().max(MAX_DATE_MS).nullable().optional()
   }).passthrough()
 }).passthrough();
 // Real Plaid public tokens are short (well under 200 chars); 512 is a
