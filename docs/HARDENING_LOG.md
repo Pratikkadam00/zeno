@@ -11,15 +11,26 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
 
 ## Tracker
 
-- [~] **P0 — Foundations: CI hardening, secret scan, coverage scope**
+- [x] **P0 — Foundations: CI hardening, secret scan, coverage scope** (P0.6 waits on the owner)
   - [x] P0.1 Coverage scope: exclude generated `.next/**`; guard against unexplained `v8 ignore`
   - [x] P0.2 Secret scan: gitleaks over full git history (local) + CI job on every push/PR
   - [x] P0.3 Static analysis (SAST): CodeQL workflow + semgrep with zero-findings gate
   - [x] P0.4 Workflow hygiene: SHA-pinned actions, least-privilege `permissions`, `concurrency`, audit gate blocking in CI
-  - [~] P0.5 Dependabot (npm + GitHub Actions) + SBOM on release
+  - [x] P0.5 Dependabot (npm + GitHub Actions) + SBOM on release
   - [!] P0.6 Branch protection on `main` (owner action — documented; `main` verified UNPROTECTED)
-  - [ ] P0 gate: all standing gates green locally; new CI jobs green on GitHub
-- [ ] **P1 — Tier 1 logic to 100 % coverage**
+  - [x] P0 gate: all standing gates green locally; new CI jobs green on GitHub
+- [ ] **P1 — Tier 1 logic to 100 % coverage** (order = risk; each sub closes the findings named)
+  - [ ] P1.1 `apps/api/src/server.ts` (0 %) — boot, env matrix, logger; **fixes F9** (tokens in request logs)
+  - [ ] P1.2 `apps/mobile/src/security/*` — secure-store, lock-store (48 %), app-lock; **fixes F13** (Gmail SecureStore key)
+  - [ ] P1.3 `apps/mobile/src/discovery/emailScanner.ts` (48 %) — untrusted email input; **fixes F12**
+  - [ ] P1.4 `apps/mobile/src/auth/authStore.ts` (51 %) — token lifecycle; **verdict on F10/F11** (with the API side)
+  - [ ] P1.5 `apps/mobile/src/storage/database.ts` (59 %) + `subscription-repository.ts` (0 %)
+  - [ ] P1.6 `apps/mobile/src/billing/revenueCat.ts` (55 %)
+  - [ ] P1.7 `packages/service-catalog/src/services.ts` (0 %) — catalog invariants for all 509 entries
+  - [ ] P1.8 React providers under jest with their own coverage floor: `subscription-store.tsx` (601 lines), `budget-store.tsx`, `theme-provider.tsx`, `LockOverlay.tsx`
+  - [ ] P1.9 remaining 0 % / low files (theme, notifications, widgets, api/config, format, subscription-ui, open-banking, analytics-flag, utils, next.config, app.config)
+  - [ ] P1.10 `apps/api/src/plaid.ts` (21 %) — pure parts; sandbox flows stay dev-only by standing instruction
+  - [ ] P1.11 gate: Tier 1 at 100 % lines / statements / functions, ≥ 95 % branches; jest floor; green on GitHub
 - [ ] **P2 — API on real Postgres, authorization matrix, fuzzing**
 - [ ] **P3 — Mobile hardening (MASVS) + tests for all 29 screens**
 - [ ] **P4 — Website component tests, Playwright, CSP, DAST**
@@ -48,6 +59,7 @@ that closes it.
 | F10 | Google sign-in: a nonce is sent to Google but NOT to our API (`/auth/google` gets only the token), so the server cannot bind the ID token to this sign-in (replay of a stolen token). Apple sign-in requests no nonce at all. Needs the server side read in full before a verdict. | Medium (to confirm) | me | P1 (`authStore.ts`) + P2 |
 | F11 | Google sign-in uses the implicit ID-token flow returned to the custom scheme `zeno://auth/google`. RFC 8252 recommends authorization code + PKCE for native apps; another Android app can register the same scheme. | Medium (to confirm) | me | P1/P3 |
 | F12 | Gmail: disconnect revokes with the token in the URL query (`…/revoke?token=`); the fallback account label embeds the first 8 characters of the access token; known billing senders are trusted from the spoofable `From` header alone (no DKIM/SPF check). | Low–Medium | me | P1 (`emailScanner.ts`) |
+| F13 | **Gmail connect fails on every real device.** Tokens are stored under `zeno.oauth.gmail.acct.<address>`, but expo-secure-store 56.0.4 rejects keys outside `/^[\w.-]+$/` (source: `ensureValidKey` in `build/SecureStore.js`, applied to get/set/delete), and an address contains `@`. The existing tests pass only because their fake SecureStore does not enforce that rule. | High (feature broken on device) | me | P1.2 |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -289,6 +301,49 @@ Fresh-clone + `npm ci` on Node 24 before the push: every CI step exit 0.
 - Runner OS pinned to `ubuntu-24.04` in all jobs: GitHub's run notice says
   `ubuntu-latest` moves to Ubuntu 26 from 2026-10-19; an image change under the build
   should be a deliberate upgrade, not a surprise red CI.
+
+**P0.5 closed:** GitHub @ `dad71a2`: CI `36720317959` success, every job on
+`ubuntu-24.04` (label confirms the pin); CodeQL `36720317989` success; artifact
+`sbom-cyclonedx` uploaded (236,973 bytes, expires 2026-10-30). **Dependabot accepted
+the config and ran at once**, opening two grouped PRs:
+
+- [Pratikkadam00/zeno#1](https://github.com/Pratikkadam00/zeno/pull/1): actions
+  group, `actions/checkout` v6.1.0 → v7.0.1 and `actions/setup-node` v6.5.0 → v7.0.0.
+  Confirms Dependabot rewrites SHA pins AND their `# vX` comments. Both are MAJOR
+  bumps: review the changelogs before merging (not merged).
+- [Pratikkadam00/zeno#2](https://github.com/Pratikkadam00/zeno/pull/2): the Expo
+  group, 9 updates, including **react-native 0.85.3 → 0.87.1** labelled "minor".
+  React Native minors are breaking and Expo SDK 56 pins 0.85, so merging it would
+  break the app. **Config flaw found by the first real run; fixed:** the Expo/RN
+  group is now `expo-sdk-patch` (patch only, routine) and `expo-sdk-upgrade` (minor +
+  major together: an SDK upgrade done deliberately with `npx expo install --fix`,
+  never merged as-is). Schema 0 errors, semgrep 0. Do not merge #2.
+
+### P0 gate — DONE 2026-09-30 (P0.6 owner-blocked)
+
+| Gate | Local | GitHub |
+|---|---|---|
+| Typecheck (forced), lint | 0 / 0 | green |
+| vitest | 609 / 609 (65 files) | green |
+| RN (jest) | 22 / 22 | green |
+| Coverage floor | lines 65.11 % | green |
+| Web build (509 guides) | OK | green |
+| Audit gate (now blocking) | PASS | green |
+| Secret scan, full history | 0 leaks, 3 reviewed fingerprints | green |
+| semgrep (7 packs) | 0 results, 273 files | green |
+| CodeQL security-extended | — | green, 0 findings |
+| SBOM | 1,268 components | artifact uploaded |
+
+Found and fixed during P0: CI red for 13 pushes (F6); per-client rate limiting
+broken in production by a dependency bump (F2); Postgres TLS unverified for every
+host; unpinned GCM tag length; PII and log injection in storage logs; a bypass-shaped
+auth check; an incomplete script-tag filter; Windows CRLF dropping a test suite;
+Node 20 EOL / unbounded production Node; deploys not waiting for CI (F4); Dependabot
+grouping that would have shipped a breaking React Native bump.
+
+Found and queued for P1 (not yet fixed): magic-link tokens in production request
+logs (F9, verified by probe); Gmail connect broken on every device (F13); OIDC nonce
+and implicit-flow questions (F10, F11); Gmail token handling (F12).
 
 ### P0.6 — Branch protection — OWNER ACTION (verified state + exact steps)
 

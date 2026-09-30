@@ -6,8 +6,12 @@
 # updates, so ignoring the Expo packages would also block their security fixes.
 #
 # Instead, the Expo/React Native packages that must move together with the SDK
-# are GROUPED, so an SDK bump arrives as one PR that CI verifies and a human
-# checks with `npx expo install --check` before merging.
+# are GROUPED. React Native and Expo treat a MINOR version as breaking (the
+# first grouped PR proposed react-native 0.85.3 -> 0.87.1 as a "minor"; Expo SDK
+# 56 pins 0.85). So only PATCH updates of these packages form the routine
+# `expo-sdk-patch` group; minor + major land together in `expo-sdk-upgrade`,
+# which is an SDK upgrade to do deliberately with `npx expo install --fix`,
+# never to merge as-is.
 #
 # `cooldown` (version updates only; security updates are never delayed) waits
 # 7+ days after a release before proposing it: most malicious npm releases are
@@ -29,7 +33,7 @@ updates:
       semver-minor-days: 7
       semver-patch-days: 7
     groups:
-      expo-sdk:
+      expo-sdk-patch:
         applies-to: version-updates
         patterns:
           - "expo"
@@ -41,8 +45,8 @@ updates:
           - "react-native-*"
           - "@react-native/*"
           - "@react-native-async-storage/*"
-        update-types: [minor, patch]
-      expo-sdk-major:
+        update-types: [patch]
+      expo-sdk-upgrade:
         applies-to: version-updates
         patterns:
           - "expo"
@@ -54,7 +58,7 @@ updates:
           - "react-native-*"
           - "@react-native/*"
           - "@react-native-async-storage/*"
-        update-types: [major]
+        update-types: [minor, major]
       everything-else-minor-patch:
         applies-to: version-updates
         patterns: ["*"]
