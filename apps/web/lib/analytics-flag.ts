@@ -9,6 +9,8 @@ export function isPublicAnalyticsEnabled(): boolean {
   // The dashboard renders synthetic sample KPIs. To avoid broadcasting
   // plausible-looking-but-fake business metrics publicly, it's hidden in
   // production unless explicitly opted in (SHOW_PUBLIC_ANALYTICS=1, e.g. for a
-  // demo). Always available in development.
-  return process.env.NODE_ENV !== "production" || process.env.SHOW_PUBLIC_ANALYTICS === "1";
+  // demo). Always available on the dev server. Keyed on "development", not
+  // "not production": `next build`/`next start` keep a pre-set NODE_ENV such as
+  // "test" or "staging", and a server started that way serves real visitors.
+  return process.env.NODE_ENV === "development" || process.env.SHOW_PUBLIC_ANALYTICS === "1";
 }
