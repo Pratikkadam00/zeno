@@ -35,7 +35,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
     - [x] P1.8e `LockOverlay.tsx` — **fixes F28** (a keychain error wedged the lock screen)
     - [x] P1.8f "erase everything from this device" as one tested function — **fixes F27**
   - [~] P1.9 every remaining Tier 1 gap: 48 files, with 532 statements / 530 branches / 98 functions uncovered (measured 2026-09-30, `gaps.cjs` over `coverage-final.json`)
-    - [~] P1.9a API: `app.ts` ✅ (everything except the Plaid-configured paths, which are P1.10; **fixes F30, F31, F32, F33**), `routes/auth.ts` (84 %), `coach.ts`, `billing.ts`, `family.ts`, `sync.ts`, `config.ts`, `storage/pg.ts`
+    - [~] P1.9a API: `app.ts` ✅ (everything except the Plaid-configured paths, which are P1.10; **fixes F30, F31, F32, F33**), `routes/auth.ts` ✅ (0 uncovered lines / functions; 5 defensive branches), `coach.ts`, `billing.ts`, `family.ts`, `sync.ts`, `config.ts`, `storage/pg.ts`
     - [ ] P1.9b mobile logic: `api/client.ts`, `notificationService.ts` + `notificationHandlers.ts` (0 %), `subscription-ui.ts` (51 %), `calendarUtils.ts`, `insightsEngine.ts`, `finance/budget.ts`, `format.ts`, `api/config.ts`, `seed-subscriptions.ts`, `open-banking.ts` (+ F18 note)
     - [ ] P1.9c shared package: 14 files (csv parse-utils, spend history / coach / twin / year-in-review / price-radar, renewal-plan, widget snapshot, public-api keys, business, trial-guardian, family vault, analytics, open-banking)
     - [ ] P1.9d thin config / theme / web files: haptics, motion, fonts, zeno, useZenoTokens, colors, spacing, typography, `next.config.ts`, `app.config.ts`, analytics-flag, web utils
@@ -1016,3 +1016,58 @@ module faked, no network, and no sandbox runs, per the standing instruction.
 
 Gates: typecheck 0 · lint 0 · vitest 81 files / 916 tests (ratchet 87.71 / 81.74 / 89.12 /
 88.4) · semgrep on `apps/api`: 0 findings, 0 errors.
+
+### P1.9a (part 2) — `apps/api/src/routes/auth.ts` — 2026-09-30
+
+**Before:** 84 % of statements, 64 statements and 65 branches uncovered, including all of
+`sweepExpiredAuth`, the boot hydrators, and real Resend delivery.
+
+**A test gap worth naming (not a code bug):** our own access-token verifier checks the
+issuer and the audience *after* the signature. The existing tamper tests change the
+payload, so they stop at the signature and never reach either check. **Removing the
+issuer check or the audience check failed no test.** The new tests sign VALID tokens with
+a test key (loaded through `JWT_PRIVATE_KEY` / `JWT_PUBLIC_KEY` with escaped newlines) and
+check each rejection.
+
+**`auth-internals.test.ts`** (19 tests). Each test gets a fresh module graph, because
+auth.ts reads its keys, issuer and redirect at import time.
+- **Tokens:** right issuer and audience (a string or a list) are accepted. Wrong issuer,
+  wrong audience or list, no audience, no subject, no expiry and garbage are all
+  rejected. Issued sessions carry the configured key id, or the default id without
+  `JWT_KEY_ID`.
+- **Keys:** production refuses ephemeral keys.
+- **Hydration:** only unexpired refresh sessions, links and codes are restored; a
+  hydrated session refreshes. A stored code from before `wrongAttempts` existed counts
+  wrong guesses from 0, and one wrong guess does not destroy it.
+- **The sweep:** reclaims rotated sessions immediately, and expired links, codes and
+  sessions after their TTL.
+- **Account deletion:** revokes that account's pending link, code and refresh token, and
+  no one else's.
+- **Resend:** one email to the normalized address; the link is HTML-escaped in `href`;
+  no code or link in the response. A Resend 500 is a generic 502, and the log never
+  names the recipient. Production without a key is a 502 with no dev code.
+- **Demo login:** off without a password, when disabled, and always in production; the
+  5/min route limit is real. Wrong email or password is 401; a mixed-case email
+  normalizes.
+- **Validation:** 400s on every route; the legacy request route; an unknown token is 401;
+  an empty logout succeeds.
+- **The dev-only unverified-OAuth flag:** accepted in dev; in production it is refused,
+  with the warning only when the flag is set.
+
+**Mutation check** (each break alone, then restored; all caught): the issuer check removed,
+the audience check removed, the sweep keeping rotated sessions, account deletion leaving
+pending links, and the Resend link not escaped.
+
+**Cleanups:**
+- `parseRequest` uses `safeParse`.
+- `reply.sent ? undefined : …` went: the verify helpers never send, so the ternary was
+  dead.
+- Demo login reads one `demoLoginPassword(): string | null`, which removes an unreachable
+  "enabled without a password" throw.
+
+**Branches left on purpose (5):** `?? ""` fallbacks after zod `.refine()` guarantees
+(lines 288, 324, 332), which TypeScript cannot see; `String(error)` for a non-Error
+delivery failure (458); and one env-read fallback (943). This fits the P1.11 gate's
+≥ 95 % branch allowance.
+
+Gates: typecheck 0 · lint 0 · vitest 82 files / 935 tests · semgrep `apps/api` 0 / 0.

@@ -1,7 +1,7 @@
 import { fail, ok } from "@zeno/shared";
 import type { FastifyPluginAsync, FastifyReply } from "fastify";
 import { createHash, createPublicKey, createSign, createVerify, generateKeyPairSync, randomBytes, randomInt, randomUUID, timingSafeEqual, type JsonWebKey } from "node:crypto";
-import { z, ZodError } from "zod";
+import { z } from "zod";
 import { fetchWithTimeout } from "../http";
 import { kvDelete, kvDeleteAwait, kvPersist, kvPersistAwait, registerHydrator, type StoredEntry } from "../storage/pg";
 
@@ -304,7 +304,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
     const verified = await verifyAppleIdentityToken(parsed.data.identityToken, parsed.data.nonce, reply, request.id);
     if (!verified) {
-      return reply.sent ? undefined : fail("UNAUTHORIZED", "Invalid Apple identity token.", request.id);
+      return fail("UNAUTHORIZED", "Invalid Apple identity token.", request.id);
     }
 
     const subject = verified.subject;
@@ -332,7 +332,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       ? await verifyGoogleIdentityToken(parsed.data.idToken, parsed.data.nonce ?? "", reply, request.id)
       : null;
     if (parsed.data.idToken && !verified) {
-      return reply.sent ? undefined : fail("UNAUTHORIZED", "Invalid Google identity token.", request.id);
+      return fail("UNAUTHORIZED", "Invalid Google identity token.", request.id);
     }
 
     const subject = verified?.subject ?? subjectToken;
@@ -368,13 +368,13 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       return parsed.error;
     }
 
-    if (!isDemoLoginEnabled()) {
+    const expectedPassword = demoLoginPassword();
+    if (expectedPassword === null) {
       reply.code(404);
       return fail("NOT_FOUND", "Demo login is not enabled.", request.id);
     }
 
     const expectedEmail = getDemoEmail();
-    const expectedPassword = getDemoPassword();
     if (normalizeEmail(parsed.data.email) !== expectedEmail || !constantTimeEqual(parsed.data.password, expectedPassword)) {
       reply.code(401);
       return fail("UNAUTHORIZED", "Invalid demo account credentials.", request.id);
@@ -478,22 +478,19 @@ type ParseResult<T extends z.ZodType> =
   | { ok: false; error: ReturnType<typeof fail> };
 
 function parseRequest<T extends z.ZodType>(schema: T, body: unknown, requestId: string): ParseResult<T> {
-  try {
-    return { ok: true, data: schema.parse(body) };
-  } catch (error) {
-    if (error instanceof ZodError) {
-      return {
-        ok: false,
-        error: fail("BAD_REQUEST", "Request validation failed.", requestId, {
-          issues: error.issues.map((issue) => ({
-            path: issue.path.join("."),
-            message: issue.message
-          }))
-        })
-      };
-    }
-    return { ok: false, error: fail("BAD_REQUEST", "Request validation failed.", requestId) };
+  const result = schema.safeParse(body);
+  if (result.success) {
+    return { ok: true, data: result.data };
   }
+  return {
+    ok: false,
+    error: fail("BAD_REQUEST", "Request validation failed.", requestId, {
+      issues: result.error.issues.map((issue) => ({
+        path: issue.path.join("."),
+        message: issue.message
+      }))
+    })
+  };
 }
 
 function consumeMagicToken(token: string): MagicLinkRecord | null {
@@ -885,10 +882,14 @@ function accountIdForSubject(provider: "apple" | "google", subject: string): str
   return `acct_${provider}_${stableId(subject)}`;
 }
 
-function isDemoLoginEnabled(): boolean {
-  return process.env.NODE_ENV !== "production"
-    && process.env.DEMO_LOGIN_ENABLED !== "false"
-    && Boolean(process.env.DEMO_LOGIN_PASSWORD);
+// The demo password when demo login is enabled (never in production, and only
+// with a password configured); null when it is off.
+function demoLoginPassword(): string | null {
+  const password = process.env.DEMO_LOGIN_PASSWORD;
+  if (process.env.NODE_ENV === "production" || process.env.DEMO_LOGIN_ENABLED === "false" || !password) {
+    return null;
+  }
+  return password;
 }
 
 function allowUnverifiedOAuthTokens(): boolean {
@@ -910,14 +911,6 @@ function isDevMailAdapter(): boolean {
 
 function getDemoEmail(): string {
   return normalizeEmail(process.env.DEMO_LOGIN_EMAIL ?? "demo@zeno.local");
-}
-
-function getDemoPassword(): string {
-  const password = process.env.DEMO_LOGIN_PASSWORD;
-  if (!password) {
-    throw new Error("DEMO_LOGIN_PASSWORD must be set to enable demo login.");
-  }
-  return password;
 }
 
 function constantTimeEqual(actual: string, expected: string): boolean {
