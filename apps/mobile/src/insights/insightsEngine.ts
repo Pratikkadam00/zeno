@@ -51,7 +51,6 @@ const categoryBenchmarks: Record<BenchmarkCategory, number> = {
 };
 
 export function detectUnused(subscriptions: Subscription[], fx?: FxContext): Insight[] {
-  const today = startOfToday();
   return activeSubscriptions(subscriptions)
     .flatMap((subscription) => {
       const lastUsedDate = (subscription as InsightSubscription).lastUsedDate;
@@ -64,7 +63,7 @@ export function detectUnused(subscriptions: Subscription[], fx?: FxContext): Ins
         return [];
       }
 
-      const daysUnused = Math.floor((today.getTime() - startOfDay(new Date(lastUsed)).getTime()) / dayMs);
+      const daysUnused = -daysFromToday(lastUsed);
       if (daysUnused <= 30) {
         return [];
       }
@@ -75,20 +74,25 @@ export function detectUnused(subscriptions: Subscription[], fx?: FxContext): Ins
       // currency — exclude (undefined, never fabricate) when no usable rate
       // exists. The message keeps showing the subscription's own native
       // currency/amount regardless, since that doesn't depend on conversion.
-      return [createInsight({
-        id: `unused-${subscription.id}`,
-        type: "unused",
-        title: `Not used in ${daysUnused} days`,
-        message: `${subscription.name} is ${formatMoney(monthly, subscription.price.currency)}/mo but you haven't opened it in ${daysUnused} days. Still worth it?`,
-        savingAmount: monthlyDollarsIn(subscription, fx) ?? undefined,
-        subscriptionId: subscription.id,
-        priority: daysUnused > 60 ? "high" : "medium",
-        actionLabel: "Cancel Subscription",
-        actionRoute: `/subscription/cancel/${subscription.id}`
-      })];
+      return [{
+        daysUnused,
+        insight: createInsight({
+          id: `unused-${subscription.id}`,
+          type: "unused",
+          title: `Not used in ${daysUnused} days`,
+          message: `${subscription.name} is ${formatMoney(monthly, subscription.price.currency)}/mo but you haven't opened it in ${daysUnused} days. Still worth it?`,
+          savingAmount: monthlyDollarsIn(subscription, fx) ?? undefined,
+          subscriptionId: subscription.id,
+          priority: daysUnused > 60 ? "high" : "medium",
+          actionLabel: "Cancel Subscription",
+          actionRoute: `/subscription/cancel/${subscription.id}`
+        })
+      }];
     })
-    .sort((a, b) => extractDays(b.title) - extractDays(a.title))
-    .slice(0, 3);
+    // Sort on the computed count, not a number parsed back out of the title.
+    .sort((a, b) => b.daysUnused - a.daysUnused)
+    .slice(0, 3)
+    .map(({ insight }) => insight);
 }
 
 export function detectDuplicates(subscriptions: Subscription[], fx?: FxContext): Insight[] {
@@ -114,10 +118,8 @@ export function detectDuplicates(subscriptions: Subscription[], fx?: FxContext):
         const rankB = fx ? monthlyAmountIn(b, fx.homeCurrency, fx.rates) : monthlyAmount(b);
         return (rankB ?? -Infinity) - (rankA ?? -Infinity);
       });
+      // length >= 2 was checked above, so both exist.
       const [first, second] = ranked;
-      if (!first || !second) {
-        return [];
-      }
 
       const amountA = monthlyDollars(first);
       const amountB = monthlyDollars(second);
@@ -128,14 +130,20 @@ export function detectDuplicates(subscriptions: Subscription[], fx?: FxContext):
       const comparableA = monthlyDollarsIn(first, fx);
       const comparableB = monthlyDollarsIn(second, fx);
       const savingAmount = comparableA !== null && comparableB !== null ? Math.min(comparableA, comparableB) : undefined;
+      // "High" means both cost more than $10/mo. The bar is converted into the
+      // home currency like every benchmark here: a bare 10 was ₹10 (about 12 US
+      // cents) for an INR user, so nearly every INR duplicate ranked "high".
+      // No rate to convert the bar with → no "high" claim.
+      const highBar = benchmarkIn(10, fx);
+      const bothAboveBar = highBar !== null && comparableA !== null && comparableB !== null && comparableA > highBar && comparableB > highBar;
       return [createInsight({
         id: `duplicate-${category}-${first.id}-${second.id}`,
         type: "duplicate",
-        title: `Two ${labelCategory(category)} tools`,
+        title: `Two ${toolsPhrase(category)}`,
         message: `You pay for both ${first.name} (${formatMoney(amountA, first.price.currency)}) and ${second.name} (${formatMoney(amountB, second.price.currency)}). Could you replace one?`,
         savingAmount,
         subscriptionIds: [first.id, second.id],
-        priority: (comparableA ?? 0) > 10 && (comparableB ?? 0) > 10 ? "high" : "medium",
+        priority: bothAboveBar ? "high" : "medium",
         actionLabel: "Compare",
         actionRoute: "/analytics"
       })];
@@ -169,20 +177,24 @@ export function detectAnnualSavings(subscriptions: Subscription[]): Insight[] {
         return [];
       }
 
-      return [createInsight({
-        id: `annual-${subscription.id}`,
-        type: "annual_saving",
-        title: `Save ${formatMoney(saving, subscription.price.currency)}/year on ${subscription.name}`,
-        message: `Switching ${subscription.name} to annual billing saves ${formatMoney(saving, subscription.price.currency)}/year (${formatMoney(saving / 12, subscription.price.currency)}/month).`,
-        savingAmount: roundMoney(saving),
-        subscriptionId: subscription.id,
-        priority: saving > 50 ? "high" : "medium",
-        actionLabel: "Switch to Annual",
-        actionRoute: `/subscription/${subscription.id}`
-      })];
+      return [{
+        saving,
+        insight: createInsight({
+          id: `annual-${subscription.id}`,
+          type: "annual_saving",
+          title: `Save ${formatMoney(saving, subscription.price.currency)}/year on ${subscription.name}`,
+          message: `Switching ${subscription.name} to annual billing saves ${formatMoney(saving, subscription.price.currency)}/year (${formatMoney(saving / 12, subscription.price.currency)}/month).`,
+          savingAmount: roundMoney(saving),
+          subscriptionId: subscription.id,
+          priority: saving > 50 ? "high" : "medium",
+          actionLabel: "Switch to Annual",
+          actionRoute: `/subscription/${subscription.id}`
+        })
+      }];
     })
-    .sort((a, b) => (b.savingAmount ?? 0) - (a.savingAmount ?? 0))
-    .slice(0, 3);
+    .sort((a, b) => b.saving - a.saving)
+    .slice(0, 3)
+    .map(({ insight }) => insight);
 }
 
 // A free trial is a subscription on the "trial" billing cycle whose
@@ -191,7 +203,6 @@ export function detectAnnualSavings(subscriptions: Subscription[]): Insight[] {
 // checked isTrial/trialEndDate fields the real Subscription model never had, so
 // this insight could never fire.)
 export function detectTrialEnding(subscriptions: Subscription[]): Insight[] {
-  const today = startOfToday();
   return subscriptions
     .flatMap((subscription) => {
       if (subscription.billingCycle !== "trial") return [];
@@ -203,28 +214,37 @@ export function detectTrialEnding(subscriptions: Subscription[]): Insight[] {
         return [];
       }
 
-      const daysUntilEnd = Math.ceil((startOfDay(new Date(trialEnd)).getTime() - today.getTime()) / dayMs);
+      const daysUntilEnd = daysFromToday(trialEnd);
       if (daysUntilEnd < 0 || daysUntilEnd > 7) {
         return [];
       }
 
-      const monthly = monthlyDollars(subscription);
-      return [createInsight({
-        id: `trial-${subscription.id}`,
-        type: "trial_ending",
-        title: `Trial ends in ${daysUntilEnd} days`,
-        message: `${subscription.name} free trial ends ${formatDate(subscription.nextRenewalDate)}. Cancel now to avoid being charged ${formatMoney(monthly, subscription.price.currency)}.`,
-        subscriptionId: subscription.id,
-        priority: daysUntilEnd <= 2 ? "high" : "medium",
-        actionLabel: "Cancel Before Charged",
-        actionRoute: `/subscription/cancel/${subscription.id}`
-      })];
+      // The trial converts into a charge of the plan's stored price. (This used
+      // monthlyDollars(), which is 0 for the "trial" cycle by definition, so every
+      // one of these messages said "avoid being charged $0".) An unknown price
+      // (0) gets no figure rather than a made-up one.
+      const priceMinor = subscription.price.amountMinor;
+      const chargeText = priceMinor > 0 ? ` ${formatMoney(priceMinor / 100, subscription.price.currency)}` : "";
+      return [{
+        trialEnd,
+        insight: createInsight({
+          id: `trial-${subscription.id}`,
+          type: "trial_ending",
+          title: `Trial ends in ${daysUntilEnd} days`,
+          message: `${subscription.name} free trial ends ${formatDate(trialEnd)}. Cancel now to avoid being charged${chargeText}.`,
+          subscriptionId: subscription.id,
+          priority: daysUntilEnd <= 2 ? "high" : "medium",
+          actionLabel: "Cancel Before Charged",
+          actionRoute: `/subscription/cancel/${subscription.id}`
+        })
+      }];
     })
-    .sort((a, b) => Date.parse(getSubscriptionTrialEnd(subscriptions, a.subscriptionId)) - Date.parse(getSubscriptionTrialEnd(subscriptions, b.subscriptionId)));
+    .sort((a, b) => a.trialEnd - b.trialEnd)
+    .map(({ insight }) => insight);
 }
 
 export function detectHighSpend(subscriptions: Subscription[], fx?: FxContext): Insight[] {
-  const spendByCategory = new Map<string, number>();
+  const spendByCategory = new Map<BenchmarkCategory, number>();
   for (const subscription of activeSubscriptions(subscriptions)) {
     const category = benchmarkCategory(subscription);
     const amount = monthlyDollarsIn(subscription, fx);
@@ -242,33 +262,44 @@ export function detectHighSpend(subscriptions: Subscription[], fx?: FxContext): 
       // comparing/subtracting — otherwise a non-USD homeCurrency (INR at
       // ~83:1, say) would compare a home-currency figure against a USD-scale
       // constant and fire a nonsensical "high spend" alert for ordinary spend.
-      const benchmark = benchmarkIn(categoryBenchmarks[category as BenchmarkCategory] ?? categoryBenchmarks.other, fx);
-      if (spend <= benchmark * 1.5) {
+      // If the benchmark cannot be converted, skip the category: comparing
+      // against (and printing) the raw USD figure with the home currency's
+      // symbol would show "₹40/mo" for what is really $40.
+      const benchmark = benchmarkIn(categoryBenchmarks[category], fx);
+      if (benchmark === null || spend <= benchmark * 1.5) {
         return [];
       }
 
-      return [createInsight({
-        id: `high-spend-${category}`,
-        type: "high_spend",
-        title: `High spend on ${labelCategory(category)}`,
-        message: `You spend ${formatMoney(spend, fx?.homeCurrency)}/mo on ${labelCategory(category)} tools. Average is around ${formatMoney(benchmark, fx?.homeCurrency)}/mo.`,
-        savingAmount: roundMoney(spend - benchmark),
-        subscriptionIds: activeSubscriptions(subscriptions)
-          .filter((subscription) => benchmarkCategory(subscription) === category)
-          .map((subscription) => subscription.id),
-        priority: "medium",
-        actionLabel: "Review",
-        actionRoute: "/analytics"
-      })];
+      // The benchmark is a fixed figure Zeno chose, not a measured average of
+      // anyone's spend, so the copy must not call it an "average".
+      const overage = roundMoney(spend - benchmark);
+      return [{
+        overage,
+        insight: createInsight({
+          id: `high-spend-${category}`,
+          type: "high_spend",
+          title: `High spend on ${labelCategory(category)}`,
+          message: `You spend ${formatMoney(spend, fx?.homeCurrency)}/mo on ${toolsPhrase(category)}. Zeno's benchmark for this category is ${formatMoney(benchmark, fx?.homeCurrency)}/mo.`,
+          savingAmount: overage,
+          subscriptionIds: activeSubscriptions(subscriptions)
+            .filter((subscription) => benchmarkCategory(subscription) === category)
+            .map((subscription) => subscription.id),
+          priority: "medium",
+          actionLabel: "Review",
+          actionRoute: "/analytics"
+        })
+      }];
     })
-    .sort((a, b) => (b.savingAmount ?? 0) - (a.savingAmount ?? 0))
-    .slice(0, 2);
+    .sort((a, b) => b.overage - a.overage)
+    .slice(0, 2)
+    .map(({ insight }) => insight);
 }
 
 export function generateSpendSummary(subscriptions: Subscription[], fx?: FxContext): Insight {
   const active = activeSubscriptions(subscriptions);
   let totalMonthly = 0;
   let excludedCurrencyCount = 0;
+  const priced: { subscription: Subscription; amount: number }[] = [];
   for (const subscription of active) {
     const amount = monthlyDollarsIn(subscription, fx);
     if (amount === null) {
@@ -276,18 +307,19 @@ export function generateSpendSummary(subscriptions: Subscription[], fx?: FxConte
       continue;
     }
     totalMonthly += amount;
+    priced.push({ subscription, amount });
   }
   totalMonthly = roundMoney(totalMonthly);
 
-  const mostExpensive = [...active]
-    .filter((subscription) => monthlyDollarsIn(subscription, fx) !== null)
-    .sort((a, b) => (monthlyDollarsIn(b, fx) ?? 0) - (monthlyDollarsIn(a, fx) ?? 0))[0];
+  // Only subscriptions with a comparable (converted) amount can be "biggest".
+  const mostExpensive = priced.sort((a, b) => b.amount - a.amount)[0]?.subscription;
   const topCategory = getTopCategory(active, fx);
   const renewingThisWeek = active.filter((subscription) => {
-    if (!subscription.nextRenewalDate) {
+    const renews = Date.parse(subscription.nextRenewalDate ?? "");
+    if (Number.isNaN(renews)) {
       return false;
     }
-    const days = daysUntil(subscription.nextRenewalDate);
+    const days = daysFromToday(renews);
     return days >= 0 && days <= 7;
   }).length;
 
@@ -316,14 +348,27 @@ export function generateSpendSummary(subscriptions: Subscription[], fx?: FxConte
 
 export function detectCancellationReminders(subscriptions: Subscription[], fx?: FxContext): Insight[] {
   return subscriptions
-    .filter((subscription) => subscription.status === "cancelled" && subscription.nextRenewalDate && daysUntil(subscription.nextRenewalDate) >= 0)
-    .sort((a, b) => Date.parse(a.nextRenewalDate ?? "") - Date.parse(b.nextRenewalDate ?? ""))
+    .flatMap((subscription) => {
+      if (subscription.status !== "cancelled") {
+        return [];
+      }
+      // No parseable end date means nothing true to say about "active until".
+      // (An unparseable date used to count as +Infinity days away, which passed
+      // the ">= 0" test, so the reminder claimed access "continues until the
+      // renewal date" — a date the app does not know.)
+      const accessEnds = Date.parse(subscription.nextRenewalDate ?? "");
+      if (Number.isNaN(accessEnds) || daysFromToday(accessEnds) < 0) {
+        return [];
+      }
+      return [{ subscription, accessEnds }];
+    })
+    .sort((a, b) => a.accessEnds - b.accessEnds)
     .slice(0, 2)
-    .map((subscription) => createInsight({
+    .map(({ subscription, accessEnds }) => createInsight({
       id: `cancel-reminder-${subscription.id}`,
       type: "cancellation_reminder",
-      title: `${subscription.name} cancelled - active until ${formatDate(subscription.nextRenewalDate)}`,
-      message: `Your access continues until ${formatDate(subscription.nextRenewalDate)}. After that you save ${formatMoney(monthlyDollars(subscription), subscription.price.currency)}/mo.`,
+      title: `${subscription.name} cancelled - active until ${formatDate(accessEnds)}`,
+      message: `Your access continues until ${formatDate(accessEnds)}. After that you save ${formatMoney(monthlyDollars(subscription), subscription.price.currency)}/mo.`,
       savingAmount: monthlyDollarsIn(subscription, fx) ?? undefined,
       subscriptionId: subscription.id,
       priority: "low"
@@ -355,11 +400,9 @@ export function generateInsights(subscriptions: Subscription[], fx?: FxContext):
     }
   }
 
-  if (deduped.length < 8) {
-    return [...deduped, summary].slice(0, 8);
-  }
-
-  return deduped.slice(0, 8);
+  // The loop returns as soon as 8 are collected, so fewer than 8 remain here
+  // and the summary always fits.
+  return [...deduped, summary];
 }
 
 // Sums each insight's savingAmount as-is. Correctness depends entirely on the
@@ -419,16 +462,17 @@ function monthlyDollarsIn(subscription: Subscription, fx: FxContext | undefined)
 // table used for the subscriptions being compared against it — comparing an
 // already-converted spend figure to a raw USD constant would silently
 // mis-scale for any homeCurrency far from 1:1 with USD (INR at ~83:1, say).
-// Falls back to the raw USD value only if conversion genuinely can't succeed
-// (in practice this shouldn't happen: reaching this call means at least one
-// subscription's monthlyDollarsIn already resolved against fx.homeCurrency,
-// which requires fx.rates[fx.homeCurrency] to exist).
-function benchmarkIn(benchmarkUsdDollars: number, fx: FxContext | undefined): number {
+// Returns null when the rate table cannot convert USD into the home currency —
+// which does happen: a subscription already in the home currency converts
+// without any rate (from === to), so a table missing the home currency's rate
+// still yields home-currency spend. Callers must then skip the comparison;
+// the raw USD figure is never a stand-in for a home-currency one.
+function benchmarkIn(benchmarkUsdDollars: number, fx: FxContext | undefined): number | null {
   if (!fx) {
     return benchmarkUsdDollars;
   }
   const convertedMinor = convertMinor(Math.round(benchmarkUsdDollars * 100), "USD", fx.homeCurrency, fx.rates);
-  return convertedMinor === null ? benchmarkUsdDollars : roundMoney(convertedMinor / 100);
+  return convertedMinor === null ? null : roundMoney(convertedMinor / 100);
 }
 
 function benchmarkCategory(subscription: Subscription): BenchmarkCategory {
@@ -463,25 +507,18 @@ function getTopCategory(subscriptions: Subscription[], fx?: FxContext): { catego
   return category ? { category, spend } : null;
 }
 
-function getSubscriptionTrialEnd(subscriptions: Subscription[], id: string | undefined): string {
-  const subscription = subscriptions.find((candidate) => candidate.id === id);
-  return subscription?.nextRenewalDate ?? "";
+// Whole UTC days from today to the instant's UTC day (negative = in the past).
+// Renewal dates are UTC days (standards §10) and the shared Trial Guardian and
+// getDaysRemaining count the same way. UTC has no DST, so the gap between two
+// UTC midnights is exact; local midnights made a DST day 23 or 25 hours long,
+// which shifted counts by one.
+function daysFromToday(timestamp: number): number {
+  return Math.round((utcDayStart(timestamp) - utcDayStart(Date.now())) / dayMs);
 }
 
-function daysUntil(dateValue: string): number {
-  const target = Date.parse(dateValue);
-  if (Number.isNaN(target)) {
-    return Number.POSITIVE_INFINITY;
-  }
-  return Math.ceil((startOfDay(new Date(target)).getTime() - startOfToday().getTime()) / dayMs);
-}
-
-function startOfToday(): Date {
-  return startOfDay(new Date());
-}
-
-function startOfDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+function utcDayStart(timestamp: number): number {
+  const date = new Date(timestamp);
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
 }
 
 function compareInsights(a: Insight, b: Insight): number {
@@ -499,10 +536,6 @@ function priorityRank(priority: Insight["priority"]): number {
   return 1;
 }
 
-function extractDays(title: string): number {
-  return Number.parseInt(title.match(/\d+/)?.[0] ?? "0", 10);
-}
-
 // Dollar-valued (not minor units), adaptive precision (whole numbers show no
 // cents) — distinct from utils/format.ts's minor-unit formatMoney, which this
 // file's insight messages predate. currency defaults to "USD" for aggregate
@@ -513,19 +546,22 @@ function formatMoney(value: number, currency = "USD"): string {
   return `${currencySymbol(currency)}${roundMoney(value).toFixed(value % 1 === 0 ? 0 : 2)}`;
 }
 
-function formatDate(dateValue: string | undefined): string {
-  if (!dateValue) {
-    return "the renewal date";
-  }
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) {
-    return "the renewal date";
-  }
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+// Callers pass an already-parsed, valid timestamp, so there is no fallback text.
+function formatDate(timestamp: number): string {
+  return new Date(timestamp).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+// Lower-case for mid-sentence use ("on productivity tools"), except the
+// acronym: "ai_tools" → "AI tools".
 function labelCategory(category: string): string {
-  return category.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()).toLowerCase();
+  return category === "ai_tools" ? "AI tools" : category.replace(/_/g, " ");
+}
+
+// "<category> tools" — without a second "tools" for categories already named
+// "… tools" (the templates used to render "Two ai tools tools").
+function toolsPhrase(category: string): string {
+  const label = labelCategory(category);
+  return label.endsWith(" tools") ? label : `${label} tools`;
 }
 
 function roundMoney(value: number): number {
