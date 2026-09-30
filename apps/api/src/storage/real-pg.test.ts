@@ -91,7 +91,8 @@ async function until(check: () => Promise<boolean>, what: string, timeoutMs = 5_
 
 describe(`real Postgres (${process.env.TEST_DATABASE_URL ? "server" : "PGlite"})`, () => {
   it("in CI this suite runs against a real Postgres SERVER, not the embedded PGlite (so a green CI run proves it)", async () => {
-    const [{ version }] = await db.query<{ version: string }>("SELECT version()");
+    const [row] = await db.query<{ version: string }>("SELECT version()");
+    const version = row?.version ?? "";
     if (process.env.CI) {
       expect(db.kind).toBe("server");
       expect(version).toMatch(/^PostgreSQL \d+/);
