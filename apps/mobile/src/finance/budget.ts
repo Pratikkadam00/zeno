@@ -32,16 +32,22 @@ function monthBounds(now: Date): { start: number; end: number } {
   return { start, end };
 }
 
-function stepDate(date: Date, cycle: Subscription["billingCycle"], dir: 1 | -1): Date {
-  if (cycle === "weekly") return new Date(date.getTime() + dir * 7 * DAY_MS);
-  const months = cycle === "annual" ? 12 : cycle === "quarterly" ? 3 : 1;
-  // Month-end clamp: stepping from Jan 31 lands on Feb 28/29, not "Feb 31"→Mar 3.
-  const total = date.getUTCMonth() + dir * months;
-  const year = date.getUTCFullYear() + Math.floor(total / 12);
+function monthsPerCycle(cycle: Subscription["billingCycle"]): number {
+  return cycle === "annual" ? 12 : cycle === "quarterly" ? 3 : 1;
+}
+
+/** The charge `n` whole cycles from `anchor` (n may be negative). Always
+ *  computed from the ANCHOR, never from a previous charge: stepping from an
+ *  already-clamped date loses the day for good (Jan 31 → Feb 28 → Mar 28 → …). */
+function stepDate(anchor: Date, cycle: Subscription["billingCycle"], n: number): Date {
+  if (cycle === "weekly") return new Date(anchor.getTime() + n * 7 * DAY_MS);
+  // Month-end clamp: Jan 31 + 1 month lands on Feb 28/29, not "Feb 31"→Mar 3.
+  const total = anchor.getUTCMonth() + n * monthsPerCycle(cycle);
+  const year = anchor.getUTCFullYear() + Math.floor(total / 12);
   const month = ((total % 12) + 12) % 12;
   const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-  const day = Math.min(date.getUTCDate(), daysInMonth);
-  return new Date(Date.UTC(year, month, day, date.getUTCHours(), date.getUTCMinutes()));
+  const day = Math.min(anchor.getUTCDate(), daysInMonth);
+  return new Date(Date.UTC(year, month, day, anchor.getUTCHours(), anchor.getUTCMinutes(), anchor.getUTCSeconds(), anchor.getUTCMilliseconds()));
 }
 
 /** Every date this subscription charges within [start, end], stepping from its
@@ -51,22 +57,21 @@ function chargeDatesInMonth(sub: Subscription, start: number, end: number): Date
   if (cycle === "unknown" || !sub.nextRenewalDate) return [];
   const anchor = new Date(sub.nextRenewalDate);
   if (Number.isNaN(anchor.getTime())) return [];
+  // A trial converts once, on its renewal date.
+  if (cycle === "trial") return anchor.getTime() >= start && anchor.getTime() <= end ? [anchor] : [];
 
+  // Jump straight to a cycle that falls before the window, rather than walking
+  // there one cycle at a time: the old 200-step walk never reached the month
+  // for an anchor more than ~4 years (weekly) or ~17 years (monthly) away.
+  // Weekly: the last charge at or before `start`. Month-based: a cycle whose
+  // month is strictly before the window's month.
+  const windowStart = new Date(start);
+  let n = cycle === "weekly"
+    ? Math.floor((start - anchor.getTime()) / (7 * DAY_MS))
+    : Math.floor(((windowStart.getUTCFullYear() - anchor.getUTCFullYear()) * 12 + windowStart.getUTCMonth() - anchor.getUTCMonth()) / monthsPerCycle(cycle)) - 1;
   const out: Date[] = [];
-  let cursor = new Date(anchor);
-  let guard = 0;
-  while (cursor.getTime() <= end && guard++ < 200) {
-    if (cursor.getTime() >= start) out.push(new Date(cursor));
-    if (cycle === "trial") break; // a trial converts once
-    cursor = stepDate(cursor, cycle, 1);
-  }
-  if (cycle !== "trial") {
-    cursor = stepDate(anchor, cycle, -1);
-    guard = 0;
-    while (cursor.getTime() >= start && guard++ < 200) {
-      if (cursor.getTime() <= end) out.push(new Date(cursor));
-      cursor = stepDate(cursor, cycle, -1);
-    }
+  for (let charge = stepDate(anchor, cycle, n); charge.getTime() <= end; charge = stepDate(anchor, cycle, ++n)) {
+    if (charge.getTime() >= start) out.push(charge);
   }
   return out;
 }
