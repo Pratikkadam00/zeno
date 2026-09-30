@@ -36,30 +36,39 @@ const comparisonUnits: Array<Omit<SpendTwinComparison, "quantity">> = [
 // a $70 gym membership, etc). When homeCurrency isn't USD, convert each unit
 // cost via the same rates table before comparing — otherwise raw minor units
 // of two different currencies would be compared directly (e.g. ₹1000 paise
-// against a $10 burrito).
+// against a $10 burrito). With no usable rate there is no comparison at all:
+// reusing the USD figure as a home-currency figure (the old fallback) priced a
+// "$10" burrito at ₹10 — an invented number.
 export function createSpendTwin(totalMonthlyMinor: number, homeCurrency: CurrencyCode = "USD", rates?: ExchangeRates): SpendTwinComparison[] {
   if (totalMonthlyMinor <= 0) {
     return [];
   }
 
-  return comparisonUnits.map((unit) => {
-    const unitCostMinor = homeCurrency === "USD"
-      ? unit.unitCostMinor
-      : convertMinor(unit.unitCostMinor, "USD", homeCurrency, rates ?? {}) ?? unit.unitCostMinor;
-
-    return {
+  const comparisons: SpendTwinComparison[] = [];
+  for (const unit of comparisonUnits) {
+    // USD -> USD needs no rate (convertMinor returns the amount unchanged).
+    const unitCostMinor = convertMinor(unit.unitCostMinor, "USD", homeCurrency, rates ?? {});
+    if (unitCostMinor === null) {
+      return [];
+    }
+    comparisons.push({
       ...unit,
       unitCostMinor,
       quantity: Number((totalMonthlyMinor / unitCostMinor).toFixed(totalMonthlyMinor < unitCostMinor ? 1 : 0))
-    };
-  });
+    });
+  }
+  return comparisons;
 }
 
 export function summarizeSpendTwin(totalMonthlyMinor: number, homeCurrency: CurrencyCode = "USD", rates?: ExchangeRates): string {
   const comparisons = createSpendTwin(totalMonthlyMinor, homeCurrency, rates);
   const [first, second] = comparisons;
   if (!first || !second) {
-    return "No subscription spend to compare yet.";
+    // Spend exists but no rate prices the comparisons: say so, rather than
+    // claiming there is no spend.
+    return totalMonthlyMinor > 0
+      ? `${formatMoneyMinor(totalMonthlyMinor, homeCurrency)} per month. Comparisons need an exchange rate for ${homeCurrency}, and none is available.`
+      : "No subscription spend to compare yet.";
   }
 
   return `${formatMoneyMinor(totalMonthlyMinor, homeCurrency)} per month equals about ${first.quantity} ${first.label} or ${second.quantity} ${second.label}.`;
