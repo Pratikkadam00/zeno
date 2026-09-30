@@ -32,7 +32,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
     - [x] P1.8b `budget-store.tsx` — **fixes F26** (lost updates)
     - [x] P1.8c `theme-provider.tsx`
     - [x] P1.8d `subscription-store.tsx` — **finishes F26** (the `setQuietHours` stale merge)
-    - [ ] P1.8e `LockOverlay.tsx`
+    - [x] P1.8e `LockOverlay.tsx` — **fixes F28** (a keychain error wedged the lock screen)
     - [ ] P1.8f "erase everything from this device" as one tested function — **fixes F27**
   - [ ] P1.9 remaining 0 % / low files (theme, notifications, widgets, api/config, format, subscription-ui, open-banking, analytics-flag, utils, next.config, app.config)
   - [ ] P1.10 `apps/api/src/plaid.ts` (21 %) — pure parts; sandbox flows stay dev-only by standing instruction
@@ -81,6 +81,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F25 | **305 of the 509 catalog entries (60 %) carry UNRESEARCHED data shown as fact:** a generated cancel link (`<website>/account`, not verified to exist), a default difficulty of "medium", and generic cancel steps. The app opens that link as "Open cancellation page" and shows the difficulty; the website publishes 305 cancel-guide pages stating "difficulty: medium". 204 entries are curated. Conflicts with the project's truthfulness rules (no invented facts). Needs a product decision on presentation, e.g. an "unrated / general steps, not yet verified" label and a link to the homepage instead of a guessed path, or noindex until curated. | High (honesty, public pages) | owner: decide the presentation | P3 (app) + P4 (web) |
 | F26 | **FIXED — budget store in P1.8b, `setQuietHours` in P1.8d.** ~~Budget store loses updates.~~ Every action computes the next state from the `config` its render captured, so two actions before a re-render (a fast double-tap on "add envelope", or two edits in one event) start from the same stale state and the second write erases the first. The code's own comment fixes the duplicate-ID half of exactly this double-tap, not the lost write. `subscription-store` solved this with refs, but its `setQuietHours` has the same stale merge. | Medium (silent data loss) | me | P1.8b / P1.8d |
 | F27 | **"Cancel my Zeno account" promises it "erases everything from this device", but leaves connected Gmail OAuth tokens in the keychain (not revoked at Google), the app-lock PIN hash and lockout state, and quiet hours / home currency / cached FX rates / theme.** Gmail access tokens expire within about an hour, which limits the impact, but the promise is false. | High (privacy promise) | me | P1.8f |
+| F28 | **FIXED in P1.8e.** ~~A keychain error wedges the lock screen.~~ The PIN check reads and writes SecureStore, and nothing between SecureStore and the overlay caught an error. A rejected `tryPin` skipped `setBusy(false)`, so the PIN field stayed read-only until the app restarted; the user could only sign out. It failed closed (still locked, not a bypass), plus an unhandled rejection. A throwing biometric attempt was also unhandled. | Medium (availability; fails closed) | me | P1.8e |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -810,3 +811,51 @@ test, so a 3100 vs 3000 total mismatch was leftover data, not a store bug.
 per-file floor added. Gates: typecheck 0 · lint 0 · vitest 78 files / 875 tests (ratchet
 86.05 / 79.57 / 87.5 / 86.84) · jest 5 suites / 76 tests, all 3 floors met ·
 semgrep 0 findings.
+
+### P1.8e — Lock screen overlay — 2026-09-30
+
+`LockOverlay.rntest.tsx` (17 tests) renders the real overlay. The lock store is a real
+zustand store with test-controlled state, and the PIN and biometric checks are stubs (the
+checks themselves are covered in `lock-store.test.ts` and the app-lock tests).
+
+- **Before the store is ready:** a neutral cover only: no PIN prompt, no content, no
+  biometric attempt. It switches to the prompt once ready, and only then attempts
+  biometrics.
+- **Automatic biometrics:** never without hardware (no button, no AppState listener).
+  While active, exactly once, and not again on a later return to active. Mounted in the
+  background, it waits and attempts once on becoming active, and unmount removes the
+  listener. The button retries on demand.
+- **PIN entry:** digits only, capped at 8, and never rendered in clear (only dots). It
+  auto-submits at 4. A wrong PIN shows the store's message, or falls back to "Incorrect
+  PIN.", and clears the entry; the next keystroke clears the error. While a check is in
+  flight the field is read-only, and a second submit is ignored, both through the field
+  and by calling the handler directly. The done key submits 4+ digits and ignores fewer.
+  The field opts out of password autofill and suggestions. Tapping the code boxes
+  focuses the hidden field.
+- **Sign out** logs out.
+
+**F28 (new, fixed):** `submit` is now try/catch/finally, so a throwing check leaves the
+app still locked, shows "Couldn't check your PIN. Try again.", clears the entry, and
+re-enables the field. No attempt is counted, since none was checked. Both biometric
+calls catch too, with "Couldn't use biometrics. Enter your PIN."
+**Bite check:** with the old overlay swapped back in, exactly the 2 F28 tests fail
+(15/17); restored, 17/17.
+
+**Mutation check of the other properties** (each break applied alone, then restored):
+dropping the active-state guard, the once-only guard, the busy guard, the 8-digit cap,
+the autofill opt-out, tap-to-focus, or clearing the PIN after a failure: each is caught
+by at least one test. The busy guard first **survived**, because RNTL's `fireEvent`
+already refuses events on an `editable={false}` field. The test now also calls the
+handler directly, and the mutation is caught.
+
+My own test mistakes (the tests were fixed, not the code):
+- One test never enabled biometrics.
+- One test assumed the entry stays after a failed check (the overlay clears it).
+- An early focus test asserted nothing. It now spies the TextInput mock's prototype
+  `focus`, where the RN jest preset puts instance methods.
+- The RN preset stubs `AppState.currentState` as a function, so the tests give it a real
+  value and restore the stub afterwards.
+
+`LockOverlay.tsx`: **100 %** on every metric (was 0 %), with its per-file floor added.
+All four jest-measured files are now at 100 / 100 / 100 / 100. Gates: typecheck 0 ·
+lint 0 · vitest 78 / 875 · jest 6 suites / 93 tests, all 4 floors met · semgrep 0.

@@ -9,6 +9,8 @@ import { CodeBoxes } from "../components/zeno";
 import { haptics } from "../theme/haptics";
 
 const PIN_MAX = 8;
+const PIN_CHECK_FAILED = "Couldn't check your PIN. Try again.";
+const BIOMETRIC_FAILED = "Couldn't use biometrics. Enter your PIN.";
 
 // Full-screen lock shown over the app whenever the lock is enabled and engaged.
 // Biometric is attempted automatically (with a working PIN fallback), so a device
@@ -33,7 +35,7 @@ export function LockOverlay() {
     const attempt = () => {
       if (attemptedBiometric.current || AppState.currentState !== "active") return;
       attemptedBiometric.current = true;
-      void tryBiometric();
+      void tryBiometric().catch(() => setError(BIOMETRIC_FAILED));
     };
     attempt();
     const sub = AppState.addEventListener("change", (state) => { if (state === "active") attempt(); });
@@ -50,14 +52,24 @@ export function LockOverlay() {
     );
   }
 
+  // The check reads and writes the keychain, which can throw. A failure must not
+  // leave `busy` stuck (the field would stay read-only until a restart) or
+  // surface as an unhandled rejection: fail CLOSED (still locked), say so, and
+  // let the user retry. No attempt is counted, since none was checked (F28).
   const submit = async (value: string) => {
     if (busy || value.length < 4) return;
     setBusy(true);
-    const result = await tryPin(value);
-    setBusy(false);
-    if (!result.ok) {
-      setError(result.error ?? "Incorrect PIN.");
+    try {
+      const result = await tryPin(value);
+      if (!result.ok) {
+        setError(result.error ?? "Incorrect PIN.");
+        setPin("");
+      }
+    } catch {
+      setError(PIN_CHECK_FAILED);
       setPin("");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -118,7 +130,7 @@ export function LockOverlay() {
             accessibilityRole="button"
             accessibilityLabel="Unlock with biometrics"
             style={[styles.bioBtn, { borderColor: theme.border }]}
-            onPress={() => void tryBiometric()}
+            onPress={() => void tryBiometric().catch(() => setError(BIOMETRIC_FAILED))}
           >
             <Fingerprint size={18} color={theme.text} strokeWidth={2.2} />
             <Text style={[styles.bioText, { color: theme.text }]}>Use Face ID / fingerprint</Text>

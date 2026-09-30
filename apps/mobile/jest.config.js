@@ -43,6 +43,7 @@ module.exports = {
   coverageThreshold: {
     "./src/data/budget-store.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
     "./src/data/subscription-store.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
-    "./src/theme/theme-provider.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 }
+    "./src/theme/theme-provider.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
+    "./src/security/LockOverlay.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 }
   }
 };
