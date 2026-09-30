@@ -1,6 +1,7 @@
+import { SITE_URL } from "@/lib/site";
 import type { MetadataRoute } from "next";
 
-const BASE = "https://zeno.app";
+const BASE = SITE_URL;
 
 export default function robots(): MetadataRoute.Robots {
   return {

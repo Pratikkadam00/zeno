@@ -1,7 +1,8 @@
+import { SITE_URL } from "@/lib/site";
 import type { MetadataRoute } from "next";
 import { services } from "@zeno/service-catalog";
 
-const BASE = "https://zeno.app";
+const BASE = SITE_URL;
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date("2026-06-13");

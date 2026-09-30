@@ -2,6 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 
 const shareMock = vi.fn().mockResolvedValue(undefined);
 vi.mock("react-native", () => ({ Share: { share: (...args: unknown[]) => shareMock(...args) } }));
+// share.ts now derives its signature host from src/config/site.ts, which reads
+// expo-constants; the real module needs a React Native global (__DEV__). Same
+// mock as authStore.test.ts / revenueCat.test.ts: `extra: {}` = the default host.
+vi.mock("expo-constants", () => ({ default: { expoConfig: { extra: {} } } }));
 
 const { SHARE_SIGNATURE, shareText } = await import("./share");
 

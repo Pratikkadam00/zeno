@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "../src/auth/authStore";
+import { getLegalUrls } from "../src/config/site";
 import { useZenoTheme } from "../src/theme/theme-provider";
 import { fonts } from "../src/theme/zeno";
 import type { ThemeTokens } from "../src/theme/tokens";
@@ -21,8 +22,7 @@ import { spacing } from "../src/theme/spacing";
 import { type } from "../src/theme/typography";
 import { withAlpha } from "../src/utils/subscription-ui";
 
-const TERMS_URL = "https://zeno.app/legal/terms";
-const PRIVACY_URL = "https://zeno.app/legal/privacy";
+const { terms: TERMS_URL, privacy: PRIVACY_URL } = getLegalUrls();
 // Minimum age to use Zeno. Matches the Privacy Policy (Children's Privacy) and
 // keeps us clear of COPPA (under-13) and most minor-data regimes.
 const MINIMUM_AGE = 16;

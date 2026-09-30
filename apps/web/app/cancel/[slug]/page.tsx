@@ -1,3 +1,4 @@
+import { siteUrl } from "@/lib/site";
 import { findServiceBySlug, services } from "@zeno/service-catalog";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -91,9 +92,9 @@ export default async function CancellationGuidePage({ params }: { params: Promis
           "@context": "https://schema.org",
           "@type": "BreadcrumbList",
           itemListElement: [
-            { "@type": "ListItem", position: 1, name: "Home", item: "https://zeno.app/" },
-            { "@type": "ListItem", position: 2, name: "Cancellation guides", item: "https://zeno.app/cancel" },
-            { "@type": "ListItem", position: 3, name: service.name, item: `https://zeno.app/cancel/${slug}` }
+            { "@type": "ListItem", position: 1, name: "Home", item: siteUrl("/") },
+            { "@type": "ListItem", position: 2, name: "Cancellation guides", item: siteUrl("/cancel") },
+            { "@type": "ListItem", position: 3, name: service.name, item: siteUrl(`/cancel/${slug}`) }
           ]
         }}
       />

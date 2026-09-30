@@ -1,3 +1,4 @@
+import { CONTACT_EMAIL, SITE_HOST } from "@/lib/site";
 import type { Metadata } from "next";
 import Link from "next/link";
 import styles from "../legal.module.css";
@@ -67,7 +68,7 @@ export default function PrivacyPage() {
 
       <h2 id="overview">1. Overview</h2>
       <p>
-        This Privacy Policy applies to the Zeno marketing website (zeno.app), the Zeno waitlist,
+        This Privacy Policy applies to the Zeno marketing website ({SITE_HOST}), the Zeno waitlist,
         and the Zeno mobile application once it launches (together, the &ldquo;Service&rdquo;).
         Zeno is operated by the Zeno team (&ldquo;Zeno,&rdquo; &ldquo;we,&rdquo;
         &ldquo;us&rdquo;). By using the Service you agree to the practices described here.
@@ -236,7 +237,7 @@ export default function PrivacyPage() {
         <li>disconnect optional Gmail access at any time; and</li>
         <li>
           ask us to access or delete the data we hold by emailing{" "}
-          <a href="mailto:privacy@zeno.app">privacy@zeno.app</a>.
+          <a href={`mailto:${CONTACT_EMAIL.privacy}`}>{CONTACT_EMAIL.privacy}</a>.
         </li>
       </ul>
       <p>We will not discriminate against you for exercising any of these rights.</p>
@@ -247,7 +248,7 @@ export default function PrivacyPage() {
         years old (or 13 where permitted by local law with appropriate consent). We do not
         knowingly collect personal data from children under these ages. If you believe a child
         has provided us data, contact{" "}
-        <a href="mailto:privacy@zeno.app">privacy@zeno.app</a> and we will delete it.
+        <a href={`mailto:${CONTACT_EMAIL.privacy}`}>{CONTACT_EMAIL.privacy}</a> and we will delete it.
       </p>
 
       <h2 id="security">10. Security</h2>
@@ -277,7 +278,7 @@ export default function PrivacyPage() {
       <h2 id="contact">13. Contact us</h2>
       <p>
         Questions about your privacy or this policy? Email us at{" "}
-        <a href="mailto:privacy@zeno.app">privacy@zeno.app</a> and we will get back to you.
+        <a href={`mailto:${CONTACT_EMAIL.privacy}`}>{CONTACT_EMAIL.privacy}</a> and we will get back to you.
       </p>
 
       <div className={styles.crosslinks}>

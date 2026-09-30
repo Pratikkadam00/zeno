@@ -1,3 +1,4 @@
+import { CONTACT_EMAIL, SITE_HOST } from "@/lib/site";
 import type { Metadata } from "next";
 import Link from "next/link";
 import styles from "../legal.module.css";
@@ -60,7 +61,7 @@ export default function CookiesPage() {
 
       <h2 id="overview">1. Overview</h2>
       <p>
-        This Cookie Policy explains how the Zeno website (zeno.app) uses cookies and similar
+        This Cookie Policy explains how the Zeno website ({SITE_HOST}) uses cookies and similar
         browser storage. It complements our{" "}
         <Link href="/legal/privacy">Privacy Policy</Link>, which describes how we handle personal
         data more broadly.
@@ -128,7 +129,7 @@ export default function CookiesPage() {
       <h2 id="contact">9. Contact us</h2>
       <p>
         Questions about cookies or this policy? Email us at{" "}
-        <a href="mailto:privacy@zeno.app">privacy@zeno.app</a>.
+        <a href={`mailto:${CONTACT_EMAIL.privacy}`}>{CONTACT_EMAIL.privacy}</a>.
       </p>
 
       <div className={styles.crosslinks}>

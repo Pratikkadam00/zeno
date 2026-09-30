@@ -2,6 +2,7 @@ import type { CurrencyCode } from "@zeno/shared";
 import { useMemo, useState, type ComponentType } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { deleteAccountOnServer } from "../src/api/client";
+import { getFeedbackMailto, getLegalUrls, getSiteUrl } from "../src/config/site";
 import { useAuthStore } from "../src/auth/authStore";
 import { useBudgetStore } from "../src/data/budget-store";
 import { useSubscriptionStore } from "../src/data/subscription-store";
@@ -51,10 +52,10 @@ import { useZenoTheme } from "../src/theme/theme-provider";
 import type { ThemeTokens } from "../src/theme/tokens";
 
 const APP_STORE_REVIEW_URL = "https://apps.apple.com/";
-const TERMS_URL = "https://zeno.app/legal/terms";
-const PRIVACY_URL = "https://zeno.app/legal/privacy";
-const FEEDBACK_EMAIL = "mailto:feedback@zeno.app";
-const SHARE_URL = "https://zeno.app";
+const TERMS_URL = getLegalUrls().terms;
+const PRIVACY_URL = getLegalUrls().privacy;
+const FEEDBACK_EMAIL = getFeedbackMailto();
+const SHARE_URL = getSiteUrl();
 const APP_VERSION = "1.0.0";
 
 type UserPlan = "free" | "pro" | "family";

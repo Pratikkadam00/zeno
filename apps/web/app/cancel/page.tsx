@@ -1,3 +1,4 @@
+import { siteUrl } from "@/lib/site";
 import type { Metadata } from "next";
 import { services } from "@zeno/service-catalog";
 import { ContentShell } from "@/components/site/ContentShell";
@@ -36,8 +37,8 @@ export default function CancelHubPage() {
           "@context": "https://schema.org",
           "@type": "BreadcrumbList",
           itemListElement: [
-            { "@type": "ListItem", position: 1, name: "Home", item: "https://zeno.app/" },
-            { "@type": "ListItem", position: 2, name: "Cancellation guides", item: "https://zeno.app/cancel" }
+            { "@type": "ListItem", position: 1, name: "Home", item: siteUrl("/") },
+            { "@type": "ListItem", position: 2, name: "Cancellation guides", item: siteUrl("/cancel") }
           ]
         }}
       />

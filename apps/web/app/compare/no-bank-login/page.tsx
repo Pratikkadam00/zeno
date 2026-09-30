@@ -1,3 +1,4 @@
+import { siteUrl } from "@/lib/site";
 import type { Metadata } from "next";
 import { ContentShell } from "@/components/site/ContentShell";
 import { JsonLd } from "@/components/site/JsonLd";
@@ -28,8 +29,8 @@ export default function NoBankLoginComparePage() {
           "@context": "https://schema.org",
           "@type": "BreadcrumbList",
           itemListElement: [
-            { "@type": "ListItem", position: 1, name: "Home", item: "https://zeno.app/" },
-            { "@type": "ListItem", position: 2, name: "A subscription tracker without bank login", item: "https://zeno.app/compare/no-bank-login" }
+            { "@type": "ListItem", position: 1, name: "Home", item: siteUrl("/") },
+            { "@type": "ListItem", position: 2, name: "A subscription tracker without bank login", item: siteUrl("/compare/no-bank-login") }
           ]
         }}
       />

@@ -1,3 +1,4 @@
+import { SITE_URL, siteUrl } from "@/lib/site";
 import type { Metadata } from "next";
 import { Space_Grotesk, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
 import { MotionProvider } from "@/components/site/MotionProvider";
@@ -11,7 +12,7 @@ const body = Hanken_Grotesk({ subsets: ["latin"], weight: ["400", "500", "600", 
 const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-mono", display: "swap" });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://zeno.app"),
+  metadataBase: new URL(SITE_URL),
   alternates: { canonical: "/" },
   title: "Zeno — Know what you pay. Cancel before it charges.",
   description:
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
     title: "Zeno — Know what you pay. Cancel before it charges.",
     description:
       "The honest way to take back your subscriptions: discovery from receipts you control, warnings before every renewal, cancellations that get verified. No bank login required.",
-    url: "https://zeno.app",
+    url: SITE_URL,
     siteName: "Zeno",
     type: "website",
     locale: "en_US",
@@ -55,8 +56,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               "@context": "https://schema.org",
               "@type": "Organization",
               name: "Zeno",
-              url: "https://zeno.app",
-              logo: "https://zeno.app/og.png",
+              url: SITE_URL,
+              logo: siteUrl("/og.png"),
               description:
                 "Zeno is a subscription manager that finds recurring charges from receipts and statements you control, warns you before renewals, and helps you cancel — without your bank login."
             },
@@ -64,7 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               "@context": "https://schema.org",
               "@type": "WebSite",
               name: "Zeno",
-              url: "https://zeno.app"
+              url: SITE_URL
             }
           ]}
         />

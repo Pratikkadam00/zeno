@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, Sty
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { useAuthStore } from "../src/auth/authStore";
+import { getLegalUrls } from "../src/config/site";
 import { getOfferings, getPackagePrice, purchaseFamily, purchaseLifetime, purchasePro, restorePurchases, type BillingPlan, type ProBillingPeriod, type ZenoOfferings } from "../src/billing/revenueCat";
 import { useZenoTheme } from "../src/theme/theme-provider";
 import type { ThemeTokens } from "../src/theme/tokens";
@@ -416,11 +417,11 @@ export default function PaywallScreen() {
             <Text style={styles.footerLink}>Restore purchases</Text>
           </Pressable>
           <Text style={styles.footerDot} accessible={false}>·</Text>
-          <Pressable accessibilityRole="link" hitSlop={8} onPress={() => openLegalUrl("https://zeno.app/legal/terms")}>
+          <Pressable accessibilityRole="link" hitSlop={8} onPress={() => openLegalUrl(getLegalUrls().terms)}>
             <Text style={styles.footerLink}>Terms of Service</Text>
           </Pressable>
           <Text style={styles.footerDot} accessible={false}>·</Text>
-          <Pressable accessibilityRole="link" hitSlop={8} onPress={() => openLegalUrl("https://zeno.app/legal/privacy")}>
+          <Pressable accessibilityRole="link" hitSlop={8} onPress={() => openLegalUrl(getLegalUrls().privacy)}>
             <Text style={styles.footerLink}>Privacy Policy</Text>
           </Pressable>
         </View>

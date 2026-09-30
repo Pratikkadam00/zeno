@@ -1,9 +1,10 @@
+import { getSiteHost } from "../config/site";
 import { Share } from "react-native";
 
 // Every shareable card ends with the same brand line — the "watermark" for
 // text-based shares (no image-capture library in this app; see
 // ZENO_MASTER_PLAN.md Phase 3 for why text, not a rendered image, was chosen).
-export const SHARE_SIGNATURE = "— via Zeno · zeno.app";
+export const SHARE_SIGNATURE = `— via Zeno · ${getSiteHost()}`;
 
 // Thin wrapper matching the error-swallowing already established by
 // wrapped.tsx's original shareSummary: the user dismissing the native share

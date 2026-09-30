@@ -102,6 +102,9 @@ const config: ExpoConfig = {
       projectId: "5de3240d-3fbf-4aa7-ae0b-492bfa5db627"
     },
     apiBaseUrl: process.env.PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8787/api/v1",
+    // Public website origin for legal links / share copy. Default applied in
+    // src/config/site.ts so the domain is spelled out in exactly one place.
+    siteUrl: process.env.EXPO_PUBLIC_SITE_URL,
     google: {
       expoClientId: process.env.GOOGLE_EXPO_CLIENT_ID,
       webClientId: process.env.GOOGLE_WEB_CLIENT_ID,

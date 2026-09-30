@@ -1,3 +1,4 @@
+import { CONTACT_EMAIL } from "@/lib/site";
 import type { Metadata } from "next";
 import Link from "next/link";
 import styles from "../legal.module.css";
@@ -194,7 +195,7 @@ export default function TermsPage() {
       <h2 id="contact">13. Contact us</h2>
       <p>
         Questions about these Terms? Email us at{" "}
-        <a href="mailto:legal@zeno.app">legal@zeno.app</a>.
+        <a href={`mailto:${CONTACT_EMAIL.legal}`}>{CONTACT_EMAIL.legal}</a>.
       </p>
 
       <div className={styles.crosslinks}>
