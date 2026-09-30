@@ -131,6 +131,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F71 | **FIXED in P1.9b.** ~~Insights mixed currencies or stated unknowns.~~ A USD benchmark was printed with the home symbol ("₹40/mo" for $40) when no rate existed; the duplicate "high" bar was a bare 10 home-currency units (₹10, about 12 US cents); a cancelled subscription with an unparseable date claimed access "continues until the renewal date"; and the copy read "Two ai tools tools". | Low | me (agent) | P1.9b |
 | F72 | **FIXED in P1.9b.** ~~A blank `apiBaseUrl` became relative URLs, and a trailing slash produced `.../v1//billing/...`.~~ It is now normalised like `config/site.ts`. Latent: the current eas.json values are well-formed. | Low | me (agent) | P1.9b |
 | F73 | **FIXED in P1.9b.** ~~The demo Duolingo subscription pointed at `duolingo-super`, which is not in the catalog~~, so its detail and cancel screens found no service. It now points at `duolingo-plus`; I confirmed by lookup that it exists and the old slug does not. | Low | me (agent) | P1.9b |
+| F74 | **FIXED.** ~~A new CRITICAL Next.js advisory, GHSA-vcvr-r3jv-pc5j ("Remote Code Execution in next/og ImageResponse", CVSS 9.5), turned CI red.~~ Affected: `>=16.2.0 <16.3.6`; we ran 16.3.3. Per the advisory, exploiting it requires the Node.js `ImageResponse` from `next/og` with attacker-controlled values in SVG content, attributes or styles. **Our website does not import `next/og` at all** (grep: no `next/og`, `ImageResponse` or OG-image routes), so it was not exploitable here, but the vulnerable code shipped in the dependency. Upgraded to **16.3.6**, the minimum fixed version, published 2026-09-22 and so past the repo's 7-day supply-chain cooldown. 16.3.8 is the latest, but it was published today, so we waited. | Critical upstream; not exploitable in our app | me | this slice |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -1558,3 +1559,33 @@ F51).
 
 Both restored. Gates: typecheck 0 · lint 0 · vitest 122 files / 1555 tests at 100 % /
 99.61 % / 100 % / 100 %.
+
+### F74 — a critical Next.js advisory blocked CI; upgraded to 16.3.6 — 2026-09-30
+
+**What happened:** CI went red on `f9fc575` (the P1.9b part 2 merge) and `0356474` (F54),
+although every local gate had passed. I read the failed job on GitHub instead of
+assuming.
+- The ONLY failing step was **"Dependency audit (blocking, with expiring
+  allowlist)"**.
+- It is the job's LAST step. Every earlier step passed on GitHub for those commits:
+  Typecheck, Lint, Test, the jest floor, the coverage floor, Build web and SBOM. So the
+  code in those commits is CI-verified; only the new advisory failed the run.
+- Reproduced locally: `node scripts/audit-gate.mjs` reported
+  `BLOCK CRITICAL next GHSA-vcvr-r3jv-pc5j`.
+
+**Assessment, from the advisory itself:** exploitation needs the Node.js `ImageResponse`
+from `next/og` with attacker-controlled SVG values. The Edge runtime is not affected.
+There is no use of `next/og` anywhere in `apps/web`, so this was not exploitable in our
+app. The upgrade is still the right fix, because the vulnerable code shipped with the
+dependency.
+
+**The upgrade:** `next` 16.3.3 → **16.3.6** (`apps/web/package.json` floor `^16.3.6`).
+The lockfile diff touches only `next` and its own `@next/*` platform packages, all
+16.3.3 → 16.3.6. I chose 16.3.6 over the newer 16.3.8 because 16.3.8 was published
+today, inside the repo's 7-day cooldown, and 16.3.6 is the minimum fixed version.
+
+**Verified:**
+- The audit gate passes: 0 critical; the 1 remaining high is the already-accepted,
+  expiring `image-size` build-time entry.
+- Web typecheck 0 · web lint 0 · web tests 7 files / 64.
+- `next build` on 16.3.6: compiled, 532 / 532 static pages.
