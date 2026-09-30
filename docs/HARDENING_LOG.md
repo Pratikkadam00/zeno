@@ -48,8 +48,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P2.4 property-based fuzzing of every route (fast-check; 200 runs per route in CI, 10 000 nightly); prototype poisoning pinned at the parser (green: CI 36767472709, CodeQL 36767472774 on `eea3f24`)
   - [x] P2.5 error and log hygiene: the production logger config under real traffic carrying marked secrets; error bodies carry the request id and no internals (green: CI 36768319235, CodeQL 36768319305 on `d5716ed`)
   - [x] P2.6 auth flows: enumeration-safe magic link, 10-minute expiry, single use, production refusals; **fixes F80** (the 6-digit code could be brute-forced) **and F81** (expired sign-in rows kept in Postgres for good) (green: CI 36770819652, CodeQL 36770819744 on `f9f9540`)
-  - [~] P2.7 outbound-call inventory: every call site listed and checked by a source scan, each run against its host with a deadline, the one request-derived URL part guarded; **fixes F82** (the 5xx alert was unbounded), **F83** (anyone could force a JWKS re-fetch per request), **F84** (a coach request could run about 3.5 minutes)
-  - [ ] P2.8 webhooks (replay, idempotency)
+  - [x] P2.7 outbound-call inventory: every call site listed and checked by a source scan, each run against its host with a deadline, the one request-derived URL part guarded; **fixes F82** (the 5xx alert was unbounded), **F83** (anyone could force a JWKS re-fetch per request), **F84** (a coach request could run about 3.5 minutes) (green: CI 36773329340, CodeQL 36773328872 on `70fa1e5`)
+  - [~] P2.8 the RevenueCat webhook: replay, duplicates, out-of-order retries, auth, malformed bodies, durability; **fixes F85** (the payload was trusted and arrival order mattered), **F86** (the secret compare leaked its length), **F87** (a lookup in flight re-cached an older answer, or re-created a deleted user's billing row)
   - [ ] P2 gate: route-inventory test green; real-PG suite green locally and in CI
 - [ ] **P3 — Mobile hardening (MASVS) + tests for all 29 screens**
 - [ ] **P4 — Website component tests, Playwright, CSP, DAST**
@@ -151,6 +151,9 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F82 | **FIXED in P2.7.** ~~The 5xx alert webhook had no deadline and no bound.~~ It was the only outbound call on a raw `fetch`, with no deadline of ours; undici's own defaults wait 300 s for headers (checked in Node 24's bundled undici 7.24.4). It fired once per 5xx, so during an outage (every request failing) a slow or hung collector held one socket per failed request. Each alert now has a 3 s deadline, and at most 5 are in flight; the rest are dropped (every 5xx is still logged at error level). | Medium (an outage amplifier) | me | P2.7 |
 | F83 | **FIXED in P2.7.** ~~Any caller could make the API fetch Apple's or Google's signing keys on every request.~~ A token with an unknown key id forced a JWKS re-fetch (meant for real key rotation) with no limit. A JWT-shaped string with a made-up `kid` is enough, and needs no account, so at 10 a minute per IP from many IPs our address could be throttled by the provider. Once the one-hour cache expired, every real social sign-in would then fail. Proven: 5 such requests made 6 fetches. A forced refresh now waits 30 s after the last fetch of that URL (as jose's JWKS cooldown does), so a rotated key is still picked up at most 30 s late (tested with a genuinely rotated, signed Google token). Also, a malformed 200 (no `keys` list) used to be cached for an hour, failing every sign-in; it is now refused and not cached. | Medium (availability of social sign-in) | me | P2.7 |
 | F84 | **FIXED in P2.7.** ~~One coach request could run for about 3.5 minutes.~~ The Anthropic SDK's 30 s timeout is per ATTEMPT. It retries twice and honours a `Retry-After` of up to 60 s in between (read in the installed SDK 0.69.0), so a 429 could hold the request for 30 + 59 + 30 + 59 + 30 s. The app gives up at 35 s and shows its local insights. Proven with the real SDK: at 30 s the old code was still waiting. One 30 s deadline now covers the whole provider call: it aborts the request and answers 502, and the SDK's pending retry sees the abort and sends nothing more. | Low (wasted server work, held connections) | me | P2.7 |
+| F85 | **FIXED in P2.8.** ~~The billing webhook trusted its payload, in arrival order.~~ Each event's claimed plan was written straight into the entitlement cache. RevenueCat retries a failed delivery up to 5 times over about 2.5 hours and may deliver twice, and its own docs recommend calling `GET /subscribers` after any webhook. So an old event arriving late overwrote newer state. Proven: a user who had just bought Pro read as free after an 80-minute-late retry of an old EXPIRATION. Worse, the header is a static secret, not a signature over the body, so anyone holding it could grant any plan to any account (proven: a forged INITIAL_PURCHASE made a free user Pro). Now a webhook reads only `app_user_id` and drops that user's cached entitlement, durably before RevenueCat hears 200 (a refused delete answers 503, so RevenueCat retries). The next read asks RevenueCat. This is idempotent and order-independent by construction, which a property test checks over random runs of events, duplicates and orders. The unread fields are no longer validated: a value we rejected (an event type over 64 characters, say) made RevenueCat retry and then drop the event. | High (entitlement integrity; the secret alone granted paid plans) | me | P2.8 |
+| F86 | **FIXED in P2.8.** ~~The webhook secret compare leaked the secret's length.~~ `timingSafeEqual` needs equal lengths, so a guess of the wrong length returned early. It now compares SHA-256 digests of both sides: one 32-byte compare for every guess (checked for 6 lengths). | Low (a timing side channel on a shared secret) | me | P2.8 |
+| F87 | **FIXED in P2.8.** ~~A RevenueCat lookup in flight could put an older answer back.~~ If a webhook or an account deletion dropped a user's cached entitlement while a lookup was in flight, the lookup cached its older answer when it landed. After a deletion, that re-created the deleted user's billing row (an F75-class gap). Proven on real Postgres: a `billing` row existed after `DELETE /account` had answered. Every drop now bumps the user's generation, and a lookup caches only if its generation is still current. Another user's lookup is unaffected. | Medium (deletion completeness; stale plans) | me | P2.8 |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -2253,4 +2256,98 @@ after the last code change):
 
 Gates after the final code edit: `tsc -b --force` and every workspace typecheck 0 ·
 lint 0 · vitest 128 files / 1679 tests at 100 / 99.62 / 100 / 100 (the same 10
+documented defensive branches) · jest 114 / 114.
+
+### P2.7 — done — 2026-10-01
+
+Green on GitHub: CI 36773329340 and CodeQL 36773328872 on `70fa1e5`.
+
+### P2.8 — the RevenueCat webhook (F85, F86, F87) — 2026-10-01
+
+**What RevenueCat guarantees**, read from its docs
+(https://www.revenuecat.com/docs/integrations/webhooks):
+- A failed delivery is retried "up to 5 times", at 5, 10, 20, 40 and 80 minutes. Any
+  status other than 200 counts as a failure.
+- Delivery is "at least once", so an event can arrive more than once.
+- They recommend calling `GET /subscribers` after receiving any webhook.
+- Nothing is promised about order.
+
+Billing is not live yet (`REMAINING_WORK.md`: products and the webhook are still
+unconfigured), and `render.yaml` declares both `REVENUECAT_SECRET_KEY` and
+`REVENUECAT_WEBHOOK_AUTH`. So the recommended design could be adopted with no production
+risk.
+
+**The design now:**
+- A webhook is authenticated (a constant-time compare), then parsed for `app_user_id`
+  only.
+- It then drops that user's cached entitlement, in memory and in Postgres, before
+  answering 200. A refused database delete answers 503, so RevenueCat retries.
+- The next read asks RevenueCat.
+- A lookup that started before a drop does not cache its answer (per-user generation).
+- The payload-to-plan mapping (`applyWebhookEvent`) is gone.
+
+**`apps/api/src/webhook.test.ts`** (11 tests) runs the route end to end with RevenueCat's
+REST API faked, answering from a per-user "truth":
+- **F85, proven on the old code:**
+  - a forged INITIAL_PURCHASE made a free user Pro;
+  - an 80-minute-late EXPIRATION retry made a paying user free;
+  - after a PRODUCT_CHANGE the old code served its own guess, not RevenueCat's family plan;
+  - a property test (60 runs: random claimed types and ids, duplicates, order, and a warm
+    or cold cache) failed on its first run;
+  - a far-future time, a null list or a new event type got a 400;
+  - a refused delete still answered 200.
+- **F86:** each of 6 guesses (1 character, off by one, right, 500 characters, and with or
+  without the prefix) makes exactly one compare of two 32-byte digests. On the old code a
+  1-character guess made no compare at all.
+- **F87:**
+  - a read racing a webhook is not cached;
+  - a lookup in flight during `DELETE /account` does not bring the entitlement back;
+  - another user's lookup is not cut off (this one is a regression guard, passing on both
+    old and new code).
+- **Regression guard, passing on both:** a wrong secret is 401 and a malformed body is 400
+  (empty, numeric, or over-long `app_user_id`), and neither touches the cache.
+
+**On real Postgres** (`real-pg.test.ts`): a new F87 test holds a RevenueCat lookup open
+across `DELETE /account`, then checks that no `billing` row exists. Bite-checked: with the
+generation check removed, the deleted user's row was back.
+
+**25 existing tests pinned the payload design and were ported, not dropped:**
+- The cache behaviours they covered are now seeded the only way the server caches an
+  entitlement, a verified RevenueCat lookup (faked). These behaviours are:
+  - the 10-minute TTL;
+  - never serving a grant past its own expiry;
+  - a lifetime purchase;
+  - per-user deletion;
+  - what is persisted, and a restart keeping the original cache time.
+
+  The files are `billing.test.ts`, `billing.persistence.test.ts` and `app.test.ts`.
+- The seven payload-mapping tests in `billing.test.ts` were removed: the payload is no longer read, and the
+  new property test covers every claimed type. The REST mapping (`planFromEntitlements`,
+  family over pro, expiry) keeps its own tests.
+- **F54's test** now checks that RevenueCat's documented nulls and an out-of-range time
+  are a 200 (none is read) and that nothing the payload claims is cached.
+- **The real-Postgres suite** seeds entitlements by a verified read. Its restart test now
+  also asserts no second RevenueCat lookup happened: the faked "Pro" answer could
+  otherwise hide a broken hydration.
+
+**Also:** a new production warning when `REVENUECAT_WEBHOOK_AUTH` is set without
+`REVENUECAT_SECRET_KEY`, because entitlements cannot be verified and every user reads as
+free (bite-checked).
+
+**Bite checks** (each mutation alone, then restored; 10 in all, every one caught):
+- **F85 (4):**
+  - the webhook not dropping the cache;
+  - a refused delete answering 200;
+  - validating an unread field again;
+  - accepting an empty `app_user_id`.
+- **F86 (1):** the raw compare with its length short-circuit.
+- **F87 (4):**
+  - the generation never checked (caught by 2 route tests, and separately on real
+    Postgres);
+  - the generation never bumped;
+  - one generation shared by everyone.
+- **Config (1):** the new warning removed.
+
+Gates after the final code edit: `tsc -b --force` and every workspace typecheck 0 ·
+lint 0 · vitest 129 files / 1685 tests at 100 / 99.62 / 100 / 100 (the same 10
 documented defensive branches) · jest 114 / 114.

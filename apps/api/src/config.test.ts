@@ -15,7 +15,9 @@ const KEYS = [
   "DEMO_LOGIN_PASSWORD",
   "ALLOW_UNVERIFIED_OAUTH_TOKENS",
   "MONITORING_WEBHOOK_URL",
-  "COACH_BASE_URL"
+  "COACH_BASE_URL",
+  "REVENUECAT_WEBHOOK_AUTH",
+  "REVENUECAT_SECRET_KEY"
 ] as const;
 
 const original: Record<string, string | undefined> = {};
@@ -200,6 +202,25 @@ describe("P2.7 an outbound URL set by the operator", () => {
     }
     process.env.COACH_BASE_URL = " HTTP://llm.example/v1 ";
     expect(validateConfig().warnings.some((w) => w.startsWith("COACH_BASE_URL"))).toBe(true);
+  });
+});
+
+describe("P2.8 the billing webhook needs the RevenueCat key", () => {
+  it("warns in production when the webhook secret is set without REVENUECAT_SECRET_KEY; both, neither, or outside production is silent", () => {
+    const flagged = () => validateConfig().warnings.filter((w) => w.startsWith("REVENUECAT_WEBHOOK_AUTH"));
+    clear();
+    process.env.REVENUECAT_WEBHOOK_AUTH = "hook";
+    expect(flagged()).toEqual([]);
+    process.env.NODE_ENV = "production";
+    process.env.JWT_PRIVATE_KEY = "k";
+    process.env.JWT_PUBLIC_KEY = "k";
+    expect(flagged()).toEqual(["REVENUECAT_WEBHOOK_AUTH is set but REVENUECAT_SECRET_KEY is not — entitlements cannot be verified, so every user reads as free."]);
+    expect(validateConfig().fatal).toEqual([]);
+    process.env.REVENUECAT_SECRET_KEY = "sk";
+    expect(flagged()).toEqual([]);
+    delete process.env.REVENUECAT_WEBHOOK_AUTH;
+    delete process.env.REVENUECAT_SECRET_KEY;
+    expect(flagged()).toEqual([]);
   });
 });
 

@@ -305,7 +305,7 @@ describe("validation, not-found and not-configured branches", () => {
     expect(bad.statusCode).toBe(400);
   });
 
-  it("F54: the webhook accepts RevenueCat's documented nulls, and an out-of-range timestamp is a 400, not a 500", async () => {
+  it("F54: the webhook accepts RevenueCat's documented nulls and any timestamp (since F85 none is read), and caches nothing the payload claims", async () => {
     setEnv("REVENUECAT_WEBHOOK_AUTH", "hook-secret");
     const app = await buildApp();
     const hook = (event: Record<string, unknown>) => app.inject({
@@ -313,17 +313,14 @@ describe("validation, not-found and not-configured branches", () => {
     });
     // RevenueCat: expiration_at_ms "can be null for non-subscription purchases or
     // lifetime products"; entitlement_ids "can be null if the product_id is not
-    // mapped to any entitlements".
-    const lifetime = await hook({ app_user_id: "acct_lifetime", type: "NON_RENEWING_PURCHASE", entitlement_ids: ["pro"], expiration_at_ms: null });
-    expect(lifetime.statusCode).toBe(200);
+    // mapped to any entitlements". A 400 made RevenueCat retry and then drop it.
+    expect((await hook({ app_user_id: "acct_lifetime", type: "NON_RENEWING_PURCHASE", entitlement_ids: ["pro"], expiration_at_ms: null })).statusCode).toBe(200);
+    expect((await hook({ app_user_id: "acct_unmapped", type: "INITIAL_PURCHASE", entitlement_ids: null })).statusCode).toBe(200);
+    // 8.64e15 ms is the largest instant a JS Date can hold (toISOString() throws
+    // beyond it). The time is no longer read, so it cannot become a 500.
+    expect((await hook({ app_user_id: "acct_huge", type: "RENEWAL", entitlement_ids: ["pro"], expiration_at_ms: 9_000_000_000_000_000 })).statusCode).toBe(200);
     const { getCachedEntitlement } = await import("./billing");
-    expect(getCachedEntitlement("acct_lifetime")).toMatchObject({ plan: "pro", active: true, expiresAt: null });
-    const unmapped = await hook({ app_user_id: "acct_unmapped", type: "INITIAL_PURCHASE", entitlement_ids: null });
-    expect(unmapped.statusCode).toBe(200);
-    expect(getCachedEntitlement("acct_unmapped")).toMatchObject({ plan: "free", active: false });
-    // 8.64e15 ms is the largest instant a JS Date can hold; beyond it toISOString() throws.
-    const huge = await hook({ app_user_id: "acct_huge", type: "RENEWAL", entitlement_ids: ["pro"], expiration_at_ms: 9_000_000_000_000_000 });
-    expect(huge.statusCode).toBe(400);
+    for (const id of ["acct_lifetime", "acct_unmapped", "acct_huge"]) expect(getCachedEntitlement(id), id).toBeUndefined();
   });
 
   it("every Plaid route answers 503 when Plaid is not configured (the production state)", async () => {

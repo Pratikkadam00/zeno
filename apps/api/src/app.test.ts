@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { buildApp } from "./app";
-import { applyWebhookEvent, getCachedEntitlement } from "./billing";
+import { fetchEntitlement, getCachedEntitlement } from "./billing";
 import { coachSystemPrompt } from "./coach";
 import { getHousehold } from "./family";
 import { getStoredPlaidItem, storePlaidItem } from "./plaid";
@@ -397,14 +397,22 @@ describe("api app", () => {
     }
   });
 
-  it("rejects an unauthorized RevenueCat webhook and trusts an authorized one", async () => {
+  it("rejects an unauthorized RevenueCat webhook; an authorized one makes the next read ask RevenueCat (F85)", async () => {
     const previousAuth = process.env.REVENUECAT_WEBHOOK_AUTH;
+    const previousKey = process.env.REVENUECAT_SECRET_KEY;
     process.env.REVENUECAT_WEBHOOK_AUTH = "test-webhook-secret";
+    process.env.REVENUECAT_SECRET_KEY = "rc-test-secret";
+    // RevenueCat's own record for this user (faked): what GET /subscribers answers.
+    let entitlements: Record<string, unknown> = {};
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response(JSON.stringify({ subscriber: { entitlements } }), { status: 200 }));
     try {
       const app = await buildApp();
       // Entitlement is keyed by the authenticated account id, so the webhook's
-      // app_user_id must be that same id for the read-back to match.
+      // app_user_id must be that same id.
       const { token, accountId } = await tokenFor(app, "webhook-user@zeno.test");
+      const read = async () => (await app.inject({ method: "GET", url: "/api/v1/billing/entitlement", headers: authH(token) })).json().data.plan as string;
+      expect(await read()).toBe("free"); // asks RevenueCat, then cached
+      entitlements = { pro: { expires_date: null } }; // the purchase lands at RevenueCat
       const payload = { event: { app_user_id: accountId, type: "INITIAL_PURCHASE", entitlement_ids: ["pro"] } };
 
       const bad = await app.inject({
@@ -414,6 +422,7 @@ describe("api app", () => {
         payload
       });
       expect(bad.statusCode).toBe(401);
+      expect(await read()).toBe("free"); // unchanged: still the cached answer
 
       const good = await app.inject({
         method: "POST",
@@ -423,12 +432,15 @@ describe("api app", () => {
       });
       expect(good.statusCode).toBe(200);
 
-      // The webhook updated the server's source of truth → entitlement reflects Pro.
-      const entitlement = await app.inject({ method: "GET", url: "/api/v1/billing/entitlement", headers: authH(token) });
-      expect(entitlement.json().data.plan).toBe("pro");
+      // The webhook dropped the cached answer, so this read asks RevenueCat.
+      expect(await read()).toBe("pro");
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
     } finally {
+      fetchSpy.mockRestore();
       if (previousAuth === undefined) delete process.env.REVENUECAT_WEBHOOK_AUTH;
       else process.env.REVENUECAT_WEBHOOK_AUTH = previousAuth;
+      if (previousKey === undefined) delete process.env.REVENUECAT_SECRET_KEY;
+      else process.env.REVENUECAT_SECRET_KEY = previousKey;
     }
   });
 
@@ -881,10 +893,17 @@ describe("api app", () => {
     const app = await buildApp();
     const { token, accountId, refreshToken } = await tokenFor(app, "delete-me@zeno.test");
 
-    // Seed billing (entitlement cache).
-    applyWebhookEvent({
-      event: { app_user_id: accountId, type: "INITIAL_PURCHASE", entitlement_ids: ["pro"], expiration_at_ms: Date.now() + 100_000 }
-    });
+    // Seed billing: a verified entitlement in the cache (RevenueCat faked).
+    const previousKey = process.env.REVENUECAT_SECRET_KEY;
+    process.env.REVENUECAT_SECRET_KEY = "rc-test-secret";
+    const rc = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response(JSON.stringify({ subscriber: { entitlements: { pro: { expires_date: null } } } }), { status: 200 }));
+    try {
+      await fetchEntitlement(accountId);
+    } finally {
+      rc.mockRestore();
+      if (previousKey === undefined) delete process.env.REVENUECAT_SECRET_KEY;
+      else process.env.REVENUECAT_SECRET_KEY = previousKey;
+    }
     expect(getCachedEntitlement(accountId)).toBeDefined();
 
     // Seed Plaid (in-memory item; encryption isn't configured in tests so this

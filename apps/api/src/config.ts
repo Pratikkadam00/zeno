@@ -98,6 +98,11 @@ export function validateConfig(): ConfigReport {
     if (/^http:\/\//i.test(process.env.COACH_BASE_URL?.trim() ?? "")) {
       warnings.push("COACH_BASE_URL uses http:// — the AI provider's API key would travel in cleartext.");
     }
+    // P2.8: a webhook only asks the server to re-verify with RevenueCat (F85),
+    // which needs the REST key; without it every user reads as free.
+    if (process.env.REVENUECAT_WEBHOOK_AUTH && !process.env.REVENUECAT_SECRET_KEY) {
+      warnings.push("REVENUECAT_WEBHOOK_AUTH is set but REVENUECAT_SECRET_KEY is not — entitlements cannot be verified, so every user reads as free.");
+    }
   }
 
   return { fatal, warnings };

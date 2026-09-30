@@ -20,6 +20,7 @@ const signingKeys = generateKeyPairSync("rsa", {
  * the rows in the database, exactly what a deploy does.
  */
 let db: RealPg;
+let rcLookups: string[] = [];
 const saved: Record<string, string | undefined> = {};
 function setEnv(key: string, value: string | undefined) {
   if (!(key in saved)) saved[key] = process.env[key];
@@ -64,12 +65,23 @@ beforeEach(async () => {
   setEnv("DATABASE_SSL", "disable");
   setEnv("STORAGE_ENCRYPTION_KEY", "11".repeat(32));
   setEnv("REVENUECAT_WEBHOOK_AUTH", "hook-secret");
+  // Entitlements are cached only from a verified RevenueCat lookup (F85), so
+  // RevenueCat's REST API is faked: every user is Pro. Nothing else may leave.
+  setEnv("REVENUECAT_SECRET_KEY", "rc-secret");
+  rcLookups = [];
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const url = String(input);
+    if (!url.startsWith("https://api.revenuecat.com/v1/subscribers/")) throw new Error(`unexpected outbound request to ${url}`);
+    rcLookups.push(url);
+    return Response.json({ subscriber: { entitlements: { pro: { expires_date: null } } } });
+  });
   setEnv("RESEND_API_KEY", undefined);
   setEnv("JWT_PRIVATE_KEY", signingKeys.privateKey);
   setEnv("JWT_PUBLIC_KEY", signingKeys.publicKey);
   await db.query("DROP TABLE IF EXISTS kv_store");
 });
 afterEach(async () => {
+  vi.restoreAllMocks();
   for (const b of [...running]) await shutdown(b);
   for (const [k, v] of Object.entries(saved)) {
     if (v === undefined) delete process.env[k];
@@ -154,7 +166,7 @@ describe(`real Postgres (${process.env.TEST_DATABASE_URL ? "server" : "PGlite"})
     const household = (await first.app.inject({ method: "POST", url: "/api/v1/family/create", headers: auth(me.token), payload: { ownerName: "Me", monthlySpendMinor: 4200, currency: "EUR" } })).json().data.household;
     const pushed = await first.app.inject({ method: "POST", url: "/api/v1/sync/push", headers: auth(me.token), payload: { encryptedChanges: [change("sub_1", 3, "cipher-v3")] } });
     expect(pushed.json().data.accepted).toBe(1);
-    await first.app.inject({ method: "POST", url: "/api/v1/billing/webhook", headers: { authorization: "Bearer hook-secret" }, payload: { event: { app_user_id: me.accountId, type: "INITIAL_PURCHASE", entitlement_ids: ["pro"] } } });
+    await first.app.inject({ method: "GET", url: "/api/v1/billing/entitlement", headers: auth(me.token) }); // verified (RevenueCat faked), cached, persisted
     first.plaid.storePlaidItem(me.accountId, { accessToken: "access-bank-credential", itemId: "item-1" });
     await until(async () => (await rows()).some((r) => r.namespace === "plaid") && (await rows()).some((r) => r.namespace === "billing") && (await rows()).some((r) => r.namespace === "family"), "fire-and-forget writes");
 
@@ -174,6 +186,8 @@ describe(`real Postgres (${process.env.TEST_DATABASE_URL ? "server" : "PGlite"})
     expect(pulled.json().data.encryptedChanges.map((c: { entityId: string; encryptedPayload: string }) => [c.entityId, c.encryptedPayload])).toEqual([["sub_1", "cipher-v3"]]);
     const entitlement = await second.app.inject({ method: "GET", url: "/api/v1/billing/entitlement", headers: auth(token) });
     expect(entitlement.json().data).toMatchObject({ plan: "pro", active: true });
+    // From the restored row, not a second lookup (the fake would also say Pro).
+    expect(rcLookups).toHaveLength(1);
     expect(second.plaid.getStoredPlaidItem(me.accountId)).toEqual({ accessToken: "access-bank-credential", itemId: "item-1" });
   });
 
@@ -208,7 +222,7 @@ describe(`real Postgres (${process.env.TEST_DATABASE_URL ? "server" : "PGlite"})
     await app.inject({ method: "POST", url: "/api/v1/family/create", headers: auth(alice.token), payload: { ownerName: "Alice solo" } });
     await app.inject({ method: "POST", url: "/api/v1/sync/push", headers: auth(alice.token), payload: { encryptedChanges: [change("a1", 1, "alice-cipher"), change("a2", 1, "alice-cipher-2")] } });
     await app.inject({ method: "POST", url: "/api/v1/sync/push", headers: auth(bob.token), payload: { encryptedChanges: [change("b1", 1, "bob-cipher")] } });
-    await app.inject({ method: "POST", url: "/api/v1/billing/webhook", headers: { authorization: "Bearer hook-secret" }, payload: { event: { app_user_id: alice.accountId, type: "INITIAL_PURCHASE", entitlement_ids: ["pro"] } } });
+    await app.inject({ method: "GET", url: "/api/v1/billing/entitlement", headers: auth(alice.token) }); // verified (RevenueCat faked), cached, persisted
     plaid.storePlaidItem(alice.accountId, { accessToken: "alice-bank", itemId: "item-a" });
     await until(async () => (await rows()).some((r) => r.namespace === "plaid") && (await rows()).filter((r) => r.namespace === "family").length === 2 && (await rows()).some((r) => r.namespace === "billing") && (await rows()).some((r) => r.namespace === "auth_code_fail"), "Alice's data in every namespace");
     const aliceRow = (r: { key: string; value: unknown }) => `${r.key} ${JSON.stringify(r.value)}`.includes(alice.accountId) || `${r.key} ${JSON.stringify(r.value)}`.includes("alice@zeno.test");
@@ -235,6 +249,27 @@ describe(`real Postgres (${process.env.TEST_DATABASE_URL ? "server" : "PGlite"})
     expect(familyRow.value).toMatchObject({ ownerId: bob.accountId });
   });
 
+  it("F87: a RevenueCat lookup still in flight during DELETE /account does not re-create the deleted user's billing row", async () => {
+    const { app } = await boot();
+    const alice = await signIn(app, "alice@zeno.test");
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    let asked = false;
+    vi.mocked(globalThis.fetch).mockImplementationOnce(async () => {
+      asked = true;
+      await held;
+      return Response.json({ subscriber: { entitlements: { pro: { expires_date: null } } } });
+    });
+    const racing = app.inject({ method: "GET", url: "/api/v1/billing/entitlement", headers: auth(alice.token) });
+    await until(async () => asked, "the lookup to reach RevenueCat");
+    expect((await app.inject({ method: "DELETE", url: "/api/v1/account", headers: auth(alice.token) })).json().data).toEqual({ deleted: true });
+    release();
+    await racing;
+    // A write would be fire-and-forget; give one every chance to land, then look.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect((await rows()).filter((r) => r.namespace === "billing")).toEqual([]);
+  });
+
   it("F75: DELETE /account answers only once every deletion is DURABLE, even when the database is slow", async () => {
     const { app, plaid } = await boot();
     const alice = await signIn(app, "slow-alice@zeno.test");
@@ -242,7 +277,7 @@ describe(`real Postgres (${process.env.TEST_DATABASE_URL ? "server" : "PGlite"})
     const shared = (await app.inject({ method: "POST", url: "/api/v1/family/create", headers: auth(alice.token), payload: { ownerName: "Alice" } })).json().data.household;
     await app.inject({ method: "POST", url: "/api/v1/family/join", headers: auth(bob.token), payload: { shareCode: shared.shareCode, memberName: "Bob" } });
     await app.inject({ method: "POST", url: "/api/v1/sync/push", headers: auth(alice.token), payload: { encryptedChanges: [change("a1", 1, "alice-cipher")] } });
-    await app.inject({ method: "POST", url: "/api/v1/billing/webhook", headers: { authorization: "Bearer hook-secret" }, payload: { event: { app_user_id: alice.accountId, type: "INITIAL_PURCHASE", entitlement_ids: ["pro"] } } });
+    await app.inject({ method: "GET", url: "/api/v1/billing/entitlement", headers: auth(alice.token) }); // verified (RevenueCat faked), cached, persisted
     plaid.storePlaidItem(alice.accountId, { accessToken: "alice-bank", itemId: "item-a" });
     await until(async () => ["plaid", "billing", "family", "sync"].every((ns) => rows().then((all) => all.some((r) => r.namespace === ns))), "Alice's data persisted");
 
@@ -280,7 +315,7 @@ describe(`real Postgres (${process.env.TEST_DATABASE_URL ? "server" : "PGlite"})
     const alice = await signIn(app, "retry-alice@zeno.test");
     await app.inject({ method: "POST", url: "/api/v1/sync/push", headers: auth(alice.token), payload: { encryptedChanges: [change("r1", 1, "c1"), change("r2", 1, "c2")] } });
     await app.inject({ method: "POST", url: "/api/v1/family/create", headers: auth(alice.token), payload: { ownerName: "Alice" } });
-    await app.inject({ method: "POST", url: "/api/v1/billing/webhook", headers: { authorization: "Bearer hook-secret" }, payload: { event: { app_user_id: alice.accountId, type: "INITIAL_PURCHASE", entitlement_ids: ["pro"] } } });
+    await app.inject({ method: "GET", url: "/api/v1/billing/entitlement", headers: auth(alice.token) }); // verified (RevenueCat faked), cached, persisted
     plaid.storePlaidItem(alice.accountId, { accessToken: "a-bank", itemId: "i" });
     await until(async () => ["plaid", "billing", "family", "sync"].every((ns) => rows().then((all) => all.some((r) => r.namespace === ns))), "Alice's data persisted");
     const aliceRows = async () => (await rows()).filter((r) => `${r.key} ${JSON.stringify(r.value)}`.includes(alice.accountId));

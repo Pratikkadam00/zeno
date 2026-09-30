@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { fetchWithTimeout } from "./http";
 import { kvClear, kvDeleteAwait, kvPersist, registerHydrator, type StoredEntry } from "./storage/pg";
 
@@ -35,6 +35,12 @@ const FAMILY_IDS = ["family", "zeno_family"];
 // a missed downgrade webhook from granting Pro indefinitely.
 const ENTITLEMENT_TTL_MS = 10 * 60 * 1000;
 const cache = new Map<string, { entitlement: Entitlement; cachedAtMs: number }>();
+// Finding F87. A RevenueCat lookup can still be in flight when a webhook or an
+// account deletion drops the user's cached answer; when it lands it used to
+// cache the OLDER answer (and, after a deletion, re-create the deleted user's
+// billing row). Every drop bumps the user's generation, and a lookup caches its
+// answer only if the generation it started with is still current.
+const generations = new Map<string, number>();
 
 function cacheEntitlement(appUserId: string, entitlement: Entitlement, cachedAtMs = Date.now()): void {
   const entry = { entitlement, cachedAtMs };
@@ -64,10 +70,11 @@ export function verifyWebhookAuth(authHeader: string | undefined): boolean {
   const expected = withoutBearer(configured);
   if (!expected) return false; // a bare "Bearer " is no secret at all
   const token = withoutBearer(authHeader);
-  // Constant-time compare so the shared secret can't be brute-forced by timing.
-  const tokenBuffer = Buffer.from(token);
-  const expectedBuffer = Buffer.from(expected);
-  return tokenBuffer.length === expectedBuffer.length && timingSafeEqual(tokenBuffer, expectedBuffer);
+  // Constant-time compare of fixed-length digests (finding F86). Comparing the
+  // raw values needed equal lengths first, so a guess of the wrong length
+  // returned early and the secret's length leaked through timing.
+  const digest = (value: string) => createHash("sha256").update(value).digest();
+  return timingSafeEqual(digest(token), digest(expected));
 }
 
 export function planFromEntitlements(
@@ -98,6 +105,7 @@ export async function fetchEntitlement(appUserId: string): Promise<Entitlement> 
   if (!/^[A-Za-z0-9_-]{1,128}$/.test(appUserId)) {
     throw new Error("Refusing an unexpected account id.");
   }
+  const generation = generations.get(appUserId) ?? 0;
   const response = await fetchWithTimeout(`${REVENUECAT_API}/subscribers/${encodeURIComponent(appUserId)}`, {
     headers: { Authorization: `Bearer ${process.env.REVENUECAT_SECRET_KEY}`, Accept: "application/json" }
   });
@@ -109,7 +117,7 @@ export async function fetchEntitlement(appUserId: string): Promise<Entitlement> 
   };
   const resolved = planFromEntitlements(json.subscriber?.entitlements ?? {});
   const entitlement: Entitlement = { ...resolved, source: "revenuecat" };
-  cacheEntitlement(appUserId, entitlement);
+  if ((generations.get(appUserId) ?? 0) === generation) cacheEntitlement(appUserId, entitlement);
   return entitlement;
 }
 
@@ -126,49 +134,22 @@ export function getCachedEntitlement(appUserId: string): Entitlement | undefined
   return entitlement;
 }
 
-// Apply a RevenueCat webhook event to the cache (call only after auth check).
-export function applyWebhookEvent(body: unknown): void {
-  const event = (body as {
-    event?: { app_user_id?: string; type?: string; entitlement_ids?: string[]; expiration_at_ms?: number };
-  }).event;
-  if (!event?.app_user_id) return;
-
-  // RevenueCat removes access only on EXPIRATION. A CANCELLATION (auto-renew
-  // turned off — or a refund) and a SUBSCRIPTION_PAUSED ("Don't revoke access on
-  // this event") don't say whether access continues, so drop the cached answer
-  // and let the next read re-verify against RevenueCat instead of guessing.
-  if (event.type === "CANCELLATION" || event.type === "SUBSCRIPTION_PAUSED") {
-    void deleteEntitlementForUser(event.app_user_id);
-    return;
-  }
-
-  const ids = event.entitlement_ids ?? [];
-  // 0 is a real (past) timestamp; only an absent value means "no expiry".
-  const expiresAt = typeof event.expiration_at_ms === "number" ? new Date(event.expiration_at_ms).toISOString() : null;
-  const downgrade = event.type === "EXPIRATION";
-
-  let plan: BillingPlan = "free";
-  let active = false;
-  if (!downgrade) {
-    if (ids.some((id) => FAMILY_IDS.includes(id))) { plan = "family"; active = true; }
-    else if (ids.some((id) => PRO_IDS.includes(id))) { plan = "pro"; active = true; }
-  }
-  const entitlement: Entitlement = { plan, active, expiresAt, source: "cache" };
-  cacheEntitlement(event.app_user_id, entitlement);
-}
-
 // Test/maintenance helper.
 export function clearEntitlementCache(): void {
   cache.clear();
   void kvClear("billing");
 }
 
-// Account deletion: purge one user's cached entitlement (in-memory + persisted).
-// Keyed directly by appUserId, so a single delete is exact, and a retry finds
-// the row even after the in-memory copy is gone. Resolves once the row is gone
-// (false if the database rejected the delete) so the caller acks only durable
-// deletion (finding F75).
+// Drop one user's cached entitlement (in-memory + persisted), so the next read
+// asks RevenueCat. Used by account deletion and by every RevenueCat webhook
+// (finding F85: a webhook's payload is never trusted, only acted on as "this
+// user changed"). Keyed directly by appUserId, so a single delete is exact, and
+// a retry finds the row even after the in-memory copy is gone. Resolves once the
+// row is gone (false if the database rejected the delete) so the caller acks
+// only durable deletion (finding F75). Any lookup already in flight for this
+// user will not cache its answer (F87).
 export async function deleteEntitlementForUser(appUserId: string): Promise<boolean> {
+  generations.set(appUserId, (generations.get(appUserId) ?? 0) + 1);
   cache.delete(appUserId);
   return kvDeleteAwait("billing", appUserId);
 }

@@ -10,7 +10,7 @@ import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { authRoutes, revokeAccessTokensForAccount, revokeAllSessionsForAccount, verifyAccessToken } from "./routes/auth";
 import { createLinkToken, deletePlaidItem, exchangePublicToken, getRecentTransactions, getStoredPlaidItem, plaidConfigured, sandboxPublicToken, storePlaidItem } from "./plaid";
-import { applyWebhookEvent, billingConfigured, deleteEntitlementForUser, fetchEntitlement, getCachedEntitlement, verifyWebhookAuth, webhookConfigured } from "./billing";
+import { billingConfigured, deleteEntitlementForUser, fetchEntitlement, getCachedEntitlement, verifyWebhookAuth, webhookConfigured } from "./billing";
 import { deleteUserSyncData, pullChanges, pushChanges, type EncryptedChange } from "./sync";
 import { createHousehold, getHousehold, joinHousehold, removeMember, removeUserFromAllHouseholds, setMemberSpend, type Household } from "./family";
 import { coachConfigured, coachModel, generateCoaching } from "./coach";
@@ -202,20 +202,13 @@ const coachRequestSchema = z.object({
   question: z.string().max(500).optional(),
   budgetCapMinor: z.number().int().min(0).optional()
 });
-// RevenueCat documents null for both optional fields: expiration_at_ms "can be
-// null for non-subscription purchases or lifetime products", and
-// entitlement_ids "can be null if the product_id is not mapped to any
-// entitlements". Rejecting null answered every lifetime purchase with a 400
-// (finding F54). The upper bound is the largest instant a JS Date can hold, so
-// an absurd timestamp is a 400 here rather than a RangeError (500) later.
-const MAX_DATE_MS = 8_640_000_000_000_000;
+// P2.8: only the app user id is read (finding F85: the payload is not trusted).
+// RevenueCat's other fields (type, entitlement_ids, expiration_at_ms, ...) are
+// therefore not validated either: a value we would have rejected made
+// RevenueCat retry 5 times and then drop the event, so the re-verification it
+// signals never happened.
 const revenueCatWebhookSchema = z.object({
-  event: z.object({
-    app_user_id: z.string().min(1).max(256),
-    type: z.string().max(64).optional(),
-    entitlement_ids: z.array(z.string().max(128)).max(50).nullable().optional(),
-    expiration_at_ms: z.number().int().nonnegative().max(MAX_DATE_MS).nullable().optional()
-  }).passthrough()
+  event: z.object({ app_user_id: z.string().min(1).max(256) }).passthrough()
 }).passthrough();
 // Real Plaid public tokens are short (well under 200 chars); 512 is a
 // generous cap, bounding the value before it's forwarded verbatim into a
@@ -691,7 +684,18 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       reply.code(400);
       return parsed.error;
     }
-    applyWebhookEvent(parsed.data);
+    // F85. RevenueCat retries a failed delivery up to 5 times over about 2.5
+    // hours and may deliver twice, so an event can arrive after newer ones; and
+    // its header is a static secret, not a signature over the body. So, as
+    // RevenueCat recommends, a webhook only means "re-verify this user": the
+    // cached entitlement is dropped (durably, before RevenueCat hears 200) and
+    // the next read asks GET /subscribers. Idempotent and order-independent by
+    // construction; a forged or replayed event can cause one extra lookup, no
+    // grant.
+    if (!(await deleteEntitlementForUser(parsed.data.event.app_user_id))) {
+      reply.code(503);
+      return fail("SERVICE_UNAVAILABLE", "Could not record the billing event. Please retry.", request.id);
+    }
     return ok({ received: true }, request.id);
   });
 

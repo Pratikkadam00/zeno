@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  applyWebhookEvent,
   billingConfigured,
   clearEntitlementCache,
   deleteEntitlementForUser,
@@ -12,6 +11,22 @@ import {
 } from "./billing";
 
 afterEach(() => clearEntitlementCache());
+
+const rcJson = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+/** Cache an entitlement the only way the server can (finding F85): a verified
+ *  RevenueCat lookup, with its answer faked. */
+async function seed(appUserId: string, entitlements: Record<string, { expires_date: string | null }>) {
+  const saved = process.env.REVENUECAT_SECRET_KEY;
+  process.env.REVENUECAT_SECRET_KEY = "rc-test-secret";
+  const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(rcJson({ subscriber: { entitlements } }));
+  try {
+    return await fetchEntitlement(appUserId);
+  } finally {
+    fetchSpy.mockRestore();
+    if (saved === undefined) delete process.env.REVENUECAT_SECRET_KEY;
+    else process.env.REVENUECAT_SECRET_KEY = saved;
+  }
+}
 
 describe("verifyWebhookAuth", () => {
   const originalSecret = process.env.REVENUECAT_WEBHOOK_AUTH;
@@ -200,77 +215,15 @@ describe("fetchEntitlement (RevenueCat REST, fetch faked)", () => {
     expect(getCachedEntitlement("acct_html")).toBeUndefined();
   });
 
-  it("after a CANCELLATION webhook, the next read re-verifies and a still-paid subscription stays Pro", async () => {
+  it("once the cached answer is dropped (a webhook, an account deletion), the next read asks RevenueCat again (F85)", async () => {
     const expires = inAMonth();
-    applyWebhookEvent({ event: { app_user_id: "acct_cancel", type: "INITIAL_PURCHASE", entitlement_ids: ["pro"], expiration_at_ms: Date.parse(expires) } });
-    applyWebhookEvent({ event: { app_user_id: "acct_cancel", type: "CANCELLATION", entitlement_ids: ["pro"], expiration_at_ms: Date.parse(expires) } });
-    expect(getCachedEntitlement("acct_cancel")).toBeUndefined(); // → the route asks RevenueCat
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(json({ subscriber: { entitlements: { pro: { expires_date: expires } } } }));
-    expect((await fetchEntitlement("acct_cancel")).plan).toBe("pro");
-  });
-});
-
-describe("applyWebhookEvent (RevenueCat event → cached entitlement)", () => {
-  const later = () => Date.now() + 60_000;
-
-  it("ignores a body without an event or without an app_user_id", () => {
-    applyWebhookEvent({});
-    applyWebhookEvent({ event: { type: "INITIAL_PURCHASE", entitlement_ids: ["pro"] } });
-    applyWebhookEvent({ event: { app_user_id: "", type: "INITIAL_PURCHASE", entitlement_ids: ["pro"] } });
-    expect(getCachedEntitlement("")).toBeUndefined();
-  });
-
-  it("grant-type events cache the plan their entitlement ids name, with the event's expiry, marked as from the cache", () => {
-    const expiresMs = later();
-    for (const type of ["INITIAL_PURCHASE", "RENEWAL", "UNCANCELLATION", "NON_RENEWING_PURCHASE", undefined]) {
-      const id = `grant-${String(type)}`;
-      applyWebhookEvent({ event: { app_user_id: id, type, entitlement_ids: ["pro"], expiration_at_ms: expiresMs } });
-      expect(getCachedEntitlement(id), String(type)).toEqual({ plan: "pro", active: true, expiresAt: new Date(expiresMs).toISOString(), source: "cache" });
-    }
-  });
-
-  it("family outranks pro in one event; the zeno_ ids count; unknown or missing ids grant nothing", () => {
-    applyWebhookEvent({ event: { app_user_id: "both", type: "RENEWAL", entitlement_ids: ["pro", "family"] } });
-    applyWebhookEvent({ event: { app_user_id: "zf", type: "RENEWAL", entitlement_ids: ["zeno_family"] } });
-    applyWebhookEvent({ event: { app_user_id: "zp", type: "RENEWAL", entitlement_ids: ["zeno_pro"] } });
-    applyWebhookEvent({ event: { app_user_id: "other", type: "RENEWAL", entitlement_ids: ["premium_addon"] } });
-    applyWebhookEvent({ event: { app_user_id: "none", type: "RENEWAL" } });
-    expect(getCachedEntitlement("both")?.plan).toBe("family");
-    expect(getCachedEntitlement("zf")?.plan).toBe("family");
-    expect(getCachedEntitlement("zp")?.plan).toBe("pro");
-    expect(getCachedEntitlement("other")).toMatchObject({ plan: "free", active: false });
-    expect(getCachedEntitlement("none")).toMatchObject({ plan: "free", active: false });
-  });
-
-  it("EXPIRATION revokes: free and inactive, whatever the entitlement ids say", () => {
-    applyWebhookEvent({ event: { app_user_id: "exp", type: "INITIAL_PURCHASE", entitlement_ids: ["family"], expiration_at_ms: later() } });
-    applyWebhookEvent({ event: { app_user_id: "exp", type: "EXPIRATION", entitlement_ids: ["family"], expiration_at_ms: Date.now() - 1 } });
-    expect(getCachedEntitlement("exp")).toMatchObject({ plan: "free", active: false, source: "cache" });
-  });
-
-  it("CANCELLATION and SUBSCRIPTION_PAUSED never report a paying user as Free: the cached answer is dropped so the next read re-verifies", () => {
-    // RevenueCat: access is removed on EXPIRATION; a cancellation (auto-renew
-    // off) keeps access to the end of the period, and for SUBSCRIPTION_PAUSED
-    // "Don't revoke access on this event". Before the fix both cached
-    // plan "free", which the app trusts over its own SDK for up to the TTL.
-    for (const type of ["CANCELLATION", "SUBSCRIPTION_PAUSED"]) {
-      const id = `keep-${type}`;
-      applyWebhookEvent({ event: { app_user_id: id, type: "RENEWAL", entitlement_ids: ["pro"], expiration_at_ms: later() } });
-      applyWebhookEvent({ event: { app_user_id: id, type, entitlement_ids: ["pro"], expiration_at_ms: later() } });
-      expect(getCachedEntitlement(id), type).toBeUndefined();
-    }
-  });
-
-  it("an expiration_at_ms of 0 is a real (long past) expiry, not 'lifetime'", () => {
-    // Before the fix a truthiness check read 0 as "no expiry", caching an
-    // active, never-expiring grant.
-    applyWebhookEvent({ event: { app_user_id: "epoch", type: "RENEWAL", entitlement_ids: ["pro"], expiration_at_ms: 0 } });
-    expect(getCachedEntitlement("epoch")).toBeUndefined();
-  });
-
-  it("a replayed old grant (its expiry already passed) is never served — the caller must re-verify", () => {
-    applyWebhookEvent({ event: { app_user_id: "replay", type: "RENEWAL", entitlement_ids: ["family"], expiration_at_ms: Date.now() - 24 * 3600 * 1000 } });
-    expect(getCachedEntitlement("replay")).toBeUndefined();
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => json({ subscriber: { entitlements: { pro: { expires_date: expires } } } }));
+    expect((await fetchEntitlement("acct_again")).plan).toBe("pro");
+    expect(getCachedEntitlement("acct_again")?.plan).toBe("pro");
+    expect(await deleteEntitlementForUser("acct_again")).toBe(true);
+    expect(getCachedEntitlement("acct_again")).toBeUndefined(); // → the route asks RevenueCat
+    expect((await fetchEntitlement("acct_again")).plan).toBe("pro");
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -279,40 +232,48 @@ describe("entitlement cache TTL (10 minutes) and deletion", () => {
     vi.useRealTimers();
   });
 
-  it("a cached answer is served for exactly 10 minutes, then treated as stale", () => {
+  it("a cached answer is served for exactly 10 minutes, then treated as stale", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(Date.parse("2026-09-30T12:00:00.000Z"));
-    applyWebhookEvent({ event: { app_user_id: "ttl", type: "INITIAL_PURCHASE", entitlement_ids: ["pro"] } });
+    await seed("ttl", { pro: { expires_date: null } });
     vi.setSystemTime(Date.parse("2026-09-30T12:10:00.000Z"));
     expect(getCachedEntitlement("ttl")?.plan).toBe("pro");
     vi.setSystemTime(Date.parse("2026-09-30T12:10:00.001Z"));
     expect(getCachedEntitlement("ttl")).toBeUndefined();
   });
 
-  it("deleteEntitlementForUser removes only that user's cached entitlement", () => {
-    applyWebhookEvent({ event: { app_user_id: "gone", type: "INITIAL_PURCHASE", entitlement_ids: ["pro"] } });
-    applyWebhookEvent({ event: { app_user_id: "stays", type: "INITIAL_PURCHASE", entitlement_ids: ["pro"] } });
-    deleteEntitlementForUser("gone");
+  it("deleteEntitlementForUser removes only that user's cached entitlement", async () => {
+    await seed("gone", { pro: { expires_date: null } });
+    await seed("stays", { pro: { expires_date: null } });
+    await deleteEntitlementForUser("gone");
     expect(getCachedEntitlement("gone")).toBeUndefined();
     expect(getCachedEntitlement("stays")?.plan).toBe("pro");
   });
 });
 
 describe("entitlement cache expiry", () => {
-  it("does not serve an active grant past its own expiresAt (missed downgrade webhook)", () => {
-    applyWebhookEvent({ event: { app_user_id: "u1", type: "RENEWAL", entitlement_ids: ["pro"], expiration_at_ms: Date.now() - 1000 } });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("does not serve an active grant past its own expiresAt, even inside the 10-minute window (a missed downgrade webhook)", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const start = Date.now();
+    await seed("u1", { pro: { expires_date: new Date(start + 1000).toISOString() } });
+    expect(getCachedEntitlement("u1")?.active).toBe(true);
+    vi.setSystemTime(start + 2000);
     expect(getCachedEntitlement("u1")).toBeUndefined();
   });
 
-  it("serves an active grant that has not yet expired", () => {
-    applyWebhookEvent({ event: { app_user_id: "u2", type: "RENEWAL", entitlement_ids: ["pro"], expiration_at_ms: Date.now() + 60_000 } });
+  it("serves an active grant that has not yet expired", async () => {
+    await seed("u2", { pro: { expires_date: new Date(Date.now() + 60_000).toISOString() } });
     const entitlement = getCachedEntitlement("u2");
     expect(entitlement?.plan).toBe("pro");
     expect(entitlement?.active).toBe(true);
   });
 
-  it("serves a downgrade result (free/inactive) even with a past expiry", () => {
-    applyWebhookEvent({ event: { app_user_id: "u3", type: "EXPIRATION", entitlement_ids: ["pro"], expiration_at_ms: Date.now() - 1000 } });
+  it("serves a free/inactive answer (an expired subscription) from the cache", async () => {
+    await seed("u3", { pro: { expires_date: new Date(Date.now() - 1000).toISOString() } });
     const entitlement = getCachedEntitlement("u3");
     expect(entitlement?.plan).toBe("free");
     expect(entitlement?.active).toBe(false);
@@ -321,8 +282,7 @@ describe("entitlement cache expiry", () => {
 
 // A lifetime (non-consumable) purchase attached to the "pro" entitlement in the
 // RevenueCat dashboard reports expires_date: null (RevenueCat's documented
-// convention for lifetime access) — never a downgrade webhook, since a
-// non-consumable never expires or renews. This locks in that this server path
+// convention for lifetime access). This locks in that this server path
 // already handles it correctly with no lifetime-specific code.
 describe("lifetime (non-consumable) entitlements — expires_date: null", () => {
   it("planFromEntitlements treats a null expires_date as active forever", () => {
@@ -330,9 +290,8 @@ describe("lifetime (non-consumable) entitlements — expires_date: null", () => 
     expect(result).toEqual({ plan: "pro", active: true, expiresAt: null });
   });
 
-  it("an INITIAL_PURCHASE webhook with no expiration_at_ms (lifetime) caches an active, never-expiring grant", () => {
-    applyWebhookEvent({ event: { app_user_id: "u-lifetime", type: "INITIAL_PURCHASE", entitlement_ids: ["pro"] } });
-    const entitlement = getCachedEntitlement("u-lifetime");
-    expect(entitlement).toMatchObject({ plan: "pro", active: true, expiresAt: null });
+  it("a verified lifetime grant is cached as active and never expiring", async () => {
+    await seed("u-lifetime", { pro: { expires_date: null } });
+    expect(getCachedEntitlement("u-lifetime")).toMatchObject({ plan: "pro", active: true, expiresAt: null });
   });
 });

@@ -35,7 +35,16 @@ vi.mock("./storage/pg", () => ({
   }
 }));
 
-const { applyWebhookEvent, clearEntitlementCache, deleteEntitlementForUser, getCachedEntitlement } = await import("./billing");
+const { clearEntitlementCache, deleteEntitlementForUser, fetchEntitlement, getCachedEntitlement } = await import("./billing");
+
+/** A verified RevenueCat answer for this user (fetch faked): since F85 the only
+ *  way an entitlement is cached. */
+function verify(appUserId: string, entitlements: Record<string, { expires_date: string | null }>) {
+  vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response(JSON.stringify({ subscriber: { entitlements } }), { status: 200 }));
+  return fetchEntitlement(appUserId);
+}
+const iso = (ms: number) => new Date(ms).toISOString();
+const savedKey = process.env.REVENUECAT_SECRET_KEY;
 
 const T0 = Date.parse("2026-09-30T12:00:00.000Z");
 const MINUTE = 60_000;
@@ -54,6 +63,7 @@ function restart(): void {
 }
 
 beforeEach(() => {
+  process.env.REVENUECAT_SECRET_KEY = "rc-test-secret";
   vi.useFakeTimers();
   vi.setSystemTime(T0);
   clearEntitlementCache();
@@ -65,45 +75,44 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
+  if (savedKey === undefined) delete process.env.REVENUECAT_SECRET_KEY;
+  else process.env.REVENUECAT_SECRET_KEY = savedKey;
 });
 
 describe("what is persisted", () => {
-  it("a webhook grant is stored under the app user id with the time it was cached", () => {
-    applyWebhookEvent({ event: { app_user_id: "acct_1", type: "INITIAL_PURCHASE", entitlement_ids: ["pro"], expiration_at_ms: T0 + 30 * MINUTE } });
+  it("a verified answer is stored under the app user id with the time it was cached", async () => {
+    await verify("acct_1", { pro: { expires_date: iso(T0 + 30 * MINUTE) } });
     expect(kv.rows.get("acct_1")).toEqual({
-      entitlement: { plan: "pro", active: true, expiresAt: new Date(T0 + 30 * MINUTE).toISOString(), source: "cache" },
+      entitlement: { plan: "pro", active: true, expiresAt: iso(T0 + 30 * MINUTE), source: "revenuecat" },
       cachedAtMs: T0
     });
   });
 
-  it("an ignored webhook body persists nothing", () => {
-    applyWebhookEvent({});
-    applyWebhookEvent({ event: { type: "RENEWAL", entitlement_ids: ["pro"] } });
+  it("a failed lookup persists nothing", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response("{}", { status: 503 }));
+    await expect(fetchEntitlement("acct_down")).rejects.toThrow("RevenueCat responded 503");
     expect(kv.persisted).toEqual([]);
   });
 
-  it("a CANCELLATION deletes the persisted row too, so a restart cannot bring the old answer back", () => {
-    applyWebhookEvent({ event: { app_user_id: "acct_2", type: "RENEWAL", entitlement_ids: ["pro"] } });
-    applyWebhookEvent({ event: { app_user_id: "acct_2", type: "CANCELLATION", entitlement_ids: ["pro"] } });
+  it("dropping the cached answer (a webhook, an account deletion) deletes the persisted row too, so a restart cannot bring the old answer back", async () => {
+    await verify("acct_2", { pro: { expires_date: null } });
+    expect(await deleteEntitlementForUser("acct_2")).toBe(true);
     expect(kv.deleted).toEqual(["billing/acct_2"]);
+    expect(kv.rows.has("acct_2")).toBe(false);
     restart();
     expect(getCachedEntitlement("acct_2")).toBeUndefined();
   });
 
-  it("account deletion removes the row; clearing drops the namespace", () => {
-    applyWebhookEvent({ event: { app_user_id: "acct_3", type: "RENEWAL", entitlement_ids: ["pro"] } });
-    deleteEntitlementForUser("acct_3");
-    expect(kv.deleted).toEqual(["billing/acct_3"]);
-    expect(kv.rows.has("acct_3")).toBe(false);
-    kv.cleared.length = 0;
+  it("clearing drops the namespace", () => {
     clearEntitlementCache();
     expect(kv.cleared).toEqual(["billing"]);
   });
 });
 
 describe("restart (hydration) never resets the TTL or resurrects a grant", () => {
-  it("a restored entry keeps its ORIGINAL cache time: still served inside the 10-minute window, stale after it", () => {
-    applyWebhookEvent({ event: { app_user_id: "acct_ttl", type: "RENEWAL", entitlement_ids: ["family"] } });
+  it("a restored entry keeps its ORIGINAL cache time: still served inside the 10-minute window, stale after it", async () => {
+    await verify("acct_ttl", { family: { expires_date: null } });
     vi.setSystemTime(T0 + 9 * MINUTE);
     restart();
     expect(getCachedEntitlement("acct_ttl")?.plan).toBe("family");
@@ -113,8 +122,8 @@ describe("restart (hydration) never resets the TTL or resurrects a grant", () =>
     expect(getCachedEntitlement("acct_ttl")).toBeUndefined();
   });
 
-  it("a restored grant past its own expiry is not served even inside the TTL window", () => {
-    applyWebhookEvent({ event: { app_user_id: "acct_exp", type: "RENEWAL", entitlement_ids: ["pro"], expiration_at_ms: T0 + 2 * MINUTE } });
+  it("a restored grant past its own expiry is not served even inside the TTL window", async () => {
+    await verify("acct_exp", { pro: { expires_date: iso(T0 + 2 * MINUTE) } });
     vi.setSystemTime(T0 + 3 * MINUTE);
     restart();
     expect(getCachedEntitlement("acct_exp")).toBeUndefined();
