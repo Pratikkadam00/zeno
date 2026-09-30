@@ -279,3 +279,26 @@ plus the new gate script. Checked by grep and by reading, then fixed on device.
 A foreground deep link (`am start` to a running app) cycles the activity
 through pause/resume and re-locks the app. The old code did the same on the
 resume edge. Arguably correct (any pause is potential exposure); logged.
+
+---
+
+# Seventh pass — 2026-09-30, the domain now lives in two files (A1 prep), verified end to end
+
+- **Refactor:** every hard-coded host (~45 lines across web metadata, JSON-LD
+  on seven pages, sitemap, robots, the www-redirect, legal prose + mailto, and
+  mobile's Terms/Privacy links, feedback address and share signature) now goes
+  through `apps/web/lib/site.ts` or `apps/mobile/src/config/site.ts`.
+  `scripts/site-url-guard.test.ts` fails on any other occurrence. 17 new tests;
+  web `site.ts` FAILS THE BUILD on a malformed origin.
+- **Web verified:** build compiles with `next.config.ts` importing `./lib/site`;
+  generated output is unchanged (526 sitemap URLs, Netflix guide breadcrumb
+  JSON-LD resolves to the same absolute URL).
+- **Mobile verified on device (release APK):** Settings → Terms row located by
+  its accessibility-tree bounds → tap → ActivityTaskManager logged
+  `act=android.intent.action.VIEW dat=https://zeno.app/legal/terms` into Chrome.
+  The app emits exactly the configured URL.
+- **What Chrome then showed — the A1 blocker, live:** `forsale.godaddy.com`.
+  The parked domain redirects the app's Terms link to a domain-for-sale page.
+  Any reviewer tapping that link sees the same. This is not a code defect; it
+  resolves the moment the domain exists (set NEXT_PUBLIC_SITE_URL and
+  EXPO_PUBLIC_SITE_URL, or the two DEFAULT_SITE_URL lines).

@@ -16,10 +16,17 @@ and the feedback address. The domain is parked/for-sale, i.e. not owned.
 Apple and Google both **require a reachable privacy-policy URL**, so the app
 fails review as-is; worse, whoever buys the domain controls what your users see.
 
-Work once the domain exists (small, mechanical):
-1. Add one `SITE_URL` constant per app (there is none today).
-2. Replace the 19 hardcoded references.
-3. Re-run gates; update `apps/web` sitemap/robots/SEO metadata.
+**Prep DONE 2026-09-30.** The host now lives in exactly two files
+(`apps/web/lib/site.ts`, `apps/mobile/src/config/site.ts`), guarded by
+`scripts/site-url-guard.test.ts`. Verified on device: the app's Terms link
+emits `https://zeno.app/legal/terms`, and Chrome lands on **GoDaddy's for-sale
+page** — that is what a store reviewer sees today.
+
+Work once the domain exists (minutes):
+1. Set `NEXT_PUBLIC_SITE_URL` (web deploy env) and `EXPO_PUBLIC_SITE_URL`
+   (EAS env) — or change the two `DEFAULT_SITE_URL` lines.
+2. Set `RESEND_FROM_EMAIL` (A3) so the API's dev-only sender default is unused.
+3. Re-run gates (the guard test and the web build both check the value).
 
 ### A3. Service keys (OWNER — also blocks release builds)
 RevenueCat products + "pro" entitlement, Resend domain verification, Google
