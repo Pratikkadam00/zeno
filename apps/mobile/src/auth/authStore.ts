@@ -197,21 +197,26 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
         throw new Error("Sign in with Apple is only available on supported Apple devices.");
       }
 
+      // OIDC nonce (F10): Apple gets only SHA-256(raw); the raw value goes to our
+      // API, which requires the token's nonce claim to equal that hash.
+      const nonce = await createNoncePair();
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
           AppleAuthentication.AppleAuthenticationScope.EMAIL
-        ]
+        ],
+        nonce: nonce.hashed
       });
 
       if (!credential.identityToken) {
         throw new Error("Apple did not return an identity token.");
       }
 
+      // No email: the server takes it from the verified identity token only (F23).
       const session = await apiPost<AuthSessionResponse>("/auth/apple", {
         identityToken: credential.identityToken,
+        nonce: nonce.raw,
         authorizationCode: credential.authorizationCode ?? undefined,
-        email: credential.email ?? undefined,
         fullName: credential.fullName ? AppleAuthentication.formatFullName(credential.fullName) : undefined
       });
 
@@ -237,12 +242,16 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
         scheme: "zeno",
         path: "auth/google"
       });
+      // OIDC nonce (F10): Google gets SHA-256(raw); our API gets the raw value.
+      // The nonce used to be generated here and never sent to the server, so it
+      // bound nothing.
+      const nonce = await createNoncePair();
       const request = await AuthSession.loadAsync({
         clientId,
         responseType: ResponseType.IdToken,
         redirectUri,
         scopes: ["openid", "profile", "email"],
-        extraParams: { nonce: createNonce() }
+        extraParams: { nonce: nonce.hashed }
       }, googleDiscovery);
       const result = await request.promptAsync(googleDiscovery);
 
@@ -250,10 +259,11 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
         throw new Error("Google sign-in was cancelled.");
       }
 
+      // Only the ID token and the raw nonce. The Google ACCESS token (and any
+      // server code) is not sent: our API never needs to call Google as the user.
       const session = await apiPost<AuthSessionResponse>("/auth/google", {
         idToken: result.params.id_token,
-        accessToken: result.params.access_token,
-        serverAuthCode: result.params.code
+        nonce: nonce.raw
       });
 
       await persistSession(session);
@@ -514,8 +524,13 @@ function selectGoogleClientId(config: GoogleConfig): string | null {
   return config.webClientId ?? config.expoClientId ?? null;
 }
 
-function createNonce(): string {
-  return Array.from(Crypto.getRandomBytes(16), (byte) => byte.toString(16).padStart(2, "0")).join("");
+// A fresh random raw nonce (16 bytes → 32 hex chars) and its lowercase-hex
+// SHA-256, the form the API compares against (routes/auth.ts nonceHash).
+// Lowercased explicitly so no platform's hex casing can cause a mismatch.
+export async function createNoncePair(): Promise<{ raw: string; hashed: string }> {
+  const raw = Array.from(Crypto.getRandomBytes(16), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  const hashed = (await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, raw, { encoding: Crypto.CryptoEncoding.HEX })).toLowerCase();
+  return { raw, hashed };
 }
 
 function getErrorMessage(error: unknown): string {

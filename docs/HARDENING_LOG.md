@@ -23,7 +23,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P1.1 `apps/api/src/server.ts` (0 %) — boot, env matrix, logger; **fixes F9** (tokens in request logs)
   - [x] P1.2 `apps/mobile/src/security/*` — secure-store, lock-store (48 %), app-lock; **fixes F13** (Gmail SecureStore key)
   - [x] P1.3 `apps/mobile/src/discovery/*` (emailScanner 48 %, csvParser, helpers) + shared receipts — untrusted email/CSV input; **fixes F12, F17, F20**
-  - [ ] P1.4 `apps/mobile/src/auth/authStore.ts` (51 %) — token lifecycle; **verdict on F10/F11** (with the API side)
+  - [x] P1.4 `apps/mobile/src/auth/authStore.ts` (51 %) — token lifecycle; **fixes F10, F23, F24** (with the API side); F11 stays open (P3)
   - [ ] P1.5 `apps/mobile/src/storage/database.ts` (59 %) + `subscription-repository.ts` (0 %)
   - [ ] P1.6 `apps/mobile/src/billing/revenueCat.ts` (55 %)
   - [ ] P1.7 `packages/service-catalog/src/services.ts` (0 %) — catalog invariants for all 509 entries
@@ -59,7 +59,7 @@ that closes it.
 | F14 | The PIN lockout window is measured with the device clock, so someone holding the unlocked phone can move the clock forward past the 15-minute lockout (each cycle still costs 10 attempts and a trip to Settings). No trusted time source on-device; rollback detection is possible. | Low | me | P3 (MASVS) |
 | F15 | `checkStatus` trusts the server's plan but falls back to the client's RevenueCat view when the server is unreachable. Client-only features are bypassable by any modified client regardless; what matters is that PAID SERVER features (coach, family, sync) check entitlement server-side. | Medium (to confirm) | me | P2 (authz matrix) |
 | F16 | Local DB encryption is configured (`useSQLCipher: true` in app.config; `expo.sqlite.useSQLCipher=true` in the generated gradle.properties), but never PROVEN at runtime: needs `PRAGMA cipher_version` on a device, or a check that the file header of `zeno.db` is not the plaintext "SQLite format 3". | Medium (unverified claim) | me | P3 (on device) |
-| F10 | Google sign-in: a nonce is sent to Google but NOT to our API (`/auth/google` gets only the token), so the server cannot bind the ID token to this sign-in (replay of a stolen token). Apple sign-in requests no nonce at all. Needs the server side read in full before a verdict. | Medium (to confirm) | me | P1 (`authStore.ts`) + P2 |
+| F10 | **FIXED in P1.4** (server + app). ~~Google sign-in: a nonce is sent to Google but NOT to our API (`/auth/google` gets only the token), so the server cannot bind the ID token to this sign-in (replay of a stolen token). Apple sign-in requests no nonce at all. Needs the server side read in full before a verdict. | Medium (to confirm) | me | P1 (`authStore.ts`) + P2 |
 | F11 | Google sign-in uses the implicit ID-token flow returned to the custom scheme `zeno://auth/google`, and Gmail connect also uses expo-auth-session. **Google's own native-app guide, verbatim: "Custom URI schemes are no longer supported on Android and Chrome apps."** So on Android these flows are likely REJECTED by Google, not just weaker. Cannot be confirmed at runtime without the real Google client IDs (A3). Likely fix: Google's native Credential Manager / Sign in with Google SDK, or App Links redirects. | **High (likely broken on Android)** | owner: client IDs (A3); me: migrate | P3 |
 | F12 | **FIXED in P1.3** (revocation, label); sender-spoofing part ACCEPTED as low with evidence (see P1.3). ~~Gmail: disconnect revokes with the token in the URL query (`…/revoke?token=`); the fallback account label embeds the first 8 characters of the access token; known billing senders are trusted from the spoofable `From` header alone (no DKIM/SPF check). | Low–Medium | me | P1 (`emailScanner.ts`) |
 | F13 | **FIXED in P1.2.** ~~Gmail connect fails on every real device.~~ Tokens are stored under `zeno.oauth.gmail.acct.<address>`, but expo-secure-store 56.0.4 rejects keys outside `/^[\w.-]+$/` (source: `ensureValidKey` in `build/SecureStore.js`, applied to get/set/delete), and an address contains `@`. The existing tests pass only because their fake SecureStore does not enforce that rule. | High (feature broken on device) | me | P1.2 |
@@ -70,6 +70,8 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F20 | **FIXED in P1.3.** ~~CSV merchant cleanup stripped ANY last word of 2+ letters ("APPLE MUSIC" → "Apple", "DISNEY PLUS" → "Disney"): distinct subscriptions merged into one group with an averaged amount, and groups whose amounts then differed were dropped.~~ | High (wrong / missing detections) | me | P1.3 |
 | F21 | `Date.parse` is lenient: "02/30/2026" becomes 2 March, "February 31, 2026" becomes 3 March. Receipt/CSV dates can silently shift. | Low (correctness) | me | P6 (property tests) |
 | F22 | **A stale compiled `packages/service-catalog/src/services.js` (tracked, last changed 2026-06-14) SHADOWS `services.ts`.** `index.ts` exports from `"./services.js"`; a probe proved Vitest loads the `.js` file (a different module instance from `services.ts`). Data is identical today (probe: 0 differences over 509 entries, same exports), but any edit to `services.ts` is silently ignored wherever the `.js` wins, and coverage measured the wrong file (why `services.ts` showed 0 %). The `.js` may be load-bearing for Metro, which does not map `./x.js` to `x.ts`, so removal must be verified per consumer (Vitest, Next build, Metro bundle, API dist). | Medium (silent-edit trap) | me | P1.7 |
+| F23 | **FIXED in P1.4.** ~~Apple/Google routes put the CLIENT-SENT email into the session record and our signed access token (`parsed.data.email ?? verified.email`). No consumer reads that claim today, so it was latent, but our own token vouched for an unverified address.~~ | Medium (latent) | me | P1.4 |
+| F24 | **FIXED in P1.4.** ~~All three production-guard security tests were VACUOUS: with each guard removed they still passed. The OAuth tests set a client id, so the "unverified tokens" flag they claimed to test was never consulted; the demo test posted to a route that does not exist (`/auth/demo`), with no email and a 7-char password.~~ Lesson for P6: security tests must be mutation-tested first. | High (false assurance) | me | P1.4 / P6 |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -520,3 +522,55 @@ with the fixes.
 uncovered lines, branches or functions.** Tier 1 lines 67.22 % → **71.20 %**.
 
 Gates: typecheck 0 · lint 0 · vitest 746/746 (72 files) · RN 22/22 · semgrep 0.
+
+### P1.4 — Auth: mobile token lifecycle + the API's social sign-in — 2026-09-30
+
+**Verdicts on the questions raised in P1.** Each server function was read in full
+(`routes/auth.ts` verifyRemoteJwt, both social routes, issueSession, every reader of the
+email claim) and each library behaviour was taken from its source: expo passes `nonce`
+straight to Apple's request (`request.nonce = options.nonce`); `digestStringAsync`
+defaults to hex.
+
+- **F10 confirmed, then fixed.** No nonce was verified anywhere: the app generated one
+  for Google but never sent it to the API, Apple requested none, and the verifier had no
+  nonce check. A leaked or intercepted ID token (plausible given F11) meant a session.
+  Fix: the app makes a random 32-hex raw nonce and gives the provider only
+  `sha256(raw)` (lowercase hex, lowercased explicitly). The API requires the raw value
+  (16–256 chars, Apple always, Google whenever an idToken is sent). The verifier requires
+  `payload.nonce === sha256(raw)`, compared as fixed-length digests with
+  `timingSafeEqual`. An interceptor has the token but not the raw nonce.
+- **F23 found and fixed:** the session email came from the request body before the
+  verified token. Only `verified.email` is used now, with a synthetic address when the
+  token has none. The app no longer sends an email for Apple, or the Google access token
+  and server code for Google (least privilege: our API never calls Google as the user).
+- **F24 found and fixed:** all three production-guard tests passed with their guards
+  REMOVED (proved by bite checks). The OAuth tests set an audience, so the flag was never
+  reached; the demo test used a nonexistent route and an invalid body. Rewritten: no
+  audience configured, schema-valid nonces, the real `/auth/demo-login` route, plus a
+  positive control proving the request succeeds outside production. Each now FAILS with
+  its guard removed.
+- **F11 stays open** (P3): Google no longer supports custom URI schemes on Android; a
+  migration to the native SDK needs the real client IDs.
+
+**Tests (+66):**
+- New `auth-social.test.ts` (30): real RS256 tokens from a local RSA key via a mocked
+  JWKS; the first suite ever to verify a correctly signed social token. Covers: valid
+  Apple/Google with the token's email winning over a hostile body email; synthetic email;
+  missing nonce (400, no JWKS fetch); replayed token; no nonce claim; raw instead of hash;
+  13 malformed/forged tokens (expired, no exp/sub/iss/aud, wrong iss/aud, other key,
+  `alg: none`, HS256, no kid, 2 parts, tampered payload); audience arrays; no client id;
+  both Google issuers; JWKS caching, rotation refetch-once, outage fails closed.
+- New `authStore.flows.test.ts` (33): every store flow, the nonce split (with an
+  UPPERCASE digest mock to prove the lowercasing), de-duplicated concurrent refresh,
+  logout that still clears when revocation fails, envelope errors, and the web
+  in-memory path.
+- `auth-prod-guards.test.ts`: 3 rewritten, +1 positive control.
+
+**Bite checks:** nonce comparison disabled → 4 server tests fail; body email restored → 2
+fail; production guards disabled → each rewritten guard test fails; raw nonce not sent by
+the app → 2 app tests fail.
+
+**Coverage:** `authStore.ts` **0 uncovered lines, branches, functions** (was 51 %).
+Tier 1 lines 71.20 % → **74.82 %**.
+
+Gates: typecheck 0 · lint 0 · vitest 810/810 (74 files) · RN 22/22 · semgrep 0.

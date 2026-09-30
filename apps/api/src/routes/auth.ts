@@ -35,8 +35,18 @@ const legacyMagicLinkVerifySchema = z.object({
   code: z.string().min(6).max(12)
 });
 
+// OIDC nonce (finding F10): the app generates a random RAW nonce, gives the
+// provider only SHA-256(raw) (hex), and sends the raw value here. The identity
+// token must carry nonce === SHA-256(raw). Someone who intercepts or leaks the
+// identity token cannot replay it: they would also need the raw nonce, which
+// never left the app.
+const nonceSchema = z.string().min(16).max(256);
+
+// `email` is still ACCEPTED from older clients but never used (finding F23): the
+// session email comes only from the verified identity token.
 const appleOAuthSchema = z.object({
   identityToken: z.string().min(10),
+  nonce: nonceSchema,
   authorizationCode: z.string().min(4).optional(),
   email: emailSchema.optional(),
   // Never read after parsing (Apple's own name is used instead) — bounded for
@@ -46,11 +56,14 @@ const appleOAuthSchema = z.object({
 
 const googleOAuthSchema = z.object({
   idToken: z.string().min(10).optional(),
+  nonce: nonceSchema.optional(),
   accessToken: z.string().min(10).optional(),
   serverAuthCode: z.string().min(4).optional(),
   email: emailSchema.optional()
 }).refine((value) => Boolean(value.idToken || value.accessToken || value.serverAuthCode), {
   message: "Provide idToken, accessToken, or serverAuthCode."
+}).refine((value) => !value.idToken || Boolean(value.nonce), {
+  message: "A nonce is required with idToken."
 });
 
 const refreshSchema = z.object({
@@ -119,6 +132,7 @@ type JwtPayload = {
   email?: string;
   exp?: number;
   iss?: string;
+  nonce?: string;
   sub?: string;
 };
 
@@ -288,13 +302,15 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       return parsed.error;
     }
 
-    const verified = await verifyAppleIdentityToken(parsed.data.identityToken, reply, request.id);
+    const verified = await verifyAppleIdentityToken(parsed.data.identityToken, parsed.data.nonce, reply, request.id);
     if (!verified) {
       return reply.sent ? undefined : fail("UNAUTHORIZED", "Invalid Apple identity token.", request.id);
     }
 
     const subject = verified.subject;
-    const email = normalizeEmail(parsed.data.email ?? verified.email ?? `apple-${stableId(subject)}@privaterelay.appleid.com`);
+    // Only the VERIFIED token's email (F23): a client-sent email was signed into
+    // our own access token as if Apple had vouched for it.
+    const email = normalizeEmail(verified.email ?? `apple-${stableId(subject)}@privaterelay.appleid.com`);
     return ok(await issueSession(accountIdForSubject("apple", subject), email, "apple"), request.id);
   });
 
@@ -311,15 +327,17 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       return fail("UNAUTHORIZED", "Google idToken is required.", request.id);
     }
 
+    // The schema guarantees a nonce whenever an idToken is present.
     const verified = parsed.data.idToken
-      ? await verifyGoogleIdentityToken(parsed.data.idToken, reply, request.id)
+      ? await verifyGoogleIdentityToken(parsed.data.idToken, parsed.data.nonce ?? "", reply, request.id)
       : null;
     if (parsed.data.idToken && !verified) {
       return reply.sent ? undefined : fail("UNAUTHORIZED", "Invalid Google identity token.", request.id);
     }
 
     const subject = verified?.subject ?? subjectToken;
-    const email = normalizeEmail(parsed.data.email ?? verified?.email ?? `google-${stableId(subject)}@accounts.google.local`);
+    // Only the VERIFIED token's email (F23).
+    const email = normalizeEmail(verified?.email ?? `google-${stableId(subject)}@accounts.google.local`);
     return ok(await issueSession(accountIdForSubject("google", subject), email, "google"), request.id);
   });
 
@@ -698,7 +716,7 @@ async function deliverMagicLink(email: string, link: string, code: string, reque
   }
 }
 
-async function verifyAppleIdentityToken(token: string, reply: { code: (statusCode: number) => unknown }, requestId: string): Promise<VerifiedIdentity | null> {
+async function verifyAppleIdentityToken(token: string, rawNonce: string, reply: { code: (statusCode: number) => unknown }, requestId: string): Promise<VerifiedIdentity | null> {
   const audiences = getAppleAudiences();
   if (audiences.length === 0) {
     if (allowUnverifiedOAuthTokens()) {
@@ -713,7 +731,8 @@ async function verifyAppleIdentityToken(token: string, reply: { code: (statusCod
     return await verifyRemoteJwt(token, {
       audiences,
       issuer: "https://appleid.apple.com",
-      jwksUrl: "https://appleid.apple.com/auth/keys"
+      jwksUrl: "https://appleid.apple.com/auth/keys",
+      rawNonce
     });
   } catch (error) {
     console.warn({ requestId, error: getErrorMessage(error) }, "Apple identity token verification failed.");
@@ -722,7 +741,7 @@ async function verifyAppleIdentityToken(token: string, reply: { code: (statusCod
   }
 }
 
-async function verifyGoogleIdentityToken(token: string, reply: { code: (statusCode: number) => unknown }, requestId: string): Promise<VerifiedIdentity | null> {
+async function verifyGoogleIdentityToken(token: string, rawNonce: string, reply: { code: (statusCode: number) => unknown }, requestId: string): Promise<VerifiedIdentity | null> {
   const audiences = getGoogleAudiences();
   if (audiences.length === 0) {
     if (allowUnverifiedOAuthTokens()) {
@@ -737,7 +756,8 @@ async function verifyGoogleIdentityToken(token: string, reply: { code: (statusCo
     return await verifyRemoteJwt(token, {
       audiences,
       issuer: ["https://accounts.google.com", "accounts.google.com"],
-      jwksUrl: "https://www.googleapis.com/oauth2/v3/certs"
+      jwksUrl: "https://www.googleapis.com/oauth2/v3/certs",
+      rawNonce
     });
   } catch (error) {
     console.warn({ requestId, error: getErrorMessage(error) }, "Google identity token verification failed.");
@@ -746,7 +766,13 @@ async function verifyGoogleIdentityToken(token: string, reply: { code: (statusCo
   }
 }
 
-async function verifyRemoteJwt(token: string, options: { audiences: string[]; issuer: string | string[]; jwksUrl: string }): Promise<VerifiedIdentity> {
+/** The value an identity token's `nonce` claim must hold for a given raw nonce:
+ *  lowercase hex SHA-256 (what the app passes to Apple/Google). Exported for tests. */
+export function nonceHash(rawNonce: string): string {
+  return createHash("sha256").update(rawNonce).digest("hex");
+}
+
+async function verifyRemoteJwt(token: string, options: { audiences: string[]; issuer: string | string[]; jwksUrl: string; rawNonce: string }): Promise<VerifiedIdentity> {
   const [encodedHeader, encodedPayload, encodedSignature] = token.split(".");
   if (!encodedHeader || !encodedPayload || !encodedSignature) {
     throw new Error("JWT must contain header, payload, and signature.");
@@ -792,6 +818,14 @@ async function verifyRemoteJwt(token: string, options: { audiences: string[]; is
   const tokenAudiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
   if (!tokenAudiences.some((audience) => options.audiences.includes(audience))) {
     throw new Error("JWT audience is invalid.");
+  }
+
+  // Bind the token to THIS sign-in (F10). Fixed-length digests compared in
+  // constant time, so neither the value nor its length leaks through timing.
+  const expected = createHash("sha256").update(nonceHash(options.rawNonce)).digest();
+  const actual = createHash("sha256").update(payload.nonce ?? "").digest();
+  if (!payload.nonce || !timingSafeEqual(expected, actual)) {
+    throw new Error("JWT nonce is invalid.");
   }
 
   return {
