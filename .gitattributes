@@ -1,0 +1,24 @@
+# Line endings: LF everywhere, on every OS, regardless of core.autocrlf.
+#
+# Why (verified 2026-09-30): a fresh clone on Windows with core.autocrlf=true
+# checked scripts/audit-gate.mjs out with CRLF, and vitest then failed to import
+# it (SyntaxError) - 10 tests silently dropped from the run. The same file with
+# LF passes. CI on Linux never sees CRLF, so this only bit Windows checkouts.
+# Git already stores every text file as LF; this makes the checkout match.
+* text=auto eol=lf
+
+# Binary assets: never touch their bytes.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.pdf  binary
+*.zip  binary
+*.woff binary
+*.woff2 binary
+*.ttf  binary
+*.otf  binary
+*.mp4  binary
+*.thumbnail binary
