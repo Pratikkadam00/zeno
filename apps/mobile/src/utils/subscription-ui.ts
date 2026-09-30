@@ -20,10 +20,15 @@ export function rollRenewalForward(dateValue: string | undefined | null, cycle: 
   const hours = date.getUTCHours();
   const minutes = date.getUTCMinutes();
 
+  // Both rolls jump straight to the right cycle instead of walking one cycle at
+  // a time: the old walk gave up after 1000 steps, so a date more than ~19 years
+  // (weekly) or ~83 years (monthly) overdue — an epoch-0 or spreadsheet
+  // zero-date import — came back still in the past.
   if (cycle === "weekly") {
+    const weekMs = 7 * DAY_MS;
     let stamp = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-    let guard = 0;
-    while (stamp < todayUTC && guard++ < 1000) stamp += 7 * DAY_MS;
+    // Both stamps are UTC midnights, so the gap is an exact whole number of days.
+    if (stamp < todayUTC) stamp += Math.ceil((todayUTC - stamp) / weekMs) * weekMs;
     const rolled = new Date(stamp);
     return new Date(Date.UTC(rolled.getUTCFullYear(), rolled.getUTCMonth(), rolled.getUTCDate(), hours, minutes)).toISOString();
   }
@@ -40,10 +45,13 @@ export function rollRenewalForward(dateValue: string | undefined | null, cycle: 
     return { year, month, day: Math.min(anchorDay, daysInMonth) };
   };
 
-  let months = 0;
-  let current = at(0);
-  let guard = 0;
-  while (Date.UTC(current.year, current.month, current.day) < todayUTC && guard++ < 1000) {
+  // Start at the last whole cycle that is not past today's month. That candidate
+  // is in today's month or earlier; one more step is always in a later month,
+  // so the loop below runs at most once and needs no iteration cap.
+  const monthsBehind = (now.getUTCFullYear() - baseYear) * 12 + (now.getUTCMonth() - baseMonth);
+  let months = monthsBehind > 0 ? Math.floor(monthsBehind / step) * step : 0;
+  let current = at(months);
+  while (Date.UTC(current.year, current.month, current.day) < todayUTC) {
     months += step;
     current = at(months);
   }
