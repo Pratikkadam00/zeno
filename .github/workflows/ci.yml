@@ -22,6 +22,24 @@ jobs:
     name: typecheck & test
     runs-on: ubuntu-24.04 # pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19 (GitHub notice); upgrade deliberately
     timeout-minutes: 25
+    # A REAL Postgres server for the P2.1 suite (apps/api/src/storage/real-pg.test.ts),
+    # which otherwise embeds PGlite. Pinned by digest like every other image here.
+    # A throwaway database on the runner's loopback: trust auth, so no password
+    # string lives in the repository at all.
+    services:
+      postgres:
+        image: postgres:18-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      TEST_DATABASE_URL: postgres://postgres@localhost:5432/postgres
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0

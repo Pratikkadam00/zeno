@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { fetchWithTimeout } from "./http";
-import { kvClear, kvDelete, kvPersist, registerHydrator, type StoredEntry } from "./storage/pg";
+import { kvClear, kvDeleteAwait, kvPersist, registerHydrator, type StoredEntry } from "./storage/pg";
 
 // Server-side entitlement verification. The mobile client reports a plan from
 // the RevenueCat SDK, but a tampered client could lie — so the server is the
@@ -130,7 +130,7 @@ export function applyWebhookEvent(body: unknown): void {
   // this event") don't say whether access continues, so drop the cached answer
   // and let the next read re-verify against RevenueCat instead of guessing.
   if (event.type === "CANCELLATION" || event.type === "SUBSCRIPTION_PAUSED") {
-    deleteEntitlementForUser(event.app_user_id);
+    void deleteEntitlementForUser(event.app_user_id);
     return;
   }
 
@@ -156,10 +156,13 @@ export function clearEntitlementCache(): void {
 }
 
 // Account deletion: purge one user's cached entitlement (in-memory + persisted).
-// keyed directly by appUserId, so a single delete is exact.
-export function deleteEntitlementForUser(appUserId: string): void {
+// Keyed directly by appUserId, so a single delete is exact, and a retry finds
+// the row even after the in-memory copy is gone. Resolves once the row is gone
+// (false if the database rejected the delete) so the caller acks only durable
+// deletion (finding F75).
+export async function deleteEntitlementForUser(appUserId: string): Promise<boolean> {
   cache.delete(appUserId);
-  kvDelete("billing", appUserId);
+  return kvDeleteAwait("billing", appUserId);
 }
 
 registerHydrator("billing", (entries: StoredEntry[]) => {

@@ -142,14 +142,36 @@ export function kvPersist(namespace: string, key: string, value: unknown): void 
  *  errors are logged, never thrown). Use this wherever revocation must be
  *  durable before the caller acks success (refresh-token logout/deletion) —
  *  otherwise a crash between the in-memory delete and this write landing could
- *  let a "revoked" token get replayed back into memory on the next restart. */
-export async function kvDeleteAwait(namespace: string, key: string): Promise<void> {
+ *  let a "revoked" token get replayed back into memory on the next restart.
+ *  Resolves false only when a configured DB rejected the delete. */
+export async function kvDeleteAwait(namespace: string, key: string): Promise<boolean> {
   const p = getPool();
-  if (!p) return;
+  if (!p) return true;
   try {
     await p.query("DELETE FROM kv_store WHERE namespace = $1 AND key = $2", [namespace, key]);
+    return true;
   } catch (err) {
     logStorageFailure("delete", namespace, key, err);
+    return false;
+  }
+}
+
+/** Remove EVERY row of a namespace whose JSON value has `field` equal to
+ *  `value` (e.g. all of one account's sessions), straight from the database.
+ *  Account deletion uses this instead of deleting key by key from the
+ *  in-memory index: a delete that failed once must still be found by a retry,
+ *  even though the in-memory copy is already gone (finding F75). Parameterised
+ *  throughout; resolves false only when a configured DB rejected it. */
+export async function kvDeleteByValueField(namespace: string, field: string, value: string): Promise<boolean> {
+  const p = getPool();
+  if (!p) return true;
+  try {
+    await p.query("DELETE FROM kv_store WHERE namespace = $1 AND value->>$2 = $3", [namespace, field, value]);
+    return true;
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    console.error("[pg] storage delete-by-field failed", { namespace, field, error });
+    return false;
   }
 }
 

@@ -39,7 +39,7 @@ vi.mock("./storage/pg", () => ({
     return typeof enc === "string" && enc.startsWith("sealed:") ? JSON.parse(enc.slice("sealed:".length)) : null;
   },
   kvPersist: (ns: string, key: string, value: unknown) => { store.persisted.push({ ns, key, value }); },
-  kvDelete: (ns: string, key: string) => { store.deleted.push(`${ns}:${key}`); },
+  kvDeleteAwait: async (ns: string, key: string) => { store.deleted.push(`${ns}:${key}`); return true; },
   kvClear: async (ns: string) => { store.cleared.push(ns); },
   registerHydrator: (ns: string, fn: (entries: { key: string; value: unknown }[]) => void) => { store.hydrators.set(ns, fn); }
 }));

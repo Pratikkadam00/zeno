@@ -3,7 +3,7 @@ import type { FastifyPluginAsync, FastifyReply } from "fastify";
 import { createHash, createPublicKey, createSign, createVerify, generateKeyPairSync, randomBytes, randomInt, randomUUID, timingSafeEqual, type JsonWebKey } from "node:crypto";
 import { z } from "zod";
 import { fetchWithTimeout } from "../http";
-import { kvDelete, kvDeleteAwait, kvPersist, kvPersistAwait, registerHydrator, type StoredEntry } from "../storage/pg";
+import { kvDelete, kvDeleteAwait, kvDeleteByValueField, kvPersist, kvPersistAwait, registerHydrator, type StoredEntry } from "../storage/pg";
 
 const accessTokenTtlSeconds = 15 * 60;
 const magicLinkTtlSeconds = 10 * 60;
@@ -208,36 +208,28 @@ export function sweepExpiredAuth(): void {
 // Account deletion: revoke every session/magic-link record tied to this account
 // (in-memory + persisted), across all three maps — each holds accountId on its
 // record even though the map key is a token hash/email, not the account id.
-// Synchronous and immediate: a refresh attempt right after this call is already
-// rejected (the in-memory entry is gone), regardless of when the Postgres mirror
-// delete lands. Does NOT revoke an already-issued short-lived (15 min) access
-// token — those are stateless RS256 JWTs verified by signature only, with no
-// revocation list; that tail is an existing property of the access-token design,
-// not something this function changes.
-export async function revokeAllSessionsForAccount(accountId: string): Promise<void> {
-  const deletes: Promise<void>[] = [];
+// In memory it is immediate: a refresh attempt right after this call is already
+// rejected. In Postgres it is DURABLE before this resolves, and driven by the
+// database itself: every auth record carries its accountId, so one statement per
+// namespace removes them all, including any a previous, partly failed attempt
+// left behind after memory had already forgotten them (finding F75). Resolves
+// false if the database rejected a delete, so the caller does not claim success.
+// Does NOT revoke an already-issued short-lived (15 min) access token — those
+// are stateless RS256 JWTs verified by signature only, with no revocation list.
+export async function revokeAllSessionsForAccount(accountId: string): Promise<boolean> {
   for (const [hash, record] of magicLinksByHash) {
-    if (record.accountId === accountId) {
-      magicLinksByHash.delete(hash);
-      deletes.push(kvDeleteAwait("auth_magic", hash));
-    }
+    if (record.accountId === accountId) magicLinksByHash.delete(hash);
   }
   for (const [email, record] of legacyCodesByEmail) {
-    if (record.accountId === accountId) {
-      legacyCodesByEmail.delete(email);
-      deletes.push(kvDeleteAwait("auth_legacy", email));
-    }
+    if (record.accountId === accountId) legacyCodesByEmail.delete(email);
   }
   for (const [hash, record] of refreshSessionsByHash) {
-    if (record.accountId === accountId) {
-      refreshSessionsByHash.delete(hash);
-      // Awaited: this is the account-deletion path — a crash before this lands
-      // would let a "revoked" refresh token get replayed back into memory on
-      // the next restart, within its remaining 30-day TTL.
-      deletes.push(kvDeleteAwait("auth_refresh", hash));
-    }
+    if (record.accountId === accountId) refreshSessionsByHash.delete(hash);
   }
-  await Promise.all(deletes);
+  const results = await Promise.all(
+    ["auth_magic", "auth_legacy", "auth_refresh"].map((namespace) => kvDeleteByValueField(namespace, "accountId", accountId))
+  );
+  return results.every(Boolean);
 }
 
 // Auth endpoints get much stricter limits than the global bucket: magic-link

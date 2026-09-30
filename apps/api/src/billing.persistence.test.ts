@@ -24,9 +24,10 @@ vi.mock("./storage/pg", () => ({
     kv.persisted.push(`${namespace}/${key}`);
     if (namespace === "billing") kv.rows.set(key, JSON.parse(JSON.stringify(value)));
   },
-  kvDelete: (namespace: string, key: string) => {
+  kvDeleteAwait: async (namespace: string, key: string) => {
     kv.deleted.push(`${namespace}/${key}`);
     if (namespace === "billing") kv.rows.delete(key);
+    return true;
   },
   kvClear: async (namespace: string) => {
     kv.cleared.push(namespace);

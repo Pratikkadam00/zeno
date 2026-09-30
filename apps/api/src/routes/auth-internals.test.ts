@@ -31,7 +31,8 @@ vi.mock("../storage/pg", async (importOriginal) => {
       real.registerHydrator(namespace, fn);
     },
     kvDelete: (namespace: string, key: string) => { storage.deleted.push(`${namespace}:${key}`); },
-    kvDeleteAwait: async (namespace: string, key: string) => { storage.deleted.push(`${namespace}:${key}`); },
+    kvDeleteAwait: async (namespace: string, key: string) => { storage.deleted.push(`${namespace}:${key}`); return true; },
+    kvDeleteByValueField: async (namespace: string, field: string, value: string) => { storage.deleted.push(`${namespace}:${field}=${value}`); return true; },
     kvPersist: (namespace: string, key: string) => { storage.persisted.push(`${namespace}:${key}`); },
     kvPersistAwait: async (namespace: string, key: string) => { storage.persisted.push(`${namespace}:${key}`); }
   };
@@ -214,8 +215,14 @@ describe("account deletion revokes pending sign-ins", () => {
     const pending = await requestLink(app, "gone@zeno.test");
     await requestLink(app, "someone-else@zeno.test");
     storage.deleted.length = 0;
-    await revokeAllSessionsForAccount(session.accountId);
-    expect(storage.deleted).toEqual(expect.arrayContaining([expect.stringMatching(/^auth_magic:/), "auth_legacy:gone@zeno.test", expect.stringMatching(/^auth_refresh:/)]));
+    expect(await revokeAllSessionsForAccount(session.accountId)).toBe(true);
+    // One database-side delete per namespace, by the accountId every auth record
+    // carries (F75), so a retry also finds rows memory has already forgotten.
+    expect(storage.deleted.sort()).toEqual([
+      `auth_legacy:accountId=${session.accountId}`,
+      `auth_magic:accountId=${session.accountId}`,
+      `auth_refresh:accountId=${session.accountId}`
+    ]);
     expect(storage.deleted.some((d) => d.includes("someone-else"))).toBe(false);
     const byLink = await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(tokenOf(pending.devLink))}` });
     const byCode = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link/verify", payload: { email: "gone@zeno.test", code: pending.devCode } });

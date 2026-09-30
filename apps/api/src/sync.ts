@@ -8,7 +8,7 @@
 // change is also mirrored to Postgres (the payload is already client-encrypted
 // ciphertext the server can't read) and replayed on boot. See storage/pg.ts.
 
-import { kvClear, kvDelete, kvPersistAwait, registerHydrator, type StoredEntry } from "./storage/pg";
+import { kvClear, kvDeleteByValueField, kvPersistAwait, registerHydrator, type StoredEntry } from "./storage/pg";
 
 export type EncryptedChange = {
   entityType: "subscription" | "preference" | "profile";
@@ -114,17 +114,13 @@ export function clearSyncStore(): void {
 }
 
 // Account deletion: drop one user's synced entities (in-memory + persisted).
-// Persisted rows are keyed `${userId}|${entityKey}`, so each must be deleted by
-// its exact composite key — enumerated from the in-memory map, which holds the
-// same set.
-export function deleteUserSyncData(userId: string): void {
-  const records = store.get(userId);
-  if (records) {
-    for (const key of records.keys()) {
-      kvDelete("sync", `${userId}|${key}`);
-    }
-  }
+// Every persisted row carries its owner (`{ userId, ...record }`), so the
+// database deletes them by that field in ONE statement, not key by key from the
+// in-memory map: a retry after a failed attempt still finds every row, even
+// though memory no longer lists them. Resolves once durable (F75).
+export async function deleteUserSyncData(userId: string): Promise<boolean> {
   store.delete(userId);
+  return kvDeleteByValueField("sync", "userId", userId);
 }
 
 // Rebuild the per-user maps from persisted rows, restoring the global sequence

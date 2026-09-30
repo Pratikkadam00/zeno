@@ -12,7 +12,11 @@ const kv = vi.hoisted(() => ({
   rows: new Map<string, unknown>(),
   hydrators: new Map<string, (entries: { key: string; value: unknown }[]) => void>(),
   deleted: [] as string[],
-  cleared: [] as string[]
+  cleared: [] as string[],
+  // Scripted results for the DURABLE writes (true = landed); an optional hook
+  // runs while a write is "in flight", before its result is returned.
+  writeResults: [] as boolean[],
+  duringWrite: null as null | (() => void)
 }));
 
 vi.mock("./storage/pg", () => ({
@@ -22,9 +26,20 @@ vi.mock("./storage/pg", () => ({
   kvPersist: (namespace: string, key: string, value: unknown) => {
     if (namespace === "family") kv.rows.set(key, JSON.parse(JSON.stringify(value)));
   },
-  kvDelete: (namespace: string, key: string) => {
-    kv.deleted.push(`${namespace}/${key}`);
-    if (namespace === "family") kv.rows.delete(key);
+  kvPersistAwait: async (namespace: string, key: string, value: unknown) => {
+    kv.duringWrite?.();
+    const ok = kv.writeResults.shift() ?? true;
+    if (ok && namespace === "family") kv.rows.set(key, JSON.parse(JSON.stringify(value)));
+    return ok;
+  },
+  kvDeleteAwait: async (namespace: string, key: string) => {
+    kv.duringWrite?.();
+    const ok = kv.writeResults.shift() ?? true;
+    if (ok) {
+      kv.deleted.push(`${namespace}/${key}`);
+      if (namespace === "family") kv.rows.delete(key);
+    }
+    return ok;
   },
   kvClear: async (namespace: string) => {
     kv.cleared.push(namespace);
@@ -43,7 +58,7 @@ vi.mock("node:crypto", async (importOriginal) => {
   };
 });
 
-const { clearFamilyStore, createHousehold, getHousehold, joinHousehold, removeMember, setMemberSpend } = await import("./family");
+const { clearFamilyStore, createHousehold, getHousehold, joinHousehold, removeMember, removeUserFromAllHouseholds, setMemberSpend } = await import("./family");
 
 function persisted(): Entry[] {
   return [...kv.rows.entries()].map(([key, value]) => ({ key, value }));
@@ -64,6 +79,51 @@ beforeEach(() => {
   kv.deleted.length = 0;
   kv.cleared.length = 0;
   random.codeBytes.length = 0;
+  kv.writeResults.length = 0;
+  kv.duringWrite = null;
+});
+
+describe("account deletion is durable or undone (F75)", () => {
+  it("all writes landed: true, and the user is gone from memory and the table", async () => {
+    const shared = createHousehold("owner", "Owner", 0, "USD")!;
+    joinHousehold(shared.shareCode, "gone", "Gone", 0, "USD");
+    const solo = createHousehold("gone", "Solo", 0, "USD")!;
+    expect(await removeUserFromAllHouseholds("gone")).toBe(true);
+    expect(getHousehold(shared.id)!.members.map((m) => m.id)).toEqual(["owner"]);
+    expect(getHousehold(solo.id)).toBeNull();
+    expect(kv.rows.has(solo.id)).toBe(false);
+  });
+
+  it("a refused rewrite of a shared household: false, and memory is put back so a retry finds the user", async () => {
+    const shared = createHousehold("owner", "Owner", 0, "USD")!;
+    joinHousehold(shared.shareCode, "gone", "Gone", 0, "USD");
+    kv.writeResults.push(false);
+    expect(await removeUserFromAllHouseholds("gone")).toBe(false);
+    expect(getHousehold(shared.id)!.members.map((m) => m.id)).toEqual(["owner", "gone"]);
+    expect(await removeUserFromAllHouseholds("gone")).toBe(true);
+    expect(getHousehold(shared.id)!.members.map((m) => m.id)).toEqual(["owner"]);
+  });
+
+  it("a refused delete of a disbanded (solo) household: false, and the household and its share code come back", async () => {
+    const solo = createHousehold("gone", "Solo", 0, "USD")!;
+    kv.writeResults.push(false);
+    expect(await removeUserFromAllHouseholds("gone")).toBe(false);
+    expect(getHousehold(solo.id)).toMatchObject({ id: solo.id, ownerId: "gone" });
+    expect(joinHousehold(solo.shareCode, "friend", "Friend", 0, "USD")?.id).toBe(solo.id);
+  });
+
+  it("a household REPLACED while the write was in flight is not overwritten by the stale copy", async () => {
+    const shared = createHousehold("owner", "Owner", 0, "USD")!;
+    joinHousehold(shared.shareCode, "gone", "Gone", 0, "USD");
+    const replacement = { ...JSON.parse(JSON.stringify(getHousehold(shared.id))), members: [{ id: "owner", name: "Owner", monthlySpendMinor: 7, currency: "USD" }] };
+    kv.writeResults.push(false);
+    kv.duringWrite = () => {
+      kv.duringWrite = null;
+      kv.hydrators.get("family")!([{ key: shared.id, value: replacement }]);
+    };
+    expect(await removeUserFromAllHouseholds("gone")).toBe(false);
+    expect(getHousehold(shared.id)!.members).toEqual(replacement.members);
+  });
 });
 
 describe("share-code generation (scripted randomBytes)", () => {

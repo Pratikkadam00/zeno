@@ -18,7 +18,7 @@ vi.mock("pg", () => ({
   })
 }));
 
-const { closeStorage, encryptionConfigured, encryptionKeyStatus, initStorage, kvClear, kvDelete, kvDeleteAwait, kvPersist, kvPersistAwait, openValue, pgEnabled, pgSslConfig, pgSslMode, pingStorage, registerHydrator, sealValue, storageKeyRef } = await import("./pg");
+const { closeStorage, encryptionConfigured, encryptionKeyStatus, initStorage, kvClear, kvDelete, kvDeleteAwait, kvDeleteByValueField, kvPersist, kvPersistAwait, openValue, pgEnabled, pgSslConfig, pgSslMode, pingStorage, registerHydrator, sealValue, storageKeyRef } = await import("./pg");
 const { Pool } = await import("pg");
 const { createCipheriv, randomBytes } = await import("node:crypto");
 
@@ -369,6 +369,36 @@ describe("storage failure paths (DATABASE_URL set, mocked pg client)", () => {
 
     queryImpl = () => Promise.reject(new Error("connection terminated"));
     expect(await kvPersistAwait("sync", "k", { v: 2 })).toBe(false);
+  });
+
+  it("kvDeleteAwait reports whether the delete landed (F75: account deletion acks only on true)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    delete process.env.DATABASE_URL;
+    expect(await kvDeleteAwait("plaid", "acct_1")).toBe(true);
+    process.env.DATABASE_URL = "postgres://mock/db";
+    expect(await kvDeleteAwait("plaid", "acct_1")).toBe(true);
+    queryImpl = () => Promise.reject(new Error("connection terminated"));
+    expect(await kvDeleteAwait("plaid", "acct_1")).toBe(false);
+  });
+
+  it("kvDeleteByValueField: one parameterised statement by a JSON field; false on failure, logged without the value", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    delete process.env.DATABASE_URL;
+    expect(await kvDeleteByValueField("sync", "userId", "acct_secret_id")).toBe(true);
+    expect(queryMock).not.toHaveBeenCalled();
+
+    process.env.DATABASE_URL = "postgres://mock/db";
+    expect(await kvDeleteByValueField("sync", "userId", "acct_secret_id")).toBe(true);
+    expect(queryMock).toHaveBeenLastCalledWith("DELETE FROM kv_store WHERE namespace = $1 AND value->>$2 = $3", ["sync", "userId", "acct_secret_id"]);
+
+    queryImpl = () => Promise.reject(new Error("deadlock detected"));
+    expect(await kvDeleteByValueField("sync", "userId", "acct_secret_id")).toBe(false);
+    queryImpl = () => Promise.reject("a bare string");
+    expect(await kvDeleteByValueField("auth_refresh", "accountId", "acct_secret_id")).toBe(false);
+    const logged = JSON.stringify(consoleError.mock.calls);
+    expect(logged).toContain("deadlock detected");
+    expect(logged).toContain("a bare string");
+    expect(logged).not.toContain("acct_secret_id");
   });
 
   it("kvClear: no database → no query; with one → deletes exactly that namespace; a failure is logged, never thrown", async () => {

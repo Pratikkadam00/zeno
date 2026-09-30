@@ -41,7 +41,16 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
     - [x] P1.9d thin config, theme and web files: all 13 at 0 uncovered statements, branches and functions (`motion.ts` and `useZenoTokens.ts` moved to jest with 100 % floors). **Fixes F35, F36, F37**
   - [x] P1.10 `apps/api/src/plaid.ts` (was 21 %; now 0 uncovered lines / functions, 1 defensive branch) and the Plaid routes in `app.ts` (now 100 %). Plaid's HTTP is faked, with no Plaid or sandbox calls, by standing instruction. **Fixes F34**
   - [x] P1.11 gate: Tier 1 at 100 % statements / functions / lines and 99.61 % branches (≥ 95 %); jest floors at 100 %; green on GitHub (CI 36744248345, CodeQL 36744248343)
-- [ ] **P2 — API on real Postgres, authorization matrix, fuzzing**
+- [~] **P2 — API on real Postgres, authorization matrix, fuzzing** (inline, one item at a time; no parallel agents from here on, by the owner's instruction)
+  - [~] P2.1 real Postgres in tests (PGlite locally, a `postgres` server in CI): schema from empty, upsert, a restart round trip for every store, account deletion leaves no row, the refresh race, concurrent sync replays; **fixes F75**
+  - [ ] P2.2 authorization matrix (table-driven from the route list)
+  - [ ] P2.3 rate limits per route
+  - [ ] P2.4 schema-driven fuzzing (fast-check)
+  - [ ] P2.5 error and log hygiene
+  - [ ] P2.6 auth flows (enumeration-safe magic link, production refusals)
+  - [ ] P2.7 outbound-call inventory (host allowlist, no user-controlled URL)
+  - [ ] P2.8 webhooks (replay, idempotency)
+  - [ ] P2 gate: route-inventory test green; real-PG suite green locally and in CI
 - [ ] **P3 — Mobile hardening (MASVS) + tests for all 29 screens**
 - [ ] **P4 — Website component tests, Playwright, CSP, DAST**
 - [ ] **P5 — Mobile end-to-end (Maestro on the emulator)**
@@ -132,6 +141,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F72 | **FIXED in P1.9b.** ~~A blank `apiBaseUrl` became relative URLs, and a trailing slash produced `.../v1//billing/...`.~~ It is now normalised like `config/site.ts`. Latent: the current eas.json values are well-formed. | Low | me (agent) | P1.9b |
 | F73 | **FIXED in P1.9b.** ~~The demo Duolingo subscription pointed at `duolingo-super`, which is not in the catalog~~, so its detail and cancel screens found no service. It now points at `duolingo-plus`; I confirmed by lookup that it exists and the old slug does not. | Low | me (agent) | P1.9b |
 | F74 | **FIXED.** ~~A new CRITICAL Next.js advisory, GHSA-vcvr-r3jv-pc5j ("Remote Code Execution in next/og ImageResponse", CVSS 9.5), turned CI red.~~ Affected: `>=16.2.0 <16.3.6`; we ran 16.3.3. Per the advisory, exploiting it requires the Node.js `ImageResponse` from `next/og` with attacker-controlled values in SVG content, attributes or styles. **Our website does not import `next/og` at all** (grep: no `next/og`, `ImageResponse` or OG-image routes), so it was not exploitable here, but the vulnerable code shipped in the dependency. Upgraded to **16.3.6**, the minimum fixed version, published 2026-09-22 and so past the repo's 7-day supply-chain cooldown. 16.3.8 is the latest, but it was published today, so we waited. | Critical upstream; not exploitable in our app | me | this slice |
+| F75 | **FIXED in P2.1.** ~~`DELETE /api/v1/account` said "deleted" before the data was gone, and could not finish a failed deletion.~~ Four of its five steps (entitlement, bank token, sync rows, households) were fire-and-forget, so the answer could arrive while Alice's rows were still in Postgres. Proven against real Postgres by making the unawaited writes slow: at the moment of `{ deleted: true }`, her billing, family, plaid and sync rows were all still there, and a crash then would restore them on the next boot. Separately, every failed delete was swallowed (the route still said deleted), and a retry could not find the rows again, because deletion was driven from memory, which had already forgotten them. Now: every step is awaited and reports whether it is durable; any refusal answers **503** (the app then keeps its data and does not tell the user it is done); and sessions and sync rows are deleted **in SQL by the owning account** (`value->>'accountId'` / `'userId'`), so a retry finds whatever is left. Households are JSON documents to rewrite, so a refused rewrite puts the in-memory household back and the retry redoes it. | High (the account-deletion promise; App Store requirement) | me | P2.1 |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -1658,3 +1668,86 @@ and each merged agent branch was re-verified by me in `main`.
 last step, the dependency audit, because a new critical Next.js advisory was published
 today. Every code step passed on GitHub. It was fixed in F74 (Next 16.3.6), and CI has
 been green since.
+
+### P2.1 — the API against a real Postgres (F75) — 2026-10-01
+
+**The database, chosen after checking the machine.** No Docker, `psql` or `pg_ctl` here,
+so:
+- **Locally: PGlite** (`@electric-sql/pglite` 0.5.8), which is PostgreSQL 18.3 compiled
+  to WebAssembly, behind its wire-protocol server (`@electric-sql/pglite-socket`
+  0.2.11, `maxConnections: 16`), on an ephemeral port.
+- **In CI: a real `postgres:18-alpine` server** as a service container, pinned by digest
+  (`sha256:77f585...1873`) and on the runner's loopback with trust auth, so no password
+  string is in the repo. The job exports `TEST_DATABASE_URL`.
+
+Either way the API uses its OWN `pg` pool and SQL through an ordinary `DATABASE_URL`;
+nothing of `storage/pg.ts` is mocked. Before relying on it, I proved it with a probe:
+port 0 reports the real port, and 5 concurrent upserts through the real pool leave 1
+row.
+
+**Supply chain:** both packages are from ElectricSQL, Apache-2.0, last published
+2026-08-26 (past the 7-day cooldown), and dev-only. The lockfile also gained PGlite's own
+extension packages (age, pgvector, pgtap, and others): all Apache-2.0, all from the npm
+registry, all dev-only.
+
+**`storage/real-pg.test.ts`** (10 tests). Every "restart" is a fresh module graph that
+rebuilds ONLY from the database, as a deploy does.
+1. **In CI it asserts a real SERVER** (`kind: "server"`, and `version()` without
+   "PGlite"), so a green CI run proves the server path ran. Faked locally with
+   `CI=true`, it fails: "expected 'pglite' to be 'server'".
+2. **Schema from an EMPTY database:** the table, the column types and nullability, and
+   the `(namespace, key)` primary key. A second boot is idempotent.
+3. **Upsert:** 5 concurrent writes of one key leave one row, and a raw duplicate insert
+   is rejected.
+4. **Restart round trip for every store:** a refresh session, a household, a sync
+   record, an entitlement, and the bank token, which is stored ONLY sealed (no
+   plaintext in the row).
+5. **Account deletion:** once `DELETE /account` answers, **no row of the user remains
+   in any namespace** (all 7 were checked populated first). The other user keeps their
+   session, sync row, and the shared household, which is now theirs.
+6. **F75, slow database:** the unawaited writes take 500 ms, and the rows are checked
+   the instant the API answers.
+7. **F75, refused sync delete:** 503, logged without the account id; the retry removes
+   rows memory had already forgotten.
+8. **F75, refused household rewrite:** 503, memory is put back, and the retry removes the
+   user.
+9. **The refresh-token race:** two concurrent refreshes of one token, exactly one 200.
+   After a restart the replayed token is 401 and the winner works.
+10. **Concurrent sync replays:** one entity, one row, one version, before and after a
+    restart.
+
+**Bite checks** (each alone, then restored):
+- The old fire-and-forget route: test 6 fails (billing, family, plaid and sync rows
+  left).
+- Sync deletion driven from memory, key by key: test 7's retry leaves rows.
+- The household restore removed: test 8 fails.
+
+**The fix, file by file:**
+- `pg.ts`: `kvDeleteAwait` returns a boolean, and a new `kvDeleteByValueField` does one
+  parameterised `DELETE ... WHERE namespace = $1 AND value->>$2 = $3`.
+- `billing` / `plaid` deletes are awaited.
+- `sync` deletes by `userId` in SQL.
+- `auth` revocation deletes by `accountId` in SQL, per namespace.
+- `family` awaits, and undoes on refusal.
+- The route awaits all five steps and answers 503 on any refusal.
+
+**Tests I rewrote** because they pinned the old per-key, fire-and-forget calls. None was
+loosened; each now asserts the new durable call AND the resulting table state:
+- The billing, family, sync and plaid persistence fakes gained the durable functions.
+- The auth-internals revoke test now asserts one by-field delete per namespace.
+- The sync test gained a retry-finds-orphan-rows case.
+
+**Unit tests for the new branches:**
+- `kvDeleteAwait` true or false.
+- `kvDeleteByValueField`: no database, the exact SQL and params, and failure for an
+  Error and a non-Error, never logging the value.
+- Family: all durable; a refused shared rewrite restores and the retry succeeds; a
+  refused solo delete brings the household and its share code back; a household
+  replaced mid-write is not overwritten by the stale copy.
+
+**Checks:**
+- The real-PG suite: 10 / 10, run three times locally.
+- Gates: typecheck 0 · lint 0 · vitest 123 files / 1570 tests at 100 % / 99.61 % /
+  100 % / 100 % · jest 114 / 114 · semgrep (API + workflows) 0 · audit gate PASS.
+
+**Open:** P2.1 is marked done only after CI passes with the server-mode assertion.

@@ -369,13 +369,27 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   // refresh attempt right after this call is already rejected. The device's
   // local SQLite data is wiped separately, client-side (settings.tsx). Rate-
   // limited low: this is a destructive, rarely-called action, not a hot path.
-  app.delete("/api/v1/account", limit(5), async (request) => {
+  // "deleted: true" is said only once every step is DURABLE in Postgres: each
+  // step resolves after its rows are gone (false if the database refused). The
+  // steps used to be fire-and-forget, so the answer could arrive while rows
+  // were still in the database, and a crash then resurrected the "deleted"
+  // account's data on the next boot (finding F75). A refused step answers 503:
+  // the app does not wipe the device or tell the user it is done, and a retry
+  // finds whatever is left because the steps delete from the database, not
+  // from an in-memory index that already forgot the rows.
+  app.delete("/api/v1/account", limit(5), async (request, reply) => {
     const userId = request.userId!;
-    deleteEntitlementForUser(userId);
-    deletePlaidItem(userId);
-    deleteUserSyncData(userId);
-    removeUserFromAllHouseholds(userId);
-    await revokeAllSessionsForAccount(userId);
+    const durable = await Promise.all([
+      deleteEntitlementForUser(userId),
+      deletePlaidItem(userId),
+      deleteUserSyncData(userId),
+      removeUserFromAllHouseholds(userId),
+      revokeAllSessionsForAccount(userId)
+    ]);
+    if (durable.includes(false)) {
+      reply.code(503);
+      return fail("SERVICE_UNAVAILABLE", "Account deletion could not be completed. Please try again.", request.id);
+    }
     return ok({ deleted: true }, request.id);
   });
 

@@ -39,9 +39,13 @@ vi.mock("./storage/pg", () => {
       if (step.ok) table(namespace).set(key, snapshot);
       return step.ok;
     },
-    kvDelete: (namespace: string, key: string) => {
-      kv.deleted.push(`${namespace}/${key}`);
-      table(namespace).delete(key);
+    // Mirrors `DELETE ... WHERE namespace = $1 AND value->>$2 = $3`.
+    kvDeleteByValueField: async (namespace: string, field: string, value: string) => {
+      kv.deleted.push(`${namespace}/${field}=${value}`);
+      for (const [key, row] of table(namespace)) {
+        if ((row as Record<string, unknown>)[field] === value) table(namespace).delete(key);
+      }
+      return true;
     },
     kvClear: async (namespace: string) => {
       kv.cleared.push(namespace);
@@ -201,17 +205,20 @@ describe("restart round trip (hydration)", () => {
 });
 
 describe("deletion", () => {
-  it("deleteUserSyncData removes exactly that user's persisted rows, by composite key", async () => {
+  it("deleteUserSyncData removes exactly that user's persisted rows, by the owner field the database holds (F75)", async () => {
     await pushChanges("acct_a", [change("a1", 1), change("a2", 1)]);
     await pushChanges("acct_b", [change("b1", 1)]);
-    deleteUserSyncData("acct_a");
-    expect(kv.deleted.sort()).toEqual(["sync/acct_a|subscription:a1", "sync/acct_a|subscription:a2"]);
+    expect(await deleteUserSyncData("acct_a")).toBe(true);
+    expect(kv.deleted).toEqual(["sync/userId=acct_a"]);
     expect(rowsOf("sync").map((r) => r.key)).toEqual(["acct_b|subscription:b1"]);
+    expect(pullChanges("acct_a", undefined, 100).changes).toEqual([]);
   });
 
-  it("deleting a user with no synced data issues no deletes", () => {
-    deleteUserSyncData("acct_nobody");
-    expect(kv.deleted).toEqual([]);
+  it("a retry still deletes rows that memory no longer lists (a previous attempt already forgot them)", async () => {
+    await pushChanges("acct_a", [change("a1", 1)]);
+    kv.rows.get("sync")!.set("acct_a|subscription:orphan", { userId: "acct_a", entityId: "orphan" });
+    await deleteUserSyncData("acct_a");
+    expect(rowsOf("sync").map((r) => r.key)).toEqual([]);
   });
 
   it("clearSyncStore drops the whole sync namespace", () => {

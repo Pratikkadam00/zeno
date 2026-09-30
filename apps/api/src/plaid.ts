@@ -26,7 +26,7 @@ import { fetchWithTimeout } from "./http";
 import {
   encryptionConfigured,
   kvClear,
-  kvDelete,
+  kvDeleteAwait,
   kvPersist,
   openValue,
   registerHydrator,
@@ -52,10 +52,12 @@ export function clearPlaidItems(): void {
 }
 
 // Account deletion: drop one user's stored bank item (in-memory + persisted).
-// Keyed directly by userId, so a single delete is exact.
-export function deletePlaidItem(userId: string): void {
+// Keyed directly by userId, so a single delete is exact, and a retry finds the
+// row even after the in-memory copy is gone. Resolves once durable (false if
+// the database rejected it) so deletion is acked only when true (F75).
+export async function deletePlaidItem(userId: string): Promise<boolean> {
   plaidItemsByUser.delete(userId);
-  kvDelete("plaid", userId);
+  return kvDeleteAwait("plaid", userId);
 }
 
 // Decrypt persisted tokens on boot. Rows that can't be opened (key rotated/

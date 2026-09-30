@@ -7,7 +7,7 @@
 // restart doesn't drop households / share-codes (see storage/pg.ts).
 import type { CurrencyCode } from "@zeno/shared";
 import { randomBytes } from "node:crypto";
-import { kvClear, kvDelete, kvPersist, registerHydrator, type StoredEntry } from "./storage/pg";
+import { kvClear, kvDeleteAwait, kvPersist, kvPersistAwait, registerHydrator, type StoredEntry } from "./storage/pg";
 
 export type FamilyMember = { id: string; name: string; monthlySpendMinor: number; currency: CurrencyCode };
 export type Household = {
@@ -118,15 +118,21 @@ export function setMemberSpend(householdId: string, memberId: string, monthlySpe
 // household, or null if that was the last member — the household is disbanded
 // (deleted, share code freed) rather than left as an empty, un-joinable shell.
 export function removeMember(householdId: string, memberId: string): Household | null {
+  return removeMemberTracked(householdId, memberId).household;
+}
+
+// removeMember, plus a promise that settles once the change is durable in
+// Postgres (true), or false if the database rejected it. Account deletion
+// awaits it so "deleted" is only ever said once it is true (finding F75).
+function removeMemberTracked(householdId: string, memberId: string): { household: Household | null; durable: Promise<boolean> } {
   const household = households.get(householdId);
-  if (!household) return null;
+  if (!household) return { household: null, durable: Promise.resolve(true) };
 
   household.members = household.members.filter((member) => member.id !== memberId);
   if (household.members.length === 0) {
     households.delete(householdId);
     codeIndex.delete(household.shareCode);
-    kvDelete("family", householdId);
-    return null;
+    return { household: null, durable: kvDeleteAwait("family", householdId) };
   }
 
   // If the owner just left, reassign ownership to a remaining member.
@@ -138,20 +144,31 @@ export function removeMember(householdId: string, memberId: string): Household |
     household.ownerId = household.members[0]!.id;
   }
 
-  kvPersist("family", household.id, household);
-  return household;
+  return { household, durable: kvPersistAwait("family", household.id, household) };
 }
 
 // Account deletion: remove this user from every household they belong to
 // (owner or member — there's no cap on memberships, only on owner-created
 // households, so a user can be in several). Reuses removeMember's existing
 // disband-on-last-member logic rather than duplicating it.
-export function removeUserFromAllHouseholds(userId: string): void {
-  for (const household of [...households.values()]) {
-    if (household.members.some((member) => member.id === userId)) {
-      removeMember(household.id, userId);
+export async function removeUserFromAllHouseholds(userId: string): Promise<boolean> {
+  const memberships = [...households.values()].filter((household) => household.members.some((member) => member.id === userId));
+  const results = await Promise.all(memberships.map(async (household) => {
+    const before = structuredClone(household);
+    const { household: after, durable } = removeMemberTracked(household.id, userId);
+    if (await durable) return true;
+    // Not durable: put the household back as it was, so the database and
+    // memory agree and a retry still finds this user in it (finding F75). A
+    // household row is a JSON document to rewrite, not a row to delete by
+    // owner, so unlike sync it cannot be cleaned up from the database side.
+    // Only restored if nothing replaced it in the meantime.
+    if (households.get(before.id) === (after ?? undefined)) {
+      households.set(before.id, before);
+      codeIndex.set(before.shareCode, before.id);
     }
-  }
+    return false;
+  }));
+  return results.every(Boolean);
 }
 
 export function clearFamilyStore(): void {
