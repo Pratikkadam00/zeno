@@ -42,8 +42,13 @@ export function canUseScope(key: PublicApiKey, scope: PublicApiScope, now = new 
   if (key.revokedAt) {
     return false;
   }
-  if (key.expiresAt && Date.parse(key.expiresAt) <= now.getTime()) {
-    return false;
+  if (key.expiresAt) {
+    // Fail closed: an expiry we cannot parse (NaN) must not read as "never
+    // expires" — `NaN <= now` is false, which used to keep the key usable.
+    const expiresAt = Date.parse(key.expiresAt);
+    if (Number.isNaN(expiresAt) || expiresAt <= now.getTime()) {
+      return false;
+    }
   }
   return key.scopes.includes(scope);
 }
