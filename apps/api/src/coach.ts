@@ -119,7 +119,9 @@ function formatMoney(minor: number, currency: string): string {
   try {
     return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(minor / 100);
   } catch {
-    return `$${(minor / 100).toFixed(2)}`;
+    // A code Intl rejects is still the amount's currency: label it with that
+    // code, never as dollars (currency honesty).
+    return `${(minor / 100).toFixed(2)} ${currency}`;
   }
 }
 
@@ -235,12 +237,16 @@ export async function generateCoaching(input: CoachRequest): Promise<CoachResult
     outOfScope,
     summary: typeof parsed.summary === "string" ? parsed.summary : "",
     // Defense in depth: even if the model ignores the contract, never return
-    // recommendations for an out-of-scope answer.
+    // recommendations for an out-of-scope answer. Each one is rebuilt from its
+    // string fields only — the app renders them as text, so an object label
+    // would crash the screen and unknown keys have no business reaching it.
     recommendations: outOfScope || !Array.isArray(parsed.recommendations)
       ? []
       : parsed.recommendations
           .filter((rec): rec is CoachRecommendation => Boolean(rec) && typeof rec.title === "string" && typeof rec.detail === "string")
           .slice(0, 5)
+          .map(({ title, detail, estimatedMonthlySavingsLabel: label }): CoachRecommendation =>
+            typeof label === "string" ? { title, detail, estimatedMonthlySavingsLabel: label } : { title, detail })
   };
 }
 
