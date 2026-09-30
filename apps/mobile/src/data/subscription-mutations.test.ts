@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   applySubscriptionChange,
   withNotificationSettingsEntry,
+  withPriceChange,
   withUpdatedNotificationSettings,
   withoutNotificationSettingsEntry
 } from "./subscription-mutations";
@@ -94,5 +95,29 @@ describe("notification settings helpers", () => {
   it("withUpdatedNotificationSettings falls back to defaults for an id with no entry", () => {
     const next = withUpdatedNotificationSettings({}, "new", { sevenDay: false }, allOn);
     expect(next.new).toEqual({ sevenDay: false, threeDay: true, dayOf: true });
+  });
+});
+
+describe("withPriceChange", () => {
+  const sub = makeSubscription("a", { createdAt: "2026-02-01T00:00:00.000Z", price: { amountMinor: 1000, currency: "USD" } });
+
+  it("records nothing when the amount is unchanged", () => {
+    expect(withPriceChange({ a: [{ at: "2026-02-01T00:00:00.000Z", amountMinor: 1000 }] }, sub, 1000, "2026-03-01T00:00:00.000Z")).toBeNull();
+  });
+
+  it("appends to existing history without touching other subscriptions or the input", () => {
+    const history = { a: [{ at: "2026-02-01T00:00:00.000Z", amountMinor: 1000 }], b: [{ at: "2026-01-01T00:00:00.000Z", amountMinor: 5 }] };
+    const next = withPriceChange(history, sub, 1200, "2026-03-01T00:00:00.000Z");
+    expect(next).toEqual({
+      a: [{ at: "2026-02-01T00:00:00.000Z", amountMinor: 1000 }, { at: "2026-03-01T00:00:00.000Z", amountMinor: 1200 }],
+      b: [{ at: "2026-01-01T00:00:00.000Z", amountMinor: 5 }]
+    });
+    expect(history.a).toHaveLength(1);
+  });
+
+  it("seeds the current price as the baseline when there is no history yet", () => {
+    expect(withPriceChange({}, sub, 1200, "2026-03-01T00:00:00.000Z")).toEqual({
+      a: [{ at: "2026-02-01T00:00:00.000Z", amountMinor: 1000 }, { at: "2026-03-01T00:00:00.000Z", amountMinor: 1200 }]
+    });
   });
 });

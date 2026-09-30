@@ -31,7 +31,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
     - [x] P1.8a jest coverage floor wired into CI; the four files moved from Vitest's scope to jest's
     - [x] P1.8b `budget-store.tsx` — **fixes F26** (lost updates)
     - [x] P1.8c `theme-provider.tsx`
-    - [ ] P1.8d `subscription-store.tsx` (601 lines) — incl. the same stale-merge in `setQuietHours`
+    - [x] P1.8d `subscription-store.tsx` — **finishes F26** (the `setQuietHours` stale merge)
     - [ ] P1.8e `LockOverlay.tsx`
     - [ ] P1.8f "erase everything from this device" as one tested function — **fixes F27**
   - [ ] P1.9 remaining 0 % / low files (theme, notifications, widgets, api/config, format, subscription-ui, open-banking, analytics-flag, utils, next.config, app.config)
@@ -79,7 +79,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F23 | **FIXED in P1.4.** ~~Apple/Google routes put the CLIENT-SENT email into the session record and our signed access token (`parsed.data.email ?? verified.email`). No consumer reads that claim today, so it was latent, but our own token vouched for an unverified address.~~ | Medium (latent) | me | P1.4 |
 | F24 | **FIXED in P1.4.** ~~All three production-guard security tests were VACUOUS: with each guard removed they still passed. The OAuth tests set a client id, so the "unverified tokens" flag they claimed to test was never consulted; the demo test posted to a route that does not exist (`/auth/demo`), with no email and a 7-char password.~~ Lesson for P6: security tests must be mutation-tested first. | High (false assurance) | me | P1.4 / P6 |
 | F25 | **305 of the 509 catalog entries (60 %) carry UNRESEARCHED data shown as fact:** a generated cancel link (`<website>/account`, not verified to exist), a default difficulty of "medium", and generic cancel steps. The app opens that link as "Open cancellation page" and shows the difficulty; the website publishes 305 cancel-guide pages stating "difficulty: medium". 204 entries are curated. Conflicts with the project's truthfulness rules (no invented facts). Needs a product decision on presentation, e.g. an "unrated / general steps, not yet verified" label and a link to the homepage instead of a guessed path, or noindex until curated. | High (honesty, public pages) | owner: decide the presentation | P3 (app) + P4 (web) |
-| F26 | **FIXED in P1.8b (budget store; `setQuietHours` in P1.8d).** ~~Budget store loses updates.~~ Every action computes the next state from the `config` its render captured, so two actions before a re-render (a fast double-tap on "add envelope", or two edits in one event) start from the same stale state and the second write erases the first. The code's own comment fixes the duplicate-ID half of exactly this double-tap, not the lost write. `subscription-store` solved this with refs, but its `setQuietHours` has the same stale merge. | Medium (silent data loss) | me | P1.8b / P1.8d |
+| F26 | **FIXED — budget store in P1.8b, `setQuietHours` in P1.8d.** ~~Budget store loses updates.~~ Every action computes the next state from the `config` its render captured, so two actions before a re-render (a fast double-tap on "add envelope", or two edits in one event) start from the same stale state and the second write erases the first. The code's own comment fixes the duplicate-ID half of exactly this double-tap, not the lost write. `subscription-store` solved this with refs, but its `setQuietHours` has the same stale merge. | Medium (silent data loss) | me | P1.8b / P1.8d |
 | F27 | **"Cancel my Zeno account" promises it "erases everything from this device", but leaves connected Gmail OAuth tokens in the keychain (not revoked at Google), the app-lock PIN hash and lockout state, and quiet hours / home currency / cached FX rates / theme.** Gmail access tokens expire within about an hour, which limits the impact, but the promise is false. | High (privacy promise) | me | P1.8f |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
@@ -760,3 +760,53 @@ A test-isolation bug of my own: a permanent `mockRejectedValue` on AsyncStorage'
 
 `theme-provider.tsx`: **100 %** on every metric (was 63 %), with its per-file floor
 added. jest 45/45, both floors met.
+
+### P1.8d — Subscription store — 2026-09-30
+
+`subscription-store.rntest.tsx` (31 tests) drives the real provider and hook. The fakes
+sit at the module boundary only: an in-memory `app_meta` map and row map in place of
+SQLite, plus FX fetch, notifications and `randomUUID`. The hydration normalizers,
+mutation helpers, shared aggregates and the catalog are all the real code.
+
+- **Hydration:** first launch seeds the 5 demo rows once and marks the DB seeded; a
+  seeded DB loads as-is; quiet hours, home currency, AI consent, cached rates and
+  notification settings are all restored; a DB that won't open falls back to in-memory
+  seed data and still hydrates; unmounting mid-open, mid-read, or before a late failure
+  applies nothing.
+- **FX:** fetch and persist when there is no cache; a fresh cache means no fetch; a stale
+  cache refetches; a null fetch changes nothing; a failed persist only warns.
+- **Every mutation:** add (defaults, settings, price history), two adds in one event,
+  update (each field, version bump, a price point only on a real change), unknown id,
+  delete, the four status transitions, `requestCancellation` (the next renewal, or
+  now + 34 days without one), and `runCancellationVerification` across 7 cases
+  (charged → attention, clean → cancelled, a charge before the request → cancelled, no
+  request date → attention, not due, no verify-by, not pending).
+- **Settings, wipe and failures:** notification settings, quiet hours, currency and
+  consent persist. `clearAllData` wipes rows and meta, resets consent and cancels
+  notifications, and carries on past each failing step. Every failed write only warns.
+  With no database, everything works in memory and writes nothing.
+- **Derived values and guards:** native vs converted monthly totals, and an unknown rate
+  is skipped (never a guessed number); `upcoming` (active, dated, not trials, soonest
+  first, max 5); an overdue renewal rolls forward for display but not on disk;
+  suggestions; the web path; the hook guard.
+
+**F26, the second half:** `setQuietHours` now merges into a `quietHoursRef` mirror (set
+at hydration too) instead of the render-captured value.
+**Bite check:** with the old store swapped back in, exactly one test fails, the F26
+test (30/31); restored, 31/31.
+
+Two small refactors, found because 100 % branch coverage flagged them:
+- **The price-history rule moved into a pure helper,** `withPriceChange` in
+  `subscription-mutations.ts`, with 3 Vitest tests. Its "no history yet → current price
+  as the baseline" fallback can't be reached through the store (every path that creates
+  a subscription seeds its history), but it is the helper's real contract, so it is now
+  tested directly instead of left as an untestable branch.
+- **The `upcoming` sort's dead `?? ""` became a type-guarded filter.**
+
+My own test bug: `mounted()` did not reset the fake rows between two mounts in one
+test, so a 3100 vs 3000 total mismatch was leftover data, not a store bug.
+
+`subscription-store.tsx`: **100 %** on every metric (was 0 % under jest), with its
+per-file floor added. Gates: typecheck 0 · lint 0 · vitest 78 files / 875 tests (ratchet
+86.05 / 79.57 / 87.5 / 86.84) · jest 5 suites / 76 tests, all 3 floors met ·
+semgrep 0 findings.

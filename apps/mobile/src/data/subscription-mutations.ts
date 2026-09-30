@@ -1,4 +1,4 @@
-import type { Subscription } from "@zeno/shared";
+import type { PriceHistoryEntry, Subscription } from "@zeno/shared";
 import type { SubscriptionNotificationSettings } from "./subscription-store";
 
 /**
@@ -54,4 +54,23 @@ export function withoutNotificationSettingsEntry(
   const next = { ...settings };
   delete next[id];
   return next;
+}
+
+/**
+ * The price-history rule behind the Price-Hike Radar: a point is recorded only
+ * when the amount actually changes (null = nothing to record). A subscription
+ * with no recorded history first gets its current price as the baseline, so the
+ * radar always sees the before -> after pair.
+ */
+export function withPriceChange(
+  history: Record<string, PriceHistoryEntry[]>,
+  subscription: Subscription,
+  amountMinor: number,
+  at: string
+): Record<string, PriceHistoryEntry[]> | null {
+  if (amountMinor === subscription.price.amountMinor) {
+    return null;
+  }
+  const prior = history[subscription.id] ?? [{ at: subscription.createdAt, amountMinor: subscription.price.amountMinor }];
+  return { ...history, [subscription.id]: [...prior, { at, amountMinor }] };
 }

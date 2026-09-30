@@ -9,7 +9,7 @@ import { openZenoDatabase, readAppMeta, writeAppMeta, type ZenoDatabase } from "
 import { clearAllSubscriptions, listSubscriptions, softDeleteSubscription, upsertSubscription } from "../storage/subscription-repository";
 import { rollRenewalForward } from "../utils/subscription-ui";
 import { hydrateNotificationSettings, hydratePriceHistory, normalizeCoachConsent, normalizeHomeCurrency, normalizeQuietHours, parseCachedRates, type CachedExchangeRates } from "./subscription-hydration";
-import { applySubscriptionChange, withNotificationSettingsEntry, withUpdatedNotificationSettings, withoutNotificationSettingsEntry } from "./subscription-mutations";
+import { applySubscriptionChange, withNotificationSettingsEntry, withPriceChange, withUpdatedNotificationSettings, withoutNotificationSettingsEntry } from "./subscription-mutations";
 import { seedSubscriptions } from "./seed-subscriptions";
 
 type CreateSubscriptionInput = {
@@ -151,6 +151,9 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
   const subscriptionsRef = useRef(subscriptions);
   const notificationSettingsRef = useRef(notificationSettings);
   const priceHistoryRef = useRef(priceHistory);
+  // Same reason for quiet hours (finding F26): setQuietHours merged into the
+  // render-captured value, so two changes in one event lost the first.
+  const quietHoursRef = useRef(quietHours);
 
   useEffect(() => {
     if (!persistenceEnabled) {
@@ -188,7 +191,9 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         // Normalize each persisted setting against corrupt/legacy/missing rows.
         // The helpers are pure and unit-tested in subscription-hydration.test.ts;
         // setting a value equal to the current default is a React no-op (bailout).
-        setQuietHoursState(normalizeQuietHours(storedQuietHours, defaultQuietHours));
+        const hydratedQuietHours = normalizeQuietHours(storedQuietHours, defaultQuietHours);
+        quietHoursRef.current = hydratedQuietHours;
+        setQuietHoursState(hydratedQuietHours);
         setHomeCurrencyState(normalizeHomeCurrency(storedHomeCurrency, defaultHomeCurrency));
         setCoachAiConsentState(normalizeCoachConsent(storedCoachConsent));
 
@@ -358,8 +363,9 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
       partnerIntegrations: partnerIntegrationManifests,
       reminderPlan: createRenewalReminderPlan(displaySubscriptions),
       upcoming: [...displaySubscriptions]
-        .filter((subscription) => subscription.status === "active" && subscription.nextRenewalDate && subscription.billingCycle !== "trial")
-        .sort((a, b) => Date.parse(a.nextRenewalDate ?? "") - Date.parse(b.nextRenewalDate ?? ""))
+        .filter((subscription): subscription is Subscription & { nextRenewalDate: string } =>
+          subscription.status === "active" && Boolean(subscription.nextRenewalDate) && subscription.billingCycle !== "trial")
+        .sort((a, b) => Date.parse(a.nextRenewalDate) - Date.parse(b.nextRenewalDate))
         .slice(0, 5),
       endingTrials: getEndingTrials(displaySubscriptions),
       priceHikes: detectPriceHikes(displaySubscriptions, priceHistory),
@@ -400,9 +406,8 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         // Price-Hike Radar can detect increases over time.
         if (changes.amountMinor !== undefined) {
           const current = subscriptionsRef.current.find((s) => s.id === id);
-          if (current && changes.amountMinor !== current.price.amountMinor) {
-            const prior = priceHistoryRef.current[id] ?? [{ at: current.createdAt, amountMinor: current.price.amountMinor }];
-            const nextHistory = { ...priceHistoryRef.current, [id]: [...prior, { at: new Date().toISOString(), amountMinor: changes.amountMinor }] };
+          const nextHistory = current ? withPriceChange(priceHistoryRef.current, current, changes.amountMinor, new Date().toISOString()) : null;
+          if (nextHistory) {
             priceHistoryRef.current = nextHistory;
             setPriceHistory(nextHistory);
             persistPriceHistory(nextHistory);
@@ -525,7 +530,8 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         persistNotificationSettings(nextSettings);
       },
       setQuietHours(changes) {
-        const next = { ...quietHours, ...changes };
+        const next = { ...quietHoursRef.current, ...changes };
+        quietHoursRef.current = next;
         setQuietHoursState(next);
         const db = dbRef.current;
         if (db) {
