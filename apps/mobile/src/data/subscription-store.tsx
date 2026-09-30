@@ -1,5 +1,5 @@
 import { searchServices } from "@zeno/service-catalog";
-import { buildYearInReview, createAnalyticsSnapshot, createBusinessSummary, createFamilyVaultSummary, createRenewalReminderPlan, createSpendSummary, createSpendTwin, createWidgetSnapshot, demoBusinessWorkspace, demoFamilyMembers, detectPriceHikes, getEndingTrials, monthlyAmount, monthlyAmountIn, partnerIntegrationManifests, type AnalyticsSnapshot, type BillingCycle, type BusinessSubscriptionSummary, type CurrencyCode, type EndingTrial, type ExchangeRates, type FamilyVaultSummary, type FxContext, type PartnerIntegrationManifest, type PriceHike, type PriceHistoryEntry, type RenewalReminderPlan, type SpendSummary, type SpendTwinComparison, type Subscription, type SubscriptionCategory, type SubscriptionStatus, type WidgetSnapshot, type YearInReview } from "@zeno/shared";
+import { buildYearInReview, createAnalyticsSnapshot, createBusinessSummary, createFamilyVaultSummary, createRenewalReminderPlan, createSpendSummary, createSpendTwin, createWidgetSnapshot, demoBusinessWorkspace, demoFamilyMembers, detectPriceHikes, getEndingTrials, monthlyAmountIn, partnerIntegrationManifests, type AnalyticsSnapshot, type BillingCycle, type BusinessSubscriptionSummary, type CurrencyCode, type EndingTrial, type ExchangeRates, type FamilyVaultSummary, type FxContext, type PartnerIntegrationManifest, type PriceHike, type PriceHistoryEntry, type RenewalReminderPlan, type SpendSummary, type SpendTwinComparison, type Subscription, type SubscriptionCategory, type SubscriptionStatus, type WidgetSnapshot, type YearInReview } from "@zeno/shared";
 import * as Crypto from "expo-crypto";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform } from "react-native";
@@ -91,7 +91,7 @@ type SubscriptionStore = {
   // helpers) instead of reading a precomputed field like spendSummary above.
   // undefined until a rate table exists — every consumer already treats that
   // as "fall back to native-currency-only totals."
-  fx: FxContext | undefined;
+  fx: FxContext;
   // AI-coach data-sharing consent (P2.2 / standards §14). "unset" until the user
   // decides; the coach must NOT transmit the subscription list to the server
   // until this is "granted". Persisted in the encrypted app_meta table and reset
@@ -308,8 +308,14 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
     ),
     [subscriptions]
   );
-  const fx: FxContext | undefined = useMemo(
-    () => (exchangeRates ? { homeCurrency, rates: exchangeRates } : undefined),
+  // ALWAYS a context, even before the first rate fetch (finding F64). An
+  // undefined fx made every aggregate add different currencies' raw minor units
+  // and label the sum with the home currency (first launch, offline). With an
+  // empty table only home-currency amounts convert (identity); every other
+  // currency is excluded and counted, never guessed. `exchangeRatesAvailable`
+  // still says whether real conversion is possible.
+  const fx: FxContext = useMemo(
+    () => ({ homeCurrency, rates: exchangeRates ?? {} }),
     [exchangeRates, homeCurrency]
   );
   const widgetSnapshot = useMemo(
@@ -334,11 +340,11 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
 
     // displaySubscriptions (overdue active renewals rolled forward for display)
     // and fx are hoisted above for stable identity; mutations still operate on
-    // the raw state by id, so persistence is unaffected. fx stays undefined until
-    // a rate table exists — every aggregate treats that as "native-currency-only
-    // totals", identical to pre-5.2 behavior, never a fabricated converted number.
+    // the raw state by id, so persistence is unaffected. fx is always defined
+    // (F64): an amount with no usable rate is skipped here, never added as raw
+    // minor units of another currency.
     const totalMonthlyMinor = displaySubscriptions.reduce((sum, subscription) => {
-      const amount = fx ? monthlyAmountIn(subscription, fx.homeCurrency, fx.rates) : monthlyAmount(subscription);
+      const amount = monthlyAmountIn(subscription, fx.homeCurrency, fx.rates);
       return amount === null ? sum : sum + amount;
     }, 0);
 

@@ -444,6 +444,18 @@ describe("derived values", () => {
     expect(skipping.result.current.totalMonthlyMinor).toBe(1000);
   });
 
+  it("F64: before any rate table exists, other currencies are excluded and counted, never added raw", async () => {
+    const usd = sub({ id: "usd", price: { amountMinor: 1000, currency: "USD" } });
+    const inr = sub({ id: "inr", price: { amountMinor: 99_900, currency: "INR" } });
+    const { result } = await mounted([usd, inr]); // no cached rates; the fetch returns null
+    expect(result.current.exchangeRatesAvailable).toBe(false);
+    expect(result.current.fx).toEqual({ homeCurrency: "USD", rates: {} });
+    // Not 1000 + 99900 = "$1,009.00": the rupee plan cannot be converted yet.
+    expect(result.current.totalMonthlyMinor).toBe(1000);
+    expect(result.current.spendSummary.totalMonthlyMinor).toBe(1000);
+    expect(result.current.spendSummary.excludedCurrencyCount).toBe(1);
+  });
+
   it("upcoming: active, dated, not trials, soonest first, at most five", async () => {
     const rows = [
       sub({ id: "t", billingCycle: "trial", nextRenewalDate: iso(1) }),

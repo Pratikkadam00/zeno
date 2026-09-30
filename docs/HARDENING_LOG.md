@@ -121,7 +121,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F61 | **FIXED in P1.9c.** ~~The widget snapshot added raw minor units across currencies and always printed "$"~~ (₹499 showed as "$499.00"; $10 + ₹499 as "$509.00"). It also silently left out subscriptions with no rate, and could pick an unparseable renewal date as "next" ("Name NaNd"). It now shows one total per currency, counts the exclusions, and skips bad dates. | Medium (truthfulness) | me (agent) | P1.9c |
 | F62 | **FIXED in P1.9c.** ~~The business and family-vault summaries added raw minor units across currencies without rates and labelled the sum with the target currency~~ ($10 + ₹499 = "₹509"). Other currencies are now excluded and counted (`excludedCurrencyCount`). | Low (no screen reads these yet) | me (agent) | P1.9c |
 | F63 | **FIXED in P1.9c.** ~~An unparseable or empty `nextRenewalDate` silently dropped annual and quarterly charges from spend history~~ (a NaN month matched nothing, which also shrank Wrapped's total). It now falls back to `createdAt`, as it already did for a missing date. | Low | me (agent) | P1.9c |
-| F64 | **OPEN: the root of several currency findings.** `subscription-store.tsx` passes `fx = undefined` until exchange rates load (first launch, offline). Until then `createSpendSummary`, `createAnalyticsSnapshot`, `buildMonthlySpendHistory`, `buildYearInReview`, the calendar, budget and insights totals, and the store's own `totalMonthlyMinor` all add different currencies' raw minor units and label the result with the home currency. Flagged independently by two agents (P1.9b and P1.9c). Suggested fix: always pass `{ homeCurrency, rates: exchangeRates ?? {} }`, so same-currency amounts count and the rest are excluded with a disclosed count. | Medium (currency honesty) | me | next slice |
+| F64 | **FIXED.** ~~The root of several currency findings.~~ `subscription-store.tsx` passes `fx = undefined` until exchange rates load (first launch, offline). Until then `createSpendSummary`, `createAnalyticsSnapshot`, `buildMonthlySpendHistory`, `buildYearInReview`, the calendar, budget and insights totals, and the store's own `totalMonthlyMinor` all add different currencies' raw minor units and label the result with the home currency. Flagged independently by two agents (P1.9b and P1.9c). Suggested fix: always pass `{ homeCurrency, rates: exchangeRates ?? {} }`, so same-currency amounts count and the rest are excluded with a disclosed count. Done: `fx` is now always a context, with an empty table until rates load. | Medium (currency honesty) | me | P1.9 follow-up |
 | F65 | **FIXED in P1.9b.** ~~Every trial-ending insight said "Cancel now to avoid being charged $0".~~ The amount came from the monthly-equivalent figure, which is 0 for trials by definition; the live output read "...charged ₹0." It now shows the stored price, or no amount when the price is 0. | Medium-High (truthfulness, on every trial) | me (agent) | P1.9b |
 | F66 | **FIXED in P1.9b.** ~~The calendar's projected annual spend treated every billing cycle as monthly.~~ A $30 quarterly plan projected $240, a $5 weekly plan $40, and an unknown-cycle plan $79.92 of invented spend. It now uses the shared monthly-equivalent rule, counts a trial's conversion charge once (only if it lands this year), and adds 0 for "unknown". | Medium (a number on screen) | me (agent) | P1.9b |
 | F67 | **FIXED in P1.9b.** ~~The high-spend insight called a fixed constant an "Average"~~ ("Average is around $40/mo"), which is an invented statistic. It now reads "Zeno's benchmark for this category is $40/mo." | Medium (truthfulness) | me (agent) | P1.9b |
@@ -1589,3 +1589,34 @@ today, inside the repo's 7-day cooldown, and 16.3.6 is the minimum fixed version
   expiring `image-size` build-time entry.
 - Web typecheck 0 · web lint 0 · web tests 7 files / 64.
 - `next build` on 16.3.6: compiled, 532 / 532 static pages.
+
+### F64 — the store always passes an FX context — 2026-09-30
+
+**The bug:** flagged independently by two agents (P1.9b and P1.9c), then confirmed by me
+in `subscription-store.tsx`. `fx` was `undefined` until the first exchange-rate table
+loaded (first launch, offline). Every consumer then took its "no fx" branch and added
+different currencies' raw minor units under the home currency's symbol: $10 + ₹999 read
+as "$1,009.00". The consumers were `createSpendSummary`, analytics, history, Year in
+Review, calendar, budget, insights, and the store's own `totalMonthlyMinor`.
+
+**The fix:** `fx` is always `{ homeCurrency, rates: exchangeRates ?? {} }`, and the type
+narrowed from `FxContext | undefined` to `FxContext`. `convertMinor` is the identity for
+the same currency even with no rates, so home-currency amounts count as before, and any
+other currency returns `null` and is excluded and counted.
+`exchangeRatesAvailable` still reports whether real conversion is possible (Settings
+uses it). Every screen that reads the count (dashboard, analytics, calendar, budget,
+coach) already renders "N subscription(s) in other currencies not included", so the
+disclosure now appears before the first rate fetch too, and it is true. The now-unused
+`monthlyAmount` import was removed.
+
+**Test** (`subscription-store.rntest.tsx`, "F64: ..."), for a USD home currency with a
+$10 plan and a ₹999 plan and no rate table:
+- `fx` is `{ homeCurrency: "USD", rates: {} }`, and `exchangeRatesAvailable` is false.
+- `totalMonthlyMinor` is 1000, not 100900.
+- `spendSummary.totalMonthlyMinor` is 1000, with `excludedCurrencyCount` 1.
+
+**Bite check:** with the old store, the test fails (`fx` is `undefined`); restored,
+33 / 33 at 100 %.
+
+Gates: typecheck 0 · lint 0 · vitest 122 files / 1555 tests at 100 / 99.61 / 100 / 100 ·
+jest 114 / 114, all floors at 100 %.
