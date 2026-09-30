@@ -16,15 +16,18 @@ import { SITE_HOST, SITE_URL } from "./lib/site";
 // sink the audit confirmed does not exist (no external scripts, no iframes, no
 // user-rendered HTML). Revisit if a user-content sink is ever introduced.
 //
-// 'unsafe-eval' is added to script-src ONLY outside production: Next's dev
+// 'unsafe-eval' is added to script-src ONLY for the dev server: Next's dev
 // server (Fast Refresh, stack-trace reconstruction) uses eval() internally,
 // which the strict production policy blocks — that code never ships to real
 // users, so relaxing it here doesn't change the production security posture
 // (React itself never calls eval() in production, per its own runtime check).
-const isProd = process.env.NODE_ENV === "production";
+// Keyed on "development", not "not production": `next build`/`next start` keep
+// a pre-set NODE_ENV such as "test" or "staging", and a server started that way
+// is still serving real users, so it must get the strict policy (fail closed).
+const isDevServer = process.env.NODE_ENV === "development";
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}`,
+  `script-src 'self' 'unsafe-inline'${isDevServer ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self'",
