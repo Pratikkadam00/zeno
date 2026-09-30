@@ -18,11 +18,19 @@ const BLOCKING = new Set(["high", "critical"]);
 export function evaluate(audit, allowlist, today = new Date()) {
   const accepted = new Map((allowlist.accepted ?? []).map((e) => [e.advisory, e]));
   const findings = [];
+  const seen = new Set();
   for (const [pkg, v] of Object.entries(audit.vulnerabilities ?? {})) {
-    if (!BLOCKING.has(v.severity)) continue;
+    if (!BLOCKING.has(v.severity)) continue; // package-level max; cheap pre-filter
     for (const via of v.via ?? []) {
       if (typeof via !== "object" || !via.url) continue; // transitive pointer, not an advisory
+      // A package's severity is the MAX of its advisories. Block on each
+      // advisory's OWN severity, or a moderate riding alongside a high would be
+      // reported as blocking.
+      if (!BLOCKING.has(via.severity)) continue;
       const id = via.url.split("/").pop();
+      // npm lists the same advisory once per vulnerable path; report it once.
+      if (seen.has(id)) continue;
+      seen.add(id);
       const entry = accepted.get(id);
       if (!entry) {
         findings.push({ kind: "unlisted", pkg, id, severity: via.severity, title: via.title });

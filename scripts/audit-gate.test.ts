@@ -60,6 +60,31 @@ describe("audit-gate.evaluate", () => {
     expect(r.findings.map((f: { id: string }) => f.id)).toEqual(["GHSA-7"]);
   });
 
+  it("a MODERATE advisory riding inside a high-severity package is NOT a finding", () => {
+    // npm sets the package's severity to the max of its advisories; the
+    // moderate one must not be reported as blocking just because a sibling is.
+    const tree: Tree = {
+      vulnerabilities: {
+        a: {
+          severity: "high",
+          via: [
+            { url: "https://github.com/advisories/GHSA-8", severity: "moderate", title: "quadratic" },
+            { url: "https://github.com/advisories/GHSA-9", severity: "high", title: "recursion" }
+          ]
+        }
+      }
+    };
+    const r = evaluate(tree, NONE, TODAY);
+    expect(r.findings.map((f: { id: string }) => f.id)).toEqual(["GHSA-9"]);
+  });
+
+  it("reports an advisory ONCE even when npm lists it once per vulnerable path", () => {
+    const via = { url: "https://github.com/advisories/GHSA-10", severity: "high", title: "dup" };
+    const tree: Tree = { vulnerabilities: { a: { severity: "high", via: [via, via, { ...via }] } } };
+    const r = evaluate(tree, NONE, TODAY);
+    expect(r.findings).toHaveLength(1);
+  });
+
   it("skips string 'via' entries (transitive pointers carry no advisory)", () => {
     const tree: Tree = { vulnerabilities: { a: { severity: "high", via: ["b"] } } };
     expect(evaluate(tree, NONE, TODAY).ok).toBe(true);
