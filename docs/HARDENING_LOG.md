@@ -19,8 +19,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P0.5 Dependabot (npm + GitHub Actions) + SBOM on release
   - [!] P0.6 Branch protection on `main` (owner action — documented; `main` verified UNPROTECTED)
   - [x] P0 gate: all standing gates green locally; new CI jobs green on GitHub
-- [ ] **P1 — Tier 1 logic to 100 % coverage** (order = risk; each sub closes the findings named)
-  - [ ] P1.1 `apps/api/src/server.ts` (0 %) — boot, env matrix, logger; **fixes F9** (tokens in request logs)
+- [~] **P1 — Tier 1 logic to 100 % coverage** (order = risk; each sub closes the findings named)
+  - [x] P1.1 `apps/api/src/server.ts` (0 %) — boot, env matrix, logger; **fixes F9** (tokens in request logs)
   - [ ] P1.2 `apps/mobile/src/security/*` — secure-store, lock-store (48 %), app-lock; **fixes F13** (Gmail SecureStore key)
   - [ ] P1.3 `apps/mobile/src/discovery/emailScanner.ts` (48 %) — untrusted email input; **fixes F12**
   - [ ] P1.4 `apps/mobile/src/auth/authStore.ts` (51 %) — token lifecycle; **verdict on F10/F11** (with the API side)
@@ -55,7 +55,7 @@ that closes it.
 | F5 | CI ran **Node 20, end-of-life since 2026-04-30**. Production was worse-defined: Render reads `engines`, and per Render's docs an unbounded range like our `>=20.11.0` "always resolves to the latest release" — whatever Node major is newest, not an LTS. | High (unpatched / unpinned runtime) | **fixed (P0.4)**: `.node-version` = 24 (Render reads it before `engines`), engines `>=24 <25`, CI via `node-version-file` | P0.4 |
 | F7 | **`main` is not protected** (GitHub API: `protected: false`, required checks `[]`): force-push and branch deletion are allowed, and nothing requires checks before code lands. | High (integrity of the deploy branch) | owner: the P0.6 steps below | P0.6 |
 | F8 | GitHub's own free protections for public repos are not verifiable without owner auth: secret-scanning **push protection** (rejects a push that contains a secret, server-side), Dependabot **alerts** and **security updates**. | Medium | owner: enable in Settings → Code security | P0.6 |
-| F9 | **Magic-link login tokens are written to production logs.** Fastify's default request log includes `req.url` with the query string, and `GET /api/v1/auth/verify?token=…` carries the raw token. Verified by a probe with the exact production logger config: the log line held `"url":"/api/v1/auth/verify?token=PROBE-SECRET-MAGIC-TOKEN-123"`. Single-use limits it, but a verify that fails before consuming the token (e.g. 429) leaves a working login token in Render's logs. | High (credential in logs) | me | P1 (`server.ts`) |
+| F9 | **FIXED in P1.1.** ~~Magic-link login tokens are written to production logs.~~ Fastify's default request log includes `req.url` with the query string, and `GET /api/v1/auth/verify?token=…` carries the raw token. Verified by a probe with the exact production logger config: the log line held `"url":"/api/v1/auth/verify?token=PROBE-SECRET-MAGIC-TOKEN-123"`. Single-use limits it, but a verify that fails before consuming the token (e.g. 429) leaves a working login token in Render's logs. | High (credential in logs) | me | P1 (`server.ts`) |
 | F10 | Google sign-in: a nonce is sent to Google but NOT to our API (`/auth/google` gets only the token), so the server cannot bind the ID token to this sign-in (replay of a stolen token). Apple sign-in requests no nonce at all. Needs the server side read in full before a verdict. | Medium (to confirm) | me | P1 (`authStore.ts`) + P2 |
 | F11 | Google sign-in uses the implicit ID-token flow returned to the custom scheme `zeno://auth/google`. RFC 8252 recommends authorization code + PKCE for native apps; another Android app can register the same scheme. | Medium (to confirm) | me | P1/P3 |
 | F12 | Gmail: disconnect revokes with the token in the URL query (`…/revoke?token=`); the fallback account label embeds the first 8 characters of the access token; known billing senders are trusted from the spoofable `From` header alone (no DKIM/SPF check). | Low–Medium | me | P1 (`emailScanner.ts`) |
@@ -363,3 +363,51 @@ with the credentials on this machine; this is yours. Steps (github.com → the r
    **Dependabot alerts**, **Dependabot security updates** (F8).
 
 When you have done it, tell me and I will re-read the API to confirm `protected: true`.
+
+---
+
+## P1 — Tier 1 logic to 100 %
+
+Baseline at P1 start (`c23e336`): lines 65.11 %, statements 64.34 %, functions
+63.89 %, branches 57.15 % over 87 files; 23 files at 0 %.
+
+### P1.1 — API process entry (`server.ts`) + F9 — 2026-09-30
+
+**Problem:** `server.ts` (0 % covered) did all its work at import time (config check,
+build, storage, timers, signal handlers, listen), so nothing in it could be tested
+without a real process and port. Reading it for coverage surfaced F9.
+
+**F9, fixed:** the production logger's request serializer logged `req.url` WITH the
+query string. A probe with the exact production config logged
+`"url":"/api/v1/auth/verify?token=PROBE-SECRET-MAGIC-TOKEN-123"` on the "incoming
+request" line. New `server-options.ts`: `serializeRequest` mirrors Fastify 5's default
+`req` serializer field for field (read from `node_modules/fastify/lib/logger-pino.js`)
+except that `url` is the path only; custom serializers override the defaults per
+`lib/logger-factory.js:126`. The redaction list is unchanged and now lives beside it.
+
+**Restructure (behaviour unchanged):** `start.ts` holds the lifecycle with injected
+dependencies (process, timers, storage, app builder, console); `server.ts` is a
+3-line entry point (`dotenv/config` + `startServer()`).
+
+**Tests (30 new):**
+- `server-options.test.ts` (8): `pathOnly` edge cases; serializer fields; logger levels
+  (info in production, debug elsewhere, `LOG_LEVEL` wins); redaction list; and the
+  **end-to-end F9 regression**: the real app with the production logger config, a
+  GET with `?token=`, and a POST carrying a query secret, a bearer header and a body
+  token. None of the four secrets appear in any log line; the path does.
+- `start.test.ts` (21): boot order; readiness line both ways; single-instance warning
+  (on / acknowledged / off); sweeper interval + unref; SIGTERM and SIGINT graceful
+  shutdown (close → storage → clear backstop → exit 0, second signal ignored);
+  failing close → exit 1; hung drain → hard-exit backstop → exit 1; unhandled
+  rejection logged without exit; uncaught exception → graceful shutdown; listen
+  failure → exit 1; `listenAddress` precedence; real `defaultDeps` wiring.
+- `server.test.ts` (1): the entry point starts the server exactly once.
+
+**Bite check:** with the new serializer removed, the F9 tests fail (3 of 8); restored,
+8/8 pass.
+
+**Coverage:** `server.ts`, `start.ts`, `server-options.ts` all **100 %** lines,
+branches, functions, statements. Tier 1 overall: lines 65.11 % → 66.28 %.
+
+Gates: typecheck 0 (forced) · lint 0 · vitest 631/631 (68 files) · semgrep 0 over
+275 files.
