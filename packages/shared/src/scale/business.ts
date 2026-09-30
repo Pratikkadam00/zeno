@@ -1,5 +1,5 @@
 import type { Money, Subscription } from "../domain";
-import { monthlyAmount, monthlyAmountIn, type ExchangeRates } from "../spend/coach";
+import { monthlyAmountIn, type ExchangeRates } from "../spend/coach";
 
 export type BusinessSeatRole = "owner" | "admin" | "finance" | "viewer";
 
@@ -22,6 +22,10 @@ export type BusinessSubscriptionSummary = {
   workspaceName: string;
   seatCount: number;
   monthlySpend: Money;
+  // Active subscriptions left out of monthlySpend because no rate converts
+  // their currency into monthlySpend.currency (currency honesty: disclosed,
+  // never silently dropped or added as raw minor units).
+  excludedCurrencyCount: number;
   subscriptionCount: number;
   renewalCountNext30Days: number;
 };
@@ -34,17 +38,25 @@ export function createBusinessSummary(
   rates?: ExchangeRates
 ): BusinessSubscriptionSummary {
   const active = subscriptions.filter((subscription) => subscription.status === "active");
+  // Without rates only `currency` itself converts (identity). The old no-rates
+  // path added every currency's raw minor units and labelled the sum
+  // `currency` — $10 + ₹499 came back as ₹509.
+  let amountMinor = 0;
+  let excludedCurrencyCount = 0;
+  for (const subscription of active) {
+    const amount = monthlyAmountIn(subscription, currency, rates ?? {});
+    if (amount === null) {
+      excludedCurrencyCount += 1;
+    } else {
+      amountMinor += amount;
+    }
+  }
   return {
     workspaceId: workspace.id,
     workspaceName: workspace.name,
     seatCount: workspace.seats.length,
-    monthlySpend: {
-      amountMinor: active.reduce((sum, subscription) => {
-        const amount = rates ? monthlyAmountIn(subscription, currency, rates) : monthlyAmount(subscription);
-        return amount === null ? sum : sum + amount;
-      }, 0),
-      currency
-    },
+    monthlySpend: { amountMinor, currency },
+    excludedCurrencyCount,
     subscriptionCount: active.length,
     renewalCountNext30Days: active.filter((subscription) => {
       if (!subscription.nextRenewalDate) {

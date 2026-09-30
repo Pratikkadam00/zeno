@@ -1,5 +1,5 @@
 import type { Money, Subscription } from "../domain";
-import { monthlyAmount, monthlyAmountIn, type ExchangeRates } from "../spend/coach";
+import { monthlyAmountIn, type ExchangeRates } from "../spend/coach";
 
 export type FamilyMember = {
   id: string;
@@ -15,6 +15,10 @@ export type FamilyVaultSummary = {
   }>;
   sharedSubscriptions: Subscription[];
   totalMonthlySpend: Money;
+  // Members' active subscriptions left out of the spend figures because no
+  // rate converts their currency (currency honesty: disclosed, never silently
+  // dropped or added as raw minor units).
+  excludedCurrencyCount: number;
 };
 
 export function createFamilyVaultSummary(
@@ -23,17 +27,24 @@ export function createFamilyVaultSummary(
   currency: Money["currency"] = "USD",
   rates?: ExchangeRates
 ): FamilyVaultSummary {
+  let excludedCurrencyCount = 0;
   const memberRows = members.map((member) => {
     const owned = subscriptions.filter((subscription) => subscription.ownerProfileId === member.id && subscription.status === "active");
+    // Without rates only `currency` itself converts (identity). The old
+    // no-rates path added every currency's raw minor units and labelled the
+    // sum `currency` — $10 + ₹499 came back as ₹509.
+    let amountMinor = 0;
+    for (const subscription of owned) {
+      const amount = monthlyAmountIn(subscription, currency, rates ?? {});
+      if (amount === null) {
+        excludedCurrencyCount += 1;
+      } else {
+        amountMinor += amount;
+      }
+    }
     return {
       ...member,
-      monthlySpend: {
-        amountMinor: owned.reduce((sum, subscription) => {
-          const amount = rates ? monthlyAmountIn(subscription, currency, rates) : monthlyAmount(subscription);
-          return amount === null ? sum : sum + amount;
-        }, 0),
-        currency
-      },
+      monthlySpend: { amountMinor, currency },
       subscriptionCount: owned.length
     };
   });
@@ -46,7 +57,8 @@ export function createFamilyVaultSummary(
     totalMonthlySpend: {
       amountMinor: memberRows.reduce((sum, member) => sum + member.monthlySpend.amountMinor, 0),
       currency
-    }
+    },
+    excludedCurrencyCount
   };
 }
 
