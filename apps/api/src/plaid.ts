@@ -118,14 +118,30 @@ export async function exchangePublicToken(publicToken: string): Promise<{ access
 export type PlaidTransaction = { date: string; name: string; amountMinor: number; currency: string };
 
 type PlaidSyncResponse = {
-  added: Array<{ date: string; name: string; merchant_name?: string; amount: number; iso_currency_code?: string }>;
+  added: Array<{ date: string; name: string; merchant_name?: string | null; amount: number; iso_currency_code?: string | null }>;
   next_cursor: string;
   has_more: boolean;
 };
 
+// A currency's minor-unit exponent (USD 2, JPY 0, KWD 3), from the runtime's ICU
+// data rather than an assumed "x100" (finding F34); null for a code the runtime
+// does not recognise, so one odd row cannot fail the whole sync.
+function minorUnitDigits(isoCurrency: string): number | null {
+  try {
+    // Typed optional by TypeScript's lib; always a number for style "currency".
+    return new Intl.NumberFormat("en", { style: "currency", currency: isoCurrency }).resolvedOptions().maximumFractionDigits ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // Pulls recently-added transactions via /transactions/sync, normalized to minor
-// units (positive = money out). The client runs these through the same recurring
-// detector used for CSV imports.
+// units. The sign is Plaid's own documented convention and is KEPT: positive =
+// money out, negative = money in (a refund or a paycheck). Math.abs used to turn
+// every deposit into a "charge" for the recurring detector (finding F34). A
+// transaction in an unofficial currency (Plaid: iso_currency_code is null then)
+// is skipped rather than relabelled as USD. The client runs these through the
+// same recurring detector used for CSV imports.
 export async function getRecentTransactions(accessToken: string): Promise<PlaidTransaction[]> {
   const transactions: PlaidTransaction[] = [];
   let cursor: string | undefined;
@@ -135,11 +151,14 @@ export async function getRecentTransactions(accessToken: string): Promise<PlaidT
       cursor ? { access_token: accessToken, cursor } : { access_token: accessToken }
     );
     for (const txn of data.added ?? []) {
+      const currency = txn.iso_currency_code;
+      const digits = currency ? minorUnitDigits(currency) : null;
+      if (!currency || digits === null) continue;
       transactions.push({
         date: txn.date,
         name: txn.merchant_name ?? txn.name,
-        amountMinor: Math.round(Math.abs(txn.amount) * 100),
-        currency: txn.iso_currency_code ?? "USD"
+        amountMinor: Math.round(txn.amount * 10 ** digits),
+        currency
       });
     }
     cursor = data.next_cursor;

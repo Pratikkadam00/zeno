@@ -34,12 +34,12 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
     - [x] P1.8d `subscription-store.tsx` — **finishes F26** (the `setQuietHours` stale merge)
     - [x] P1.8e `LockOverlay.tsx` — **fixes F28** (a keychain error wedged the lock screen)
     - [x] P1.8f "erase everything from this device" as one tested function — **fixes F27**
-  - [~] P1.9 every remaining Tier 1 gap: 48 files, with 532 statements / 530 branches / 98 functions uncovered (measured 2026-09-30, `gaps.cjs` over `coverage-final.json`)
-    - [~] P1.9a API: `app.ts` ✅ (everything except the Plaid-configured paths, which are P1.10; **fixes F30, F31, F32, F33**), `routes/auth.ts` ✅ (0 uncovered lines / functions; 5 defensive branches), `coach.ts`, `billing.ts`, `family.ts`, `sync.ts`, `config.ts`, `storage/pg.ts`
-    - [ ] P1.9b mobile logic: `api/client.ts`, `notificationService.ts` + `notificationHandlers.ts` (0 %), `subscription-ui.ts` (51 %), `calendarUtils.ts`, `insightsEngine.ts`, `finance/budget.ts`, `format.ts`, `api/config.ts`, `seed-subscriptions.ts`, `open-banking.ts` (+ F18 note)
-    - [ ] P1.9c shared package: 14 files (csv parse-utils, spend history / coach / twin / year-in-review / price-radar, renewal-plan, widget snapshot, public-api keys, business, trial-guardian, family vault, analytics, open-banking)
-    - [ ] P1.9d thin config / theme / web files: haptics, motion, fonts, zeno, useZenoTokens, colors, spacing, typography, `next.config.ts`, `app.config.ts`, analytics-flag, web utils
-  - [ ] P1.10 `apps/api/src/plaid.ts` (21 %) — pure parts; sandbox flows stay dev-only by standing instruction
+  - [~] P1.9 every remaining Tier 1 gap (since 2026-09-30, per the owner's choice, split across 5 parallel agents, each in its own git worktree with disjoint files; I merge, gate, push and verify each): 48 files, with 532 statements / 530 branches / 98 functions uncovered (measured 2026-09-30, `gaps.cjs` over `coverage-final.json`)
+    - [~] P1.9a API (`app.ts` + `routes/auth.ts` by me; the rest by a parallel agent): `app.ts` ✅ (everything except the Plaid-configured paths, which are P1.10; **fixes F30, F31, F32, F33**), `routes/auth.ts` ✅ (0 uncovered lines / functions; 5 defensive branches), `coach.ts`, `billing.ts`, `family.ts`, `sync.ts`, `config.ts`, `storage/pg.ts`
+    - [~] P1.9b mobile logic (two parallel agents): `api/client.ts`, `notificationService.ts` + `notificationHandlers.ts` (0 %), `subscription-ui.ts` (51 %), `calendarUtils.ts`, `insightsEngine.ts`, `finance/budget.ts`, `format.ts`, `api/config.ts`, `seed-subscriptions.ts`, `open-banking.ts` (+ F18 note)
+    - [~] P1.9c shared package (parallel agent): 14 files (csv parse-utils, spend history / coach / twin / year-in-review / price-radar, renewal-plan, widget snapshot, public-api keys, business, trial-guardian, family vault, analytics, open-banking)
+    - [~] P1.9d thin config / theme / web files: haptics, motion, fonts, zeno, useZenoTokens, colors, spacing, typography, `next.config.ts`, `app.config.ts`, analytics-flag, web utils
+  - [x] P1.10 `apps/api/src/plaid.ts` (was 21 %; now 0 uncovered lines / functions, 1 defensive branch) and the Plaid routes in `app.ts` (now 100 %). Plaid's HTTP is faked, with no Plaid or sandbox calls, by standing instruction. **Fixes F34**
   - [ ] P1.11 gate: Tier 1 at 100 % lines / statements / functions, ≥ 95 % branches; jest floor; green on GitHub
 - [ ] **P2 — API on real Postgres, authorization matrix, fuzzing**
 - [ ] **P3 — Mobile hardening (MASVS) + tests for all 29 screens**
@@ -91,6 +91,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F31 | **FIXED in P1.9a.** ~~Upstream error text reached the client.~~ When the AI provider failed, the coach 502 carried up to 200 characters of the provider's raw error body, which can name the provider account (e.g. an organization id in a rate-limit message). Billing and Plaid 502s echoed their `error.message` too. The text now goes to the server log (`warn`), and the client gets a fixed message. The app reads only the status. | Medium (information disclosure) | me | P1.9a |
 | F32 | **FIXED in P1.9a.** ~~The API claimed `serverStoresFinancialData: false`~~ on `/account`, `/capabilities`, `/business/summary` and both sync routes, but the server stores each household member's monthly spend (family) and whatever sync payload a client pushes (not end-to-end encrypted yet, per the capabilities comment). No client reads the flag, so it is removed rather than reworded. This is the machine-readable form of the banned "we never see your data". | Medium (truthfulness) | me | P1.9a |
 | F33 | **FIXED in P1.9a.** ~~Every Fastify client error became a 500 plus an alert.~~ The error handler treated anything without the rate-limit envelope as a server error, so malformed JSON (should be 400), a body over the limit (413) and an unsupported content type (415) all returned **500 INTERNAL**, logged at error level and paged the webhook. Verified by a probe on all three. A retrying client would also retry these. 4xx errors now keep their status and a fixed message. | Medium (alert flooding; wrong status) | me | P1.9a |
+| F34 | **FIXED in P1.10 (dev-only feature).** ~~Plaid transactions were normalized wrongly.~~ `Math.abs(amount)` turned every deposit and refund into a charge, although Plaid documents "positive values when money moves out of the account; negative values when money moves in". A paycheck could then look like a recurring subscription to the detector. Separately, `iso_currency_code ?? "USD"` labelled unofficial currencies (Plaid sets `iso_currency_code` to null for them) as USD, and `× 100` assumed every currency has 2 decimals (JPY has 0, KWD has 3). Now the sign is kept, unofficial currencies are skipped, and the exponent comes from ICU. The app only reads the count today, so nothing downstream breaks. | Low (dev-only today; data integrity once enabled) | me | P1.10 |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -1071,3 +1072,47 @@ delivery failure (458); and one env-read fallback (943). This fits the P1.11 gat
 ≥ 95 % branch allowance.
 
 Gates: typecheck 0 · lint 0 · vitest 82 files / 935 tests · semgrep `apps/api` 0 / 0.
+
+### P1.10 — Plaid, the pure parts and our route handlers (F34) — 2026-09-30
+
+**How I read the standing instruction** ("don't test Plaid, it's in dev, keep the code
+only"): no Plaid or sandbox calls, no live integration testing, and no code deleted. The
+adapter's own logic and our route handlers are tested with Plaid's HTTP (or the whole
+`./plaid` module) faked at the boundary. This matches the plan's P1.10 line. If the
+owner meant "no Plaid tests at all", the two new test files can be dropped without
+affecting anything else.
+
+**F34 (above), confirmed against Plaid's API docs** (the `/transactions/sync` field
+definitions), not assumed. Bite check: with the old `plaid.ts`, exactly the 2 F34 tests
+fail (9/11); restored, 11/11.
+
+**`plaid.test.ts`** (11 tests):
+- Configured-ness; the base URL per `PLAID_ENV`.
+- Request shape: credentials from env, and the account id as `client_user_id`.
+- Response mapping. Error text uses the Plaid error code, else the message, else
+  "unknown"; it reaches the server log only (F31).
+- The kept sign; ICU exponents (JPY, KWD); unofficial and unknown codes skipped; the
+  merchant name preferred.
+- Cursor pagination, and the 10-page cap.
+- Storage: in memory without an encryption key; persisted **only sealed** with one
+  (never a plaintext `accessToken`).
+- Hydration: decryptable rows restored; undecryptable rows counted in one warning;
+  wrong-shape and null rows ignored.
+
+**`app.plaid-routes.test.ts`** (8 tests), with Plaid configured and the module faked:
+- The link token uses the TOKEN's account, whatever the body claims.
+- The exchange validates the public token (≤ 512) and **returns only the item id,
+  never the bank access token**.
+- Transactions: 409 without a linked bank; reads with the caller's OWN access token
+  only (one user cannot reach another's item).
+- Sandbox minting is refused outside sandbox.
+- Every upstream failure is a fixed 502 with no Plaid code in the body.
+
+**Mutation check** (all caught): the exchange returning the access token, the link
+token trusting a body `userId`, and sandbox minting allowed in any environment.
+
+`app.ts` is now **100 %** on every metric. `plaid.ts` keeps one defensive branch: the
+`?? null` that TypeScript's lib forces on `maximumFractionDigits`.
+
+Gates: typecheck 0 · lint 0 · vitest 84 files / 954 tests (ratchet 90.95 / 85.6 / 90.72 /
+91.66) · semgrep `apps/api` 0 / 0.
