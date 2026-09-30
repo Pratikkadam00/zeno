@@ -37,7 +37,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [~] P1.9 every remaining Tier 1 gap (since 2026-09-30, per the owner's choice, split across 5 parallel agents, each in its own git worktree with disjoint files; I merge, gate, push and verify each): 48 files, with 532 statements / 530 branches / 98 functions uncovered (measured 2026-09-30, `gaps.cjs` over `coverage-final.json`)
     - [x] P1.9a API: `app.ts` and `routes/auth.ts` (me), plus `coach`, `billing`, `family`, `sync`, `config` and `storage/pg` (agent, verified by me), all at 0 uncovered lines and functions. **Fixes F30-F33, F46-F53**
     - [~] P1.9b mobile logic (two parallel agents): **part 1 ✅** (`api/client.ts`, `notificationService.ts`, `notificationHandlers.ts` at 100 / 100 / 100; fixes F38–F42); part 2 still running: `api/client.ts`, `notificationService.ts` + `notificationHandlers.ts` (0 %), `subscription-ui.ts` (51 %), `calendarUtils.ts`, `insightsEngine.ts`, `finance/budget.ts`, `format.ts`, `api/config.ts`, `seed-subscriptions.ts`, `open-banking.ts` (+ F18 note)
-    - [~] P1.9c shared package (parallel agent): 14 files (csv parse-utils, spend history / coach / twin / year-in-review / price-radar, renewal-plan, widget snapshot, public-api keys, business, trial-guardian, family vault, analytics, open-banking)
+    - [x] P1.9c shared package: all 14 files at 0 uncovered statements, branches and functions (agent, verified by me, with one regression found and corrected by me). **Fixes F55-F63**; F64 open
     - [x] P1.9d thin config, theme and web files: all 13 at 0 uncovered statements, branches and functions (`motion.ts` and `useZenoTokens.ts` moved to jest with 100 % floors). **Fixes F35, F36, F37**
   - [x] P1.10 `apps/api/src/plaid.ts` (was 21 %; now 0 uncovered lines / functions, 1 defensive branch) and the Plaid routes in `app.ts` (now 100 %). Plaid's HTTP is faked, with no Plaid or sandbox calls, by standing instruction. **Fixes F34**
   - [ ] P1.11 gate: Tier 1 at 100 % lines / statements / functions, ≥ 95 % branches; jest floor; green on GitHub
@@ -111,6 +111,16 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F51 | **FIXED in P1.9a.** ~~`expiration_at_ms: 0` was read as "never expires"~~ (a truthiness check). Only an absent value means no expiry. | Low | me (agent) | P1.9a |
 | F52 | **FIXED in P1.9a.** ~~AI-coach model output reached the app unvalidated.~~ Recommendations were filtered on title and detail, then passed through as-is. An object `estimatedMonthlySavingsLabel` would crash `coach.tsx` ("Objects are not valid as a React child"), and invented fields reached the client. Each recommendation is now rebuilt from its string fields. | Low-Medium | me (agent) | P1.9a |
 | F53 | **FIXED in P1.9a.** ~~The coach labelled an amount in a currency Intl cannot format as dollars.~~ It now prints the amount with its currency code. (Unreachable through the route today: the schema allows six codes.) | Low | me (agent) | P1.9a |
+| F55 | **FIXED in P1.9c (+ my correction).** ~~A quote in the middle of an unquoted CSV field swallowed the rest of the file.~~ An unquoted `BEST BUY 55" TV` opened a quoted section, so every later row landed in one cell: silent data loss on import. The agent's fix (a quote opens a section only as a field's first character) **regressed** the common `a, "Netflix, Inc.", 15.49` shape (a space after the comma), splitting the name and shifting the amount column. I confirmed this by running the old and new parsers side by side. My correction: a quote also opens a section when only spaces or tabs precede it, and that padding is dropped. | Medium (import data loss) | me (agent + me) | P1.9c |
+| F56 | **FIXED in P1.9c.** ~~CSV amounts lost their sign.~~ `$-15.49`, `USD -15.49`, `15.49-`, `−15.49` (U+2212) and `$(15.49)` all parsed as positive. The importer reads negative as a charge, so these real charges were dropped. | Medium | me (agent) | P1.9c |
+| F57 | **FIXED in P1.9c.** ~~CSV amount parsing invented numbers.~~ `"Rs. 499"` parsed as 0.50 (the abbreviation dot became a decimal point). Letters between digits were stripped and the digits glued together (`1.5E+2` became 1.52, `10 USD 50` became 1050); these now return null. A leading BOM stayed in the first header cell. | Medium | me (agent) | P1.9c |
+| F58 | **FIXED in P1.9c.** ~~`canUseScope` failed OPEN on an unparseable key expiry~~ (`NaN <= now` is false, so the key was valid forever). It now fails closed. | Low now (no caller); High if it ever gates access | me (agent) | P1.9c |
+| F59 | **FIXED in P1.9c.** ~~Spend Twin invented comparisons when a rate was missing.~~ The $10 USD burrito was reused as ₹10, so ₹1,900 read as "190 burritos". Reachable before the first FX fetch. There are now no comparisons without a rate, and the summary says a rate is missing. | Medium (truthfulness) | me (agent) | P1.9c |
+| F60 | **FIXED in P1.9c.** ~~Spend-coach insights compared or printed amounts in the wrong currency.~~ USD benchmarks were read as raw home-currency minor units ("the profile benchmark is ₹34.00"; it is ₹3,230). The burrito fell back to ₹10. Non-USD or mixed totals were printed as "$". An unparseable last-charge date gave "NaN days old". This text also feeds the AI coach. Benchmarks are now converted, or skipped without a rate, and the insights run only with a single known currency. | Medium (truthfulness) | me (agent) | P1.9c |
+| F61 | **FIXED in P1.9c.** ~~The widget snapshot added raw minor units across currencies and always printed "$"~~ (₹499 showed as "$499.00"; $10 + ₹499 as "$509.00"). It also silently left out subscriptions with no rate, and could pick an unparseable renewal date as "next" ("Name NaNd"). It now shows one total per currency, counts the exclusions, and skips bad dates. | Medium (truthfulness) | me (agent) | P1.9c |
+| F62 | **FIXED in P1.9c.** ~~The business and family-vault summaries added raw minor units across currencies without rates and labelled the sum with the target currency~~ ($10 + ₹499 = "₹509"). Other currencies are now excluded and counted (`excludedCurrencyCount`). | Low (no screen reads these yet) | me (agent) | P1.9c |
+| F63 | **FIXED in P1.9c.** ~~An unparseable or empty `nextRenewalDate` silently dropped annual and quarterly charges from spend history~~ (a NaN month matched nothing, which also shrank Wrapped's total). It now falls back to `createdAt`, as it already did for a missing date. | Low | me (agent) | P1.9c |
+| F64 | **OPEN: the root of several currency findings.** `subscription-store.tsx` passes `fx = undefined` until exchange rates load (first launch, offline). Until then `createSpendSummary`, `createAnalyticsSnapshot`, `buildMonthlySpendHistory`, `buildYearInReview`, the calendar, budget and insights totals, and the store's own `totalMonthlyMinor` all add different currencies' raw minor units and label the result with the home currency. Flagged independently by two agents (P1.9b and P1.9c). Suggested fix: always pass `{ homeCurrency, rates: exchangeRates ?? {} }`, so same-currency amounts count and the rest are excluded with a disclosed count. | Medium (currency honesty) | me | next slice |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -1397,3 +1407,62 @@ hits:
 
 **Gates in `main` after the merge:** typecheck 0 · lint 0 · vitest 100 files / 1285
 tests (ratchet 95.86 / 90.69 / 97.04 / 96.21) · semgrep `apps/api` 0 / 0.
+
+### P1.9c — the shared package (agent, verified and corrected by me) — 2026-09-30
+
+**Done by a parallel agent** (branch `worktree-agent-a7916dff8a0bbd31e`, 13 commits), then
+**merged, verified and corrected by me in `main`**.
+
+**What I checked:**
+1. **Read every changed source line in all 10 source files.** The new required
+   `excludedCurrencyCount` fields on the business and vault summaries are only produced
+   by these functions, and the full typecheck confirms every caller.
+2. **Found a regression that the agent's tests did not cover.** The new CSV quote rule
+   ("a quote opens a section only as a field's first character") broke `a, "Netflix,
+   Inc.", 15.49`, a space after the comma. I proved it by running the OLD and NEW
+   parsers side by side on three shapes: the new one split the name at its comma and
+   shifted the amount column. I corrected the rule so that spaces or tabs before the
+   quote still open a section, with that padding dropped, and added 2 tests.
+   - The agent's parser fails my padding test.
+   - The pre-agent parser fails both new tests: it kept the leading space, and a
+     literal quote swallowed the file.
+   - Restored: 44 / 44.
+3. **File-level bite checks myself.** Each fixed file, put back to its pre-agent version
+   alone, fails its new tests: parse-utils 10 (including my 2), keys 1, twin 2, coach 8,
+   snapshot 5, business 3, vault 3, history 1. The 2 refactor-only files
+   (`renewal-plan`, `price-radar`), put back the same way, still PASS every new test.
+   That proves their dead-branch removals did not change behaviour.
+
+**Coverage:** all 14 files at 0 uncovered statements, branches and functions.
+**Tests:** 142 in 14 new `*.more.test.ts` files, plus my 2 CSV tests. They cover:
+- CSV: CRLF / LF / CR, quoting, BOM, formula-looking cells kept verbatim, a
+  1,000,000-character field, sign forms, separators and rounding.
+- Currency honesty across coach, twin, widget, business, vault, history, and year in
+  review.
+- UTC date walks.
+- Key previews that cannot leak a secret or hash.
+
+**Reported by the agent, not fixed here:**
+- **F64 (above)**, the store passing no `fx` until rates load. This is the root of
+  several currency issues.
+- **Lenient `Date.parse` (F21) confirmed at every site:** `"2026-02-30"` becomes 2 March,
+  and non-ISO strings are read as local time. Only NaN results were guarded. A strict
+  shared parser is P6.
+- **Renewal-plan quiet hours (latent: the store passes no preferences):** an equal start
+  and end reads as a 24-hour window; minutes are ignored; `"22abc"` is accepted.
+- **Price radar:** `PriceHistoryEntry` has no currency, so a currency change looks like a
+  huge hike.
+- **Unused exports:** `normalizeMerchant` has no caller; `canUseScope` is used only in
+  tests.
+- **CSV limits:** comma-only delimiter (EU semicolon exports read as one column); no
+  CR/DR suffix handling; `"-0.00"` returns -0.
+- **Screen follow-ups:** `spend-twin.tsx` shows the empty state when only the rate is
+  missing; `widgets.tsx` should show `excludedCurrencyCount`.
+- **Pre-existing type error:** `analytics.test.ts` uses `"JPY"`, which is not a
+  `CurrencyCode`.
+
+**Gates in `main` after the merge and my correction:** typecheck 0 (this also rebuilds
+the shared `dist` that jest reads) · lint 0 · vitest 114 files / 1429 tests (ratchet
+96.85 / 94.0 / 97.4 / 97.15) · jest 8 suites / 113 tests at 100 % · semgrep
+`packages/shared` 0 / 0 · **website production build OK**, since the website consumes
+the shared package.

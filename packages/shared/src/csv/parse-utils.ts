@@ -12,10 +12,13 @@ export function parseCsvRows(text: string): string[][] {
   let current = "";
   let row: string[] = [];
   let quoted = false;
-  // A quote opens a quoted section only as the FIRST character of a field
-  // (RFC 4180). Anywhere else it is a literal: a sloppy exporter's unquoted
-  // `BEST BUY 55" TV` used to open a section that swallowed every later
-  // delimiter and line break, silently dropping the rest of the file.
+  // A quote opens a quoted section only at the START of a field (RFC 4180),
+  // where "start" also allows spaces or tabs before it: many exporters write
+  // `a, "Netflix, Inc.", 15.49`, and treating that quote as a literal split the
+  // name at its comma and shifted every later column. Anywhere else a quote is
+  // a literal: a sloppy exporter's unquoted `BEST BUY 55" TV` used to open a
+  // section that swallowed every later delimiter and line break, silently
+  // dropping the rest of the file.
   let atFieldStart = true;
   // Excel's "CSV UTF-8" export starts with a byte-order mark. It is encoding
   // metadata, not part of the first header.
@@ -37,6 +40,7 @@ export function parseCsvRows(text: string): string[][] {
     } else if (char === "\"" && atFieldStart) {
       quoted = true;
       atFieldStart = false;
+      current = ""; // only spaces/tabs can precede it; they are padding, not data
     } else if (char === ",") {
       row.push(current);
       current = "";
@@ -52,7 +56,9 @@ export function parseCsvRows(text: string): string[][] {
       atFieldStart = true;
     } else {
       current += char;
-      atFieldStart = false;
+      if (char !== " " && char !== "\t") {
+        atFieldStart = false;
+      }
     }
   }
 

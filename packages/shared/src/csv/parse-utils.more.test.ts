@@ -10,6 +10,21 @@ const NBSP = String.fromCharCode(0x00a0);
 const MINUS = String.fromCharCode(0x2212); // U+2212 MINUS SIGN
 
 describe("parseCsvRows", () => {
+  it("a quoted field after padding spaces or a tab still protects its comma (common exporter shape)", () => {
+    expect(parseCsvRows('Date, Description, Amount\n2026-09-01, "Netflix, Inc.", 15.49\n2026-09-02,\t"Hulu, LLC",7.99')).toEqual([
+      ["Date", " Description", " Amount"],
+      ["2026-09-01", "Netflix, Inc.", " 15.49"],
+      ["2026-09-02", "Hulu, LLC", "7.99"]
+    ]);
+  });
+
+  it("a quote after any non-space character stays literal (the padding rule does not reopen the swallow bug)", () => {
+    expect(parseCsvRows('2026-09-01, BEST BUY 55" TV, 499.00\n2026-09-02,Spotify,9.99')).toEqual([
+      ["2026-09-01", " BEST BUY 55\" TV", " 499.00"],
+      ["2026-09-02", "Spotify", "9.99"]
+    ]);
+  });
+
   it("returns no rows for empty input", () => {
     expect(parseCsvRows("")).toEqual([]);
   });
