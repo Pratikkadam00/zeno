@@ -45,8 +45,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P2.1 real Postgres in tests (PGlite locally, a `postgres` server in CI, proven by a server-mode test): schema from empty, upsert, a restart round trip for every store, account deletion leaves no row, the refresh race, concurrent sync replays; **fixes F75** (green: CI 36763417730, CodeQL 36763417620 on `229e114`)
   - [x] P2.2 authorization matrix (table-driven from the LIVE route list; 38 routes, 11 token attacks, cross-household), **fixes F76** (green: CI 36764785079, CodeQL 36764784910 on `8d4b5f0`); F77 open for the owner
   - [x] P2.3 rate limits per route (table-driven from the live routes; window, key, 429 envelope, Retry-After); **fixes F78, F79** (green: CI 36765749331, CodeQL 36765749502 on `73766ff`)
-  - [~] P2.4 property-based fuzzing of every route (fast-check; 200 runs per route in CI, 10 000 nightly); prototype poisoning pinned at the parser
-  - [ ] P2.5 error and log hygiene
+  - [x] P2.4 property-based fuzzing of every route (fast-check; 200 runs per route in CI, 10 000 nightly); prototype poisoning pinned at the parser (green: CI 36767472709, CodeQL 36767472774 on `eea3f24`)
+  - [~] P2.5 error and log hygiene: the production logger config under real traffic carrying marked secrets; error bodies carry the request id and no internals
   - [ ] P2.6 auth flows (enumeration-safe magic link, production refusals)
   - [ ] P2.7 outbound-call inventory (host allowlist, no user-controlled URL)
   - [ ] P2.8 webhooks (replay, idempotency)
@@ -2015,3 +2015,45 @@ with seed 12345 and a planted failing check reported the identical seed and path
 Gates after the final edit (which caught a duplicated `headers` key that only `tsc`
 flags): `tsc -b --force` 0 · lint 0 · vitest 126 files / 1645 tests at 100 / 99.62 /
 100 / 100 · jest 114 / 114 · semgrep (API + workflows) 0 · audit gate PASS.
+
+### P2.4 — done — 2026-10-01
+
+Green on GitHub: CI 36767472709 and CodeQL 36767472774 on `eea3f24`. The nightly
+workflow first runs at 03:17 UTC; its result is checked in a later session.
+
+### P2.5 — error and log hygiene — 2026-10-01
+
+**`apps/api/src/log-hygiene.test.ts`** (3 tests) runs the **production** logger options
+(`buildLoggerOptions({ NODE_ENV: "production" })`, the exact ones `start.ts` passes, at
+debug level so more lines are written). Every JSON line goes into memory, and every
+`console.*` call made meanwhile is captured.
+1. **Every secret a client can send carries a unique `MARK` marker:**
+   - a valid bearer (with a marker inside its payload) and a forged bearer;
+   - a cookie;
+   - a magic-link token and code in the query string;
+   - a refresh token, and a correct and a wrong demo password, in the body;
+   - the correct and a wrong webhook secret;
+   - a server error thrown while a bearer and a query secret are in flight.
+
+   **No marker appears in any pino line or console call.** The test also checks the
+   logger really wrote lines (more than 10).
+2. **Requests are logged by path only:** the "incoming request" lines hold only the path
+   (no query string, no search term), and the 500 is logged at error level with its
+   `reqId`.
+3. **Error bodies:** a 401, a 400 from validation, a 404 from the route, a 404 from the
+   not-found handler, a 400 from the parser, and a 500 whose error carries a fake stack
+   and file path. Each one's `meta.requestId` equals its `x-request-id` header, and none
+   contains the stack, a module path, or the internal message.
+
+**Bite checks** (each alone, then restored):
+- The request line logging the full URL (the old F9 bug): 2 fail.
+- Headers logged with the redaction list emptied: the bearer is caught.
+- A handler logging its own body (`request.log.info({ body })` in demo login): the
+  password is caught.
+
+**Nothing leaked on the current code.** The P1 fixes (F9 query-string logging, F31
+upstream text, F33 client errors, F79 the auth routes' error handler) hold under the
+real production configuration. No new finding in P2.5.
+
+Gates after the final edit: `tsc -b --force` 0 · lint 0 · vitest 127 files / 1648 tests
+at 100 / 99.62 / 100 / 100 · jest 114 / 114.
