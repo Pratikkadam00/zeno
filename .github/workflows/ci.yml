@@ -20,7 +20,7 @@ concurrency:
 jobs:
   build:
     name: typecheck & test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19 (GitHub notice); upgrade deliberately
     timeout-minutes: 25
     steps:
       - name: Checkout
@@ -60,6 +60,22 @@ jobs:
       - name: Build web
         run: npm run build --workspace @zeno/web
 
+      # Software bill of materials (CycloneDX 1.5) for everything the lockfile
+      # installs on this runner. The FULL tree on purpose: `npm sbom --omit dev`
+      # was verified to DROP shipped packages (expo, react-native) in this
+      # workspace layout, so it would be an incomplete inventory. Dev-only
+      # packages are marked with the property cdx:npm:package:development=true.
+      - name: SBOM (CycloneDX)
+        run: npm sbom --sbom-format cyclonedx > sbom.cdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 30
+
       # BLOCKING on every push/PR (P0.4). main auto-deploys to production once
       # checks pass (render.yaml autoDeployTrigger: checksPass), so a report-only
       # audit here would let a known high/critical advisory ship. Exceptions are
@@ -74,7 +90,7 @@ jobs:
   # reason — never a rule- or path-wide exemption.
   secret-scan:
     name: secret scan (gitleaks, full history)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19 (GitHub notice); upgrade deliberately
     timeout-minutes: 10
     steps:
       - name: Checkout (full history)
@@ -106,7 +122,7 @@ jobs:
   # Image pinned by digest (semgrep 1.178.0, multi-arch index).
   sast-semgrep:
     name: SAST (semgrep, zero findings)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19 (GitHub notice); upgrade deliberately
     timeout-minutes: 15
     container:
       image: semgrep/semgrep:1.178.0@sha256:32e459968daabe7ab86968184a29109b9564aa00392401156f9788452b42786b

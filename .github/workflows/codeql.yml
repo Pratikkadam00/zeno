@@ -21,7 +21,7 @@ permissions:
 jobs:
   analyze:
     name: CodeQL (javascript-typescript, security-extended)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19 (GitHub notice); upgrade deliberately
     timeout-minutes: 30
     permissions:
       contents: read

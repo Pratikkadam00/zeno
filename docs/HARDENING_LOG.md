@@ -15,9 +15,9 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P0.1 Coverage scope: exclude generated `.next/**`; guard against unexplained `v8 ignore`
   - [x] P0.2 Secret scan: gitleaks over full git history (local) + CI job on every push/PR
   - [x] P0.3 Static analysis (SAST): CodeQL workflow + semgrep with zero-findings gate
-  - [~] P0.4 Workflow hygiene: SHA-pinned actions, least-privilege `permissions`, `concurrency`, audit gate blocking in CI
-  - [ ] P0.5 Dependabot (npm + GitHub Actions) + SBOM on release
-  - [ ] P0.6 Branch protection on `main` (owner action — documented)
+  - [x] P0.4 Workflow hygiene: SHA-pinned actions, least-privilege `permissions`, `concurrency`, audit gate blocking in CI
+  - [~] P0.5 Dependabot (npm + GitHub Actions) + SBOM on release
+  - [!] P0.6 Branch protection on `main` (owner action — documented; `main` verified UNPROTECTED)
   - [ ] P0 gate: all standing gates green locally; new CI jobs green on GitHub
 - [ ] **P1 — Tier 1 logic to 100 % coverage**
 - [ ] **P2 — API on real Postgres, authorization matrix, fuzzing**
@@ -42,6 +42,12 @@ that closes it.
 | F3 | Whether the address Render's load balancer appends is the real client or a Cloudflare edge is unverified (Render staff, May 2021: "we set the first IP in the list to the real client IP"). With 1 trusted hop, request.ip is the LAST appended address. Check in Render logs: the pino request log's `remoteAddress` for your own request should equal your public IP. If it shows a Cloudflare IP, set `TRUST_PROXY_HOPS=2`. | Medium (rate-limit granularity) | owner: one log check | P8 |
 | F4 | Render builds with `npm install` (not `npm ci`) and deploys every push to `main` regardless of CI status (`autoDeploy: true`), and the start command (`tsx`) never typechecks. A red CI does not stop a deploy. | High (process) | **fixed in `render.yaml` (P0.4)**; owner: confirm the Render service is Blueprint-managed so the change applies (if it was created by hand, set "Auto-Deploy: After CI checks pass" in the dashboard) | P0.4 |
 | F5 | CI ran **Node 20, end-of-life since 2026-04-30**. Production was worse-defined: Render reads `engines`, and per Render's docs an unbounded range like our `>=20.11.0` "always resolves to the latest release" — whatever Node major is newest, not an LTS. | High (unpatched / unpinned runtime) | **fixed (P0.4)**: `.node-version` = 24 (Render reads it before `engines`), engines `>=24 <25`, CI via `node-version-file` | P0.4 |
+| F7 | **`main` is not protected** (GitHub API: `protected: false`, required checks `[]`): force-push and branch deletion are allowed, and nothing requires checks before code lands. | High (integrity of the deploy branch) | owner: the P0.6 steps below | P0.6 |
+| F8 | GitHub's own free protections for public repos are not verifiable without owner auth: secret-scanning **push protection** (rejects a push that contains a secret, server-side), Dependabot **alerts** and **security updates**. | Medium | owner: enable in Settings → Code security | P0.6 |
+| F9 | **Magic-link login tokens are written to production logs.** Fastify's default request log includes `req.url` with the query string, and `GET /api/v1/auth/verify?token=…` carries the raw token. Verified by a probe with the exact production logger config: the log line held `"url":"/api/v1/auth/verify?token=PROBE-SECRET-MAGIC-TOKEN-123"`. Single-use limits it, but a verify that fails before consuming the token (e.g. 429) leaves a working login token in Render's logs. | High (credential in logs) | me | P1 (`server.ts`) |
+| F10 | Google sign-in: a nonce is sent to Google but NOT to our API (`/auth/google` gets only the token), so the server cannot bind the ID token to this sign-in (replay of a stolen token). Apple sign-in requests no nonce at all. Needs the server side read in full before a verdict. | Medium (to confirm) | me | P1 (`authStore.ts`) + P2 |
+| F11 | Google sign-in uses the implicit ID-token flow returned to the custom scheme `zeno://auth/google`. RFC 8252 recommends authorization code + PKCE for native apps; another Android app can register the same scheme. | Medium (to confirm) | me | P1/P3 |
+| F12 | Gmail: disconnect revokes with the token in the URL query (`…/revoke?token=`); the fallback account label embeds the first 8 characters of the access token; known billing senders are trusted from the spoofable `From` header alone (no DKIM/SPF check). | Low–Medium | me | P1 (`emailScanner.ts`) |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -249,3 +255,56 @@ six fixes, including the hashed log reference).
   checks pass"); build `npm install` → `npm ci` (exact lockfile; same dev-dependency
   behaviour, and the build already needs `tsc` from dev dependencies).
 - semgrep over the edited workflows + `render.yaml` (github-actions + OWASP packs): 0.
+
+**P0.4 closed:** GitHub @ `cb7cc53`: CI `36719796423` success (build, secret scan,
+semgrep) and CodeQL `36719796450` success. The build job's annotations no longer carry
+GitHub's "Node.js 20 is deprecated" warning (Node 24 from `.node-version` took effect).
+Fresh-clone + `npm ci` on Node 24 before the push: every CI step exit 0.
+
+### P0.5 — Dependabot + SBOM — 2026-09-30
+
+- **`.github/dependabot.yml`** (npm at the root, which covers every workspace through the
+  single lockfile; github-actions). Design decisions, each from GitHub's options
+  reference rather than memory:
+  - **No `ignore` rules at all:** "the `ignore` option applies to both version and
+    security updates", so ignoring the Expo packages would also block their security
+    fixes. Instead the 34 Expo/React-Native-coupled packages are **grouped**
+    (`expo-sdk` minor+patch, `expo-sdk-major`), so an SDK move arrives as ONE PR, which
+    CI verifies and a human checks with `npx expo install --check`.
+  - **`cooldown` 7 days** (14 for majors) on version updates only; security updates are
+    never delayed. semgrep's `dependabot-missing-cooldown` rule (OWASP pack) rejected my
+    first draft's 5 days; raised to 7.
+  - Validated against the SchemaStore dependabot-2.0 JSON schema: 0 errors. Whether
+    GitHub accepts it is confirmed only when Dependabot runs (first scheduled Monday).
+- **SBOM:** `npm sbom --sbom-format cyclonedx` (CycloneDX 1.5) generated on the runner
+  and uploaded as an artifact in CI (30 days) and in the release gate (90 days).
+  **Found while building it:** `npm sbom --omit dev` silently DROPS shipped packages
+  here: `expo` and `react-native` are absent, though `npm ls expo --omit dev` shows
+  them in the production tree through `@zeno/mobile`. The full SBOM (1,268 components
+  locally) includes them and marks dev-only packages with
+  `cdx:npm:package:development=true`; the 126 lockfile names it lacks locally are other
+  platforms' optional binaries (`@esbuild/darwin-*`, …) not installed on Windows. So
+  the full SBOM is the complete, honest inventory.
+- `sbom.cdx.json` added to `.gitignore`.
+- Runner OS pinned to `ubuntu-24.04` in all jobs: GitHub's run notice says
+  `ubuntu-latest` moves to Ubuntu 26 from 2026-10-19; an image change under the build
+  should be a deliberate upgrade, not a surprise red CI.
+
+### P0.6 — Branch protection — OWNER ACTION (verified state + exact steps)
+
+Verified 2026-09-30 via `GET /repos/Pratikkadam00/zeno/branches/main`: **`protected:
+false`**, required checks `[]` (F7). I will not change repository security settings
+with the credentials on this machine; this is yours. Steps (github.com → the repo):
+
+1. **Settings → Rules → Rulesets → New ruleset → New branch ruleset.** Name `main`,
+   Enforcement **Active**, Target branches → **Include default branch**.
+2. Tick **Restrict deletions** and **Block force pushes** (no workflow change).
+3. Tick **Require status checks to pass**, add: `typecheck & test`,
+   `secret scan (gitleaks, full history)`, `SAST (semgrep, zero findings)`,
+   `CodeQL (javascript-typescript, security-extended)`. Note: this makes direct pushes
+   to `main` impossible (checks run after a push), so work moves to pull requests,
+   merged only when green. Recommended; your call.
+4. **Settings → Code security:** enable **Secret scanning → Push protection**,
+   **Dependabot alerts**, **Dependabot security updates** (F8).
+
+When you have done it, tell me and I will re-read the API to confirm `protected: true`.

@@ -16,7 +16,7 @@ permissions:
 jobs:
   release-gate:
     name: verify & audit (blocking)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19 (GitHub notice); upgrade deliberately
     timeout-minutes: 25
     steps:
       - name: Checkout
@@ -48,6 +48,22 @@ jobs:
 
       - name: Build web
         run: npm run build --workspace @zeno/web
+
+      # Software bill of materials (CycloneDX 1.5) for everything the lockfile
+      # installs on this runner. The FULL tree on purpose: `npm sbom --omit dev`
+      # was verified to DROP shipped packages (expo, react-native) in this
+      # workspace layout, so it would be an incomplete inventory. Dev-only
+      # packages are marked with the property cdx:npm:package:development=true.
+      - name: SBOM (CycloneDX)
+        run: npm sbom --sbom-format cyclonedx > sbom.cdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 90
 
       # BLOCKING: a high/critical advisory fails the release. Moderate/low
       # (e.g. current Expo transitive advisories) are surfaced but don't block.
