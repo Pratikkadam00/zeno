@@ -73,12 +73,19 @@ export function createSpendSummary(subscriptions: Subscription[], now = new Date
   const categoryMap = new Map<SubscriptionCategory, { monthlyMinor: number; count: number; ids: string[] }>();
   let totalMonthlyMinor = 0;
   let excludedCurrencyCount = 0;
+  // Without fx the totals are raw native amounts. Track the one currency they
+  // share (null once two differ; a zero contribution adds no units).
+  let nativeCurrency: CurrencyCode | null | undefined;
 
   for (const subscription of active) {
     const monthly = fx ? monthlyAmountIn(subscription, fx.homeCurrency, fx.rates) : monthlyAmount(subscription);
     if (monthly === null) {
       excludedCurrencyCount += 1;
       continue;
+    }
+    if (monthly !== 0) {
+      const currency = subscription.price.currency;
+      nativeCurrency = nativeCurrency === undefined || nativeCurrency === currency ? currency : null;
     }
     totalMonthlyMinor += monthly;
     const current = categoryMap.get(subscription.category) ?? { monthlyMinor: 0, count: 0, ids: [] };
@@ -92,15 +99,22 @@ export function createSpendSummary(subscriptions: Subscription[], now = new Date
     .map(([category, value]) => ({ category, monthlyMinor: value.monthlyMinor, count: value.count }))
     .sort((a, b) => b.monthlyMinor - a.monthlyMinor);
 
+  // The currency totalMonthlyMinor / byCategory are denominated in: the home
+  // currency when fx converted them, otherwise the single native currency. A
+  // no-fx portfolio in several currencies has none (its raw sum mixes units),
+  // so no insight may print that sum or compare it against a benchmark.
+  const totalsCurrency = fx ? fx.homeCurrency : nativeCurrency ?? undefined;
+  const rates = fx?.rates ?? {};
+
   const summary: SpendSummary = {
     totalMonthlyMinor,
     byCategory,
     insights: [
-      ...categoryBudgetInsights(categoryMap, fx?.homeCurrency),
+      ...categoryBudgetInsights(categoryMap, totalsCurrency, rates),
       ...duplicateCategoryInsights(categoryMap),
       ...annualSavingsInsights(active),
       ...unusedReviewInsights(active, now),
-      spendTwinInsight(totalMonthlyMinor, fx?.homeCurrency, fx?.rates)
+      spendTwinInsight(totalMonthlyMinor, totalsCurrency, rates)
     ].filter((insight): insight is SpendInsight => Boolean(insight))
   };
 
@@ -140,10 +154,21 @@ export function monthlyAmountIn(subscription: Subscription, homeCurrency: Curren
   return convertMinor(monthlyAmount(subscription), subscription.price.currency, homeCurrency, rates);
 }
 
-function categoryBudgetInsights(categoryMap: Map<SubscriptionCategory, { monthlyMinor: number; count: number; ids: string[] }>, homeCurrency?: CurrencyCode): SpendInsight[] {
+function categoryBudgetInsights(
+  categoryMap: Map<SubscriptionCategory, { monthlyMinor: number; count: number; ids: string[] }>,
+  currency: CurrencyCode | undefined,
+  rates: ExchangeRates
+): SpendInsight[] {
+  if (!currency) {
+    return [];
+  }
   return [...categoryMap.entries()].flatMap(([category, value]) => {
-    const benchmark = profileBenchmarks[category];
-    if (!benchmark || value.monthlyMinor <= benchmark) {
+    // Benchmarks are USD. Compare in the totals' currency, and skip when no
+    // rate converts them: the old code read 3400 US cents as 3400 paise and
+    // told an INR user "the profile benchmark is ₹34.00".
+    const benchmarkUsd = profileBenchmarks[category];
+    const benchmark = benchmarkUsd === undefined ? null : convertMinor(benchmarkUsd, "USD", currency, rates);
+    if (benchmark === null || value.monthlyMinor <= benchmark) {
       return [];
     }
 
@@ -152,7 +177,7 @@ function categoryBudgetInsights(categoryMap: Map<SubscriptionCategory, { monthly
       kind: "category_over_budget",
       severity: "warning",
       title: `${labelCategory(category)} is above profile benchmark`,
-      body: `You spend ${formatMoneyMinor(value.monthlyMinor, homeCurrency)} per month; the profile benchmark is ${formatMoneyMinor(benchmark, homeCurrency)}.`,
+      body: `You spend ${formatMoneyMinor(value.monthlyMinor, currency)} per month; the profile benchmark is ${formatMoneyMinor(benchmark, currency)}.`,
       subscriptionIds: value.ids,
       estimatedMonthlyImpactMinor: overage
     }];
@@ -201,7 +226,9 @@ function unusedReviewInsights(subscriptions: Subscription[], now: Date): SpendIn
       return [];
     }
     const daysSinceCharge = Math.floor((now.getTime() - Date.parse(subscription.lastChargedDate)) / 86_400_000);
-    if (daysSinceCharge < 30) {
+    // NaN (unparseable date) fails `< 30`, which used to emit "the last charge
+    // is NaN days old".
+    if (Number.isNaN(daysSinceCharge) || daysSinceCharge < 30) {
       return [];
     }
     return [{
@@ -214,16 +241,18 @@ function unusedReviewInsights(subscriptions: Subscription[], now: Date): SpendIn
   });
 }
 
-function spendTwinInsight(totalMonthlyMinor: number, homeCurrency?: CurrencyCode, rates?: ExchangeRates): SpendInsight | null {
-  if (totalMonthlyMinor <= 0) {
+function spendTwinInsight(totalMonthlyMinor: number, currency: CurrencyCode | undefined, rates: ExchangeRates): SpendInsight | null {
+  if (totalMonthlyMinor <= 0 || !currency) {
     return null;
   }
   // 1000 minor units == one $10 burrito — a USD-denominated comparison unit.
-  // Convert it into homeCurrency (via the same rates table) rather than
-  // comparing raw minor units of two different currencies.
-  const burritoCostMinor = homeCurrency && homeCurrency !== "USD" && rates
-    ? convertMinor(1000, "USD", homeCurrency, rates) ?? 1000
-    : 1000;
+  // Convert it into the totals' currency (via the same rates table) rather
+  // than comparing raw minor units of two different currencies. No rate, no
+  // count: the old `?? 1000` fallback priced the burrito at ₹10.
+  const burritoCostMinor = convertMinor(1000, "USD", currency, rates);
+  if (burritoCostMinor === null) {
+    return null;
+  }
   const burritos = Math.max(1, Math.round(totalMonthlyMinor / burritoCostMinor));
   return {
     kind: "spend_twin",
