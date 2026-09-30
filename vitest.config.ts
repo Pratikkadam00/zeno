@@ -46,6 +46,8 @@ export default defineConfig({
         // counting it made the scope depend on whether `next dev` had run.
         "**/.next/**",
         "**/*.test.*",
+        // Shared test infrastructure (e.g. the real-SQLite adapter), not app code.
+        "**/*.testutil.*",
         "**/*.rntest.*",
         "**/*.d.ts",
         "**/node_modules/**",
@@ -56,10 +58,10 @@ export default defineConfig({
       // these numbers in this file whenever a run exceeds them, so the floor
       // only ever rises; a drop below any floor fails `npm run test:coverage`.
       thresholds: {
-        statements: 74.08,
-        branches: 68.02,
-        functions: 71.16,
-        lines: 74.82,
+        statements: 74.58,
+        branches: 69.73,
+        functions: 72.15,
+        lines: 75.28,
         autoUpdate: true
       }
       // Known gap: a few dozen never-imported apps/web/*.tsx files (ones

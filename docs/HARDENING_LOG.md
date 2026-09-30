@@ -24,7 +24,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P1.2 `apps/mobile/src/security/*` — secure-store, lock-store (48 %), app-lock; **fixes F13** (Gmail SecureStore key)
   - [x] P1.3 `apps/mobile/src/discovery/*` (emailScanner 48 %, csvParser, helpers) + shared receipts — untrusted email/CSV input; **fixes F12, F17, F20**
   - [x] P1.4 `apps/mobile/src/auth/authStore.ts` (51 %) — token lifecycle; **fixes F10, F23, F24** (with the API side); F11 stays open (P3)
-  - [ ] P1.5 `apps/mobile/src/storage/database.ts` (59 %) + `subscription-repository.ts` (0 %)
+  - [x] P1.5 `apps/mobile/src/storage/database.ts` (59 %) + `subscription-repository.ts` (0 %) — on a REAL SQLite engine
   - [ ] P1.6 `apps/mobile/src/billing/revenueCat.ts` (55 %)
   - [ ] P1.7 `packages/service-catalog/src/services.ts` (0 %) — catalog invariants for all 509 entries
   - [ ] P1.8 React providers under jest with their own coverage floor: `subscription-store.tsx` (601 lines), `budget-store.tsx`, `theme-provider.tsx`, `LockOverlay.tsx`
@@ -574,3 +574,36 @@ the app → 2 app tests fail.
 Tier 1 lines 71.20 % → **74.82 %**.
 
 Gates: typecheck 0 · lint 0 · vitest 810/810 (74 files) · RN 22/22 · semgrep 0.
+
+### P1.5 — Local database + repository on a real SQLite engine — 2026-09-30
+
+**Approach:** mocks would accept any SQL string, so these tests run the app's real
+migrations and queries on Node 24's built-in SQLite (`node:sqlite`) through a small
+adapter exposing the four expo-sqlite methods the code calls
+(`sqlite-adapter.testutil.ts`, excluded from coverage as test infrastructure).
+Stated plainly: this engine has no SQLCipher, so `PRAGMA key` is ignored here. The
+tests prove the key statement is ISSUED correctly; on-device proof of encryption remains
+F16 (P3).
+
+**Tests (+15):**
+- `database.real.test.ts` (8): the full v1 schema from an empty FILE (all 8 tables,
+  `user_version = 1`, `journal_mode = wal`); idempotent re-run keeps data; the upgrade
+  of a pre-lifecycle install (no `cancellation_*` columns) adds them and keeps its rows;
+  the lost race of two concurrent migrations (a duplicate-column ALTER) is caught; a
+  missing `user_version` row counts as 0; `app_meta` read-missing / write / overwrite;
+  hostile keys and values stay data (bound parameters); `PRAGMA key` is the FIRST
+  statement, with the secure-store key and every `'` doubled.
+- `subscription-repository.test.ts` (7): exact round trip, minimal and with every
+  optional field (absent optionals come back `undefined`, not `null`); an upsert never
+  rewrites `created_at` or `device_id`; ordering by renewal date then name, with undated
+  rows FIRST (SQLite sorts NULL first ascending; whether the UI relies on this order is
+  checked in P1.8); soft delete stamps `deleted_at` / `updated_at` and bumps the version;
+  "Delete all data" hard-deletes everything, soft-deleted rows included; hostile text
+  stays data.
+- The typecheck caught an invalid `valueRating: "worth_it"` hidden behind a cast in my
+  first draft; the cast is gone.
+
+**Coverage:** `database.ts` and `subscription-repository.ts`: **0 uncovered lines,
+branches or functions** (were 59 % and 0 %). Tier 1 lines 74.82 % → **75.28 %**.
+
+Gates: typecheck 0 · lint 0 · vitest 825/825 (76 files) · RN 22/22 · semgrep 0.
