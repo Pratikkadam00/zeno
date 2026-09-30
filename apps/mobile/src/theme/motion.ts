@@ -41,11 +41,17 @@ export function useReducedMotion(): boolean {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
     let mounted = true;
-    void AccessibilityInfo.isReduceMotionEnabled().then((value) => {
-      if (mounted) {
-        setReduced(value);
-      }
-    });
+    void AccessibilityInfo.isReduceMotionEnabled()
+      .then((value) => {
+        if (mounted) {
+          setReduced(value);
+        }
+      })
+      .catch(() => {
+        // RN rejects when its accessibility native module is unavailable. Keep
+        // the default (motion on) rather than leak an unhandled rejection from
+        // every animated component; the listener below still applies toggles.
+      });
     const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduced);
     return () => {
       mounted = false;

@@ -37,6 +37,8 @@ module.exports = {
     "src/data/budget-store.tsx",
     "src/data/subscription-store.tsx",
     "src/theme/theme-provider.tsx",
+    "src/theme/useZenoTokens.ts",
+    "src/theme/motion.ts",
     "src/security/LockOverlay.tsx"
   ],
   coverageReporters: ["text", "json-summary"],
@@ -44,6 +46,8 @@ module.exports = {
     "./src/data/budget-store.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
     "./src/data/subscription-store.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
     "./src/theme/theme-provider.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
+    "./src/theme/useZenoTokens.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+    "./src/theme/motion.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
     "./src/security/LockOverlay.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 }
   }
 };
