@@ -30,10 +30,11 @@ export function detectPriceHikes(
   for (const subscription of subscriptions) {
     if (subscription.status === "cancelled") continue;
     const history = [...(historyById[subscription.id] ?? [])].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
-    if (history.length < 2) continue;
-
     const latest = history[history.length - 1];
     const previous = history[history.length - 2];
+    // Fewer than two points: nothing to compare (no history -> no latest; one
+    // point -> no previous). This one check replaces a separate length test
+    // that left the undefined guard unreachable.
     if (!latest || !previous) continue;
     if (latest.amountMinor <= previous.amountMinor) continue;
     // A previous price of $0 (e.g. a promo, or a manually-edited placeholder)
