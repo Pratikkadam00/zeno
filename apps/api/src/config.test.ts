@@ -14,7 +14,8 @@ const KEYS = [
   "MAGIC_LINK_REDIRECT_URL",
   "DEMO_LOGIN_PASSWORD",
   "ALLOW_UNVERIFIED_OAUTH_TOKENS",
-  "MONITORING_WEBHOOK_URL"
+  "MONITORING_WEBHOOK_URL",
+  "COACH_BASE_URL"
 ] as const;
 
 const original: Record<string, string | undefined> = {};
@@ -180,6 +181,25 @@ describe("P2.6 production refusals and warnings", () => {
     process.env.MONITORING_WEBHOOK_URL = "https://alerts.example/hook";
     process.env.CORS_ALLOWED_ORIGINS = "https://zeno.app";
     expect(validateConfig().warnings.filter((w) => /ALLOW_UNVERIFIED|MONITORING|CORS/.test(w))).toEqual([]);
+  });
+});
+
+describe("P2.7 an outbound URL set by the operator", () => {
+  it("warns in production when COACH_BASE_URL is http:// (the provider's API key is sent to it); https://, unset, and non-production are silent", () => {
+    clear();
+    process.env.COACH_BASE_URL = "http://llm.example/v1";
+    expect(validateConfig().warnings.filter((w) => w.startsWith("COACH_BASE_URL"))).toEqual([]);
+    process.env.NODE_ENV = "production";
+    process.env.JWT_PRIVATE_KEY = "k";
+    process.env.JWT_PUBLIC_KEY = "k";
+    expect(validateConfig().warnings).toContain("COACH_BASE_URL uses http:// — the AI provider's API key would travel in cleartext.");
+    expect(validateConfig().fatal).toEqual([]);
+    for (const quiet of [" HTTPS://llm.example/v1", ""]) {
+      process.env.COACH_BASE_URL = quiet;
+      expect(validateConfig().warnings.filter((w) => w.startsWith("COACH_BASE_URL")), quiet).toEqual([]);
+    }
+    process.env.COACH_BASE_URL = " HTTP://llm.example/v1 ";
+    expect(validateConfig().warnings.some((w) => w.startsWith("COACH_BASE_URL"))).toBe(true);
   });
 });
 

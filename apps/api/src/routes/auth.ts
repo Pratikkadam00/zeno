@@ -941,18 +941,35 @@ async function verifyRemoteJwt(token: string, options: { audiences: string[]; is
   };
 }
 
+// Finding F83. A token with an unknown key id forced a re-fetch of the
+// provider's keys (for real key rotation), but with no limit: anyone could send
+// a JWT-shaped string with a made-up kid and make the API call Apple or Google
+// once per request, enough to get our address throttled there, after which
+// every real social sign-in fails once the cache expires. A forced refresh now
+// waits 30 s after the last fetch of that URL (as jose's JWKS cooldown does):
+// a rotated key is still picked up, at most 30 s late. And a malformed 200 (no
+// keys list) is refused instead of cached for an hour.
+const JWKS_REFRESH_COOLDOWN_MS = 30_000;
+const jwksFetchedAt = new Map<string, number>();
+
 async function fetchJwks(url: string, forceRefresh = false): Promise<JsonWebKey[]> {
   const cached = jwksCache.get(url);
-  if (!forceRefresh && cached && cached.expiresAt > Date.now()) {
+  const lastFetch = jwksFetchedAt.get(url);
+  const coolingDown = lastFetch !== undefined && Date.now() - lastFetch < JWKS_REFRESH_COOLDOWN_MS;
+  if (cached && cached.expiresAt > Date.now() && (!forceRefresh || coolingDown)) {
     return cached.keys;
   }
 
+  jwksFetchedAt.set(url, Date.now());
   const response = await fetchWithTimeout(url, {}, 5000);
   if (!response.ok) {
     throw new Error(`JWKS request failed with HTTP ${response.status}`);
   }
 
-  const body = await response.json() as JwksResponse;
+  const body = await response.json() as Partial<JwksResponse>;
+  if (!Array.isArray(body.keys)) {
+    throw new Error("JWKS response has no keys list.");
+  }
   jwksCache.set(url, {
     expiresAt: Date.now() + 60 * 60 * 1000,
     keys: body.keys

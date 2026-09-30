@@ -47,8 +47,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P2.3 rate limits per route (table-driven from the live routes; window, key, 429 envelope, Retry-After); **fixes F78, F79** (green: CI 36765749331, CodeQL 36765749502 on `73766ff`)
   - [x] P2.4 property-based fuzzing of every route (fast-check; 200 runs per route in CI, 10 000 nightly); prototype poisoning pinned at the parser (green: CI 36767472709, CodeQL 36767472774 on `eea3f24`)
   - [x] P2.5 error and log hygiene: the production logger config under real traffic carrying marked secrets; error bodies carry the request id and no internals (green: CI 36768319235, CodeQL 36768319305 on `d5716ed`)
-  - [~] P2.6 auth flows: enumeration-safe magic link, 10-minute expiry, single use, production refusals; **fixes F80** (the 6-digit code could be brute-forced) **and F81** (expired sign-in rows kept in Postgres for good)
-  - [ ] P2.7 outbound-call inventory (host allowlist, no user-controlled URL)
+  - [x] P2.6 auth flows: enumeration-safe magic link, 10-minute expiry, single use, production refusals; **fixes F80** (the 6-digit code could be brute-forced) **and F81** (expired sign-in rows kept in Postgres for good) (green: CI 36770819652, CodeQL 36770819744 on `f9f9540`)
+  - [~] P2.7 outbound-call inventory: every call site listed and checked by a source scan, each run against its host with a deadline, the one request-derived URL part guarded; **fixes F82** (the 5xx alert was unbounded), **F83** (anyone could force a JWKS re-fetch per request), **F84** (a coach request could run about 3.5 minutes)
   - [ ] P2.8 webhooks (replay, idempotency)
   - [ ] P2 gate: route-inventory test green; real-PG suite green locally and in CI
 - [ ] **P3 — Mobile hardening (MASVS) + tests for all 29 screens**
@@ -148,6 +148,9 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F79 | **FIXED in P2.3.** ~~The auth routes did not use the API's error handler.~~ `setErrorHandler` was called at the END of `buildApp`, but the awaited auth plugin had already built its routes with the handler that existed THEN, Fastify's default. Proven: a 429 on `/auth/magic-link` was Fastify's `{"statusCode":429,"error":"Too Many Requests",...}`, not our envelope, and malformed JSON on `/auth/refresh` returned `FST_ERR_CTP_INVALID_JSON_BODY` with the framework message. The F33 client-error mapping, the fixed 500 message and the 5xx monitoring alert therefore all bypassed every sign-in route. The handler is now set FIRST, before any plugin registers routes. | Medium (error hygiene on the auth surface) | me | P2.3 |
 | F80 | **FIXED in P2.6.** ~~The 6-digit sign-in code could be brute-forced by anyone who knows the address.~~ Its 5-guess cap was per CODE, and every new request sent a new code with a fresh cap. The per-recipient send cap allows 5 codes per 15 minutes, so a caller rotating nothing but the request could make 25 guesses per 15 minutes: about 2,400 a day from ONE IP (the per-IP limits, 5 requests and 10 verifies a minute, both allow it). That is roughly a 0.24 % chance a day, about 7 % a month, of signing in as the account. Proven on the old code: after 10 wrong guesses across two codes, the right third code still signed in. Now a per-ADDRESS budget of 10 wrong codes per 24 hours spans every code sent; once spent, no code is taken, not even the right one. It is persisted (else the free tier's idle spin-down would refill it), keyed by a hash of the address, swept when its window ends, and deleted with the account. Links (256-bit tokens) are unaffected; no current client signs in by code (mobile uses the link). | High (account takeover, slow but unattended) | me | P2.6 |
 | F81 | **FIXED in P2.6.** ~~Expired sign-in rows stayed in Postgres indefinitely.~~ On boot the auth hydrators SKIPPED expired records, and the sweep only walks memory, so a record that expired while the process was down (the free tier sleeps when idle) was never deleted. Every refresh session of a user who stops using the app kept its email and account id in `kv_store` until the account was deleted; an unused magic link kept the email and its (expired) code. The four hydrators that drop expired records (`auth_refresh`, `auth_magic`, `auth_legacy`, `auth_code_fail`) now delete their rows. Proven on real Postgres: seeded expired rows are gone after a boot and the live one loads. | Low (data retention; the records were already refused on use) | me | P2.6 |
+| F82 | **FIXED in P2.7.** ~~The 5xx alert webhook had no deadline and no bound.~~ It was the only outbound call on a raw `fetch`, with no deadline of ours; undici's own defaults wait 300 s for headers (checked in Node 24's bundled undici 7.24.4). It fired once per 5xx, so during an outage (every request failing) a slow or hung collector held one socket per failed request. Each alert now has a 3 s deadline, and at most 5 are in flight; the rest are dropped (every 5xx is still logged at error level). | Medium (an outage amplifier) | me | P2.7 |
+| F83 | **FIXED in P2.7.** ~~Any caller could make the API fetch Apple's or Google's signing keys on every request.~~ A token with an unknown key id forced a JWKS re-fetch (meant for real key rotation) with no limit. A JWT-shaped string with a made-up `kid` is enough, and needs no account, so at 10 a minute per IP from many IPs our address could be throttled by the provider. Once the one-hour cache expired, every real social sign-in would then fail. Proven: 5 such requests made 6 fetches. A forced refresh now waits 30 s after the last fetch of that URL (as jose's JWKS cooldown does), so a rotated key is still picked up at most 30 s late (tested with a genuinely rotated, signed Google token). Also, a malformed 200 (no `keys` list) used to be cached for an hour, failing every sign-in; it is now refused and not cached. | Medium (availability of social sign-in) | me | P2.7 |
+| F84 | **FIXED in P2.7.** ~~One coach request could run for about 3.5 minutes.~~ The Anthropic SDK's 30 s timeout is per ATTEMPT. It retries twice and honours a `Retry-After` of up to 60 s in between (read in the installed SDK 0.69.0), so a 429 could hold the request for 30 + 59 + 30 + 59 + 30 s. The app gives up at 35 s and shows its local insights. Proven with the real SDK: at 30 s the old code was still waiting. One 30 s deadline now covers the whole provider call: it aborts the request and answers 502, and the SDK's pending retry sees the abort and sends nothing more. | Low (wasted server work, held connections) | me | P2.7 |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -2146,3 +2149,108 @@ seen through the API; only the row deletion that F81 added can be, and that is p
 Gates after the final edit: `tsc -b --force` and every workspace typecheck 0 · lint 0 ·
 vitest 127 files / 1659 tests at 100 / 99.62 / 100 / 100 (the same 10 documented
 defensive branches) · jest 114 / 114.
+
+### P2.6 — done — 2026-10-01
+
+Green on GitHub: CI 36770819652 and CodeQL 36770819744 on `f9f9540`.
+
+### P2.7 — outbound-call inventory (F82, F83, F84) — 2026-10-01
+
+**The inventory:** every call the API makes to another host. Here "fixed" means the host
+is a constant in the code, "operator" means it comes from an environment variable set on
+the server (never from a request), and "request-derived" means part of it comes from the
+caller.
+
+| Call site | Host | Request-derived part of the URL | Deadline | Retries |
+|---|---|---|---|---|
+| Resend, the magic-link email (`routes/auth.ts`) | `api.resend.com`, fixed | none (the recipient is in the body) | 8 s | none: a failure is a 502, and the user asks again |
+| Apple signing keys (`routes/auth.ts`) | `appleid.apple.com`, fixed | none | 5 s | none. Cached for 1 hour; a forced refresh is allowed at most once per 30 s (F83) |
+| Google signing keys (`routes/auth.ts`) | `www.googleapis.com`, fixed | none | 5 s | the same as Apple |
+| RevenueCat (`billing.ts`) | `api.revenuecat.com`, fixed | the caller's account id: our own signed subject, one path segment, now guarded | 8 s | none |
+| Plaid (`plaid.ts`) | `sandbox` / `development` / `production.plaid.com`, chosen by `PLAID_ENV` | none (fixed paths) | 10 s | none |
+| Groq or another OpenAI-compatible host (`coach.ts`) | operator's `COACH_BASE_URL` (default `api.groq.com`) | none | the 30 s coach deadline (F84) | none |
+| Anthropic, through the SDK (`coach.ts`) | `api.anthropic.com` (the SDK default) | none | 30 s per attempt and 30 s overall (F84) | the SDK's 2 |
+| 5xx alert (`app.ts`) | operator's `MONITORING_WEBHOOK_URL` | none | 3 s (F82) | none; at most 5 in flight |
+| Rate-limit store (`app.ts`) | operator's `REDIS_URL` | none | 500 ms to connect | 1 per command; no offline queue |
+| Postgres (`storage/pg.ts`) | operator's `DATABASE_URL` | none | 5 s to connect, 10 s per statement | pool of at most 5 connections |
+
+No value from a request ever picks a host. The only request-derived part of any URL is
+the RevenueCat account id.
+
+**`apps/api/src/outbound.test.ts`** (19 tests):
+1. **The source scan.** It reads every non-test file in `apps/api/src` and counts each
+   `fetch(`, `fetchWithTimeout(`, `new Anthropic(`, `new Redis(` and `new Pool(`. The
+   result must equal the inventory table in the test, so a new call site fails CI until
+   it is reviewed and listed. The only direct `fetch` is inside `fetchWithTimeout`
+   itself. On the old code this failed: `app.ts` held a raw `fetch` (F82).
+2. **Each call site, run with `fetch` faked.** There is no real network, and no Plaid or
+   sandbox call, by standing instruction. For each of the eight HTTP call sites, every
+   request is https, goes only to its expected host, and carries an `AbortSignal`. The
+   Anthropic case runs the real SDK.
+3. **The RevenueCat account id, fuzzed** (fast-check, 300 runs, including dots, `%` and
+   `/`). The rule: either the id is refused before any call, or the URL is exactly
+   `/v1/subscribers/<that id>`. The old code broke it: the id `.` was fetched as
+   `/v1/subscribers/`. `encodeURIComponent` leaves dots alone, and the URL parser resolves
+   `.`, `..` and `%2e%2e` segments, so `..` would have sent our secret key to `/v1/`.
+   It was not reachable (ids are our own signed `acct_` + base64url subjects), but the
+   rule is now enforced where the URL is built: an id must match `[A-Za-z0-9_-]{1,128}`.
+4. **F82:**
+   - each alert gets `AbortSignal.timeout(3000)`;
+   - with a collector that never answers, 8 failures send 5 alerts and drop 3;
+   - once those settle, alerts resume.
+5. **F83:**
+   - 5 made-up key ids make 1 fetch (the old code made 6);
+   - none at 29.999 s, one forced refresh at 30 s, and none straight after;
+   - a real key rotation still signs in: a token signed with a newly published key gets
+     a 200 once the cached set is 30 s old;
+   - a malformed key set is not cached.
+6. **F84:**
+   - the real SDK, answered with a 429 carrying `Retry-After: 59` every time: still
+     pending at 29.999 s, and the deadline at 30 s;
+   - one attempt only, even 3 minutes later;
+   - Groq that never answers: cut off at 30 s, with its request aborted;
+   - a provider that answers in time is unaffected, and no timer is left behind.
+
+**Two existing tests pinned the old behaviour and were updated, not weakened:**
+- `auth-social.test.ts`: the forced-refetch test now advances 30 s, and also asserts that
+  a second unknown key id straight after does not refetch. The outage test now advances
+  past the cooldown and asserts the failing fetch was attempted, so it cannot pass on a
+  cached answer.
+- `billing.test.ts`: the old test sent `acct/../other?x=1#y` to RevenueCat. That id is now
+  refused before any call, and a real-shaped id is fetched exactly.
+
+**Also:**
+- **The `http.ts` comment was wrong:** it said Node's fetch has "NO default timeout".
+  Undici's defaults are 300 s for headers and 300 s between body chunks (read from the
+  bundled undici 7.24.4 source), which is still far too long. Corrected.
+- **A new production warning:** an `http://` `COACH_BASE_URL` would send the provider's
+  API key in cleartext (bite-checked). It is a warning, not a refusal, on the same
+  reasoning as P2.6: `render.yaml` leaves it unset.
+- **Observed, no change:** fetch follows redirects (its default). Every host is fixed or
+  set by the operator, so a redirect could only come from the provider itself.
+
+**Bite checks** (each mutation alone, then restored; 17 in all, every one caught, re-run
+after the last code change):
+- **F82 (4):**
+  - raw `fetch` again (caught by the scan, the host table and the deadline test);
+  - an 8 s deadline;
+  - no in-flight cap;
+  - the in-flight count never released.
+- **F83 (4):**
+  - no cooldown;
+  - the fetch time never recorded;
+  - `<=` at the boundary;
+  - the malformed key set cached.
+- **F84 (6):**
+  - no overall deadline;
+  - the signal not passed to the SDK (a second attempt is then sent at 59 s);
+  - the signal not passed to Groq;
+  - the deadline never aborting;
+  - the timer not cleared;
+  - a 35 s deadline.
+- **RevenueCat (2):** the guard removed; the guard letting dots through.
+- **Config (1):** the `COACH_BASE_URL` warning removed.
+
+Gates after the final code edit: `tsc -b --force` and every workspace typecheck 0 ·
+lint 0 · vitest 128 files / 1679 tests at 100 / 99.62 / 100 / 100 (the same 10
+documented defensive branches) · jest 114 / 114.

@@ -150,14 +150,16 @@ describe("fetchEntitlement (RevenueCat REST, fetch faked)", () => {
     expect(getCachedEntitlement("acct_1")).toBeUndefined();
   });
 
-  it("asks RevenueCat for exactly this subscriber (id URL-encoded), with the secret key and a timeout signal", async () => {
+  it("asks RevenueCat for exactly this subscriber, with the secret key and a timeout signal; an id that is not one safe path segment is refused without a call (P2.7)", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(json({ subscriber: { entitlements: {} } }));
-    await fetchEntitlement("acct/../other?x=1#y");
+    await fetchEntitlement("acct_Ab-9_z");
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     const [url, init] = fetchSpy.mock.calls[0]!;
-    expect(url).toBe("https://api.revenuecat.com/v1/subscribers/acct%2F..%2Fother%3Fx%3D1%23y");
+    expect(url).toBe("https://api.revenuecat.com/v1/subscribers/acct_Ab-9_z");
     expect(init?.headers).toEqual({ Authorization: "Bearer rc-test-secret", Accept: "application/json" });
     expect(init?.signal).toBeInstanceOf(AbortSignal);
+    await expect(fetchEntitlement("acct/../other?x=1#y")).rejects.toThrow("Refusing an unexpected account id.");
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
   it("maps the subscriber's entitlements and caches the verified answer", async () => {

@@ -94,6 +94,10 @@ export function validateConfig(): ConfigReport {
     if (/^http:\/\//i.test(process.env.MONITORING_WEBHOOK_URL?.trim() ?? "")) {
       warnings.push("MONITORING_WEBHOOK_URL uses http:// — error alerts would travel in cleartext.");
     }
+    // P2.7: the coach sends GROQ_API_KEY as a bearer token to this URL.
+    if (/^http:\/\//i.test(process.env.COACH_BASE_URL?.trim() ?? "")) {
+      warnings.push("COACH_BASE_URL uses http:// — the AI provider's API key would travel in cleartext.");
+    }
   }
 
   return { fatal, warnings };

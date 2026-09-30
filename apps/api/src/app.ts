@@ -16,6 +16,7 @@ import { createHousehold, getHousehold, joinHousehold, removeMember, removeUserF
 import { coachConfigured, coachModel, generateCoaching } from "./coach";
 import { registerAuthGuard } from "./auth-guard";
 import { markRequestStart, recordProductEvent, recordRequest, renderMetrics } from "./metrics";
+import { fetchWithTimeout } from "./http";
 
 export type BuildAppOptions = {
   // boolean for tests (true/false), or a full pino config for production
@@ -96,9 +97,21 @@ function resolveTrustProxy(): false | ((address: string, hop: number) => boolean
 // collector). Fire-and-forget and inert without MONITORING_WEBHOOK_URL. Sends
 // only the route PATTERN + message + request id — never the body, query, or
 // headers — so no PII/secrets leak into the alert.
+//
+// Bounded like every other outbound call (finding F82). During an outage every
+// request can fail, and each failure used to open one alert request with no
+// deadline of ours (undici's own is 300 s for headers), so a slow or hung
+// collector held one socket per failed request. Each alert now has a 3 s
+// deadline, and at most 5 are in flight; the rest are dropped (every 5xx is
+// still logged at error level).
+const ALERT_TIMEOUT_MS = 3000;
+const MAX_ALERTS_IN_FLIGHT = 5;
+let alertsInFlight = 0;
+
 function reportServerError(error: unknown, request: FastifyRequest): void {
   const url = process.env.MONITORING_WEBHOOK_URL;
-  if (!url) return;
+  if (!url || alertsInFlight >= MAX_ALERTS_IN_FLIGHT) return;
+  alertsInFlight += 1;
   const payload = {
     service: "zeno-api",
     level: "error",
@@ -107,11 +120,13 @@ function reportServerError(error: unknown, request: FastifyRequest): void {
     route: request.routeOptions?.url ?? "unknown",
     requestId: request.id
   };
-  void fetch(url, {
+  void fetchWithTimeout(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload)
-  }).catch(() => {});
+  }, ALERT_TIMEOUT_MS).catch(() => {}).finally(() => {
+    alertsInFlight -= 1;
+  });
 }
 
 function createRateLimitRedis(): Redis | null {

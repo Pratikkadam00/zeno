@@ -172,27 +172,56 @@ let anthropicClient: Anthropic | null = null;
 function getAnthropicClient(): Anthropic {
   if (!anthropicClient) {
     // Explicit timeout — the SDK default is 10 min, far too long for a
-    // user-facing coach request behind POST /coach.
+    // user-facing coach request behind POST /coach. It is per ATTEMPT; the
+    // whole call is bounded by COACH_DEADLINE_MS (withDeadline, below).
     anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 30000, maxRetries: 2 });
   }
   return anthropicClient;
 }
 
-async function callAnthropic(model: string, userPrompt: string): Promise<string> {
+// Finding F84. The app waits 35 s for the coach (apps/mobile/src/api/client.ts)
+// and then falls back to its local insights. The SDK's timeout is per attempt,
+// and it retries twice, honouring a Retry-After of up to 60 s in between, so
+// one request could run for about 3.5 minutes after the app had given up. One
+// deadline now covers the whole provider call, every attempt and wait
+// included: it aborts the request and answers, even if the SDK is mid-wait
+// (its wait cannot be interrupted; it sees the abort when it wakes, and sends
+// nothing more).
+export const COACH_DEADLINE_MS = 30_000;
+
+async function withDeadline<T>(run: (signal: AbortSignal) => Promise<T>, ms: number): Promise<T> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error(`AI provider did not answer within ${ms / 1000} s.`));
+      controller.abort();
+    }, ms);
+  });
+  try {
+    return await Promise.race([run(controller.signal), deadline]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function callAnthropic(model: string, userPrompt: string, signal: AbortSignal): Promise<string> {
   const response = await getAnthropicClient().messages.create({
     model,
     max_tokens: 1024,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content: userPrompt }]
-  });
+  }, { signal });
   return response.content.map((block) => (block.type === "text" ? block.text : "")).join("");
 }
 
 // Groq (and any OpenAI-compatible endpoint) via the chat-completions shape.
-async function callOpenAiCompatible(model: string, userPrompt: string): Promise<string> {
+async function callOpenAiCompatible(model: string, userPrompt: string, signal: AbortSignal): Promise<string> {
   const baseUrl = (process.env.COACH_BASE_URL ?? GROQ_DEFAULT_BASE_URL).replace(/\/$/, "");
-  // 30s — LLM completions are legitimately slow, but must still be bounded.
+  // Bounded by the coach deadline's signal (LLM completions are legitimately
+  // slow, but must still end before the app gives up).
   const response = await fetchWithTimeout(`${baseUrl}/chat/completions`, {
+    signal,
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -207,7 +236,7 @@ async function callOpenAiCompatible(model: string, userPrompt: string): Promise<
         { role: "user", content: userPrompt }
       ]
     })
-  }, 30000);
+  });
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
     throw new Error(`AI provider request failed (HTTP ${response.status})${detail ? `: ${detail.slice(0, 200)}` : ""}`);
@@ -223,9 +252,10 @@ export async function generateCoaching(input: CoachRequest): Promise<CoachResult
   }
   const model = coachModel();
   const userPrompt = buildUserPrompt(input);
-  const text = (provider === "anthropic"
-    ? await callAnthropic(model, userPrompt)
-    : await callOpenAiCompatible(model, userPrompt)).trim();
+  const text = (await withDeadline(
+    (signal) => (provider === "anthropic" ? callAnthropic(model, userPrompt, signal) : callOpenAiCompatible(model, userPrompt, signal)),
+    COACH_DEADLINE_MS
+  )).trim();
 
   const parsed = extractJson(text);
   const outOfScope = parsed.outOfScope === true;

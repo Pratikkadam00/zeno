@@ -90,6 +90,14 @@ export async function fetchEntitlement(appUserId: string): Promise<Entitlement> 
   if (!billingConfigured()) {
     return { plan: "free", active: false, expiresAt: null, source: "unconfigured" };
   }
+  // P2.7: the account id is the only request-derived part of any outbound URL.
+  // It is our own signed token's subject (acct_ + base64url), but the rule is
+  // enforced here, where the URL is built: encodeURIComponent leaves "." alone,
+  // and a "." or ".." segment (or "%2e%2e") is resolved by the URL parser, which
+  // would send our secret key to /v1/ instead of /v1/subscribers/<id>.
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(appUserId)) {
+    throw new Error("Refusing an unexpected account id.");
+  }
   const response = await fetchWithTimeout(`${REVENUECAT_API}/subscribers/${encodeURIComponent(appUserId)}`, {
     headers: { Authorization: `Bearer ${process.env.REVENUECAT_SECRET_KEY}`, Accept: "application/json" }
   });

@@ -191,20 +191,36 @@ describe("JWKS handling", () => {
     expect(jwks.calls.length).toBe(after);
   });
 
-  it("an unknown kid triggers exactly one forced refetch (key rotation), then fails closed", async () => {
+  it("an unknown kid triggers exactly one forced refetch (key rotation) once the cached set is 30 s old, then fails closed; another right after does not refetch (F83)", async () => {
     const n = rawNonce();
     await post("/api/v1/auth/apple", { identityToken: sign(appleClaims(n)), nonce: n }); // warm the cache
-    const before = jwks.calls.length;
-    const res = await post("/api/v1/auth/apple", { identityToken: sign(appleClaims(n), { alg: "RS256", kid: "rotated-away" }), nonce: n });
-    expect(res.statusCode).toBe(401);
-    expect(jwks.calls.length - before).toBe(1);
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(Date.now() + 30_000);
+      const before = jwks.calls.length;
+      const rotated = { identityToken: sign(appleClaims(n), { alg: "RS256", kid: "rotated-away" }), nonce: n };
+      expect((await post("/api/v1/auth/apple", rotated)).statusCode).toBe(401);
+      expect(jwks.calls.length - before).toBe(1);
+      expect((await post("/api/v1/auth/apple", rotated)).statusCode).toBe(401);
+      expect(jwks.calls.length - before).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("a JWKS outage fails closed (401), never open", async () => {
-    // A key id never cached forces a fetch, which fails.
+    // A key id never cached forces a fetch (past the refresh cooldown), which fails.
     jwks.fail = true;
-    const n = rawNonce();
-    const res = await post("/api/v1/auth/apple", { identityToken: sign(appleClaims(n), { alg: "RS256", kid: "never-cached" }), nonce: n });
-    expect(res.statusCode).toBe(401);
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(Date.now() + 120_000);
+      const before = jwks.calls.length;
+      const n = rawNonce();
+      const res = await post("/api/v1/auth/apple", { identityToken: sign(appleClaims(n), { alg: "RS256", kid: "never-cached" }), nonce: n });
+      expect(res.statusCode).toBe(401);
+      expect(jwks.calls.length - before).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
