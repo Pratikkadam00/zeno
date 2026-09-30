@@ -41,16 +41,16 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
     - [x] P1.9d thin config, theme and web files: all 13 at 0 uncovered statements, branches and functions (`motion.ts` and `useZenoTokens.ts` moved to jest with 100 % floors). **Fixes F35, F36, F37**
   - [x] P1.10 `apps/api/src/plaid.ts` (was 21 %; now 0 uncovered lines / functions, 1 defensive branch) and the Plaid routes in `app.ts` (now 100 %). Plaid's HTTP is faked, with no Plaid or sandbox calls, by standing instruction. **Fixes F34**
   - [x] P1.11 gate: Tier 1 at 100 % statements / functions / lines and 99.61 % branches (≥ 95 %); jest floors at 100 %; green on GitHub (CI 36744248345, CodeQL 36744248343)
-- [~] **P2 — API on real Postgres, authorization matrix, fuzzing** (inline, one item at a time; no parallel agents from here on, by the owner's instruction)
+- [x] **P2 — API on real Postgres, authorization matrix, fuzzing** (gate passed 2026-10-01; evidence in the P2 gate entry) (inline, one item at a time; no parallel agents from here on, by the owner's instruction)
   - [x] P2.1 real Postgres in tests (PGlite locally, a `postgres` server in CI, proven by a server-mode test): schema from empty, upsert, a restart round trip for every store, account deletion leaves no row, the refresh race, concurrent sync replays; **fixes F75** (green: CI 36763417730, CodeQL 36763417620 on `229e114`)
-  - [x] P2.2 authorization matrix (table-driven from the LIVE route list; 38 routes, 11 token attacks, cross-household), **fixes F76** (green: CI 36764785079, CodeQL 36764784910 on `8d4b5f0`); F77 open for the owner
+  - [x] P2.2 authorization matrix (table-driven from the LIVE route list; 40 routes, 11 token attacks, cross-household), **fixes F76** (green: CI 36764785079, CodeQL 36764784910 on `8d4b5f0`); F77 open for the owner
   - [x] P2.3 rate limits per route (table-driven from the live routes; window, key, 429 envelope, Retry-After); **fixes F78, F79** (green: CI 36765749331, CodeQL 36765749502 on `73766ff`)
   - [x] P2.4 property-based fuzzing of every route (fast-check; 200 runs per route in CI, 10 000 nightly); prototype poisoning pinned at the parser (green: CI 36767472709, CodeQL 36767472774 on `eea3f24`)
   - [x] P2.5 error and log hygiene: the production logger config under real traffic carrying marked secrets; error bodies carry the request id and no internals (green: CI 36768319235, CodeQL 36768319305 on `d5716ed`)
   - [x] P2.6 auth flows: enumeration-safe magic link, 10-minute expiry, single use, production refusals; **fixes F80** (the 6-digit code could be brute-forced) **and F81** (expired sign-in rows kept in Postgres for good) (green: CI 36770819652, CodeQL 36770819744 on `f9f9540`)
   - [x] P2.7 outbound-call inventory: every call site listed and checked by a source scan, each run against its host with a deadline, the one request-derived URL part guarded; **fixes F82** (the 5xx alert was unbounded), **F83** (anyone could force a JWKS re-fetch per request), **F84** (a coach request could run about 3.5 minutes) (green: CI 36773329340, CodeQL 36773328872 on `70fa1e5`)
-  - [~] P2.8 the RevenueCat webhook: replay, duplicates, out-of-order retries, auth, malformed bodies, durability; **fixes F85** (the payload was trusted and arrival order mattered), **F86** (the secret compare leaked its length), **F87** (a lookup in flight re-cached an older answer, or re-created a deleted user's billing row)
-  - [ ] P2 gate: route-inventory test green; real-PG suite green locally and in CI
+  - [x] P2.8 the RevenueCat webhook: replay, duplicates, out-of-order retries, auth, malformed bodies, durability; **fixes F85** (the payload was trusted and arrival order mattered), **F86** (the secret compare leaked its length), **F87** (a lookup in flight re-cached an older answer, or re-created a deleted user's billing row) (green: CI 36775230680, CodeQL 36775230616 on `d0cfc0c`)
+  - [x] P2 gate: route-inventory test green (40 routes); real-PG suite green locally (PGlite, 13 tests) and in CI (a Postgres 18 server, proven by the server-mode test) on `d0cfc0c`; nightly fuzz configuration green locally (first scheduled run pending)
 - [ ] **P3 — Mobile hardening (MASVS) + tests for all 29 screens**
 - [ ] **P4 — Website component tests, Playwright, CSP, DAST**
 - [ ] **P5 — Mobile end-to-end (Maestro on the emulator)**
@@ -1850,7 +1850,7 @@ be a row in the matrix, with a decision for the owner.
 ### P2.2 (part 2) — the authorization matrix — 2026-10-01
 
 **`apps/api/src/authz-matrix.test.ts`** (20 tests), table-driven from the LIVE routes. It
-parses Fastify's `printRoutes()` tree: 38 routes, with HEAD and the CORS `*` excluded.
+parses Fastify's `printRoutes()` tree: 40 routes, with HEAD and the CORS `*` excluded (corrected from "38" in the P2 gate entry).
 Adding the `onRoute` hook after `buildApp()` saw nothing (the routes were already
 registered), and parsing the tree avoided changing production code for a test.
 1. **Inventory in both directions:** every registered route has an `ACCESS` row
@@ -1971,7 +1971,7 @@ Green on GitHub: CI 36765749331 and CodeQL 36765749502 on `73766ff`.
 **Dependency:** `fast-check` 4.10.2 (MIT, by its author; published 2026-09-19, past the
 7-day cooldown) and its own `pure-rand`. Both are dev-only.
 
-**`apps/api/src/fuzz.test.ts`** (4 tests) runs over the LIVE route inventory (38 routes):
+**`apps/api/src/fuzz.test.ts`** (4 tests) runs over the LIVE route inventory (40 routes; corrected from "38" in the P2 gate entry):
 1. **Arbitrary input:** JSON values of any shape and depth, including hostile keys and
    binary strings; random query strings; with or without a valid token (signed directly
    with a fixed test key, so the fuzz reaches the handlers behind the guard).
@@ -2351,3 +2351,46 @@ free (bite-checked).
 Gates after the final code edit: `tsc -b --force` and every workspace typecheck 0 ·
 lint 0 · vitest 129 files / 1685 tests at 100 / 99.62 / 100 / 100 (the same 10
 documented defensive branches) · jest 114 / 114.
+
+### P2 gate — 2026-10-01
+
+**Correction.** P2.2 and P2.4 said the live route inventory had 38 routes. It has 40:
+18 GET, 21 POST and 1 DELETE. The count is taken from the `ACCESS` table, which the
+matrix test asserts equals the de-duplicated live route list. It had 40 entries at
+`8d4b5f0` too, so no route was added; the number was wrong. Corrected above.
+
+**The nightly fuzz, run locally with the nightly configuration** (`FUZZ_RUNS=10000`, the
+workflow's own command): 4 / 4 passed, 10 000 runs per route over all 40 routes, in 165 s.
+The scheduled run (03:17 UTC) has not happened yet; GitHub shows 0 scheduled runs. The
+main property had a fixed 600 s timeout, which a CI runner about 3.6 times slower than
+this machine would hit on the clock alone. It now scales with the run count
+(`max(600 s, runs × 150 ms)`, which is 25 minutes at 10 000, inside the job's
+45-minute limit). The workflow also has `workflow_dispatch`, so the owner can start it
+by hand from the Actions tab.
+
+**Gate evidence:**
+- **Route inventory:** `authz-matrix.test.ts` asserts that the live route list equals the
+  40-entry `ACCESS` table. `rate-limits.test.ts` and `fuzz.test.ts` run over the same live
+  list. All green.
+- **Real Postgres:** `real-pg.test.ts` has 13 tests. Locally they run on PGlite
+  (Postgres 18.3). In CI they run against a `postgres:18-alpine` server; the suite's first
+  test fails under CI unless it is talking to a server. Green in CI 36775230680 on
+  `d0cfc0c` (the "typecheck & test", semgrep and gitleaks jobs), with CodeQL 36775230616.
+- **Every P2 sub-item is green on GitHub:**
+  - P2.1 `229e114`
+  - P2.2 `8d4b5f0`
+  - P2.3 `73766ff`
+  - P2.4 `eea3f24`
+  - P2.5 `d5716ed`
+  - P2.6 `f9f9540`
+  - P2.7 `70fa1e5`
+  - P2.8 `d0cfc0c`
+- **Coverage:** Tier 1 holds at 100 / 99.62 / 100 / 100 (the same 10 documented defensive
+  branches); jest 114 / 114.
+
+**P2 in one line:** 13 findings, F75 to F87, 12 fixed and each bite-checked. F77 (logout
+does not revoke the 15-minute access token) stays open as an owner decision.
+
+**Next: P3, mobile hardening (MASVS) and tests for all 29 screens.** It starts with an
+inventory of the screens and of the mobile storage, network and platform surfaces.
+

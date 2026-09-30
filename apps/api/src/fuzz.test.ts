@@ -149,7 +149,10 @@ describe("every route survives arbitrary input", () => {
         { numRuns: RUNS, ...(SEED === undefined ? {} : { seed: SEED }) }
       );
     }
-  }, 600_000);
+    // Scaled with the run count: the nightly's 10 000 runs took 165 s on a dev
+    // machine, and a slower CI runner must not fail on the clock alone. At
+    // 10 000 runs this allows 25 minutes, inside the job's 45-minute limit.
+  }, Math.max(600_000, RUNS * 150));
 });
 
 describe("hostile shapes, sent to every body-taking route", () => {
