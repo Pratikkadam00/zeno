@@ -43,11 +43,14 @@ function Surface({ children, style }: { children: ReactNode; style?: StyleProp<V
 
 export default function FamilyScreen() {
   const { theme } = useZenoTheme();
-  const accountId = useAuthStore((state) => state.accountId);
+  const email = useAuthStore((state) => state.email);
   const { totalMonthlyMinor, homeCurrency } = useSubscriptionStore();
 
-  const memberId = accountId ?? "device-member";
-  const memberName = accountId ? (accountId.split("@")[0] ?? accountId) : "You";
+  // The server takes the member from the sign-in token; this id is ignored.
+  const memberId = "self";
+  // F148: other members saw this name. It was the account id ("acct_…", F125),
+  // split on an "@" it never has. Now the email's local part, or "Member".
+  const memberName = email?.split("@")[0] || "Member";
 
   const [household, setHousehold] = useState<Household | null>(null);
   const [loading, setLoading] = useState(true);
@@ -87,22 +90,31 @@ export default function FamilyScreen() {
   };
 
   const onJoin = () => {
-    if (code.trim().length < 4) { setError("Enter the 8-character code."); return; }
+    // F149: the server's codes are always 8 characters (api/src/family.ts); 4-7 passed.
+    if (code.trim().length !== 8) { setError("Enter the 8-character code."); return; }
     setBusy(true); setError(null);
     void joinHousehold(code.trim(), memberId, memberName, totalMonthlyMinor, homeCurrency)
       .then((result) => { if (result.ok) void persist(result.data); else setError(messageForReason(result.reason, "join")); })
       .finally(() => setBusy(false));
   };
 
-  const onLeave = () => {
-    const householdId = household?.id;
-    // Clear local state immediately so leaving feels instant; the server call to
-    // actually remove the member (so other members stop seeing them/their spend)
-    // is fire-and-forget best-effort — a network failure shouldn't block leaving.
-    void SecureStore.deleteItemAsync(HOUSEHOLD_KEY).catch(() => undefined);
-    setHousehold(null);
-    setCode("");
-    if (householdId) void leaveHousehold(householdId);
+  // F150: leaving cleared the household here at once and told the server
+  // fire-and-forget. When that call failed, the member stayed in the household
+  // on the server (their total still shown to the others) while the app said
+  // they had left. Now it leaves only when the server confirms.
+  const onLeave = (householdId: string) => {
+    setBusy(true); setError(null);
+    void leaveHousehold(householdId)
+      .then((left) => {
+        if (!left) {
+          setError("Couldn't leave right now: you're still in this household. Check your connection and try again.");
+          return;
+        }
+        void SecureStore.deleteItemAsync(HOUSEHOLD_KEY).catch(() => undefined);
+        setHousehold(null);
+        setCode("");
+      })
+      .finally(() => setBusy(false));
   };
 
   // The server's /spend route existed but was never called after the initial
@@ -165,7 +177,7 @@ export default function FamilyScreen() {
               </View>
             </Surface>
 
-            <Button variant="danger" size="lg" fullWidth onPress={onLeave}>Leave household</Button>
+            <Button variant="danger" size="lg" fullWidth onPress={() => onLeave(household.id)}>{busy ? "Working…" : "Leave household"}</Button>
           </>
         ) : (
           <>

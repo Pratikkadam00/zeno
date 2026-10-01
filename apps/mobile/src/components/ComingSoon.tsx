@@ -1,16 +1,18 @@
-import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
-import { Screen, Surface, PrimaryButton } from "./ui";
+import { Screen, Surface } from "./ui";
 import { useZenoTheme } from "../theme/theme-provider";
 
 /**
  * Honest preview state for features that are on the roadmap but not yet built.
  * Replaces demo screens that rendered fake data as if it were real — shows what's
- * coming and lets the user register interest, without pretending it works.
+ * coming, without pretending it works.
+ *
+ * F153: it had a "Notify me when it's ready" button that answered "You're on
+ * the list ✓ We'll let you know the moment this ships". Nothing was recorded
+ * anywhere, so there was no list and nobody would be told. It is gone.
  */
 export function ComingSoon({ title, tagline, points }: { title: string; tagline: string; points: string[] }) {
   const { theme } = useZenoTheme();
-  const [notified, setNotified] = useState(false);
 
   return (
     <Screen>
@@ -35,15 +37,6 @@ export function ComingSoon({ title, tagline, points }: { title: string; tagline:
             ))}
           </View>
         </Surface>
-
-        {notified ? (
-          <Surface>
-            <Text style={{ color: theme.text, fontWeight: "800" }}>You&rsquo;re on the list ✓</Text>
-            <Text style={{ color: theme.mutedText, marginTop: 4 }}>We&rsquo;ll let you know the moment this ships.</Text>
-          </Surface>
-        ) : (
-          <PrimaryButton onPress={() => setNotified(true)}>Notify me when it&rsquo;s ready</PrimaryButton>
-        )}
       </ScrollView>
     </Screen>
   );

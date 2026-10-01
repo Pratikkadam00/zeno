@@ -30,7 +30,7 @@ export default function WidgetsScreen() {
           </Stamp>
           <Text style={{ fontFamily: fonts.sans.regular, fontSize: 13, color: theme.mutedText, marginTop: 12, lineHeight: 20 }}>
             This shows the data a home-screen widget or watch complication would display. Actually adding a Zeno widget to
-            your home screen or watch face isn&apos;t available yet — we&apos;ll let you know when it ships.
+            your home screen or watch face isn&apos;t available yet.
           </Text>
         </View>
 

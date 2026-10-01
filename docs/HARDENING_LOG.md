@@ -73,8 +73,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
       - [x] P3.8e-1 Settings, Profile, Notifications; **fixes F124, F125, F126, F128, F129, F130, F131**, F127 in part (rest to the owner); F29's screen use covered (green: CI 36883987644, CodeQL 36883987826 on `9edfe26`)
       - [x] P3.8e-2 login, paywall, onboarding; **fixes F132, F133, F134, F135, F136, F137, F138** (F134 and F138 each with an owner part) (green: CI 36886091140, CodeQL 36886091373 on `696e6c6`)
     - [~] P3.8f the rest (budget, recap, family, coach, wrapped, widgets, spend-twin, open-banking, backend, business, partners, public-api) and the root layout
-      - [x] P3.8f-1 budget, budget recap, coach; **fixes F139, F141, F142, F143, F144, F145**; F140 to the owner
-      - [ ] P3.8f-2 family, wrapped, the preview screens, open-banking (rendered with the API faked; no Plaid call)
+      - [x] P3.8f-1 budget, budget recap, coach; **fixes F139, F141, F142, F143, F144, F145**; F140 to the owner (green: CI 36891888873, CodeQL 36891888831 on `d1bfa19`)
+      - [x] P3.8f-2 family, wrapped, the preview screens, open-banking (rendered with the API faked; no Plaid call); **fixes F146-F153**
       - [ ] P3.8f-3 the root layout
   - [ ] P3.9 static scan of the release APK (MobSF, else apkleaks + manifest review)
   - [ ] P3 gate: hardened release APK verified on the emulator (every flow in `DEVICE_TEST_FINDINGS.md`); jest floor in CI; MASVS checklist with evidence per control
@@ -228,6 +228,14 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F143 | **FIXED in P3.8f-1.** ~~The budget recap invented a streak and called an estimate "Actually spent".~~ The recap's history is rebuilt from today's subscription list (each one assumed charged since it was added to Zeno, none once cancelled), and every complete month was compared with TODAY's cap. A new user's past months are $0, so installing the app and setting a budget gave "Under cap", a 5-month streak, and "Share my 5-month streak": "I've stayed under my subscription budget for 5 months straight." The budget now records when the cap was set (`capSetAt`; an older undated cap counts from now). Only complete months that began after it count, for the recap, the streak and the share (`budgetRecap` in `src/finance/budget.ts`), and the figure is labelled "Estimated spend". | High (an invented claim the app offers to share) | me | P3.8f-1 |
 | F144 | **FIXED in P3.8f-1.** ~~The budget's setup cap started at $5, not the suggested cap.~~ It was seeded once on the first render, before the subscriptions load, when the forecast is $0 (the same pattern as F118). "Use suggested · $155" was shown beside a $5 cap, and "Start tracking" saved $5. The cap now follows the suggestion until the user changes it. | Medium | me | P3.8f-1 |
 | F145 | **FIXED in P3.8f-1.** ~~The coach said cancelling its picks would "get under" the budget when they didn't.~~ It took the cheapest subscriptions until their savings covered the overage, but when every subscription together saved less, it still ended "…and get under." It says that only when the cuts cover the overage; otherwise "That alone won't get you under this month." | Medium (advice about money that was false) | me | P3.8f-1 |
+| F146 | **FIXED in P3.8f-2 (the feature itself is the owner's call).** ~~The budget recap said "Budget adherence rolls into your Year in Review", with a Pro badge.~~ Year in Review (`app/wrapped.tsx`) reads no budget and checks no plan, so both halves were false. The row is gone. The design says "Every closed month is stamped into your Year in Review", a feature that doesn't exist; whether to build it is in OPEN_ITEMS. | Low (truthfulness) | me + owner | P3.8f-2 |
+| F147 | **FIXED in P3.8f-2 (the wording); the cause is scheduled.** ~~Year in Review said "You spent $X" and shared "I spent $X".~~ The figure is `buildYearInReview`'s history: what the subscriptions tracked TODAY add up to over the window, each assumed charged every cycle since it was added. A subscription since cancelled counts $0, even for months it was paid, so the more you cancel the lower "spent" reads. The design calls it "TOTAL COMMITTED … across N tracked subscriptions". The screen and every share now say "committed on the N subscriptions you track now", and the busiest month says "due", not "charged". Counting cancelled subscriptions up to their cancellation needs a cancellation date on every cancel path, and it changes the dashboard's and Insights' charts too: in OPEN_ITEMS (mine). | Medium (truthfulness of money, shared publicly) | me | P3.8f-2; cause P6 |
+| F148 | **FIXED in P3.8f-2.** ~~Other family members saw this member's account id as their name.~~ The name sent was `accountId.split("@")[0]`, but the account id is an internal `acct_…` id (F125) with no "@", so the household saw "acct_9f2c…". It is now the local part of the signed-in email, or "Member". (The server takes the member itself from the sign-in token, as before.) | Low (privacy, truthfulness) | me | P3.8f-2 |
+| F149 | **FIXED in P3.8f-2.** ~~Joining a household accepted a 4-7 character code.~~ The check was `length < 4` while the message says "Enter the 8-character code", and the server's codes are always 8 (`CODE_LENGTH`, `api/src/family.ts`). It now requires 8. | Low | me | P3.8f-2 |
+| F150 | **FIXED in P3.8f-2.** ~~"Leave household" could leave you in the household.~~ It cleared the household on the phone at once and told the server fire-and-forget. If that call failed, the member stayed in the household on the server, with their monthly total still shown to the others, while the app said they had left. It now leaves only when the server confirms, and otherwise says "you're still in this household". | Medium (privacy) | me | P3.8f-2 |
+| F151 | **FIXED in P3.8f-2.** ~~Two developer screens were reachable in release builds.~~ Every file in `app/` is a route, so a deep link opened `open-banking` ("Connect a sandbox bank" called the server's Plaid sandbox) and `backend` (the API's address and capabilities). Release builds now show "This screen isn't part of this version of Zeno"; development builds are unchanged. The Plaid code is untouched (owner: "keep the code only"), and the tests fake its calls, so no Plaid call is made. | Medium (exposure) | me | P3.8f-2 |
+| F152 | **FIXED in P3.8f-2.** ~~Widgets promised "we'll let you know when it ships".~~ Nothing in the app would. The promise is gone; the "not available yet" stays. | Low | me | P3.8f-2 |
+| F153 | **FIXED in P3.8f-2.** ~~"Notify me when it's ready" on Business, Partners and Public API was a fake waitlist.~~ The button only flipped the screen's own state and then said "You're on the list ✓ We'll let you know the moment this ships". Nothing was recorded anywhere. P3.8b's test checked that behaviour and I didn't see it was false then. The button and the promise are gone, and `ui.tsx`'s `PrimaryButton`, its only user, with them. | Medium (a control that lies) | me | P3.8f-2 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **TO CHECK ON THE DEVICE (not a confirmed bug).** On the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -3958,3 +3966,50 @@ read in `app/wrapped.tsx` next.
 
 Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1915 at
 100 / 99.69 / 100 / 100 · jest 478 / 478, 0 act() warnings, the new floors held.
+
+### P3.8f-2 — Family, Year in Review, the preview and developer screens — 2026-10-01
+
+**Result:**
+- Every screen but the root layout is now at 100 % lines and statements, held file by
+  file: `family`, `wrapped`, `widgets`, `spend-twin`, `backend`, `open-banking`,
+  `business`, `partners` and `public-api`, plus the shared `ComingSoon` and
+  `NotInThisBuild`.
+- `app/` went from 1295 to 1426 lines covered (92.83 % of 1536); statements 1642 of
+  1763 (93.13 %). What's left is `_layout.tsx` (P3.8f-3) and one line of Insights.
+- The jest suite is at 513 tests, 0 act() warnings. Vitest is at 1915.
+
+**Family tests (17):**
+- **Joining:** start or join; the name shared (F148); every failure's message; the code
+  rule (F149); busy states.
+- **Household:** restore and re-share; mixed currencies not summed; disbanded on the
+  server; unreadable for now.
+- **Leaving (F150):** the server confirming it, or not.
+- **Other:** a failing secure store never blocks; leaving the screen early.
+
+**Year in Review tests (5), on a pinned clock with the real figures:**
+- "Committed", never "spent" (F147), on the page and in all five shares.
+- A full year's wording; nothing tracked; another currency.
+
+**Small screens (13):**
+- **Widgets:** no promise (F152).
+- **Spend Twin:** the fixed-price note.
+- **Coming soon:** the three screens, with no waitlist (F153).
+- **Developer screens:** release builds call nothing and show nothing (F151);
+  development builds work with their calls faked (no Plaid call).
+
+**Found:**
+- Fixed: F146-F153 (see their rows).
+- F146's feature is the owner's call; F147's cause is scheduled.
+- Also: Wrapped's share handlers had guards that could never run, since each share
+  button exists only with its stat. The stat is now passed in, and the guards are
+  gone. A grammar slip ("1 subscription … aren't") is fixed.
+
+**Bite check: 11, all caught:**
+- **F146**;
+- **F147:** the heading; the total's share; the summary;
+- **F148, F149, F150**;
+- **F151:** open-banking and backend;
+- **F152, F153**.
+
+Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1915 at
+100 / 99.69 / 100 / 100 · jest 513 / 513, 0 act() warnings, the new floors held.

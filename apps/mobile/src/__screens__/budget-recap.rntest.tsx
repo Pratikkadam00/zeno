@@ -69,6 +69,9 @@ describe("budget recap", () => {
     expect(screen.getByText("−$45.00")).toBeTruthy();
     expect(screen.getByText("vs Aug")).toBeTruthy();
     expect(screen.getByLabelText("2 month streak under cap")).toBeTruthy();
+    // F146: no promise that budgets feed a Year in Review (it reads none), and no Pro badge.
+    expect(screen.queryByText(/Year in Review/)).toBeNull();
+    expect(screen.queryByText("Pro")).toBeNull();
     expect(unnamedControls(r.toJSON() as never)).toEqual([]);
     await press(/Share my 2-month streak/);
     expect(api.recordFunnelEvent).toHaveBeenCalledWith("share_card_generated", "budget_streak");

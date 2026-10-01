@@ -1,9 +1,9 @@
 import { buildMonthlySpendHistory } from "@zeno/shared";
 import { router, Stack } from "expo-router";
-import { Gift, Share2, X } from "lucide-react-native";
+import { Share2, X } from "lucide-react-native";
 import { Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Badge, Button, LedgerLine, SectionHead, Stamp } from "../src/components/zeno";
+import { Button, LedgerLine, SectionHead, Stamp } from "../src/components/zeno";
 import { useBudgetStore } from "../src/data/budget-store";
 import { useSubscriptionStore } from "../src/data/subscription-store";
 import { useZenoTokens } from "../src/theme/useZenoTokens";
@@ -155,11 +155,9 @@ export default function BudgetRecapScreen() {
           </View>
         </View>
 
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: c.accentSoft, borderRadius: t.radius.md }}>
-          <Gift size={17} color={c.accentText} strokeWidth={2} />
-          <Text style={{ flex: 1, fontFamily: t.fonts.sans.regular, fontSize: 12.5, color: c.textSecondary }}>Budget adherence rolls into your Year in Review.</Text>
-          <Badge tone="accent">Pro</Badge>
-        </View>
+        {/* F146: a row here said "Budget adherence rolls into your Year in Review"
+            with a Pro badge. Year in Review (app/wrapped.tsx) reads no budget
+            and checks no plan; the row is gone until that exists. */}
       </View>
 
       <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16 + insets.bottom, gap: 10 }}>

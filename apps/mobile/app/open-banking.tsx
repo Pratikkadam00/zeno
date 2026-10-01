@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { ScrollView, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { Button } from "../src/components/zeno";
 import { connectPlaidSandbox, createPlaidLinkToken } from "../src/api/client";
+import { NotInThisBuild } from "../src/components/NotInThisBuild";
 import { useZenoTheme } from "../src/theme/theme-provider";
 
 type Status = { kind: "idle" | "working" | "ok" | "error"; message: string };
@@ -16,7 +17,12 @@ function Surface({ children, style }: { children: ReactNode; style?: StyleProp<V
   );
 }
 
-export default function OpenBankingScreen() {
+// F151: a developer screen; release builds show NotInThisBuild instead.
+export default function OpenBankingScreenRoute() {
+  return __DEV__ ? <OpenBankingScreen /> : <NotInThisBuild />;
+}
+
+function OpenBankingScreen() {
   const { theme } = useZenoTheme();
   const [status, setStatus] = useState<Status>({ kind: "idle", message: "Not connected." });
 

@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ScrollView, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { Button } from "../src/components/zeno";
 import { getMobileBackendStatus, type MobileBackendStatus } from "../src/api/client";
+import { NotInThisBuild } from "../src/components/NotInThisBuild";
 import { useZenoTheme } from "../src/theme/theme-provider";
 
 /** Ledger paper block — local so this dev screen is off the legacy ui kit. */
@@ -14,7 +15,12 @@ function Surface({ children, style }: { children: ReactNode; style?: StyleProp<V
   );
 }
 
-export default function BackendScreen() {
+// F151: a developer screen; release builds show NotInThisBuild instead.
+export default function BackendScreenRoute() {
+  return __DEV__ ? <BackendScreen /> : <NotInThisBuild />;
+}
+
+function BackendScreen() {
   const { theme } = useZenoTheme();
   const [status, setStatus] = useState<MobileBackendStatus | null>(null);
 

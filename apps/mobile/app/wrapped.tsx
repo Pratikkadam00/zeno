@@ -42,10 +42,14 @@ function Surface({ children, style }: { children: ReactNode; style?: StyleProp<V
 export default function WrappedScreen() {
   const { theme } = useZenoTheme();
   const { yearInReview: review, homeCurrency } = useSubscriptionStore();
+  const { mostExpensive, topCategory, busiestMonth } = review;
   const money = (minor: number) => formatMoney(minor, homeCurrency);
 
   // Truthful period phrasing: the total only covers spend since the user began
   // tracking each sub, so a new user must not see "over the last 12 months".
+  // F147: and it is what the subscriptions tracked NOW add up to (one cancelled
+  // since counts $0 even for months it was paid), so it is "committed", as the
+  // design calls it, never "spent".
   const coveragePhrase = review.coversFullTrailingYear || !review.coverageStartLabel
     ? "over the last 12 months"
     : `since I started tracking in ${review.coverageStartLabel}`;
@@ -53,7 +57,7 @@ export default function WrappedScreen() {
   const shareSummary = async () => {
     const lines = [
       "My subscriptions, wrapped:",
-      `· ${money(review.totalSpentMinor)} spent ${coveragePhrase}`,
+      `· ${money(review.totalSpentMinor)} committed on the subscriptions I track ${coveragePhrase}`,
       review.mostExpensive ? `· Priciest: ${review.mostExpensive.name} (${money(review.mostExpensive.monthlyMinor)}/mo)` : null,
       review.topCategory ? `· Most spent on: ${labelCategory(review.topCategory.category)}` : null,
       review.cancelledCount > 0 ? `· Cancelled ${review.cancelledCount} I didn't need` : null,
@@ -68,23 +72,22 @@ export default function WrappedScreen() {
   const shareTotal = () => {
     recordFunnelEvent("share_card_generated", "wrapped_total");
     return shareText(
-      `I spent ${money(review.totalSpentMinor)} on subscriptions ${coveragePhrase} — and I'm on pace for ${money(review.projectedAnnualMinor)} next year.`
+      `The subscriptions I track came to ${money(review.totalSpentMinor)} ${coveragePhrase} — and I'm on pace for ${money(review.projectedAnnualMinor)} next year.`
     );
   };
-  const shareMostExpensive = () => {
-    if (!review.mostExpensive) return undefined;
+  // Each takes its stat from the card that shows it (a card, and its share
+  // button, exist only when the stat does).
+  const shareMostExpensive = (stat: NonNullable<typeof mostExpensive>) => {
     recordFunnelEvent("share_card_generated", "wrapped_most_expensive");
-    return shareText(`My priciest subscription right now: ${review.mostExpensive.name} at ${money(review.mostExpensive.monthlyMinor)}/month.`);
+    return shareText(`My priciest subscription right now: ${stat.name} at ${money(stat.monthlyMinor)}/month.`);
   };
-  const shareTopCategory = () => {
-    if (!review.topCategory) return undefined;
+  const shareTopCategory = (stat: NonNullable<typeof topCategory>) => {
     recordFunnelEvent("share_card_generated", "wrapped_top_category");
-    return shareText(`${labelCategory(review.topCategory.category)} is where most of my subscription money goes — ${money(review.topCategory.monthlyMinor)}/month.`);
+    return shareText(`${labelCategory(stat.category)} is where most of my subscription money goes — ${money(stat.monthlyMinor)}/month.`);
   };
-  const shareBusiestMonth = () => {
-    if (!review.busiestMonth) return undefined;
+  const shareBusiestMonth = (stat: NonNullable<typeof busiestMonth>) => {
     recordFunnelEvent("share_card_generated", "wrapped_busiest_month");
-    return shareText(`${review.busiestMonth.label} was my most expensive month for subscriptions: ${money(review.busiestMonth.amountMinor)}.`);
+    return shareText(`${stat.label} was my most expensive month for subscriptions: ${money(stat.amountMinor)}.`);
   };
 
   return (
@@ -96,12 +99,12 @@ export default function WrappedScreen() {
               Your year in subscriptions
             </Text>
             <Text style={{ color: theme.text, fontSize: 34, lineHeight: 40, fontWeight: "900", marginTop: 6 }}>
-              You spent {money(review.totalSpentMinor)}
+              {money(review.totalSpentMinor)} committed
             </Text>
             <Text style={{ color: theme.mutedText, marginTop: 6, fontSize: 15 }}>
               {review.coversFullTrailingYear || !review.coverageStartLabel
-                ? "on subscriptions over the last 12 months."
-                : `on subscriptions since you started tracking in ${review.coverageStartLabel}.`}
+                ? `on the ${review.activeCount} subscription${review.activeCount === 1 ? "" : "s"} you track now, over the last 12 months.`
+                : `on the ${review.activeCount} subscription${review.activeCount === 1 ? "" : "s"} you track now, since you started tracking in ${review.coverageStartLabel}.`}
             </Text>
           </View>
           <ShareIconButton label="Share total spend" onPress={shareTotal} theme={theme} />
@@ -114,48 +117,48 @@ export default function WrappedScreen() {
           <LedgerLine label="On pace next year" value={money(review.projectedAnnualMinor)} strong />
         </View>
 
-        {review.mostExpensive ? (
+        {mostExpensive ? (
           <Surface>
             <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: theme.mutedText, fontSize: 13 }}>Your priciest subscription</Text>
-                <Text style={{ color: theme.text, fontSize: 20, fontWeight: "800", marginTop: 4 }}>{review.mostExpensive.name}</Text>
-                <Text style={{ color: theme.mutedText, marginTop: 2 }}>{money(review.mostExpensive.monthlyMinor)} / month</Text>
+                <Text style={{ color: theme.text, fontSize: 20, fontWeight: "800", marginTop: 4 }}>{mostExpensive.name}</Text>
+                <Text style={{ color: theme.mutedText, marginTop: 2 }}>{money(mostExpensive.monthlyMinor)} / month</Text>
               </View>
-              <ShareIconButton label="Share priciest subscription" onPress={shareMostExpensive} theme={theme} />
+              <ShareIconButton label="Share priciest subscription" onPress={() => shareMostExpensive(mostExpensive)} theme={theme} />
             </View>
           </Surface>
         ) : null}
 
-        {review.topCategory ? (
+        {topCategory ? (
           <Surface>
             <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: theme.mutedText, fontSize: 13 }}>Where most of it went</Text>
-                <Text style={{ color: theme.text, fontSize: 20, fontWeight: "800", marginTop: 4 }}>{labelCategory(review.topCategory.category)}</Text>
-                <Text style={{ color: theme.mutedText, marginTop: 2 }}>{money(review.topCategory.monthlyMinor)} / month</Text>
+                <Text style={{ color: theme.text, fontSize: 20, fontWeight: "800", marginTop: 4 }}>{labelCategory(topCategory.category)}</Text>
+                <Text style={{ color: theme.mutedText, marginTop: 2 }}>{money(topCategory.monthlyMinor)} / month</Text>
               </View>
-              <ShareIconButton label="Share top category" onPress={shareTopCategory} theme={theme} />
+              <ShareIconButton label="Share top category" onPress={() => shareTopCategory(topCategory)} theme={theme} />
             </View>
           </Surface>
         ) : null}
 
-        {review.busiestMonth && review.busiestMonth.amountMinor > 0 ? (
+        {busiestMonth && busiestMonth.amountMinor > 0 ? (
           <Surface>
             <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: theme.mutedText, fontSize: 13 }}>Your most expensive month</Text>
-                <Text style={{ color: theme.text, fontSize: 20, fontWeight: "800", marginTop: 4 }}>{review.busiestMonth.label}</Text>
-                <Text style={{ color: theme.mutedText, marginTop: 2 }}>{money(review.busiestMonth.amountMinor)} charged</Text>
+                <Text style={{ color: theme.text, fontSize: 20, fontWeight: "800", marginTop: 4 }}>{busiestMonth.label}</Text>
+                <Text style={{ color: theme.mutedText, marginTop: 2 }}>{money(busiestMonth.amountMinor)} due</Text>
               </View>
-              <ShareIconButton label="Share busiest month" onPress={shareBusiestMonth} theme={theme} />
+              <ShareIconButton label="Share busiest month" onPress={() => shareBusiestMonth(busiestMonth)} theme={theme} />
             </View>
           </Surface>
         ) : null}
 
         {review.excludedCurrencyCount ? (
           <Text style={{ color: theme.mutedText, fontSize: 12, textAlign: "center" }}>
-            {review.excludedCurrencyCount} subscription{review.excludedCurrencyCount > 1 ? "s" : ""} in other currencies aren&apos;t included above.
+            {review.excludedCurrencyCount} subscription{review.excludedCurrencyCount > 1 ? "s" : ""} in other currencies {review.excludedCurrencyCount > 1 ? "aren't" : "isn't"} included above.
           </Text>
         ) : null}
 

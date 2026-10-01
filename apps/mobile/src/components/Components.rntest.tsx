@@ -91,15 +91,14 @@ describe("ConfirmSheet", () => {
 });
 
 describe("ComingSoon", () => {
-  it("says it is not built yet, lists what is coming, and records interest without pretending it works", async () => {
+  it("says it is not built yet and lists what is coming, with no waitlist it can't keep (F153)", async () => {
     await shown(<ComingSoon title="Widgets" tagline="Glanceable renewals." points={["Home screen", "Lock screen"]} />);
     expect(screen.getByText("COMING SOON")).toBeTruthy();
     expect(screen.getByText("Glanceable renewals.")).toBeTruthy();
     expect(screen.getByText("Home screen")).toBeTruthy();
     expect(screen.getByText("Lock screen")).toBeTruthy();
-    fireEvent.press(screen.getByRole("button", { name: "Notify me when it’s ready" }));
-    expect(screen.getByText("You’re on the list ✓")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Notify me when it’s ready" })).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.queryByText(/on the list|let you know/)).toBeNull();
   });
 });
 
