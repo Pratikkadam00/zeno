@@ -1,6 +1,7 @@
 import { searchServices } from "@zeno/service-catalog";
 import { parseAmountMinor, parseCsvRows } from "@zeno/shared";
-import { calculateNextRenewal, confidenceRank, isWithin, slugify, titleCase } from "./discovery-helpers";
+import type { CurrencyCode } from "@zeno/shared";
+import { calculateNextRenewal, confidenceRank, currencyEvidence, isWithin, slugify, titleCase } from "./discovery-helpers";
 import type { ParsedSubscription } from "./emailScanner";
 
 export interface CSVParseResult {
@@ -24,7 +25,13 @@ type ColumnMap = {
   debit?: number | undefined;
 };
 
-export function parseCSV(csvContent: string): CSVParseResult {
+// Finding F18: every detection was labelled USD. That is right for the five US
+// bank formats recognised below (the format itself says USD), and unfounded for
+// a "Generic" file. A Generic file now takes the currency its own amount cells
+// show (€, £, ₹, Rs., CA$, A$ or an ISO code); with bare numbers only, it takes
+// `fallbackCurrency`, which the app passes as the user's home currency.
+// Required, so no caller can silently fall back to USD again.
+export function parseCSV(csvContent: string, fallbackCurrency: CurrencyCode): CSVParseResult {
   const rows = parseCsvRows(csvContent).filter((row) => row.some((cell) => cell.trim().length > 0));
   if (rows.length === 0) {
     return { subscriptions: [], totalRows: 0, detectedFormat: "Unknown" };
@@ -37,9 +44,10 @@ export function parseCSV(csvContent: string): CSVParseResult {
     .slice(1)
     .map((row) => parseTransaction(row, columnMap))
     .filter((transaction): transaction is Transaction => Boolean(transaction));
+  const currency = fileCurrency(detectedFormat, rows.slice(1), columnMap, fallbackCurrency);
 
   return {
-    subscriptions: detectRecurringSubscriptions(transactions),
+    subscriptions: detectRecurringSubscriptions(transactions, currency),
     totalRows: Math.max(0, rows.length - 1),
     detectedFormat
   };
@@ -125,7 +133,13 @@ function parseChargeAmount(row: string[], columns: ColumnMap): number | null {
   return null;
 }
 
-function detectRecurringSubscriptions(transactions: Transaction[]): ParsedSubscription[] {
+function fileCurrency(format: BankFormat, dataRows: string[][], columns: ColumnMap, fallback: CurrencyCode): CurrencyCode {
+  if (format !== "Generic") return "USD";
+  const moneyCells = dataRows.flatMap((row) => [columns.amount, columns.debit].map((index) => (index === undefined ? "" : row[index] ?? "")));
+  return currencyEvidence(moneyCells.join(" ")) ?? fallback;
+}
+
+function detectRecurringSubscriptions(transactions: Transaction[], currency: CurrencyCode): ParsedSubscription[] {
   const grouped = new Map<string, Transaction[]>();
   for (const transaction of transactions) {
     const key = slugify(transaction.description);
@@ -158,7 +172,7 @@ function detectRecurringSubscriptions(transactions: Transaction[]): ParsedSubscr
     parsed.push({
       name: service?.name ?? lastCharge.description,
       amount: Number(averageAmount.toFixed(2)),
-      currency: "USD",
+      currency,
       billingCycle,
       lastCharged: lastCharge.date.toISOString(),
       nextRenewal: nextRenewal.toISOString(),

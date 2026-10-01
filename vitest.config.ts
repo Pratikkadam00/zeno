@@ -52,6 +52,7 @@ export default defineConfig({
         "apps/mobile/src/theme/useZenoTokens.ts",
         "apps/mobile/src/theme/motion.ts",
         "apps/mobile/src/security/LockOverlay.tsx",
+        "apps/mobile/src/discovery/connected-inboxes.ts",
         // Next.js build output (generated route-type validators). Not our code;
         // counting it made the scope depend on whether `next dev` had run.
         "**/.next/**",

@@ -15,6 +15,44 @@ export function toCurrencyCode(value: string): CurrencyCode {
   return (SUPPORTED_CURRENCIES as readonly string[]).includes(upper) ? (upper as CurrencyCode) : "USD";
 }
 
+function countMatches(body: string, pattern: RegExp): number {
+  return (body.match(pattern) ?? []).length;
+}
+
+// Finding F18: the currency a text's own money markers show, or null when it
+// shows none (bare numbers). Moved here from emailScanner.ts so CSV import uses
+// the same rules. The count with the MOST markers wins; USD is seeded first, so
+// only a STRICTLY greater non-USD count beats it ("CA$"/"A$" are not counted
+// as USD).
+export function currencyEvidence(body: string): CurrencyCode | null {
+  const cadAud = countMatches(body, /[CA]\$/g);
+  const counts: Record<CurrencyCode, number> = {
+    USD: Math.max(0, countMatches(body, /\$/g) - cadAud) + countMatches(body, /\bUSD\b/gi),
+    EUR: countMatches(body, /€/g) + countMatches(body, /\bEUR\b/gi),
+    GBP: countMatches(body, /£/g) + countMatches(body, /\bGBP\b/gi),
+    INR: countMatches(body, /₹/g) + countMatches(body, /\bINR\b/gi) + countMatches(body, /\bRs\.?/gi),
+    // Finding F95: "CA$" (how the app itself writes Canadian dollars) was read
+    // as AUD, because /A\$/ matches inside it and /C\$/ does not. Count CA$
+    // as CAD and subtract it from the A$ count (no lookbehind needed).
+    CAD: countMatches(body, /\bCAD\b/gi) + countMatches(body, /C\$/g) + countMatches(body, /CA\$/g),
+    AUD: countMatches(body, /\bAUD\b/gi) + countMatches(body, /A\$/g) - countMatches(body, /CA\$/g)
+  };
+  let best: CurrencyCode = "USD";
+  let bestCount = counts.USD;
+  for (const currency of ["EUR", "GBP", "INR", "CAD", "AUD"] as const) {
+    if (counts[currency] > bestCount) {
+      best = currency;
+      bestCount = counts[currency];
+    }
+  }
+  return bestCount > 0 ? best : null;
+}
+
+/** An email body's currency: its markers, else USD (unchanged email behaviour). */
+export function detectCurrency(body: string): CurrencyCode {
+  return currencyEvidence(body) ?? "USD";
+}
+
 export function calculateNextRenewal(lastCharged: Date, cycle: DiscoveryBillingCycle): Date {
   const next = new Date(lastCharged);
   if (cycle === "weekly") {

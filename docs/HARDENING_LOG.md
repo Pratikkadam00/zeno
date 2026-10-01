@@ -87,7 +87,7 @@ that closes it.
 | F8 | GitHub's own free protections for public repos are not verifiable without owner auth: secret-scanning **push protection** (rejects a push that contains a secret, server-side), Dependabot **alerts** and **security updates**. | Medium | owner: enable in Settings → Code security | P0.6 |
 | F9 | **FIXED in P1.1.** ~~Magic-link login tokens are written to production logs.~~ Fastify's default request log includes `req.url` with the query string, and `GET /api/v1/auth/verify?token=…` carries the raw token. Verified by a probe with the exact production logger config: the log line held `"url":"/api/v1/auth/verify?token=PROBE-SECRET-MAGIC-TOKEN-123"`. Single-use limits it, but a verify that fails before consuming the token (e.g. 429) leaves a working login token in Render's logs. | High (credential in logs) | me | P1 (`server.ts`) |
 | F14 | The PIN lockout window is measured with the device clock, so someone holding the unlocked phone can move the clock forward past the 15-minute lockout (each cycle still costs 10 attempts and a trip to Settings). No trusted time source on-device; rollback detection is possible. | Low | me | P3 (MASVS) |
-| F15 | `checkStatus` trusts the server's plan but falls back to the client's RevenueCat view when the server is unreachable. Client-only features are bypassable by any modified client regardless; what matters is that PAID SERVER features (coach, family, sync) check entitlement server-side. | Medium (to confirm) | me | P2 (authz matrix) |
+| F15 | **RESOLVED 2026-10-01 (confirmed, no change needed): no paid feature runs on the server.** Every Pro unlock (unlimited subscriptions, category budgets, envelope budgeting; the paywall's own list) runs only on the device, and the AI coach is free, so the server holds nothing paid to gate. The gap this exposed is F96. Original: `checkStatus` trusts the server's plan but falls back to the client's RevenueCat view when the server is unreachable. Client-only features are bypassable by any modified client regardless; what matters is that PAID SERVER features (coach, family, sync) check entitlement server-side. | Medium (to confirm) | me | P2 (authz matrix) |
 | F16 | Local DB encryption is configured (`useSQLCipher: true` in app.config; `expo.sqlite.useSQLCipher=true` in the generated gradle.properties), but never PROVEN at runtime: needs `PRAGMA cipher_version` on a device, or a check that the file header of `zeno.db` is not the plaintext "SQLite format 3". | Medium (unverified claim) | me | P3 (on device) |
 | F10 | **FIXED in P1.4** (server + app). ~~Google sign-in: a nonce is sent to Google but NOT to our API (`/auth/google` gets only the token), so the server cannot bind the ID token to this sign-in (replay of a stolen token). Apple sign-in requests no nonce at all. Needs the server side read in full before a verdict. | Medium (to confirm) | me | P1 (`authStore.ts`) + P2 |
 | F11 | Google sign-in uses the implicit ID-token flow returned to the custom scheme `zeno://auth/google`, and Gmail connect also uses expo-auth-session. **Google's own native-app guide, verbatim: "Custom URI schemes are no longer supported on Android and Chrome apps."** So on Android these flows are likely REJECTED by Google, not just weaker. Cannot be confirmed at runtime without the real Google client IDs (A3). Likely fix: Google's native Credential Manager / Sign in with Google SDK, or App Links redirects. | **High (likely broken on Android)** | owner: client IDs (A3); me: migrate | P3 |
@@ -95,7 +95,7 @@ that closes it.
 | F13 | **FIXED in P1.2.** ~~Gmail connect fails on every real device.~~ Tokens are stored under `zeno.oauth.gmail.acct.<address>`, but expo-secure-store 56.0.4 rejects keys outside `/^[\w.-]+$/` (source: `ensureValidKey` in `build/SecureStore.js`, applied to get/set/delete), and an address contains `@`. The existing tests pass only because their fake SecureStore does not enforce that rule. | High (feature broken on device) | me | P1.2 |
 | F17 | **FIXED in P1.3.** ~~Store receipts: the app name ran across line breaks and kept heading words ("App Store receipt
 Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store receipt matched nothing.~~ | Medium (correctness) | me | P1.3 |
-| F18 | CSV import labels every detection USD. Correct for the five US bank formats it recognises; a "Generic" CSV from a non-US bank would be mislabelled (engineering standards: currency honesty). | Medium | me | P1.9 (with the shared money parser) |
+| F18 | **FIXED 2026-10-01.** ~~CSV import labelled every detection USD.~~ The five US bank formats stay USD; a Generic file takes the currency its own amount cells show; bare numbers take the user's home currency (`parseCSV`'s fallback is now required). Original: CSV import labels every detection USD. Correct for the five US bank formats it recognises; a "Generic" CSV from a non-US bank would be mislabelled (engineering standards: currency honesty). | Medium | me | P1.9 (with the shared money parser) |
 | F19 | Wells Fargo CSV: detected by a first row of 5 cells with ≥2 `*`, and that first row is then dropped as a "header". If real WF exports have no header row, the first transaction is silently lost; if their placeholder cells differ, the format is not detected at all. Needs a REAL (redacted) Wells Fargo export to verify. | Medium (unverified assumption) | owner: one sample file | P1.9 |
 | F20 | **FIXED in P1.3.** ~~CSV merchant cleanup stripped ANY last word of 2+ letters ("APPLE MUSIC" → "Apple", "DISNEY PLUS" → "Disney"): distinct subscriptions merged into one group with an averaged amount, and groups whose amounts then differed were dropped.~~ | High (wrong / missing detections) | me | P1.3 |
 | F21 | `Date.parse` is lenient: "02/30/2026" becomes 2 March, "February 31, 2026" becomes 3 March. Receipt/CSV dates can silently shift. | Low (correctness) | me | P6 (property tests) |
@@ -106,7 +106,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F26 | **FIXED — budget store in P1.8b, `setQuietHours` in P1.8d.** ~~Budget store loses updates.~~ Every action computes the next state from the `config` its render captured, so two actions before a re-render (a fast double-tap on "add envelope", or two edits in one event) start from the same stale state and the second write erases the first. The code's own comment fixes the duplicate-ID half of exactly this double-tap, not the lost write. `subscription-store` solved this with refs, but its `setQuietHours` has the same stale merge. | Medium (silent data loss) | me | P1.8b / P1.8d |
 | F27 | **FIXED in P1.8f.** ~~"Cancel my Zeno account" promises it "erases everything from this device", but leaves connected Gmail OAuth tokens in the keychain (not revoked at Google), the app-lock PIN hash and lockout state, and quiet hours / home currency / cached FX rates / theme.** Gmail access tokens expire within about an hour, which limits the impact, but the promise is false.~~ The inventory in P1.8f also found the home-screen widget snapshot (it names the next renewal) and the stored push token. | High (privacy promise) | me | P1.8f |
 | F28 | **FIXED in P1.8e.** ~~A keychain error wedges the lock screen.~~ The PIN check reads and writes SecureStore, and nothing between SecureStore and the overlay caught an error. A rejected `tryPin` skipped `setBusy(false)`, so the PIN field stayed read-only until the app restarted; the user could only sign out. It failed closed (still locked, not a bypass), plus an unhandled rejection. A throwing biometric attempt was also unhandled. | Medium (availability; fails closed) | me | P1.8e |
-| F29 | Settings' "Connected inboxes" row is hard-coded to **"None connected"** (`app/settings.tsx`), even with Gmail inboxes connected. A false statement in the UI. | Low (truthfulness) | me | P4 (UI truthfulness) |
+| F29 | **FIXED 2026-10-01.** ~~Settings said "None connected" even with Gmail connected.~~ `useConnectedInboxesLabel` reads the real list on every focus. Original: Settings' "Connected inboxes" row is hard-coded to **"None connected"** (`app/settings.tsx`), even with Gmail inboxes connected. A false statement in the UI. | Low (truthfulness) | me | P4 (UI truthfulness) |
 | F30 | **FIXED in P1.9a.** ~~A request from a disallowed CORS origin got HTTP **500**, not a quiet refusal.~~ The CORS origin callback passed an `Error`, so every such request, preflight included, went through the error handler as a server error: an error log plus a monitoring-webhook POST each time. Any web page could make visitors' browsers flood the logs and the alert channel. Verified by a probe: GET 500, preflight 500. | Medium (alert flooding; wrong status) | me | P1.9a |
 | F31 | **FIXED in P1.9a.** ~~Upstream error text reached the client.~~ When the AI provider failed, the coach 502 carried up to 200 characters of the provider's raw error body, which can name the provider account (e.g. an organization id in a rate-limit message). Billing and Plaid 502s echoed their `error.message` too. The text now goes to the server log (`warn`), and the client gets a fixed message. The app reads only the status. | Medium (information disclosure) | me | P1.9a |
 | F32 | **FIXED in P1.9a.** ~~The API claimed `serverStoresFinancialData: false`~~ on `/account`, `/capabilities`, `/business/summary` and both sync routes, but the server stores each household member's monthly spend (family) and whatever sync payload a client pushes (not end-to-end encrypted yet, per the capabilities comment). No client reads the flag, so it is removed rather than reworded. This is the machine-readable form of the banned "we never see your data". | Medium (truthfulness) | me | P1.9a |
@@ -172,6 +172,8 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F92 | **FIXED in P3.1** (`android.allowBackup: false`; the compiled manifest reads `allowBackup=false`). ~~Android Auto Backup was ON.~~ `app.config.ts` never sets `android.allowBackup`, and Expo's default is `true` (`@expo/config-plugins` `getAllowBackup`: `config.android?.allowBackup ?? true`); the generated manifest has `android:allowBackup="true"`. `expo-secure-store`'s `configureAndroidBackup` only EXCLUDES SecureStore's own data, so a Google backup or device transfer carries the rest: the plaintext AsyncStorage file, including the widget snapshot (monthly spend, the active count, the next renewal's name and amount, `src/widgets/widgetBridge.ts`), and the SQLCipher database WITHOUT its key (the key lives in SecureStore). What the app does on a device restored that way is not verified. | Medium (financial details leave the device in plaintext) | me | P3.1 |
 | F93 | **FIXED in P3.1** (R8 minify + resource shrinking on; 82 % of DEX classes obfuscated; APK 74.8 → 64.1 MB). ~~The release build was not shrunk or obfuscated.~~ `android/app/build.gradle` reads `android.enableMinifyInReleaseBuilds`, default `false`, and nothing sets it, so R8 never runs (`minifyEnabled false`, no resource shrinking), and `proguard-rules.pro` holds only two keep rules. | Low (reverse engineering made easy; a larger APK) | me | P3.1 |
 | F94 | **OPEN: observed once, not reproduced.** On the first R8 run, the Settings → Home currency sheet drew translucent: the Settings rows showed through the currency list (two captures, 4 s apart, so not mid-animation). The sheet's content sits on `c.surfaceCard`, which is opaque white (`palette.white`). It did NOT reproduce in 5 later attempts: the same R8 build 3 times (persisted state, a fresh install, and the exact first path: onboarding → Sign in → typed email → Add → Settings), once without R8, once with minify only. So it is not an R8 regression; the cause is unknown. Watch for it in P3.8's screen tests and P5's end-to-end runs. | Unknown (visual; once) | me | P3.8 / P5 |
+| F95 | **FIXED 2026-10-01** (found while fixing F18). ~~Amounts written `CA$` were detected as Australian dollars.~~ The currency detector's AUD rule `/A\$/` matched inside `CA$`, and its CAD rule `/C\$/` did not match `CA$` at all, so `CA$12.00` (the way the app itself writes CAD) read as AUD, in email receipts and CSV imports alike. `CA$` now counts as CAD and is subtracted from the `A$` count (no regex lookbehind, for Hermes). Bite-checked: the old rules fail 3 tests. | Medium (currency honesty) | me | open-items pass |
+| F96 | **OPEN: owner decision.** The paywall sells a Family plan ("up to 5 members, $6.99/mo"), but household sharing with up to 5 members is free to everyone: `app/family.tsx` checks no plan, and the server's 5-member cap applies regardless of plan. So the Family plan gives nothing beyond Pro while its label implies it does. Either gate the Family Vault behind the plan (the server must then check entitlement on create and join), or reword the plan. | Medium (truthfulness of what is sold) | owner | before billing ships |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -2744,4 +2746,52 @@ check.
 
 **Not yet proven:** that the Linux runner's medians now agree within 25 %. The next CI run
 is that measurement.
+
+### Open items in one file; three solved now — 2026-10-01
+
+At the owner's request, everything not yet solved is now listed in one place:
+**`docs/OPEN_ITEMS.md`**. It has three parts: what needs the owner (each with the exact
+action), what is mine and scheduled, and what was solved in this pass. Built from this
+log's finding rows (94 of them), each read in full, not from memory.
+
+**Solved now, each bite-checked:**
+- **F29** (Settings' inbox row). `src/discovery/connected-inboxes.ts`: a pure label, plus
+  a hook that re-reads `listConnectedGmailAccounts()` (the list Discover uses) on every
+  focus, with `useFocusEffect` (its contract read in expo-router 56.2.21's own type
+  file). It shows "…" while reading and "Unavailable" when the keychain can't be read.
+  5 jest tests with a 100 % floor. 5 mutations, all caught: error shown as "None
+  connected", the count ignored, a late answer or a late failure still setting state,
+  blur never cancelling.
+- **F18** (CSV currency). The currency detector moved from `emailScanner.ts` to
+  `discovery-helpers.ts`, its regexes checked identical after the move. It gained a
+  null-when-no-evidence variant, `currencyEvidence`; the email path keeps its USD
+  default. `parseCSV(csv, fallbackCurrency)` makes the fallback required, so no caller
+  can silently default to USD; Discover passes the home currency. Only the money cells
+  count, not the description. Every symbol form was first confirmed to parse
+  (`parseAmountMinor` probe). 4 mutations, all caught.
+- **F95**, found by F18's own test (`CA$` read as AUD). Fixed, with detector tests.
+- **F15**, confirmed from the code: no paid feature is server-side, so there is nothing
+  to gate. It exposed **F96** for the owner.
+
+**My mistakes caught on the way:**
+- A one-off jest command with a custom root printed a misleading "coverage data not
+  found"; the real config run is the check.
+- My `sed` could not rewrite nested `parseCSV(...)` calls; the test file now uses one
+  helper.
+- A first F95 test expected `"CA$12.00 $"` to be CAD. It is a 1–1 tie, which the
+  detector's documented rule gives to USD, so the test was corrected to two `CA$`
+  against one `$`.
+- A `grep` with a mangled pattern printed `0` after a bite-check restore. The file was
+  re-verified with a fixed-string search and a byte comparison: restored correctly.
+
+**Before committing:**
+- The gates stopped on coverage: Vitest counted the new hook, which jest tests. It joined
+  the jest-owned exclude list in `vitest.config.ts`, as P1.8a did for the others; CI's
+  `test:rn:coverage` shows it at 100 %.
+- One new branch of mine was untested: a ragged CSV row shorter than the money column. It
+  is now tested (detection and currency unaffected).
+
+Gates after the final edit: `tsc -b --force` and every workspace typecheck 0 · lint 0 ·
+vitest 1743 tests at 100 / 99.66 / 100 / 100 · jest 119 / 119, with the per-file floors
+held.
 

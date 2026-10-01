@@ -11,7 +11,7 @@ describe("parseCSV", () => {
       "2026-03-07,COFFEE SHOP,-4.25"
     ].join("\n");
 
-    const result = parseCSV(csv);
+    const result = parseCSV(csv, "USD");
 
     expect(result.detectedFormat).toBe("Citi");
     expect(result.totalRows).toBe(4);
@@ -32,7 +32,7 @@ describe("parseCSV", () => {
       "2026-01-16,BLUE APRON,-11.99"
     ].join("\n");
 
-    const result = parseCSV(csv);
+    const result = parseCSV(csv, "USD");
 
     expect(result.subscriptions).toHaveLength(1);
     expect(result.subscriptions[0]?.billingCycle).toBe("weekly");
@@ -46,7 +46,7 @@ describe("parseCSV", () => {
       "2026-03-11,2026-03-12,1234,Spotify,Entertainment,10.99,"
     ].join("\n");
 
-    const result = parseCSV(csv);
+    const result = parseCSV(csv, "USD");
 
     expect(result.detectedFormat).toBe("Capital One");
     expect(result.subscriptions[0]).toMatchObject({

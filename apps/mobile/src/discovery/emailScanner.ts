@@ -5,7 +5,7 @@ import * as Crypto from "expo-crypto";
 import { discovery as googleDiscovery } from "expo-auth-session/providers/google";
 import { timedFetch } from "../api/http";
 import { getGmailAccountToken, listGmailAddresses, removeGmailAccount, saveGmailAccount } from "../security/secure-store";
-import { calculateNextRenewal, confidenceRank, inferRecurringCycle, isWithin, slugify, titleCase } from "./discovery-helpers";
+import { calculateNextRenewal, confidenceRank, detectCurrency, inferRecurringCycle, isWithin, slugify, titleCase } from "./discovery-helpers";
 
 export type BilledThrough = "app_store" | "play_store";
 
@@ -679,36 +679,6 @@ function extractAmount(body: string): number | null {
   return ranked[0]?.amount ?? null;
 }
 
-function countMatches(body: string, pattern: RegExp): number {
-  return (body.match(pattern) ?? []).length;
-}
-
-// Pick the currency whose markers appear MOST in the body, so a genuinely-USD
-// receipt that merely mentions a foreign symbol in passing (e.g. "also shown in
-// €") stays USD. USD is the app default and wins ties. "C$"/"A$" contain "$",
-// so those hits are subtracted from the raw "$" count before scoring USD.
-function detectCurrency(body: string): CurrencyCode {
-  const cadAud = countMatches(body, /[CA]\$/g);
-  const counts: Record<CurrencyCode, number> = {
-    USD: Math.max(0, countMatches(body, /\$/g) - cadAud) + countMatches(body, /\bUSD\b/gi),
-    EUR: countMatches(body, /€/g) + countMatches(body, /\bEUR\b/gi),
-    GBP: countMatches(body, /£/g) + countMatches(body, /\bGBP\b/gi),
-    INR: countMatches(body, /₹/g) + countMatches(body, /\bINR\b/gi) + countMatches(body, /\bRs\.?/gi),
-    CAD: countMatches(body, /\bCAD\b/gi) + countMatches(body, /C\$/g),
-    AUD: countMatches(body, /\bAUD\b/gi) + countMatches(body, /A\$/g)
-  };
-
-  // USD seeded as the default; only a STRICTLY greater non-USD count wins.
-  let best: CurrencyCode = "USD";
-  let bestCount = counts.USD;
-  for (const currency of ["EUR", "GBP", "INR", "CAD", "AUD"] as const) {
-    if (counts[currency] > bestCount) {
-      best = currency;
-      bestCount = counts[currency];
-    }
-  }
-  return best;
-}
 
 function detectBillingCycle(body: string, amount: number, service?: Service): ParsedSubscription["billingCycle"] {
   if (/\b(monthly|per month|\/mo)\b/i.test(body)) {

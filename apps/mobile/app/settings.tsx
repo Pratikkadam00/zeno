@@ -2,6 +2,7 @@ import type { CurrencyCode } from "@zeno/shared";
 import { useMemo, useState, type ComponentType } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { deleteAccountOnServer } from "../src/api/client";
+import { useConnectedInboxesLabel } from "../src/discovery/connected-inboxes";
 import { getFeedbackMailto, getLegalUrls, getSiteUrl } from "../src/config/site";
 import { useAuthStore } from "../src/auth/authStore";
 import { useBudgetStore } from "../src/data/budget-store";
@@ -103,6 +104,7 @@ export default function SettingsScreen() {
   // Alert dialogs (which can't show the current value, can't be styled, and on
   // Android render a cramped stack of buttons).
   const [picker, setPicker] = useState<null | "currency" | "quiet">(null);
+  const connectedInboxes = useConnectedInboxesLabel();
 
   const quietWindowLabel = `${formatHour(quietHours.startHour)} – ${formatHour(quietHours.endHour)}`;
   const QUIET_PRESETS: { label: string; startHour: number; endHour: number }[] = [
@@ -261,7 +263,7 @@ export default function SettingsScreen() {
           isSwitch: true, switchValue: coachAiConsent === "granted",
           onToggle: (value: boolean) => setCoachAiConsent(value ? "granted" : "declined")
         },
-        { id: "connected", Icon: MailSearch, iconBg: palette.category.blue, label: "Connected inboxes", value: "None connected", chevron: true, onPress: () => router.push("/discover") },
+        { id: "connected", Icon: MailSearch, iconBg: palette.category.blue, label: "Connected inboxes", value: connectedInboxes, chevron: true, onPress: () => router.push("/discover") },
         { id: "export", Icon: Download, iconBg: palette.category.slate, label: "Export my data", sub: "Download everything as CSV", chevron: true, onPress: exportData },
         { id: "delete", Icon: Trash2, iconBg: palette.semantic.danger, label: "Delete all my data", sub: "Erase all your data from this device", chevron: true, onPress: confirmDelete }
       ]

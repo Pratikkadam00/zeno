@@ -74,7 +74,7 @@ const exportGuides = [
 export default function DiscoverScreen() {
   const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { addSubscription, subscriptions: tracked } = useSubscriptionStore();
+  const { addSubscription, subscriptions: tracked, homeCurrency } = useSubscriptionStore();
   const plan = useAuthStore((state) => state.plan);
   const trackedCount = tracked.filter((subscription) => subscription.status !== "cancelled").length;
   const remainingFreeSlots = plan === "free" ? Math.max(0, FREE_LIMIT - trackedCount) : Infinity;
@@ -195,7 +195,7 @@ export default function DiscoverScreen() {
       if (picked.canceled) return;
       const asset = picked.assets[0];
       const csvContent = await readPickedText(asset);
-      const parsed = parseCSV(csvContent);
+      const parsed = parseCSV(csvContent, homeCurrency);
       setResults(annotateTracked(toDetected(parsed.subscriptions, "Bank import")));
       showToast(`Found ${parsed.subscriptions.length} subscriptions from ${parsed.detectedFormat}.`);
     } catch (importError) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyFreeCap, calculateNextRenewal, confidenceRank, inferRecurringCycle, isWithin, slugify, summarizeFoundMoney, titleCase, toCurrencyCode } from "./discovery-helpers";
+import { applyFreeCap, calculateNextRenewal, confidenceRank, currencyEvidence, detectCurrency, inferRecurringCycle, isWithin, slugify, summarizeFoundMoney, titleCase, toCurrencyCode } from "./discovery-helpers";
 
 describe("inferRecurringCycle", () => {
   it("infers monthly / weekly / annual from the median gap", () => {
@@ -170,5 +170,31 @@ describe("quarterly cadence", () => {
 
   it("annualizes a quarterly amount as ×4 (not ×12)", () => {
     expect(summarizeFoundMoney([{ amount: 30, currency: "USD", billingCycle: "quarterly" }])).toEqual({ annualTotal: 120, currency: "USD", excludedCount: 0 });
+  });
+});
+
+describe("currencyEvidence / detectCurrency (F18, F95)", () => {
+  it("reads each currency's markers, and returns null for bare numbers", () => {
+    expect(currencyEvidence("€12.99 a month")).toBe("EUR");
+    expect(currencyEvidence("GBP 9.99")).toBe("GBP");
+    expect(currencyEvidence("Rs. 499 and ₹499")).toBe("INR");
+    expect(currencyEvidence("AUD 12 or A$12")).toBe("AUD");
+    expect(currencyEvidence("$15.49")).toBe("USD");
+    expect(currencyEvidence("15.49")).toBeNull();
+  });
+
+  it("F95: CA$ is Canadian dollars, not Australian (the app writes CAD as CA$)", () => {
+    expect(currencyEvidence("CA$12.00")).toBe("CAD");
+    expect(currencyEvidence("Total: CA$12.00 (renews at CA$12.00)")).toBe("CAD");
+    expect(currencyEvidence("C$12.00")).toBe("CAD");
+    expect(currencyEvidence("A$12.00")).toBe("AUD");
+    // CA$ is not also counted as a US "$": two CA$ beat one bare $ (a tie
+    // would go to USD by the detector's rule).
+    expect(currencyEvidence("CA$12.00 CA$3.00 $1")).toBe("CAD");
+  });
+
+  it("detectCurrency (email bodies) keeps its USD default when nothing is marked", () => {
+    expect(detectCurrency("Your plan renews soon")).toBe("USD");
+    expect(detectCurrency("Charged CA$12.00")).toBe("CAD");
   });
 });
