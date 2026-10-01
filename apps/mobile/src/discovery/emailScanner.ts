@@ -1,5 +1,5 @@
 import { getServiceBySlug, searchServices, services, type Service } from "@zeno/service-catalog";
-import { extractStoreAppName, type CurrencyCode } from "@zeno/shared";
+import { extractStoreAppName } from "@zeno/shared";
 import { exchangeCodeAsync, type AuthRequest, type AuthSessionResult } from "expo-auth-session";
 import * as Crypto from "expo-crypto";
 import { discovery as googleDiscovery } from "expo-auth-session/providers/google";

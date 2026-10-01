@@ -713,9 +713,10 @@ export function verifyAccessToken(token: string): VerifiedAccessToken | null {
     const signatureValid = verifier.verify(keyPair.publicKey, Buffer.from(encodedSignature, "base64url"));
     // F88: once the signature is checked, every token does the SAME remaining
     // work (decode, claims, the revocation lookup) and is judged only at the
-    // end. Returning early on a bad signature made a forged token answer ~35 µs
-    // faster than a genuine one on the Linux CI runner (46.7 vs 82.0 µs median),
-    // which told a caller whether a token was ever really issued.
+    // end, so whether a token was ever really issued changes no code path. (The
+    // ~35 µs CI gap first blamed on the early return was OpenSSL rejecting a
+    // signature at or above the modulus before any RSA arithmetic; see
+    // token-path.test.ts. That case is visible to the sender from the public key.)
     const payload = decodeJwtPart<JwtPayload>(encodedPayload);
     const nowSeconds = Math.floor(Date.now() / 1000);
     const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];

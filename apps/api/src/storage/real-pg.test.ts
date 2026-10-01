@@ -338,7 +338,10 @@ describe(`real Postgres (${process.env.TEST_DATABASE_URL ? "server" : "PGlite"})
       const first = await app.inject({ method: "DELETE", url: "/api/v1/account", headers: auth(alice.token) });
       expect(first.statusCode).toBe(503);
       expect(first.json().error).toEqual({ code: "SERVICE_UNAVAILABLE", message: "Account deletion could not be completed. Please try again." });
-      expect((await aliceRows()).map((r) => r.namespace)).toEqual(["sync", "sync"]);
+      // F97: this has failed intermittently on CI only (other namespaces' rows
+      // left too). The storage errors logged meanwhile go into the message, so
+      // the next failure says why (they carry no account id: checked below).
+      expect((await aliceRows()).map((r) => r.namespace), JSON.stringify(consoleError.mock.calls)).toEqual(["sync", "sync"]);
       // The failure is logged by namespace and field only: never the account id.
       expect(JSON.stringify(consoleError.mock.calls)).toContain("delete-by-field failed");
       expect(JSON.stringify(consoleError.mock.calls)).not.toContain(alice.accountId);

@@ -1,4 +1,4 @@
-import { createSign, generateKeyPairSync } from "node:crypto";
+import { createPublicKey, createSign, generateKeyPairSync } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Counts the SHA-256 hashes verifyAccessToken does (its revocation lookup), a
@@ -49,6 +49,17 @@ afterEach(() => {
 });
 
 const b64 = (v: unknown) => Buffer.from(JSON.stringify(v)).toString("base64url");
+// A signature whose value is at least our key's modulus is rejected by OpenSSL
+// before any RSA arithmetic: measured 3.8 µs against 13.1 µs for a genuine one
+// and 13.5 µs for a forged one below the modulus. A foreign key's signature
+// lands there by chance (the foreign key is fresh every run), which made the
+// timing test fail intermittently on CI (46.7 vs 82.0 µs on f75bdf3, 38.4 vs
+// 68.3 µs on 3553165). It tells the sender nothing they did not know: the
+// modulus is public (JWKS), so they can see their signature is out of range.
+// The timing test therefore forges an IN-RANGE signature, the case that costs
+// the server a real verify.
+const ourModulus = BigInt(`0x${Buffer.from(createPublicKey(keys.publicKey).export({ format: "jwk" }).n!, "base64url").toString("hex")}`);
+const signatureValue = (token: string) => BigInt(`0x${Buffer.from(token.split(".")[2]!, "base64url").toString("hex")}`);
 const now = () => Math.floor(Date.now() / 1000);
 function sign(claims: Record<string, unknown>, key = keys.privateKey): string {
   const head = b64({ alg: "RS256", typ: "JWT" });
@@ -59,6 +70,13 @@ function sign(claims: Record<string, unknown>, key = keys.privateKey): string {
   return `${head}.${body}.${signer.sign(key, "base64url")}`;
 }
 const claims = (over: Record<string, unknown> = {}) => ({ iss: "zeno-api", aud: "zeno-mobile", sub: "acct_live", iat: now() - 10, exp: now() + 600, ...over });
+/** A foreign-key token whose signature is below our modulus (re-signed with a varying jti until it is). */
+function forgedInRange(): string {
+  for (let jti = 0; ; jti += 1) {
+    const token = sign(claims({ jti }), foreign.privateKey);
+    if (signatureValue(token) < ourModulus) return token;
+  }
+}
 
 describe("F88: unknown and revoked tokens are indistinguishable to the caller", () => {
   it("every kind of rejected token gets the same 401: status, body (minus the request id) and response headers", async () => {
@@ -98,9 +116,9 @@ describe("F88: unknown and revoked tokens are indistinguishable to the caller", 
   });
 
   it("every well-formed token does the SAME work whatever its signature says: one revocation lookup each (deterministic)", async () => {
-    // On the Linux CI runner a forged token answered ~35 µs faster than a
-    // genuine one (46.7 vs 82.0 µs median), because a bad signature returned
-    // before the decode, claims and revocation lookup. Now every kind does them.
+    // Every kind of well-formed token now does the decode, the claims check and
+    // the revocation lookup, whatever its signature (the timing test below
+    // explains the CI gap first blamed on skipping them).
     const auth = await import("./routes/auth");
     const kinds: Record<string, string> = {
       live: sign(claims()),
@@ -120,14 +138,15 @@ describe("F88: unknown and revoked tokens are indistinguishable to the caller", 
     expect(work).toEqual(Object.fromEntries(Object.keys(kinds).map((kind) => [kind, 1])));
   });
 
-  it("the token check takes the same time for revoked, expired, unknown-signer and live tokens (within 25 %; measured about 3 % apart)", async () => {
+  it("the token check takes the same time for revoked, expired, in-range unknown-signer and live tokens (within 25 %; measured about 3 % apart)", async () => {
     const auth = await import("./routes/auth");
     const tokens: Record<string, string> = {
       live: sign(claims()),
       revoked: sign(claims({ sub: "acct_gone" })),
       expired: sign(claims({ exp: now() - 5 })),
-      foreignKey: sign(claims(), foreign.privateKey)
+      foreignKey: forgedInRange()
     };
+    expect(signatureValue(tokens.foreignKey!) < ourModulus).toBe(true);
     expect(auth.verifyAccessToken(tokens.live!)).not.toBeNull();
     expect(await auth.revokeAccessTokensForAccount("acct_gone")).toBe(true);
     expect(auth.verifyAccessToken(tokens.revoked!)).toBeNull();

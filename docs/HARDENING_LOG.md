@@ -165,7 +165,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F85 | **FIXED in P2.8.** ~~The billing webhook trusted its payload, in arrival order.~~ Each event's claimed plan was written straight into the entitlement cache. RevenueCat retries a failed delivery up to 5 times over about 2.5 hours and may deliver twice, and its own docs recommend calling `GET /subscribers` after any webhook. So an old event arriving late overwrote newer state. Proven: a user who had just bought Pro read as free after an 80-minute-late retry of an old EXPIRATION. Worse, the header is a static secret, not a signature over the body, so anyone holding it could grant any plan to any account (proven: a forged INITIAL_PURCHASE made a free user Pro). Now a webhook reads only `app_user_id` and drops that user's cached entitlement, durably before RevenueCat hears 200 (a refused delete answers 503, so RevenueCat retries). The next read asks RevenueCat. This is idempotent and order-independent by construction, which a property test checks over random runs of events, duplicates and orders. The unread fields are no longer validated: a value we rejected (an event type over 64 characters, say) made RevenueCat retry and then drop the event. | High (entitlement integrity; the secret alone granted paid plans) | me | P2.8 |
 | F86 | **FIXED in P2.8.** ~~The webhook secret compare leaked the secret's length.~~ `timingSafeEqual` needs equal lengths, so a guess of the wrong length returned early. It now compares SHA-256 digests of both sides: one 32-byte compare for every guess (checked for 6 lengths). | Low (a timing side channel on a shared secret) | me | P2.8 |
 | F87 | **FIXED in P2.8.** ~~A RevenueCat lookup in flight could put an older answer back.~~ If a webhook or an account deletion dropped a user's cached entitlement while a lookup was in flight, the lookup cached its older answer when it landed. After a deletion, that re-created the deleted user's billing row (an F75-class gap). Proven on real Postgres: a `billing` row existed after `DELETE /account` had answered. Every drop now bumps the user's generation, and a lookup caches only if its generation is still current. Another user's lookup is unaffected. | Medium (deletion completeness; stale plans) | me | P2.8 |
-| F88 | **FIXED in P2.9, and in CODE after CI caught a real gap** (see the P2.9 timing entry below). ~~No test for the token path's sameness.~~ The plan (P2.2) asks that unknown and revoked tokens take "the same code path" with "no timing leak on the token path". No test checked this, and I had not said so. Measured first: every rejected token takes 28–29 µs (the RSA verify dominates), revoked vs unknown-signer 0.8 µs apart; only a non-JWT string is faster (7.9 µs), which tells its sender nothing. `token-path.test.ts` now pins identical status, body AND headers for six kinds of rejected token, and the timing within 25 %. | Test gap (plan item not done) | me | P2.9 |
+| F88 | **FIXED in P2.9. CORRECTED 2026-10-01: the CI gap was not the leak I named** (see "CI on `3553165`" below). It was OpenSSL rejecting a forged signature at or above the modulus before any RSA arithmetic, which the sender can see from the public key. The code change (same work after the signature check) and its deterministic test stand; the timing test now forges an in-range signature. Earlier text: **FIXED in P2.9, and in CODE after CI caught a real gap** (see the P2.9 timing entry below). ~~No test for the token path's sameness.~~ The plan (P2.2) asks that unknown and revoked tokens take "the same code path" with "no timing leak on the token path". No test checked this, and I had not said so. Measured first: every rejected token takes 28–29 µs (the RSA verify dominates), revoked vs unknown-signer 0.8 µs apart; only a non-JWT string is faster (7.9 µs), which tells its sender nothing. `token-path.test.ts` now pins identical status, body AND headers for six kinds of rejected token, and the timing within 25 %. | Test gap (plan item not done) | me | P2.9 |
 | F89 | **FIXED in P2.9.** ~~The fuzz never sent schema-valid input.~~ The plan (P2.4) says the fuzz is "driven by each zod schema: valid ⇒ expected status". `fuzz.test.ts` sends arbitrary bodies and checks only "never a 500, always the envelope, no internals"; it never builds a known-valid body and checks the success status. Half the item; I had not said so. `schema-valid.test.ts` now generates input from each of the 18 routes' own zod schemas and checks the exact status each handler's rule gives it; it found F91. | Test gap (plan item half done) | me | P2.9 |
 | F90 | **OPEN: owner decision.** The plan (P2.6) says demo login, wildcard CORS and `http://` URLs "all refuse to boot" in production. P2.6 made only an `http://` `MAGIC_LINK_REDIRECT_URL` fatal; a set `DEMO_LOGIN_PASSWORD`, a `*` or `http://` CORS origin and an `http://` alert or coach URL are **warnings**. Why: `main` auto-deploys to Render, each of these is already blocked at request time (tested), and a new boot refusal on a dashboard value nobody can see from the repo could take the API down. To follow the plan literally, confirm none of these is set in the Render dashboard and say so; they become fatal in one small change. | Deviation from plan (owner's call) | owner | P2.9 or P8 |
 | F91 | **FIXED in P2.9.** ~~`POST /api/v1/events` (public) mishandled names every object inherits.~~ `recordProductEvent` looked the event up on a plain object literal, so inherited names were "found". Proven on the old code: `toString`, `valueOf` and `__proto__` answered 200 and became their own series in `/metrics` (outside the allowlist); `constructor` or `hasOwnProperty` with a label answered **500** (`.includes` called on a function), and each 500 also pages the alert webhook. The P2.4 fuzz missed it: random strings never hit those exact names. Now only the allowlist's own keys count (`Object.hasOwn`). Swept the API for the same pattern: the only other keyed object literal (`guideOverrides[slug]` in the catalog) is keyed by the catalog's own static slugs, not request data. | Medium (an anonymous 500 and metric pollution on a public route) | me | P2.9 |
@@ -174,6 +174,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F94 | **OPEN: observed once, not reproduced.** On the first R8 run, the Settings → Home currency sheet drew translucent: the Settings rows showed through the currency list (two captures, 4 s apart, so not mid-animation). The sheet's content sits on `c.surfaceCard`, which is opaque white (`palette.white`). It did NOT reproduce in 5 later attempts: the same R8 build 3 times (persisted state, a fresh install, and the exact first path: onboarding → Sign in → typed email → Add → Settings), once without R8, once with minify only. So it is not an R8 regression; the cause is unknown. Watch for it in P3.8's screen tests and P5's end-to-end runs. | Unknown (visual; once) | me | P3.8 / P5 |
 | F95 | **FIXED 2026-10-01** (found while fixing F18). ~~Amounts written `CA$` were detected as Australian dollars.~~ The currency detector's AUD rule `/A\$/` matched inside `CA$`, and its CAD rule `/C\$/` did not match `CA$` at all, so `CA$12.00` (the way the app itself writes CAD) read as AUD, in email receipts and CSV imports alike. `CA$` now counts as CAD and is subtracted from the `A$` count (no regex lookbehind, for Hermes). Bite-checked: the old rules fail 3 tests. | Medium (currency honesty) | me | open-items pass |
 | F96 | **OPEN: owner decision.** The paywall sells a Family plan ("up to 5 members, $6.99/mo"), but household sharing with up to 5 members is free to everyone: `app/family.tsx` checks no plan, and the server's 5-member cap applies regardless of plan. So the Family plan gives nothing beyond Pro while its label implies it does. Either gate the Family Vault behind the plan (the server must then check entitlement on create and join), or reword the plan. | Medium (truthfulness of what is sold) | owner | before billing ships |
+| F97 | **OPEN (mine): an intermittent CI-only failure, cause not yet known.** `real-pg.test.ts`'s F75 test refuses the sync deletes, then expects only Alice's 2 sync rows to remain after the 503. Twice on CI, other namespaces' rows remained too: `plaid` on `3ad75f7` (a Dependabot branch), `billing`, `family` and `plaid` on `3553165`. It has never failed locally (PGlite). Every delete step is awaited and none retries, and each of those rows is written once and seen in the database before the delete. If those deletes failed under load, that is the designed 503 path, and a retry deletes them. If they remained with no error, it is a deletion bug. The CI log needs a GitHub login, so the assertion now prints the storage errors captured during the request. | Medium until explained (account deletion is a promise to the user) | me | the next occurrence |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -2886,3 +2887,48 @@ Gates after the final code edit: `tsc -b --force` and every workspace typecheck 
 vitest 134 files / 1761 tests at 100 / 99.67 / 100 / 100 (the ratchet rose from 99.66
 because the branch count grew to 2774; the same 9 defensive branches stay uncovered) ·
 jest 119 / 119, with the per-file floors held.
+
+### CI on `3553165` (P3.3): two intermittent API failures — 2026-10-01
+
+P3.3's push went red on GitHub (CI 36833430965; CodeQL 36833430869 green). Both failures
+were in API tests the commit did not touch. Both had happened before: the annotations of the 12 most recent
+failed CI runs (read through the public API) show each one once earlier.
+
+**1. The F88 timing test: explained, test fixed, and F88's story corrected.**
+- Medians on CI were live 69.0 µs, revoked 68.3, expired 69.1, foreign key 38.4. That is
+  the same shape as the failure that started F88 on `f75bdf3`: revoked 82.0, foreign key
+  46.7.
+- `verifyAccessToken` does identical work for both, so the gap had to be inside the RSA
+  verify.
+- Measured here (2000 samples each, Node 24):
+  - a genuine signature, 13.1 µs;
+  - a forged one below our modulus, 13.5 µs;
+  - a forged one at or above it, 3.8 µs.
+- OpenSSL rejects an out-of-range signature before any arithmetic. The test's foreign key
+  is fresh each run, so its single signature is out of range on some runs and not
+  others.
+- **Reproduced in place:** with an out-of-range sample, the timing test failed in both
+  runs where one existed, and passed in the two where none could (the foreign modulus was
+  smaller). The file was restored byte-identical.
+- **Not a leak:** the modulus is public (JWKS), so the sender can see their own signature
+  is out of range. A fast answer tells them nothing about the server.
+- **So my F88 diagnosis was wrong.** I had blamed the early return after a bad signature.
+  This machine measured that work at under 1 µs, so it could not explain 35 µs. The code
+  change (same work for every token) and its deterministic one-lookup-each test are kept:
+  they are what "same code path" means. The comments in `auth.ts` and the test are
+  corrected.
+- The timing test now forges an in-range signature (the case that costs the server a
+  real verify), asserts that it is in range, and passed 5 of 5 runs here.
+
+**2. `real-pg.test.ts:341` (F75 refused deletion): NOT explained.** Logged as **F97**,
+with the evidence in its row. I did not re-run CI until it passed, and did not add a
+retry: that would hide a possible deletion bug. The assertion's failure message now
+carries the storage errors the test captured, so the next occurrence says why.
+
+**Also:** the one lint warning on CI, an unused `CurrencyCode` import left in
+`emailScanner.ts` by F18, is removed. Lint passed with it (warnings don't fail), which is
+how it slipped through.
+
+
+Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1761 at
+100 / 99.67 / 100 / 100 · jest 119 / 119.
