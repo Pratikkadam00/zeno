@@ -33,6 +33,14 @@ const KNOWN = new Set(["$schema", "type", "properties", "required", "additionalP
   "enum", "format", "pattern", "minimum", "maximum", "items", "maxItems", "minItems", "default"]);
 // The parser rejects these keys by design (P2.4: onProtoPoisoning / onConstructorPoisoning).
 const PARSER_REJECTED_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+/** True when a parser-rejected key appears ANYWHERE in the value (not only at
+ *  the top). Such bodies are the fuzz suite's business (fuzz.test.ts pins the
+ *  parser's 400 for them); this suite generates only bodies the parser accepts. */
+function hasRejectedKey(value: unknown): boolean {
+  if (value === null || typeof value !== "object") return false;
+  if (Array.isArray(value)) return value.some(hasRejectedKey);
+  return Object.keys(value).some((key) => PARSER_REJECTED_KEYS.has(key) || hasRejectedKey((value as Record<string, unknown>)[key]));
+}
 
 function arbitraryFor(schema: Json, ascii = false): fc.Arbitrary<unknown> {
   for (const key of Object.keys(schema)) {
@@ -71,7 +79,12 @@ function arbitraryFor(schema: Json, ascii = false): fc.Arbitrary<unknown> {
       if (extra === undefined) return known;
       const keyArb = (schema.propertyNames ? arbitraryFor(schema.propertyNames as Json, ascii) : fc.string({ maxLength: 12 }))
         .filter((k) => typeof k === "string" && !PARSER_REJECTED_KEYS.has(k) && !(k in properties)) as fc.Arbitrary<string>;
-      const valueArb = Object.keys(extra as Json).length === 0 ? fc.jsonValue({ maxDepth: 2 }) : arbitraryFor(extra as Json, ascii);
+      // Free-form values can nest keys of their own: keep the parser-rejected
+      // ones out at every depth (found by this test's 193rd case: a nested
+      // "__proto__" inside a webhook's passthrough field, correctly a 400).
+      const valueArb = Object.keys(extra as Json).length === 0
+        ? fc.jsonValue({ maxDepth: 2 }).filter((v) => !hasRejectedKey(v))
+        : arbitraryFor(extra as Json, ascii);
       return fc.tuple(known, fc.dictionary(keyArb, valueArb, { maxKeys: 4 })).map(([k, more]) => ({ ...more, ...(k as object) }));
     }
     default:

@@ -2697,3 +2697,23 @@ redacted and stays stackless.
 Gates after the final edit: `tsc -b --force` and every workspace typecheck 0 · lint 0 ·
 vitest 133 files / 1727 tests at 100 / 99.66 / 100 / 100 · jest 114 / 114.
 
+### P2.9 follow-up — a flaw in my schema-valid generator, found by itself — 2026-10-01
+
+During P3.2's full test run, `schema-valid.test.ts` failed on its 193rd generated case
+for the billing webhook: `{"event":{"":{"__proto__":null},"app_user_id":" "}}` got a 400
+("Malformed request."), and the test expected 200. **The API was right:** the parser
+rejects a `__proto__` key at any depth, by design (P2.4, pinned in `fuzz.test.ts`).
+**My generator was wrong:** it kept parser-rejected keys out of an object's own extra keys,
+but not out of the free-form JSON values nested inside them. It had passed every earlier
+run by chance; the 200-run CI property could have failed on any push.
+
+**Fix:** the free-form values are filtered with `hasRejectedKey`, which checks every depth.
+Bodies like that remain the fuzz suite's job. The exact counterexample's shape is caught
+by the filter (`true`); ordinary nested values pass (`false`). The webhook property then
+passed 3 runs of 2 000 cases each (10 × CI).
+
+**Also a process slip, caught in time:** my gate command was a chain of parenthesised
+groups that did not stop on a failure, so it amended the P3.2 commit even though this
+test had failed. Nothing was pushed. From now on the commit runs only if every gate
+exits 0.
+
