@@ -3,7 +3,7 @@
 **One place for everything not yet solved.** Each item says who acts, exactly what to
 do, and where the full evidence lives (finding numbers point into
 `docs/HARDENING_LOG.md`). When an item is done it is removed from here and its log
-entry marked fixed. Last updated 2026-10-01, after P3.5.
+entry marked fixed. Last updated 2026-10-01, after P3.6.
 
 ---
 
@@ -46,7 +46,7 @@ real sample, or a product decision.
 
 | # | Item | When |
 |---|---|---|
-| — | P3.6–P3.9: deep links, no secret in the bundle, screen capture on the lock screens, tests for all 29 screens, a static scan of the release APK | P3, next, in order |
+| — | P3.7–P3.9: screen capture blocked on the lock screens, tests for all 29 screens, a static scan of the release APK | P3, next, in order |
 | F103 | A web build failure seen once on CI with no detail; the build step now reports its own log on failure | the next occurrence |
 | F16 | SQLCipher encryption of the local database is configured but never proven on a device (check the file header or `PRAGMA cipher_version`; the release build isn't debuggable, so it needs a rooted emulator image or a debug check) | P3 gate |
 | F1 | `ServiceAutocomplete.tsx` has no test | P3.8 |

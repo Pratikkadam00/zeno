@@ -58,7 +58,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P3.3 Sentry `beforeSend` scrub (emails, tokens, auth headers, amounts); `sendDefaultPii` false, asserted (green: CI 36834676134, CodeQL 36834676176 on `a74417c`; its own push `3553165` went red on two older intermittent API tests, see "CI on `3553165`")
   - [x] P3.4 PIN: salt, derivation, lockout with backoff, nothing in logs; the honest threat model; **fixes F98** (Settings checked the PIN with no attempt limit) and adds the backoff; F14 corrected and handed to the owner (green: CI 36840438554, CodeQL 36840438566 on `2d6a752`, which contains P3.4's `844b49a`; two runs went red in jest on a cold-cache timeout, F99, fixed)
   - [x] P3.5 deep links: every `zeno://` route validates its parameters; `Linking.openURL` only `https:`/`mailto:` on an allowlist; **fixes F100** (anyone's sign-in link signed the phone into their account, and a junk one signed the user out); CI on the way found and fixed **F102** (explaining F97) (green: CI 36847517276, CodeQL 36847517287 on `3b8be1e`, which contains P3.5's `44791e7`)
-  - [ ] P3.6 no secret in the bundle: `extra` and every `EXPO_PUBLIC_*` on the public-by-design allowlist
+  - [~] P3.6 no secret in the bundle: `extra` and every `EXPO_PUBLIC_*` on the public-by-design allowlist (none found in the bundle, the config or the built APK; guards added)
   - [ ] P3.7 screen capture blocked on the lock overlay and PIN entry (app-wide `FLAG_SECURE` is the owner's call)
   - [ ] P3.8 screen tests for all 29 screens, with a jest floor over `app/**` and `src/components/**`
   - [ ] P3.9 static scan of the release APK (MobSF, else apkleaks + manifest review)
@@ -3206,3 +3206,69 @@ Green on GitHub: CI 36847517276 and CodeQL 36847517287 on `3b8be1e`. It contains
 (`44791e7`), the web-build reporting (`3e541c9`) and F102. Its "Build web" step
 passed, so F103 stays a single unexplained occurrence, which will now report itself.
 
+### P3.6 — no secret in the bundle — 2026-10-01
+
+**Inventory (read from the code):**
+- **`app.config.ts`'s `extra`:** the EAS project id, `apiBaseUrl` (from
+  `PUBLIC_API_BASE_URL`), `siteUrl`, 4 Google client ids, the 2 RevenueCat SDK keys, and
+  `sentryDsn`.
+- **The app's own `process.env` reads (6, all `EXPO_PUBLIC_*`):** 3 Google client ids
+  (`discover.tsx`), the 2 RevenueCat keys (`revenueCat.ts`), the Sentry DSN
+  (`report.ts`).
+- No `.env` file is tracked under `apps/mobile`. `eas.json` sets only
+  `PUBLIC_API_BASE_URL`.
+
+**Why each is public, from the source, not from memory:**
+- **The Sentry DSN:** "safe to keep public because they only allow submission of new
+  events" (Sentry's DSN docs).
+- **RevenueCat:** the public SDK keys "must be used to configure the SDK". The SECRET
+  keys are "prefixed `sk_`" and must never be embedded (RevenueCat's authentication docs).
+  That page states no prefix for public keys, so none is assumed.
+- **The Google client ids:** sent in the clear in every OAuth request URL.
+- **The API and site URLs, and the EAS project id:** visible to anyone using the app.
+
+**Measured on the real artefacts, not inferred:**
+- **The exported Android bundle** (`expo export`, Hermes bytecode, 11.6 MB) was built
+  with 17 secret variables set to marker values: every secret the API reads, plus
+  `SENTRY_AUTH_TOKEN` and `EXPO_TOKEN`. **None appears in any of the 86 exported files**,
+  searched as UTF-8 and UTF-16.
+- **The public values the code reads ARE in the bundle**, which proves the search can
+  see inlined values: the Android RevenueCat key, the DSN, and the 3 Google ids.
+- **An unreferenced `EXPO_PUBLIC_DECOY_UNREFERENCED` is NOT in the bundle:** Expo inlines
+  only names the code reads. So a guard on the names the SOURCE reads is the right
+  control, and refusing unknown names in the build environment (my first idea) would add
+  nothing. Dropped.
+- **The release APK built in P3.1:** its `assets/app.config` `extra` holds `eas`,
+  `apiBaseUrl`, and empty `google`, `revenueCat` and `router` objects. `router` is added
+  at build time by the expo-router plugin. gitleaks over its bundle and config (9.27 MB):
+  no leaks.
+
+**Added:**
+- **`app.config.ts`** refuses to build when either RevenueCat variable holds an `sk_`
+  secret key. The error names the variable, never the value.
+- **`scripts/public-env-guard.test.ts`:** every `EXPO_PUBLIC_*` name in mobile source
+  must be on a reviewed list (7 names, each with its reason), and the list has no stale
+  entries.
+- **`app.config.test.ts`:**
+  - the refusal for both variables, including a value with leading spaces, and that the
+    message never carries the value;
+  - that a public key still builds;
+  - the leak test's decoys now include the build-side secrets (`SENTRY_AUTH_TOKEN`,
+    `EXPO_TOKEN`).
+
+**Bite check: 6 mutations, all caught.** The files were restored byte-identical:
+- no refusal;
+- the refusal without trimming;
+- the message carrying the value;
+- a new unreviewed `EXPO_PUBLIC_` read;
+- a server secret put into `extra`;
+- the Sentry upload token put into the manifest.
+
+The last one is caught ONLY because of the decoys added here; the old test would have
+missed it.
+
+**Findings:** none. Nothing secret was found in the bundle, the config or the APK.
+
+
+Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1840 at
+100 / 99.68 / 100 / 100 · jest 146 / 146.

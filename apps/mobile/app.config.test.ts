@@ -114,7 +114,8 @@ describe("no server secret reaches the client config", () => {
 
   it("with every API env var set, none of their values appears anywhere in the Expo config", async () => {
     // NODE_ENV is not a secret and steers the test runner itself; leave it alone.
-    const serverOnly = apiEnvNames().filter((name) => !PUBLIC_BY_DESIGN.has(name) && name !== "NODE_ENV");
+    // Plus the build-side secrets: the Sentry source-map upload token and the EAS token.
+    const serverOnly = [...apiEnvNames().filter((name) => !PUBLIC_BY_DESIGN.has(name) && name !== "NODE_ENV"), "SENTRY_AUTH_TOKEN", "EXPO_TOKEN"];
     const env = Object.fromEntries(serverOnly.map((name) => [name, `server-only<${name}>`]));
     const config = await load(env);
     const shipped = JSON.stringify(config);
@@ -125,6 +126,20 @@ describe("no server secret reaches the client config", () => {
   it("extra carries only the reviewed publishable keys", async () => {
     const config = await load();
     expect(Object.keys(config.extra ?? {}).sort()).toEqual(["apiBaseUrl", "eas", "google", "revenueCat", "sentryDsn", "siteUrl"]);
+  });
+});
+
+describe("P3.6: a RevenueCat SECRET key can never ship", () => {
+  it.each(["EXPO_PUBLIC_REVENUECAT_IOS_KEY", "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY"])("%s holding an sk_ key fails the build, naming the variable but not the value", async (name) => {
+    const err = await load({ [name]: "  sk_live_DO_NOT_SHIP_1234" }).then(() => null, (e: Error) => e);
+    expect(err?.message).toContain(name);
+    expect(err?.message).toContain("SECRET");
+    expect(err?.message).not.toContain("DO_NOT_SHIP");
+  });
+
+  it("a public SDK key builds", async () => {
+    const config = await load({ EXPO_PUBLIC_REVENUECAT_IOS_KEY: "appl_public", EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: "goog_public" });
+    expect(config.extra?.revenueCat).toEqual({ iosKey: "appl_public", androidKey: "goog_public" });
   });
 });
 

@@ -1,5 +1,16 @@
 import type { ExpoConfig } from "expo/config";
 
+// P3.6: RevenueCat's SDK keys ship inside the app, which is fine for the
+// PUBLIC (app-specific) keys. Its SECRET keys are "prefixed `sk_`" and must
+// never be embedded (RevenueCat's authentication docs). A secret pasted into
+// one of these variables would ship to every user, so the build refuses it,
+// naming the variable, never the value.
+for (const name of ["EXPO_PUBLIC_REVENUECAT_IOS_KEY", "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY"]) {
+  if (process.env[name]?.trim().startsWith("sk_")) {
+    throw new Error(`${name} holds a RevenueCat SECRET key (sk_…). Only the public app-specific SDK key may ship in the app.`);
+  }
+}
+
 const config: ExpoConfig = {
   name: "Zeno",
   slug: "zeno",
