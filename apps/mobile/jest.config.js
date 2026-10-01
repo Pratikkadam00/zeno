@@ -40,7 +40,8 @@ module.exports = {
     "src/theme/useZenoTokens.ts",
     "src/theme/motion.ts",
     "src/security/LockOverlay.tsx",
-    "src/discovery/connected-inboxes.ts"
+    "src/discovery/connected-inboxes.ts",
+    "app/security.tsx"
   ],
   coverageReporters: ["text", "json-summary"],
   coverageThreshold: {
@@ -50,6 +51,7 @@ module.exports = {
     "./src/theme/useZenoTokens.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
     "./src/theme/motion.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
     "./src/security/LockOverlay.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
-    "./src/discovery/connected-inboxes.ts": { statements: 100, branches: 100, functions: 100, lines: 100 }
+    "./src/discovery/connected-inboxes.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+    "./app/security.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 }
   }
 };

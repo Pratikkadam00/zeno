@@ -50,8 +50,11 @@ vi.mock("expo-local-authentication", () => biometricMocks);
 
 const {
   canUseBiometrics,
+  describeLockout,
   hasPin,
   loadLockState,
+  lockoutDurationFor,
+  maxLockoutDurationMs,
   maxPinAttempts,
   nextLockStateAfterFailure,
   recordFailedAttempt,
@@ -87,6 +90,31 @@ describe("nextLockStateAfterFailure", () => {
     const lockedUntilMs = Date.parse(next.lockedUntil!);
     expect(lockedUntilMs).toBeGreaterThanOrEqual(before + 15 * 60 * 1000);
     expect(lockedUntilMs).toBeLessThan(before + 16 * 60 * 1000);
+  });
+});
+
+describe("P3.4: lockout backoff", () => {
+  const MIN = 60 * 1000;
+  it("15 minutes at the 10th wrong PIN, doubling with each one after, capped at 24 hours", () => {
+    expect([9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 1000].map((n) => lockoutDurationFor(n) / MIN)).toEqual([
+      15, 15, 30, 60, 120, 240, 480, 960, 1440, 1440, 1440
+    ]);
+    expect(maxLockoutDurationMs).toBe(24 * 60 * MIN);
+  });
+
+  it("each later wrong PIN is persisted with ITS longer lockout", () => {
+    const before = Date.now();
+    const next = nextLockStateAfterFailure({ locked: false, failedAttempts: maxPinAttempts + 2 });
+    expect(next).toMatchObject({ locked: true, failedAttempts: maxPinAttempts + 3 });
+    const ms = Date.parse(next.lockedUntil!) - before;
+    expect(ms).toBeGreaterThanOrEqual(120 * MIN - 1000);
+    expect(ms).toBeLessThanOrEqual(120 * MIN + 1000);
+  });
+
+  it("describes a lockout in words", () => {
+    expect([1, 15, 30, 60, 120, 1440].map((m) => describeLockout(m * MIN))).toEqual([
+      "1 minute", "15 minutes", "30 minutes", "1 hour", "2 hours", "24 hours"
+    ]);
   });
 });
 

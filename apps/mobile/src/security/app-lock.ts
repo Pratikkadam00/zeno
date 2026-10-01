@@ -17,6 +17,24 @@ export type LockState = {
 
 export const maxPinAttempts = 10;
 export const lockoutDurationMs = 15 * 60 * 1000;
+export const maxLockoutDurationMs = 24 * 60 * 60 * 1000;
+
+// P3.4 backoff: the 10th wrong PIN locks for 15 minutes, and every wrong PIN
+// after that (the counter is kept until a successful unlock) doubles it: 30 min,
+// 1 h, 2 h ... capped at 24 h. Before this each one cost a flat 15 minutes, 96
+// guesses a day; now a guesser who waits gets about one a day after the 17th.
+export function lockoutDurationFor(failedAttempts: number): number {
+  const doublings = Math.min(Math.max(0, failedAttempts - maxPinAttempts), 7);
+  return Math.min(maxLockoutDurationMs, lockoutDurationMs * 2 ** doublings);
+}
+
+/** "15 minutes", "1 hour", "16 hours", "24 hours". */
+export function describeLockout(durationMs: number): string {
+  const minutes = Math.round(durationMs / 60_000);
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+  const hours = Math.round(minutes / 60);
+  return `${hours} hour${hours === 1 ? "" : "s"}`;
+}
 
 // v3: real PBKDF2-HMAC-SHA256 (react-native-quick-crypto, native — expo-crypto
 // has no PBKDF2/HMAC primitive, only plain digests). 600,000 iterations matches
@@ -115,7 +133,7 @@ export async function verifyPin(pin: string): Promise<boolean> {
 export function nextLockStateAfterFailure(current: LockState): LockState {
   const failedAttempts = current.failedAttempts + 1;
   if (failedAttempts >= maxPinAttempts) {
-    const lockedUntil = new Date(Date.now() + lockoutDurationMs).toISOString();
+    const lockedUntil = new Date(Date.now() + lockoutDurationFor(failedAttempts)).toISOString();
     return { locked: true, failedAttempts, lockedUntil };
   }
   return { ...current, failedAttempts };

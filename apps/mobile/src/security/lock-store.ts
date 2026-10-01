@@ -1,8 +1,10 @@
 import { create } from "zustand";
 import {
   canUseBiometrics,
+  describeLockout,
   hasPin as hasPinStored,
   loadLockState,
+  lockoutDurationFor,
   maxPinAttempts,
   recordFailedAttempt,
   resetLockState,
@@ -96,7 +98,7 @@ export const useLockStore = create<LockStore>((set, get) => ({
     const nextLockedUntil = next.lockedUntil ? Date.parse(next.lockedUntil) : null;
     set({ failedAttempts: next.failedAttempts, lockedUntil: nextLockedUntil });
     if (lockoutActive(nextLockedUntil)) {
-      return { ok: false, error: "Too many attempts. Try again in 15 minutes." };
+      return { ok: false, error: `Too many attempts. Try again in ${describeLockout(lockoutDurationFor(next.failedAttempts))}.` };
     }
     const remaining = Math.max(0, maxPinAttempts - next.failedAttempts);
     return { ok: false, error: `Incorrect PIN. ${remaining} attempt${remaining === 1 ? "" : "s"} left.` };

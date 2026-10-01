@@ -56,7 +56,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P3.1 build hardening in `app.config.ts`: no Auto Backup, no cleartext, R8 minify + resource shrink with keep rules; then prebuild, release APK, verify by bytes, full on-device smoke; **F92** (Auto Backup on), **F93** (release not shrunk or obfuscated) (green: CI 36826726239, CodeQL 36826726322 on `aea3587`)
   - [x] P3.2 release console stripping (keep `error`/`warn`); `captureError` never carries tokens or emails (green: CI 36828700036, CodeQL 36828699880 on `87ac086`, which contains P3.2's `68c9fcf`; again on `47211fe`)
   - [x] P3.3 Sentry `beforeSend` scrub (emails, tokens, auth headers, amounts); `sendDefaultPii` false, asserted (green: CI 36834676134, CodeQL 36834676176 on `a74417c`; its own push `3553165` went red on two older intermittent API tests, see "CI on `3553165`")
-  - [ ] P3.4 PIN: salt, derivation, lockout with backoff, nothing in logs; the honest threat model
+  - [~] P3.4 PIN: salt, derivation, lockout with backoff, nothing in logs; the honest threat model; **fixes F98** (Settings checked the PIN with no attempt limit) and adds the backoff; F14 corrected and handed to the owner
   - [ ] P3.5 deep links: every `zeno://` route validates its parameters; `Linking.openURL` only `https:`/`mailto:` on an allowlist
   - [ ] P3.6 no secret in the bundle: `extra` and every `EXPO_PUBLIC_*` on the public-by-design allowlist
   - [ ] P3.7 screen capture blocked on the lock overlay and PIN entry (app-wide `FLAG_SECURE` is the owner's call)
@@ -86,7 +86,7 @@ that closes it.
 | F7 | **`main` is not protected** (GitHub API: `protected: false`, required checks `[]`): force-push and branch deletion are allowed, and nothing requires checks before code lands. | High (integrity of the deploy branch) | owner: the P0.6 steps below | P0.6 |
 | F8 | GitHub's own free protections for public repos are not verifiable without owner auth: secret-scanning **push protection** (rejects a push that contains a secret, server-side), Dependabot **alerts** and **security updates**. | Medium | owner: enable in Settings → Code security | P0.6 |
 | F9 | **FIXED in P1.1.** ~~Magic-link login tokens are written to production logs.~~ Fastify's default request log includes `req.url` with the query string, and `GET /api/v1/auth/verify?token=…` carries the raw token. Verified by a probe with the exact production logger config: the log line held `"url":"/api/v1/auth/verify?token=PROBE-SECRET-MAGIC-TOKEN-123"`. Single-use limits it, but a verify that fails before consuming the token (e.g. 429) leaves a working login token in Render's logs. | High (credential in logs) | me | P1 (`server.ts`) |
-| F14 | The PIN lockout window is measured with the device clock, so someone holding the unlocked phone can move the clock forward past the 15-minute lockout (each cycle still costs 10 attempts and a trip to Settings). No trusted time source on-device; rollback detection is possible. | Low | me | P3 (MASVS) |
+| F14 | **OPEN: owner decision (P3.4); CORRECTED 2026-10-01.** After the first 10 wrong PINs the counter is kept, so each clock-forward cycle wins ONE guess, not 10 (existing test: "after the lockout has elapsed, a wrong PIN re-locks at once"). The options are in `OPEN_ITEMS.md`. The uptime clock expo-device offers stops counting during sleep (Android `SystemClock.uptimeMillis()`, iOS `systemUptime`, read in its native source), so it cannot tell a moved clock from a sleeping phone. Original: The PIN lockout window is measured with the device clock, so someone holding the unlocked phone can move the clock forward past the 15-minute lockout (each cycle still costs 10 attempts and a trip to Settings). No trusted time source on-device; rollback detection is possible. | Low | me | P3 (MASVS) |
 | F15 | **RESOLVED 2026-10-01 (confirmed, no change needed): no paid feature runs on the server.** Every Pro unlock (unlimited subscriptions, category budgets, envelope budgeting; the paywall's own list) runs only on the device, and the AI coach is free, so the server holds nothing paid to gate. The gap this exposed is F96. Original: `checkStatus` trusts the server's plan but falls back to the client's RevenueCat view when the server is unreachable. Client-only features are bypassable by any modified client regardless; what matters is that PAID SERVER features (coach, family, sync) check entitlement server-side. | Medium (to confirm) | me | P2 (authz matrix) |
 | F16 | Local DB encryption is configured (`useSQLCipher: true` in app.config; `expo.sqlite.useSQLCipher=true` in the generated gradle.properties), but never PROVEN at runtime: needs `PRAGMA cipher_version` on a device, or a check that the file header of `zeno.db` is not the plaintext "SQLite format 3". | Medium (unverified claim) | me | P3 (on device) |
 | F10 | **FIXED in P1.4** (server + app). ~~Google sign-in: a nonce is sent to Google but NOT to our API (`/auth/google` gets only the token), so the server cannot bind the ID token to this sign-in (replay of a stolen token). Apple sign-in requests no nonce at all. Needs the server side read in full before a verdict. | Medium (to confirm) | me | P1 (`authStore.ts`) + P2 |
@@ -174,6 +174,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F94 | **OPEN: observed once, not reproduced.** On the first R8 run, the Settings → Home currency sheet drew translucent: the Settings rows showed through the currency list (two captures, 4 s apart, so not mid-animation). The sheet's content sits on `c.surfaceCard`, which is opaque white (`palette.white`). It did NOT reproduce in 5 later attempts: the same R8 build 3 times (persisted state, a fresh install, and the exact first path: onboarding → Sign in → typed email → Add → Settings), once without R8, once with minify only. So it is not an R8 regression; the cause is unknown. Watch for it in P3.8's screen tests and P5's end-to-end runs. | Unknown (visual; once) | me | P3.8 / P5 |
 | F95 | **FIXED 2026-10-01** (found while fixing F18). ~~Amounts written `CA$` were detected as Australian dollars.~~ The currency detector's AUD rule `/A\$/` matched inside `CA$`, and its CAD rule `/C\$/` did not match `CA$` at all, so `CA$12.00` (the way the app itself writes CAD) read as AUD, in email receipts and CSV imports alike. `CA$` now counts as CAD and is subtracted from the `A$` count (no regex lookbehind, for Hermes). Bite-checked: the old rules fail 3 tests. | Medium (currency honesty) | me | open-items pass |
 | F96 | **OPEN: owner decision.** The paywall sells a Family plan ("up to 5 members, $6.99/mo"), but household sharing with up to 5 members is free to everyone: `app/family.tsx` checks no plan, and the server's 5-member cap applies regardless of plan. So the Family plan gives nothing beyond Pro while its label implies it does. Either gate the Family Vault behind the plan (the server must then check entitlement on create and join), or reword the plan. | Medium (truthfulness of what is sold) | owner | before billing ships |
+| F98 | **FIXED in P3.4.** ~~Settings → App lock checked the PIN with no attempt limit.~~ Turning the lock off called `verifyPin()` directly, outside the lock store's counted `tryPin`. Anyone holding the phone with the app unlocked could try every PIN there without a lockout, learn it (people reuse PINs), and switch the lock off. A keychain error also left the screen stuck busy. It now uses `tryPin` (the same 10 attempts and lockout as the lock screen) and fails closed. Bite-checked: the old handler fails 4 screen tests. | Medium | me | P3.4 |
 | F97 | **OPEN (mine): an intermittent CI-only failure, cause not yet known.** `real-pg.test.ts`'s F75 test refuses the sync deletes, then expects only Alice's 2 sync rows to remain after the 503. Twice on CI, other namespaces' rows remained too: `plaid` on `3ad75f7` (a Dependabot branch), `billing`, `family` and `plaid` on `3553165`. It has never failed locally (PGlite). Every delete step is awaited and none retries, and each of those rows is written once and seen in the database before the delete. If those deletes failed under load, that is the designed 503 path, and a retry deletes them. If they remained with no error, it is a deletion bug. The CI log needs a GitHub login, so the assertion now prints the storage errors captured during the request. | Medium until explained (account deletion is a promise to the user) | me | the next occurrence |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
@@ -2938,3 +2939,84 @@ Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vit
 Green on GitHub: CI 36834676134 and CodeQL 36834676176 on `a74417c`, the first green run
 containing P3.3's `3553165`. F97 stays open until a CI failure explains it.
 
+### P3.4 — the PIN — 2026-10-01
+
+**Read, not assumed** (`app-lock.ts`, `lock-store.ts`, `secure-store.ts`,
+`LockOverlay.tsx`, `app/security.tsx`, `app/_layout.tsx`):
+- **Salt:** 16 bytes from `expo-crypto`'s `getRandomBytes`, new on every `setPin`.
+- **Derivation:** PBKDF2-HMAC-SHA256, 600,000 iterations, 32-byte key, through the native
+  `react-native-quick-crypto`. Stored as `v3$600000$<salt>$<hash>`. Older v1/v2 hashes
+  verify once and are upgraded to v3. Compared with `timingSafeEqual`.
+- **Where it lives:** SecureStore with `WHEN_UNLOCKED_THIS_DEVICE_ONLY` (the Android
+  Keystore and the iOS keychain). It is never backed up: Auto Backup is off (P3.1,
+  F92).
+- **PIN length:** 4 to 8 digits. Only digits get through (`replace(/[^0-9]/g, "")`, both
+  screens).
+- **Lockout:** 10 wrong PINs lock for 15 minutes. The state is persisted, so killing the
+  app doesn't reset it. During a lockout even the right PIN is refused without being
+  checked, and biometrics are refused too. The counter is kept until a successful
+  unlock.
+- **Lock on background:** yes. `_layout.tsx` calls `lockNow()` when the app goes from
+  active to inactive or background (so the switcher thumbnail shows the cover), and
+  again on the way back. The overlay is drawn whenever the lock is engaged or not yet
+  hydrated.
+- **No PIN in logs or state:** the stores hold no PIN, only a count and a time. The
+  overlay keeps the digits typed in component state, which is gone when it unmounts on
+  unlock. The only `console` call in `src/security/` is `erase-device.ts`, which logs a
+  step's name and its error, never a PIN (source search). P3.2 strips `console.log` from
+  release builds.
+
+**The honest threat model:**
+- **If the hash ever leaves the device, the PIN is effectively known.** Measured here
+  (Node 24, one core of a Ryzen 9 9900X3D): one guess at 600,000 iterations takes
+  57.0 ms. That is every 4-digit PIN in 9.5 minutes, every 6-digit in 15.8 hours, every
+  8-digit in 66.0 days, on ONE core. Many cores or a GPU divide that. So the iteration
+  count is a speed bump, not the defence.
+- **The real controls are on the device:**
+  - the keystore binding (the hash can't be read without breaking the OS);
+  - the attempt limit and its lockout;
+  - the lock engaging whenever the app leaves the screen.
+- **What the lockout cannot stop:** someone holding the unlocked phone who moves its
+  clock forward (F14). It now has a decision for the owner.
+
+**F98 (new, fixed):** the second PIN check, in Settings, was outside the limit (see its
+row).
+- Fix: `turnOff` calls the store's `tryPin`. Its messages ("Incorrect PIN. 9 attempts
+  left.", the lockout) are shown, the field is cleared, and a keychain error fails
+  closed: the lock stays on, the screen is freed.
+- `turnOn` also no longer sticks busy when the keychain throws.
+
+**Backoff (the plan's "lockout with backoff"):**
+- Before, every wrong PIN after the 10th cost a flat 15 minutes: 96 guesses a day.
+- Now: 15 minutes at the 10th, doubling with each one after (30 min, 1 h, 2 h, 4 h, 8 h,
+  16 h), capped at **24 h** from the 17th. The doubling and the cap are my choice. A
+  legitimate user who mistypes 10 times still waits only 15 minutes.
+- Messages give the real wait ("Try again in 2 hours.").
+
+**Tests:**
+- `src/security/security-screen.rntest.tsx`: 11 new jest tests for `app/security.tsx`,
+  which now has a 100 % per-file floor. It lives under `src/` because every file in
+  `app/` is an expo-router route.
+- `app-lock.test.ts`: 3 backoff tests (the whole schedule, the persisted duration, the
+  wording).
+- `lock-store.test.ts`: the "re-locks at once" test now expects 30 minutes, plus one test
+  for the hours and the cap.
+
+**Bite check: 8 mutations, all caught.** The files were restored byte-identical (`cmp`):
+- the OLD uncounted `verifyPin` turn-off fails 4 screen tests;
+- turn-off without try/catch;
+- turn-on without try/catch;
+- the field not cleared;
+- a flat 15 minutes;
+- no 24 h cap;
+- the flat duration persisted;
+- the message hard-coded.
+
+**Caught on the way:** the first run of the old-handler mutation was "caught" only because
+the suite crashed importing native crypto, which proves nothing. The test now has a
+stand-in for `app-lock`, so the old code loads and fails on its behaviour.
+
+
+Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1765 at
+100 / 99.67 / 100 / 100 · jest 130 / 130, `app/security.tsx` at 100 % on all four.
+Not yet on a device: the P3 gate runs every lock flow on the hardened release APK.

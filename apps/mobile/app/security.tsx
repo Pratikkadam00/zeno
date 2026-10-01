@@ -3,17 +3,17 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { ShieldCheck } from "lucide-react-native";
-import { verifyPin } from "../src/security/app-lock";
 import { useLockStore } from "../src/security/lock-store";
 import { useZenoTheme } from "../src/theme/theme-provider";
 import { fonts } from "../src/theme/zeno";
 
 const MIN_PIN = 4;
 const MAX_PIN = 8;
+const KEYCHAIN_FAILED = "Couldn't reach secure storage. Try again.";
 
 export default function SecurityScreen() {
   const { theme } = useZenoTheme();
-  const { enabled, biometricAvailable, enableWithPin, disable } = useLockStore();
+  const { enabled, biometricAvailable, enableWithPin, disable, tryPin } = useLockStore();
   const [pin, setPin] = useState("");
   const [confirm, setConfirm] = useState("");
   const [current, setCurrent] = useState("");
@@ -26,20 +26,35 @@ export default function SecurityScreen() {
     if (pin.length < MIN_PIN) return setError(`PIN must be at least ${MIN_PIN} digits.`);
     if (pin !== confirm) return setError("PINs don't match.");
     setBusy(true);
-    await enableWithPin(pin);
+    try {
+      await enableWithPin(pin);
+    } catch {
+      setBusy(false);
+      return setError(KEYCHAIN_FAILED);
+    }
     setBusy(false);
     router.back();
   };
 
+  // F98: the PIN is checked through the lock store's COUNTED path, the same 10
+  // attempts and lockout as the lock screen. It used to call verifyPin()
+  // directly, so anyone holding the unlocked app could try every PIN here
+  // without limit, learn it, and switch the lock off. A keychain error fails
+  // closed (the lock stays on) and frees the screen.
   const turnOff = async () => {
     setBusy(true);
-    const ok = await verifyPin(current);
-    if (!ok) {
+    try {
+      const result = await tryPin(current);
+      if (!result.ok) {
+        setCurrent("");
+        return setError(result.error ?? "Incorrect PIN.");
+      }
+      await disable();
+    } catch {
+      return setError(KEYCHAIN_FAILED);
+    } finally {
       setBusy(false);
-      return setError("Incorrect PIN.");
     }
-    await disable();
-    setBusy(false);
     router.back();
   };
 

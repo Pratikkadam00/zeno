@@ -178,9 +178,24 @@ describe("useLockStore — attempts, lockout, biometrics, enable/lockNow", () =>
     await setPin("1357");
     await useLockStore.getState().hydrate();
     useLockStore.setState({ failedAttempts: 10, lockedUntil: Date.now() - 1000 });
+    const before = Date.now();
     const r = await useLockStore.getState().tryPin("0000");
-    expect(r.error).toBe("Too many attempts. Try again in 15 minutes.");
+    // P3.4 backoff: the 11th wrong PIN locks for twice as long as the 10th.
+    expect(r.error).toBe("Too many attempts. Try again in 30 minutes.");
     expect(useLockStore.getState().failedAttempts).toBe(11);
+    const until = useLockStore.getState().lockedUntil!;
+    expect(until - before).toBeGreaterThanOrEqual(30 * 60 * 1000 - 1000);
+    expect(until - before).toBeLessThanOrEqual(30 * 60 * 1000 + 1000);
+  });
+
+  it("the backoff keeps doubling past an hour, and the message says hours (P3.4)", async () => {
+    await setPin("1357");
+    await useLockStore.getState().hydrate();
+    useLockStore.setState({ failedAttempts: 12, lockedUntil: Date.now() - 1000 });
+    expect((await useLockStore.getState().tryPin("0000")).error).toBe("Too many attempts. Try again in 2 hours.");
+    useLockStore.setState({ failedAttempts: 40, lockedUntil: Date.now() - 1000 });
+    expect((await useLockStore.getState().tryPin("0000")).error).toBe("Too many attempts. Try again in 24 hours.");
+    expect(JSON.parse(fakeStore.lockState!)).toMatchObject({ locked: true, failedAttempts: 41 });
   });
 
   it("after the lockout has elapsed, the correct PIN unlocks and clears everything", async () => {

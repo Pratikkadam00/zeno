@@ -3,7 +3,7 @@
 **One place for everything not yet solved.** Each item says who acts, exactly what to
 do, and where the full evidence lives (finding numbers point into
 `docs/HARDENING_LOG.md`). When an item is done it is removed from here and its log
-entry marked fixed. Last updated 2026-10-01, after P3.3.
+entry marked fixed. Last updated 2026-10-01, after P3.4.
 
 ---
 
@@ -17,6 +17,7 @@ real sample, or a product decision.
 | # | Decide | Options (my suggestion first) | Why it matters |
 |---|---|---|---|
 | F96 | What the **Family plan** sells | (a) gate the Family Vault behind the Family plan, and I add a server-side entitlement check on household create/join; or (b) reword the paywall so it doesn't imply something Pro lacks | The paywall sells "Family plan, up to 5 members, $6.99/mo", but household sharing with up to 5 members is free to everyone today (the server caps members regardless of plan; `app/family.tsx` checks no plan). So the plan gives nothing beyond Pro while saying it does. |
+| F14 | What stops someone who holds the **unlocked phone** and moves its **clock forward** past each PIN lockout | (a) build a small native clock that keeps counting through sleep and ignores the wall clock (Android `elapsedRealtime`); a reboot still resets it; or (b) accept it as it is; or (c) an opt-in "erase Zeno's data after N wrong PINs", as iPhones offer (data loss if a child plays with it) | Without a trusted clock, each clock change wins one guess after the first 10. A 4-digit PIN can take up to 9,990 manual clock changes. The uptime clock already installed stops during sleep, so it can't tell a moved clock from a sleeping phone. |
 | F90 | Boot **refusals or warnings** for risky production settings | (a) keep warnings (today); or (b) make them refuse to boot, after you confirm in the Render dashboard that none of these is set: `DEMO_LOGIN_PASSWORD`, `ALLOW_UNVERIFIED_OAUTH_TOKENS`, a `*` or `http://` CORS origin, an `http://` `MONITORING_WEBHOOK_URL` or `COACH_BASE_URL` | The plan says "refuse to boot". I made them warnings because `main` auto-deploys and a dashboard value I can't see could take the API down. Each is already blocked at request time. |
 | F77 | **Logout** and the access token | (a) accept it (the token dies within 15 minutes); or (b) I add a per-session revocation list | After logout, the 15-minute access token keeps working until it expires. The refresh token is revoked at once. |
 | F45 | Paywall line **"…and we never see your bank."** | (a) change it to "…and no bank login required." now; or (b) keep it and reword when Plaid ships | True today (bank connect is dev-only). It becomes false the day Plaid ships. |
@@ -44,9 +45,8 @@ real sample, or a product decision.
 
 | # | Item | When |
 |---|---|---|
-| — | P3.4–P3.9: the PIN review, deep links, no secret in the bundle, screen capture on the lock screens, tests for all 29 screens, a static scan of the release APK | P3, next, in order |
+| — | P3.5–P3.9: deep links, no secret in the bundle, screen capture on the lock screens, tests for all 29 screens, a static scan of the release APK | P3, next, in order |
 | F97 | An intermittent CI-only failure in the account-deletion test: after a refused deletion, other data was left too (twice among the 12 most recent failed CI runs). Cause unknown; the test now prints the storage errors, so the next occurrence explains it. Possibly a real deletion bug, so it is not retried away | the next occurrence |
-| F14 | The PIN lockout uses the device clock, so moving the clock forward skips the 15-minute wait (each cycle still costs 10 attempts) | P3.4 |
 | F16 | SQLCipher encryption of the local database is configured but never proven on a device (check the file header or `PRAGMA cipher_version`; the release build isn't debuggable, so it needs a rooted emulator image or a debug check) | P3 gate |
 | F1 | `ServiceAutocomplete.tsx` has no test | P3.8 |
 | F29 | The Settings screen's *use* of the new inbox count isn't covered by a screen test yet (the hook itself is, at 100 %) | P3.8 |
@@ -65,4 +65,5 @@ real sample, or a product decision.
 | F29 | Settings' "Connected inboxes" always said "None connected", even with Gmail connected | It now reads the device's real list on every visit ("1 inbox", "Unavailable" if the keychain can't be read). |
 | F18 | CSV import labelled every amount USD, even from a non-US bank | US bank formats stay USD. Other files use the currency their own amounts show (€, £, ₹, Rs., CA$, A$, ISO codes). A file of bare numbers uses **your home currency**, an assumption I've stated here, not hidden. Better still would be letting you pick the currency at review; that is a design change, so it's not done. |
 | F95 | Found while fixing F18: amounts written **CA$** (how the app itself writes Canadian dollars) were detected as **Australian** dollars, in email receipts and CSVs | CA$ now counts as CAD. |
+| F98 | Found in P3.4: Settings → App lock checked the PIN with **no attempt limit**, so anyone holding the unlocked app could try every PIN there, learn it, and turn the lock off | It now counts against the same 10 attempts and lockout as the lock screen. Separately, wrong PINs after the 10th now lock for longer each time (15 min, 30 min, 1 h … up to 24 h) instead of a flat 15 minutes. |
 | F15 | "Do paid server features check the plan on the server?" (due in P2, never confirmed) | Confirmed: every Pro feature (unlimited subscriptions, category and envelope budgets) runs only on the device, and the AI coach is free, so the server holds nothing paid to gate. The real gap this exposed is F96 above. |
