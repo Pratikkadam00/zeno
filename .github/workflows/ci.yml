@@ -65,8 +65,18 @@ jobs:
       # RN component tests live in an isolated jest project (apps/mobile,
       # `*.rntest.tsx`) because react-native can't load under vitest's node
       # environment. `npm test` does not reach them; this step does.
+      # A failed coverage FLOOR prints only to the raw log (the github-actions
+      # reporter annotates failing tests, not thresholds), so the floor lines and
+      # the log's tail become an annotation readable through the public API.
       - name: RN component tests + coverage floor (jest)
-        run: npm run test:rn:coverage
+        shell: bash
+        run: |
+          set -o pipefail
+          if ! npm run test:rn:coverage 2>&1 | tee "$RUNNER_TEMP/jest.log"; then
+            msg=$({ grep -E "coverage threshold|not met|Tests:|Test Suites:" "$RUNNER_TEMP/jest.log"; echo "..."; tail -n 25 "$RUNNER_TEMP/jest.log"; } | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'BEGIN{ORS="%0A"} {print}')
+            echo "::error title=jest failed::${msg}"
+            exit 1
+          fi
 
       # Coverage floor (standards P5.5). Thresholds live in vitest.config.ts and
       # only ratchet upward; a regression below any floor fails this step.
