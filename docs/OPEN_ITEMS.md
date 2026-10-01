@@ -46,7 +46,6 @@ real sample, or a product decision.
 | # | Item | When |
 |---|---|---|
 | — | P3.5–P3.9: deep links, no secret in the bundle, screen capture on the lock screens, tests for all 29 screens, a static scan of the release APK | P3, next, in order |
-| F99 | An intermittent CI-only failure in the jest (screen) tests, once, on P3.4's push. The next run passed with no test changed. Jest failures are now GitHub annotations, so the next occurrence names the test | the next occurrence |
 | F97 | An intermittent CI-only failure in the account-deletion test: after a refused deletion, other data was left too (twice among the 12 most recent failed CI runs). Cause unknown; the test now prints the storage errors, so the next occurrence explains it. Possibly a real deletion bug, so it is not retried away | the next occurrence |
 | F16 | SQLCipher encryption of the local database is configured but never proven on a device (check the file header or `PRAGMA cipher_version`; the release build isn't debuggable, so it needs a rooted emulator image or a debug check) | P3 gate |
 | F1 | `ServiceAutocomplete.tsx` has no test | P3.8 |
@@ -67,4 +66,5 @@ real sample, or a product decision.
 | F18 | CSV import labelled every amount USD, even from a non-US bank | US bank formats stay USD. Other files use the currency their own amounts show (€, £, ₹, Rs., CA$, A$, ISO codes). A file of bare numbers uses **your home currency**, an assumption I've stated here, not hidden. Better still would be letting you pick the currency at review; that is a design change, so it's not done. |
 | F95 | Found while fixing F18: amounts written **CA$** (how the app itself writes Canadian dollars) were detected as **Australian** dollars, in email receipts and CSVs | CA$ now counts as CAD. |
 | F98 | Found in P3.4: Settings → App lock checked the PIN with **no attempt limit**, so anyone holding the unlocked app could try every PIN there, learn it, and turn the lock off | It now counts against the same 10 attempts and lockout as the lock screen. Separately, wrong PINs after the 10th now lock for longer each time (15 min, 30 min, 1 h … up to 24 h) instead of a flat 15 minutes. |
+| F99 | An intermittent CI failure in the screen tests (twice) | Found once CI could report it: the first test in a suite timed out while CI's cold cache transformed the app's modules (about 2 s even on a fast machine; the limit was 5 s). The limit is now 30 s. |
 | F15 | "Do paid server features check the plan on the server?" (due in P2, never confirmed) | Confirmed: every Pro feature (unlimited subscriptions, category and envelope budgets) runs only on the device, and the AI coach is free, so the server holds nothing paid to gate. The real gap this exposed is F96 above. |

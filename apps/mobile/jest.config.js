@@ -20,6 +20,12 @@ module.exports = {
   // annotation, readable from the public API; it is inert off GitHub Actions.
   // Without it a CI-only jest failure showed only "exit code 1".
   reporters: ["default", "github-actions"],
+  // A suite's FIRST render pays for transforming the RN module graph, and CI
+  // starts with a cold transform cache. Measured with --no-cache on a 24-core
+  // dev machine: ~2.1 s for that first test (206 ms warm). On GitHub's runner it
+  // passed jest's default 5 s (F99: security-screen.rntest.tsx's first test,
+  // CI 36840880514). 30 s leaves margin; a test that truly hangs still fails.
+  testTimeout: 30_000,
   setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
   // Reanimated 4 runs on react-native-worklets, whose `.native` entry throws
   // under jest ("Native part of Worklets doesn't seem to be initialized").
