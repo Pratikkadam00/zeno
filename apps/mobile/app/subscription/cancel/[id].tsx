@@ -62,12 +62,27 @@ function getGenericSteps(serviceName: string): string[] {
   ];
 }
 
-function getAnnualAmountMinor(amountMinor: number, cycle: BillingCycle): number {
+// F117: null for a trial or an unknown cycle, as on the subscription page and
+// in @zeno/shared's monthlyAmount: no recurring yearly figure to promise.
+function getAnnualAmountMinor(amountMinor: number, cycle: BillingCycle): number | null {
   if (cycle === "weekly")    return amountMinor * 52;
   if (cycle === "quarterly") return amountMinor * 4;
   if (cycle === "annual")    return amountMinor;
-  return amountMinor * 12;
+  if (cycle === "monthly")   return amountMinor * 12;
+  return null;
 }
+
+// F119: the stored price is PER BILLING CYCLE. The success card labelled it
+// "Every month" whatever the cycle, so an annual $99 plan read "Every month
+// +$99.00" and a weekly $5 one "Every month +$5.00".
+const PER_CHARGE_LABEL: Record<BillingCycle, string> = {
+  weekly: "Every week",
+  monthly: "Every month",
+  quarterly: "Every quarter",
+  annual: "Every year",
+  trial: "Each charge",
+  unknown: "Each charge"
+};
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
@@ -222,7 +237,7 @@ export default function SubscriptionCancelScreen() {
           </View>
 
           {/* Savings card */}
-          {annualMinor > 0 ? (
+          {annualMinor !== null && annualMinor > 0 ? (
             <View style={styles.savingsCard}>
               <View style={styles.savingsIcon} accessible={false} importantForAccessibility="no-hide-descendants">
                 <PiggyBank size={18} color={theme.success} strokeWidth={2} />
@@ -325,7 +340,7 @@ export default function SubscriptionCancelScreen() {
                 accessible
                 accessibilityRole="summary"
                 accessibilityLiveRegion="polite"
-                accessibilityLabel={`${sub.name} marked cancelled, pending verification. We'll confirm there's no charge around ${formatShortDate(sub.nextRenewalDate)}. If it stops, you keep ${formatMoney(annualMinor, sub.price.currency)} a year.`}
+                accessibilityLabel={`${sub.name} marked cancelled, pending verification. We'll confirm there's no charge around ${formatShortDate(sub.nextRenewalDate)}. If it stops, you keep ${annualMinor !== null ? `${formatMoney(annualMinor, sub.price.currency)} a year` : `${formatMoney(sub.price.amountMinor, sub.price.currency)} each charge`}.`}
               >
                 <Stamp tone="neutral" size="md" angle={-4} sub={`REPORTED ${formatShortDate(new Date().toISOString()).toUpperCase()}`} animate>
                   Pending
@@ -334,8 +349,10 @@ export default function SubscriptionCancelScreen() {
                   We&apos;ll confirm there&apos;s no charge around {formatShortDate(sub.nextRenewalDate)}. If it stops, this comes back to you:
                 </Text>
                 <View style={{ alignSelf: "stretch", borderTopWidth: 1, borderColor: theme.rule, marginTop: 12 }}>
-                  <LedgerLine label="Every month" value={`+${formatMoney(sub.price.amountMinor, sub.price.currency)}`} valueColor={theme.stampVerified} />
-                  <LedgerLine label="Every year" value={`+${formatMoney(annualMinor, sub.price.currency)}`} valueColor={theme.stampVerified} strong size={16} />
+                  <LedgerLine label={PER_CHARGE_LABEL[sub.billingCycle]} value={`+${formatMoney(sub.price.amountMinor, sub.price.currency)}`} valueColor={theme.stampVerified} />
+                  {annualMinor !== null && sub.billingCycle !== "annual" ? (
+                    <LedgerLine label="Every year" value={`+${formatMoney(annualMinor, sub.price.currency)}`} valueColor={theme.stampVerified} strong size={16} />
+                  ) : null}
                 </View>
                 <Button variant="primary" size="lg" fullWidth onPress={() => router.replace("/dashboard")} style={{ marginTop: 20 }}>
                   Done

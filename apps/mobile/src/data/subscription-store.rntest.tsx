@@ -207,6 +207,21 @@ describe("mutations", () => {
     expect(JSON.parse(mockMeta.get("price.history.v1")!)[id]).toHaveLength(1);
     act(() => { result.current.addSubscription({ name: "Kino", category: "entertainment", amountMinor: 900, billingCycle: "monthly", currency: "EUR", source: "email" }); });
     expect(result.current.subscriptions[0]).toMatchObject({ price: { currency: "EUR" }, source: "email" });
+    expect(result.current.subscriptions[0].notes).toBeUndefined();
+  });
+
+  it("addSubscription keeps a note and the reminders chosen for it (F120, F121)", async () => {
+    const { result } = await mounted([]);
+    let id = "";
+    act(() => {
+      id = result.current.addSubscription({
+        name: "Gym", category: "health", amountMinor: 4000, billingCycle: "monthly",
+        notes: "Family plan", notificationSettings: { sevenDay: false, threeDay: true, dayOf: false }
+      });
+    });
+    expect(mockRows.get(id)?.notes).toBe("Family plan");
+    expect(result.current.notificationSettings[id]).toEqual({ sevenDay: false, threeDay: true, dayOf: false });
+    expect(JSON.parse(mockMeta.get("notification.settings.v1")!)[id]).toEqual({ sevenDay: false, threeDay: true, dayOf: false });
   });
 
   it("two adds in one event both land (refs, not render snapshots)", async () => {

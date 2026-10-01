@@ -68,7 +68,9 @@ module.exports = {
     // only ever go up, to 100 % lines. Started at the measured baseline:
     // app/ 117/1515 lines, src/components/ 118/307, components/ 0/20.
     // P3.8d-1 measured app/ at 670/1527 lines, 790/1763 statements.
-    "./app/": { lines: 43.87, statements: 44.8 },
+    // P3.8d-2 measured app/ at 815/1528 lines, 961/1765 statements (jest
+    // truncates: 53.33, 54.44).
+    "./app/": { lines: 53.33, statements: 54.44 },
     // Finished screens are held file by file. Exact paths, since "(tabs)" in a
     // glob is pattern syntax.
     "./app/(tabs)/dashboard.tsx": { lines: 100, statements: 100 },
@@ -77,6 +79,8 @@ module.exports = {
     "./app/(tabs)/calendar.tsx": { lines: 100 },
     "./app/(tabs)/discover.tsx": { lines: 100, statements: 100 },
     "./app/subscription/[id].tsx": { lines: 100, statements: 100 },
+    "./app/subscription/cancel/[id].tsx": { lines: 100, statements: 100 },
+    "./app/subscription/add.tsx": { lines: 100, statements: 100 },
     // P3.8b: every shared component is fully covered, so each FILE is held at
     // 100 % (a glob key is checked file by file).
     "./src/components/**/*.{ts,tsx}": { lines: 100, statements: 100 },

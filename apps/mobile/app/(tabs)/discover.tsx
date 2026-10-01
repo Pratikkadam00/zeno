@@ -25,6 +25,7 @@ import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
 import { spacing } from "../../src/theme/spacing";
 import { withAlpha } from "../../src/utils/subscription-ui";
+import { isAmountText } from "../../src/utils/amount-text";
 import { formatMoney } from "../../src/utils/format";
 import { isIsoDay } from "../../src/utils/iso-day";
 import { shareText } from "../../src/utils/share";
@@ -759,11 +760,6 @@ function EditSubscriptionModal({ candidate, onClose, onSave }: {
 }
 
 // ─── Pure helpers (logic unchanged) ──────────────────────────────────────────
-
-/** A non-negative amount with at most 2 decimals ("9", "9.", "9.99"); not empty. */
-function isAmountText(text: string): boolean {
-  return /^\d+(\.\d{0,2})?$/.test(text.trim());
-}
 
 async function readPickedText(asset: DocumentPicker.DocumentPickerAsset): Promise<string> {
   if (asset.file) return asset.file.text();

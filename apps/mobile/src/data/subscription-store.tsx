@@ -23,6 +23,11 @@ type CreateSubscriptionInput = {
   billingCycle: BillingCycle;
   nextRenewalDate?: string;
   source?: Subscription["source"];
+  /** F121: the add form's note; it was collected and dropped. */
+  notes?: string;
+  /** F120: the add form's three reminder switches; every add used to get
+   *  all three whatever the user had switched off. Defaults to all on. */
+  notificationSettings?: SubscriptionNotificationSettings;
 };
 
 type UpdateSubscriptionInput = Partial<{
@@ -391,9 +396,10 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
           nextRenewalDate: input.nextRenewalDate,
           status: "active",
           ownerProfileId: "profile_local",
-          source: input.source ?? "manual"
+          source: input.source ?? "manual",
+          ...(input.notes ? { notes: input.notes } : {})
         };
-        const nextSettings = withNotificationSettingsEntry(notificationSettingsRef.current, id, defaultNotificationSettings);
+        const nextSettings = withNotificationSettingsEntry(notificationSettingsRef.current, id, input.notificationSettings ?? defaultNotificationSettings);
         notificationSettingsRef.current = nextSettings;
         setNotificationSettings(nextSettings);
         persistNotificationSettings(nextSettings);

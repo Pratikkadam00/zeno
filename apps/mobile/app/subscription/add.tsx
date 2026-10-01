@@ -24,6 +24,7 @@ import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
 import { fonts } from "../../src/theme/zeno";
 import { spacing } from "../../src/theme/spacing";
+import { isAmountText } from "../../src/utils/amount-text";
 import { getAvatarStyle, withAlpha } from "../../src/utils/subscription-ui";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -91,7 +92,9 @@ export default function AddSubscriptionScreen() {
   const [name, setName]             = useState("");
   const [serviceSlug, setSlug]      = useState<string | undefined>(undefined);
   const [category, setCategory]     = useState<SubscriptionCategory>("other");
-  const [amount, setAmount]         = useState("9.99");
+  // F123: empty, not "9.99". A custom (or unpriced catalog) service used to be
+  // saved at $9.99 unless the user noticed and changed a price they never typed.
+  const [amount, setAmount]         = useState("");
   const [billingCycle, setBilling]  = useState<BillingCycle>("monthly");
   const [notes, setNotes]           = useState("");
   const [isTrial, setIsTrial]       = useState(false);
@@ -110,10 +113,10 @@ export default function AddSubscriptionScreen() {
   const matches = useMemo(() => suggestions(query), [query, suggestions]);
   const popularServices = useMemo(() => getPopularServices().slice(0, 8), []);
 
-  const formValid = useMemo(() => {
-    const parsed = Number.parseFloat(amount || "0");
-    return name.trim().length > 0 && Number.isFinite(parsed) && parsed > 0;
-  }, [amount, name]);
+  // F122: the amount must be one a keyboard user meant ("9.99", not "1,99" or
+  // "9.99.9", which parseFloat read as 1 and 9.99), and more than zero.
+  const amountValid = isAmountText(amount) && Number(amount) > 0;
+  const formValid = name.trim().length > 0 && amountValid;
 
   /** Autofill the details form from a picked catalog service. */
   function applyService(service: Service) {
@@ -128,6 +131,9 @@ export default function AddSubscriptionScreen() {
     } else if (service.defaultAnnualPrice != null) {
       setAmount(service.defaultAnnualPrice.toFixed(2));
       setBilling("annual");
+    } else {
+      // F123: no catalog price. Don't carry over the previous pick's price.
+      setAmount("");
     }
   }
 
@@ -177,7 +183,7 @@ export default function AddSubscriptionScreen() {
       router.push("/paywall");
       return;
     }
-    const amountMinor = Math.round(Number.parseFloat(amount || "0") * 100);
+    const amountMinor = Math.round(Number(amount) * 100);
     addSubscription({
       name: name.trim() || "New subscription",
       serviceSlug,
@@ -187,7 +193,10 @@ export default function AddSubscriptionScreen() {
       // conversion date — so the Trial Guardian and notifications can track it.
       billingCycle: isTrial ? "trial" : billingCycle,
       nextRenewalDate: renewalDate.toISOString(),
-      source: "manual"
+      source: "manual",
+      // F121, F120: the note and the reminder switches were shown, then dropped.
+      notes: notes.trim() || undefined,
+      notificationSettings: { sevenDay: notify7days, threeDay: notify3days, dayOf: notifyOnDay }
     });
     router.back();
   }
