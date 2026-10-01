@@ -73,6 +73,46 @@ export function pgSslConfig(env: NodeJS.ProcessEnv = process.env): undefined | {
 
 let pool: Pool | null = null;
 
+// F102: operations on one row run in the order they were ISSUED. The pool runs
+// queries on up to 5 connections, and a real server finishes each in its own
+// time, so before this a fire-and-forget upsert issued just before a delete
+// could land AFTER it: account deletion answered "deleted" while the row came
+// back (the next boot then reloaded it, a deleted user's Plaid token included),
+// and two quick upserts of one key could leave the OLDER value. PGlite runs
+// one connection in order, which is why only CI's Postgres server showed it
+// (F97). A delete-by-field (which matches rows, not one key) first waits for
+// every write already in flight in its namespace.
+const tails = new Map<string, Promise<boolean>>();
+const inFlightByNamespace = new Map<string, Set<Promise<boolean>>>();
+
+function inOrder(namespace: string, key: string, op: () => Promise<boolean>): Promise<boolean> {
+  const id = `${namespace}\u0000${key}`;
+  // Every op resolves (failures are logged and turned into false), so a
+  // predecessor never blocks its successor.
+  const run = (tails.get(id) ?? Promise.resolve(true)).then(op);
+  tails.set(id, run);
+  let inFlight = inFlightByNamespace.get(namespace);
+  if (!inFlight) inFlightByNamespace.set(namespace, (inFlight = new Set()));
+  inFlight.add(run);
+  void run.then(() => {
+    if (tails.get(id) === run) tails.delete(id);
+    inFlight.delete(run);
+    // A set is created only when none exists and removed only once empty, so
+    // this is always the namespace's current set.
+    if (inFlight.size === 0) inFlightByNamespace.delete(namespace);
+  });
+  return run;
+}
+
+/** Rows with an operation still queued or running (0 once everything has settled; for tests). */
+export function storageOpsInFlight(): number {
+  return tails.size;
+}
+
+async function settleNamespace(namespace: string): Promise<void> {
+  await Promise.all([...(inFlightByNamespace.get(namespace) ?? [])]);
+}
+
 function getPool(): Pool | null {
   if (!pgEnabled()) return null;
   if (!pool) {
@@ -117,18 +157,29 @@ function logStorageFailure(op: "persist" | "delete", namespace: string, key: str
 export async function kvPersistAwait(namespace: string, key: string, value: unknown): Promise<boolean> {
   const p = getPool();
   if (!p) return true;
+  // Serialised now, when issued: the value is fixed even if the caller mutates
+  // it later. A value that can't be serialised fails like a write does (logged, false).
+  let json: string;
   try {
-    await p.query(
-      `INSERT INTO kv_store (namespace, key, value, updated_at)
-       VALUES ($1, $2, $3::jsonb, now())
-       ON CONFLICT (namespace, key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
-      [namespace, key, JSON.stringify(value)]
-    );
-    return true;
+    json = JSON.stringify(value);
   } catch (err) {
     logStorageFailure("persist", namespace, key, err);
     return false;
   }
+  return inOrder(namespace, key, async () => {
+    try {
+      await p.query(
+        `INSERT INTO kv_store (namespace, key, value, updated_at)
+         VALUES ($1, $2, $3::jsonb, now())
+         ON CONFLICT (namespace, key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+        [namespace, key, json]
+      );
+      return true;
+    } catch (err) {
+      logStorageFailure("persist", namespace, key, err);
+      return false;
+    }
+  });
 }
 
 /** Mirror a single key's latest value (upsert). Fire-and-forget — the in-memory
@@ -147,13 +198,15 @@ export function kvPersist(namespace: string, key: string, value: unknown): void 
 export async function kvDeleteAwait(namespace: string, key: string): Promise<boolean> {
   const p = getPool();
   if (!p) return true;
-  try {
-    await p.query("DELETE FROM kv_store WHERE namespace = $1 AND key = $2", [namespace, key]);
-    return true;
-  } catch (err) {
-    logStorageFailure("delete", namespace, key, err);
-    return false;
-  }
+  return inOrder(namespace, key, async () => {
+    try {
+      await p.query("DELETE FROM kv_store WHERE namespace = $1 AND key = $2", [namespace, key]);
+      return true;
+    } catch (err) {
+      logStorageFailure("delete", namespace, key, err);
+      return false;
+    }
+  });
 }
 
 /** Remove EVERY row of a namespace whose JSON value has `field` equal to
@@ -165,6 +218,7 @@ export async function kvDeleteAwait(namespace: string, key: string): Promise<boo
 export async function kvDeleteByValueField(namespace: string, field: string, value: string): Promise<boolean> {
   const p = getPool();
   if (!p) return true;
+  await settleNamespace(namespace);
   try {
     await p.query("DELETE FROM kv_store WHERE namespace = $1 AND value->>$2 = $3", [namespace, field, value]);
     return true;
@@ -185,6 +239,7 @@ export function kvDelete(namespace: string, key: string): void {
 export async function kvClear(namespace: string): Promise<void> {
   const p = getPool();
   if (!p) return;
+  await settleNamespace(namespace);
   try {
     await p.query("DELETE FROM kv_store WHERE namespace = $1", [namespace]);
   } catch (err) {

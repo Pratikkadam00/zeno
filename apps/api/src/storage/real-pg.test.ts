@@ -279,7 +279,12 @@ describe(`real Postgres (${process.env.TEST_DATABASE_URL ? "server" : "PGlite"})
     await app.inject({ method: "POST", url: "/api/v1/sync/push", headers: auth(alice.token), payload: { encryptedChanges: [change("a1", 1, "alice-cipher")] } });
     await app.inject({ method: "GET", url: "/api/v1/billing/entitlement", headers: auth(alice.token) }); // verified (RevenueCat faked), cached, persisted
     plaid.storePlaidItem(alice.accountId, { accessToken: "alice-bank", itemId: "item-a" });
-    await until(async () => ["plaid", "billing", "family", "sync"].every((ns) => rows().then((all) => all.some((r) => r.namespace === ns))), "Alice's data persisted");
+    // F97: Array.every does not await, so the old check (a Promise per
+    // namespace, each truthy) passed at once and waited for nothing.
+    await until(async () => {
+      const all = await rows();
+      return ["plaid", "billing", "family", "sync"].every((ns) => all.some((r) => r.namespace === ns));
+    }, "Alice's data persisted");
 
     // A slow, uneven database, as on a real server where each pooled
     // connection finishes in its own time: writes outside the auth namespaces
@@ -317,7 +322,12 @@ describe(`real Postgres (${process.env.TEST_DATABASE_URL ? "server" : "PGlite"})
     await app.inject({ method: "POST", url: "/api/v1/family/create", headers: auth(alice.token), payload: { ownerName: "Alice" } });
     await app.inject({ method: "GET", url: "/api/v1/billing/entitlement", headers: auth(alice.token) }); // verified (RevenueCat faked), cached, persisted
     plaid.storePlaidItem(alice.accountId, { accessToken: "a-bank", itemId: "i" });
-    await until(async () => ["plaid", "billing", "family", "sync"].every((ns) => rows().then((all) => all.some((r) => r.namespace === ns))), "Alice's data persisted");
+    // F97: Array.every does not await, so the old check (a Promise per
+    // namespace, each truthy) passed at once and waited for nothing.
+    await until(async () => {
+      const all = await rows();
+      return ["plaid", "billing", "family", "sync"].every((ns) => all.some((r) => r.namespace === ns));
+    }, "Alice's data persisted");
     const aliceRows = async () => (await rows()).filter((r) => `${r.key} ${JSON.stringify(r.value)}`.includes(alice.accountId));
 
     // The database refuses every delete of the sync namespace, once each.
@@ -438,5 +448,108 @@ describe(`real Postgres (${process.env.TEST_DATABASE_URL ? "server" : "PGlite"})
     const after = await pullOnce(second, refreshed);
     expect(after).toHaveLength(1);
     expect(after[0]).toMatchObject({ entityId: "sub_r", encryptedPayload: "cipher-7" });
+  });
+  /** Holds INSERTs into `namespace` until `release()`, and reports when each held one finished. */
+  async function holdInserts(namespace: string) {
+    const pgModule = await import("pg");
+    const Pool = pgModule.default.Pool;
+    const original = Pool.prototype.query as (...a: unknown[]) => Promise<unknown>;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const landed: Promise<unknown>[] = [];
+    const deletes: Promise<unknown>[] = [];
+    Pool.prototype.query = function (this: unknown, ...args: unknown[]) {
+      const text = typeof args[0] === "string" ? args[0] : "";
+      const ns = Array.isArray(args[1]) ? String(args[1][0]) : "";
+      if (ns === namespace && /^\s*INSERT/i.test(text) && landed.length === 0) {
+        const done = gate.then(() => original.apply(this, args));
+        landed.push(done);
+        return done;
+      }
+      const result = original.apply(this, args);
+      if (ns === namespace && /^\s*DELETE/i.test(text)) deletes.push(result);
+      return result;
+    } as typeof Pool.prototype.query;
+    return { release, landed, deletes, restore: () => { Pool.prototype.query = original as typeof Pool.prototype.query; } };
+  }
+
+  it("F102: a write still in flight when the account is deleted cannot bring the row back", async () => {
+    const { app, plaid } = await boot();
+    const alice = await signIn(app, "race-alice@zeno.test");
+    const held = await holdInserts("plaid");
+    try {
+      // The bank-item write is issued but held in flight (a slow connection).
+      plaid.storePlaidItem(alice.accountId, { accessToken: "alice-bank", itemId: "item-a" });
+      // Released once the deletion's own plaid query has FINISHED (so, without
+      // ordering, the write lands after it), or after 1 s if the deletion
+      // (correctly) waits for the write first: never a deadlock.
+      const timer = setTimeout(held.release, 1_000);
+      const deleting = app.inject({ method: "DELETE", url: "/api/v1/account", headers: auth(alice.token) });
+      await until(async () => held.deletes.length > 0, "the deletion's plaid query to start");
+      void Promise.all(held.deletes).then(held.release);
+      const deleted = await deleting;
+      clearTimeout(timer);
+      held.release();
+      await Promise.all(held.landed);
+      expect(deleted.json().data).toEqual({ deleted: true });
+      expect((await rows()).filter((r) => r.namespace === "plaid")).toEqual([]);
+    } finally {
+      held.restore();
+    }
+  });
+
+  it("F102: account deletion's delete-by-owner waits for a sync write already in flight", async () => {
+    const { app } = await boot();
+    const alice = await signIn(app, "race-sync@zeno.test");
+    const held = await holdInserts("sync");
+    try {
+      // A push whose durable write is held in flight.
+      const pushing = app.inject({ method: "POST", url: "/api/v1/sync/push", headers: auth(alice.token), payload: { encryptedChanges: [change("s1", 1, "cipher")] } });
+      await until(async () => held.landed.length > 0, "the push's write to be issued");
+      const timer = setTimeout(held.release, 1_000);
+      const deleting = app.inject({ method: "DELETE", url: "/api/v1/account", headers: auth(alice.token) });
+      await until(async () => held.deletes.length > 0, "the deletion's sync query to start");
+      void Promise.all(held.deletes).then(held.release);
+      const [, deleted] = await Promise.all([pushing, deleting]);
+      clearTimeout(timer);
+      held.release();
+      await Promise.all(held.landed);
+      expect(deleted.json().data).toEqual({ deleted: true });
+      expect((await rows()).filter((r) => r.namespace === "sync")).toEqual([]);
+    } finally {
+      held.restore();
+    }
+  });
+
+  it("a value that can't be serialised fails like a write does: logged without the key, false, nothing queued", async () => {
+    const { pg } = await boot();
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await pg.kvPersistAwait("ordering", "secret-key", { n: 1n })).toBe(false);
+    expect(JSON.stringify(consoleError.mock.calls)).toContain("storage write failed");
+    expect(JSON.stringify(consoleError.mock.calls)).not.toContain("secret-key");
+    expect(pg.storageOpsInFlight()).toBe(0);
+    expect((await rows()).filter((r) => r.namespace === "ordering")).toEqual([]);
+  });
+
+  it("F102: two quick writes of one key land in the order they were made (the newer value wins)", async () => {
+    const { pg } = await boot();
+    const held = await holdInserts("ordering");
+    try {
+      pg.kvPersist("ordering", "k", { v: 1 }); // held
+      const second = pg.kvPersistAwait("ordering", "k", { v: 2 });
+      // Without ordering, v2 lands now and the held v1 lands after it.
+      // Released once v2 has landed, or after 1 s if v2 (correctly) waits for v1.
+      const timer = setTimeout(held.release, 1_000);
+      void second.then(held.release);
+      await second;
+      clearTimeout(timer);
+      held.release();
+      await Promise.all(held.landed);
+      expect((await rows()).filter((r) => r.namespace === "ordering").map((r) => r.value)).toEqual([{ v: 2 }]);
+      // Nothing left queued: the per-row queue cleans up after itself.
+      expect(pg.storageOpsInFlight()).toBe(0);
+    } finally {
+      held.restore();
+    }
   });
 });
