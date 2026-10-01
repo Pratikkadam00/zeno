@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { ShieldCheck } from "lucide-react-native";
 import { useLockStore } from "../src/security/lock-store";
+import { useBlockScreenCapture } from "../src/security/screen-capture";
 import { useZenoTheme } from "../src/theme/theme-provider";
 import { fonts } from "../src/theme/zeno";
 
@@ -19,6 +20,8 @@ export default function SecurityScreen() {
   const [current, setCurrent] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // P3.7: no screenshot or recording while a PIN is set or entered here.
+  useBlockScreenCapture("pin-entry");
 
   const digits = (value: string) => value.replace(/[^0-9]/g, "").slice(0, MAX_PIN);
 

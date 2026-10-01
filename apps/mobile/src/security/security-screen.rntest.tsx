@@ -21,6 +21,8 @@ jest.mock("./lock-store", () => {
 // so that if it ever does again, it loads and the tests fail on the BEHAVIOUR
 // (no counted attempt), not on the native crypto import.
 jest.mock("./app-lock", () => ({ verifyPin: jest.fn().mockResolvedValue(false) }));
+const mockBlockCapture = jest.fn();
+jest.mock("./screen-capture", () => ({ useBlockScreenCapture: (key: string) => mockBlockCapture(key) }));
 const mockBack = jest.fn();
 jest.mock("expo-router", () => ({ router: { back: () => mockBack() } }));
 
@@ -102,6 +104,17 @@ describe("turning the lock off (F98)", () => {
     await shown();
     type("Current PIN", "1a2b3c4d5678999");
     expect(screen.getByLabelText("Current PIN").props.value).toBe("12345678");
+  });
+});
+
+describe("P3.7: screen capture", () => {
+  it("is blocked on this screen whether the lock is on (PIN to turn off) or off (PIN being set)", async () => {
+    const { unmount } = await shown();
+    expect(mockBlockCapture).toHaveBeenCalledWith("pin-entry");
+    unmount();
+    mockBlockCapture.mockClear();
+    await shown({ enabled: false });
+    expect(mockBlockCapture).toHaveBeenCalledWith("pin-entry");
   });
 });
 

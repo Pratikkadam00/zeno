@@ -17,6 +17,8 @@ jest.mock("./lock-store", () => {
   const { create } = jest.requireActual("zustand");
   return { useLockStore: create(() => ({})) };
 });
+const mockBlockCapture = jest.fn();
+jest.mock("./screen-capture", () => ({ useBlockScreenCapture: (key: string) => mockBlockCapture(key) }));
 const mockLogout = jest.fn();
 jest.mock("../auth/authStore", () => ({
   useAuthStore: (select: (s: { logout: () => void }) => unknown) => select({ logout: mockLogout })
@@ -59,6 +61,20 @@ async function shown() {
 }
 const pinInput = () => screen.getByLabelText("PIN");
 const dots = () => screen.queryAllByText("•").length;
+
+describe("P3.7: screen capture", () => {
+  it("is blocked from the first frame (the neutral cover) and on the PIN prompt", async () => {
+    useLockStore.setState({ ready: false });
+    const { unmount } = await shown();
+    expect(mockBlockCapture).toHaveBeenCalledWith("lock-overlay");
+    unmount();
+    mockBlockCapture.mockClear();
+    useLockStore.setState({ ready: true });
+    await shown();
+    expect(screen.getByText("Zeno is locked")).toBeTruthy();
+    expect(mockBlockCapture).toHaveBeenCalledWith("lock-overlay");
+  });
+});
 
 describe("before the lock store is ready", () => {
   it("shows only a neutral cover: no PIN prompt, no content, no biometric attempt", async () => {

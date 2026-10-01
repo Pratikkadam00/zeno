@@ -51,7 +51,9 @@ module.exports = {
     "src/theme/motion.ts",
     "src/security/LockOverlay.tsx",
     "src/discovery/connected-inboxes.ts",
-    "app/security.tsx"
+    "app/security.tsx",
+    "src/security/screen-capture.ts",
+    "src/security/HiddenWhileLocked.tsx"
   ],
   coverageReporters: ["text", "json-summary"],
   coverageThreshold: {
@@ -62,6 +64,8 @@ module.exports = {
     "./src/theme/motion.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
     "./src/security/LockOverlay.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
     "./src/discovery/connected-inboxes.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
-    "./app/security.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 }
+    "./app/security.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
+    "./src/security/screen-capture.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+    "./src/security/HiddenWhileLocked.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 }
   }
 };

@@ -143,6 +143,19 @@ describe("P3.6: a RevenueCat SECRET key can never ship", () => {
   });
 });
 
+describe("P3.7 (F104): expo-screen-capture's permissions", () => {
+  it("DETECT_SCREEN_CAPTURE is never blocked: without it the app crashed at launch on Android 14+ (seen on the emulator)", async () => {
+    const config = await load();
+    expect(config.android?.blockedPermissions ?? []).not.toContain("android.permission.DETECT_SCREEN_CAPTURE");
+  });
+
+  it("the module still declares exactly the three permissions reviewed in F104 (re-review on any upgrade that changes them)", () => {
+    const manifest = readFileSync(join(__dirname, "..", "..", "node_modules", "expo-screen-capture", "android", "src", "main", "AndroidManifest.xml"), "utf8");
+    const declared = [...manifest.matchAll(/android:name="([^"]+)"/g)].map((m) => m[1]).sort();
+    expect(declared).toEqual(["android.permission.DETECT_SCREEN_CAPTURE", "android.permission.READ_EXTERNAL_STORAGE", "android.permission.READ_MEDIA_IMAGES"]);
+  });
+});
+
 describe("P3.1 release hardening (F92, F93)", () => {
   it("Android Auto Backup is off, R8 minify and resource shrinking are on, and release traffic is TLS only", async () => {
     const config = await load();

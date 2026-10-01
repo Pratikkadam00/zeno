@@ -15,6 +15,7 @@ import { cleanupNotificationHandlers, setupNotificationHandlers } from "../src/n
 import { registerForPushNotifications, rescheduleAllNotifications } from "../src/notifications/notificationService";
 import { refreshWidgetSnapshot } from "../src/widgets/widgetBridge";
 import { useZenoFonts } from "../src/theme/fonts";
+import { HiddenWhileLocked } from "../src/security/HiddenWhileLocked";
 import { LockOverlay } from "../src/security/LockOverlay";
 import { useLockStore } from "../src/security/lock-store";
 import { isAuthVerifyLink } from "../src/utils/deep-link";
@@ -296,45 +297,50 @@ function RootStack() {
     );
   }
 
+  // Fail-closed: cover the app whenever the lock could apply. Until the lock
+  // store has hydrated (ready) we don't yet know if a PIN is set, so "not
+  // ready" counts as locked, to avoid flashing financial data on cold launch.
+  const covered = canUseApp && (!lockReady || lockEngaged);
+
   return (
     <>
       <StatusBar style={statusBarStyle} />
-      <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: theme.background },
-          headerTintColor: theme.text,
-          headerTitleStyle: { fontWeight: "800" },
-          contentStyle: { backgroundColor: theme.background }
-        }}
-      >
-        <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="coach" options={{ title: "Spend Coach" }} />
-        <Stack.Screen name="spend-twin" options={{ title: "Spend Twin" }} />
-        <Stack.Screen name="family" options={{ title: "Family Vault" }} />
-        <Stack.Screen name="open-banking" options={{ title: "Open Banking" }} />
-        <Stack.Screen name="widgets" options={{ title: "Widgets" }} />
-        <Stack.Screen name="wrapped" options={{ title: "Year in Review" }} />
-        {/* D3: Business / Public API / Partners are removed from consumer nav (kept
-            as files for a future B2B tier). Backend / Open-Banking are dev-only and
-            no longer linked from any consumer surface. */}
-        <Stack.Screen name="backend" options={{ title: "Backend" }} />
-        <Stack.Screen name="settings" options={{ title: "Settings" }} />
-        <Stack.Screen name="profile" options={{ title: "Profile" }} />
-        <Stack.Screen name="security" options={{ title: "Security" }} />
-        <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
-        <Stack.Screen name="budget" options={{ title: "Budget" }} />
-        <Stack.Screen name="budget-recap" options={{ title: "Recap", presentation: "modal" }} />
-        <Stack.Screen name="paywall" options={{ title: "Upgrade" }} />
-        <Stack.Screen name="subscription/add" options={{ title: "Add Subscription" }} />
-        <Stack.Screen name="subscription/[id]" options={{ title: "Subscription" }} />
-        <Stack.Screen name="subscription/cancel/[id]" options={{ title: "Cancel Subscription" }} />
-      </Stack>
-      {/* Fail-closed: cover the app whenever the lock could apply. Until the lock
-          store has hydrated (ready) we don't yet know if a PIN is set, so we treat
-          "not ready" as locked to avoid flashing financial data on cold launch. */}
-      {canUseApp && (!lockReady || lockEngaged) ? <LockOverlay /> : null}
+      {/* F105: while covered, the app is also hidden from accessibility services. */}
+      <HiddenWhileLocked covered={covered}>
+        <Stack
+          screenOptions={{
+            headerStyle: { backgroundColor: theme.background },
+            headerTintColor: theme.text,
+            headerTitleStyle: { fontWeight: "800" },
+            contentStyle: { backgroundColor: theme.background }
+          }}
+        >
+          <Stack.Screen name="login" options={{ headerShown: false }} />
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="coach" options={{ title: "Spend Coach" }} />
+          <Stack.Screen name="spend-twin" options={{ title: "Spend Twin" }} />
+          <Stack.Screen name="family" options={{ title: "Family Vault" }} />
+          <Stack.Screen name="open-banking" options={{ title: "Open Banking" }} />
+          <Stack.Screen name="widgets" options={{ title: "Widgets" }} />
+          <Stack.Screen name="wrapped" options={{ title: "Year in Review" }} />
+          {/* D3: Business / Public API / Partners are removed from consumer nav (kept
+              as files for a future B2B tier). Backend / Open-Banking are dev-only and
+              no longer linked from any consumer surface. */}
+          <Stack.Screen name="backend" options={{ title: "Backend" }} />
+          <Stack.Screen name="settings" options={{ title: "Settings" }} />
+          <Stack.Screen name="profile" options={{ title: "Profile" }} />
+          <Stack.Screen name="security" options={{ title: "Security" }} />
+          <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
+          <Stack.Screen name="budget" options={{ title: "Budget" }} />
+          <Stack.Screen name="budget-recap" options={{ title: "Recap", presentation: "modal" }} />
+          <Stack.Screen name="paywall" options={{ title: "Upgrade" }} />
+          <Stack.Screen name="subscription/add" options={{ title: "Add Subscription" }} />
+          <Stack.Screen name="subscription/[id]" options={{ title: "Subscription" }} />
+          <Stack.Screen name="subscription/cancel/[id]" options={{ title: "Cancel Subscription" }} />
+        </Stack>
+      </HiddenWhileLocked>
+      {covered ? <LockOverlay /> : null}
     </>
   );
 }

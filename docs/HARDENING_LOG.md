@@ -59,7 +59,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P3.4 PIN: salt, derivation, lockout with backoff, nothing in logs; the honest threat model; **fixes F98** (Settings checked the PIN with no attempt limit) and adds the backoff; F14 corrected and handed to the owner (green: CI 36840438554, CodeQL 36840438566 on `2d6a752`, which contains P3.4's `844b49a`; two runs went red in jest on a cold-cache timeout, F99, fixed)
   - [x] P3.5 deep links: every `zeno://` route validates its parameters; `Linking.openURL` only `https:`/`mailto:` on an allowlist; **fixes F100** (anyone's sign-in link signed the phone into their account, and a junk one signed the user out); CI on the way found and fixed **F102** (explaining F97) (green: CI 36847517276, CodeQL 36847517287 on `3b8be1e`, which contains P3.5's `44791e7`)
   - [x] P3.6 no secret in the bundle: `extra` and every `EXPO_PUBLIC_*` on the public-by-design allowlist (none found in the bundle, the config or the built APK; guards added) (green: CI 36849676333, CodeQL 36849676314 on `1801e8d`)
-  - [ ] P3.7 screen capture blocked on the lock overlay and PIN entry (app-wide `FLAG_SECURE` is the owner's call)
+  - [~] P3.7 screen capture blocked on the lock overlay and PIN entry (app-wide `FLAG_SECURE` is the owner's call); proven on the emulator; **fixes F105** (the locked app stayed readable to accessibility services); F104 and F106 logged
   - [ ] P3.8 screen tests for all 29 screens, with a jest floor over `app/**` and `src/components/**`
   - [ ] P3.9 static scan of the release APK (MobSF, else apkleaks + manifest review)
   - [ ] P3 gate: hardened release APK verified on the emulator (every flow in `DEVICE_TEST_FINDINGS.md`); jest floor in CI; MASVS checklist with evidence per control
@@ -176,6 +176,9 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F96 | **OPEN: owner decision.** The paywall sells a Family plan ("up to 5 members, $6.99/mo"), but household sharing with up to 5 members is free to everyone: `app/family.tsx` checks no plan, and the server's 5-member cap applies regardless of plan. So the Family plan gives nothing beyond Pro while its label implies it does. Either gate the Family Vault behind the plan (the server must then check entitlement on create and join), or reword the plan. | Medium (truthfulness of what is sold) | owner | before billing ships |
 | F102 | **FIXED 2026-10-01 (found through F97).** ~~Postgres writes to one row could land out of order.~~ `pg.ts` sent every query straight to a 5-connection pool, and on a real server each connection finishes in its own time. So a fire-and-forget upsert issued just before an account deletion could land AFTER the delete. The API answered "deleted" while the row (a Plaid bank token, an entitlement, a household) was back in Postgres, and the next boot loaded it again: F75's promise broken. Likewise two quick upserts of one key could leave the OLDER value. PGlite runs one connection in order, which is why only CI's server showed it. Now operations on one row run in the order they were issued, and a delete-by-field (account deletion's sync purge) or a namespace clear first waits for every write already in flight in that namespace. Bite-checked on PGlite, no timing involved: the old `pg.ts` fails 2 tests (the deleted user's Plaid row survives; the stale `{v:1}` beats `{v:2}`), and removing the namespace wait fails a third. | High (deleted data resurrected) | me | P3.5 (found in CI) |
 | F103 | **OPEN (mine): one CI-only web build failure, no detail yet.** CI 36845816550 (`44791e7`) failed "Build web" with only "exit code 1". The same build passes here, and that commit changed nothing under `apps/web`. The next run failed earlier (F97), so the build step has not run since. The step now posts its last 40 log lines as an annotation on failure, so a recurrence explains itself. | Low until explained | me | the next occurrence |
+| F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
+| F105 | **FIXED in P3.7 (found on the emulator).** ~~The locked app stayed readable to accessibility services.~~ The lock overlay is drawn on top of the app, but the app underneath stayed in the accessibility tree. With the app locked, `uiautomator dump --compressed` (the nodes accessibility services get) held 77 labelled nodes, every ledger amount included ("$107.46", "Netflix … $15.49 per mo"). So a screen reader, or any app granted accessibility access, could read the finances through the lock. Now `HiddenWhileLocked` hides the app's content (`no-hide-descendants`, `accessibilityElementsHidden`) whenever the overlay is up, on the same condition that draws it, and never remounts the app. Proven on the device: locked, 9 labels, all the lock screen's, no money; unlocked, the ledger is back. Bite-checked in jest. | High (financial data readable while locked) | me | P3.7 |
+| F106 | **OPEN (mine): seen once, not reproduced.** After the first unlock following a fresh install, three screenshots of the unlocked app came back fully black, although the app window no longer carried `FLAG_SECURE`, the display was awake, and the home screen captured normally. In 2 later attempts (a return from background, and a cold start), the unlocked app captured normally at 4 s and at 10 s. Cause unknown. It fails safe (blocking a screenshot, not leaking one). Re-check during P5's end-to-end runs. | Low | me | P5 |
 | F100 | **FIXED in P3.5.** ~~A sign-in link someone else sent was honoured.~~ `_layout.tsx` passed every `zeno://auth/verify?token=` link straight to `verifyMagicLink`, in any state. Someone could request a link for THEIR own email and send the victim `zeno://auth/verify?token=<theirs>`, and one tap signed the victim's phone into the sender's account. A junk token took the failure path, `clearStoredSession()`, which signed a signed-in user OUT; the old test "a failed verification clears any session" had written that down as intended. Now a link is honoured only if this device requested one for that email, the request is unexpired (the server's `expiresInSeconds`), and nobody is signed in. Otherwise it is refused before any server call. After verifying, the access token's `email` claim must match the email typed, or the session is discarded unstored. Bite-checked: the old handler fails 6 tests. | High (account takeover of the app's sync target; forced sign-out) | me | P3.5 |
 | F101 | **OPEN: owner input.** Settings → "Rate Zeno" opens `https://apps.apple.com/` on every platform, so Android users land on Apple's store front page, not Zeno's listing. The fix needs the real listing links (the App Store id and the Play package page), which exist only once the app is published. | Low | owner | before store release |
 | F98 | **FIXED in P3.4.** ~~Settings → App lock checked the PIN with no attempt limit.~~ Turning the lock off called `verifyPin()` directly, outside the lock store's counted `tryPin`. Anyone holding the phone with the app unlocked could try every PIN there without a lockout, learn it (people reuse PINs), and switch the lock off. A keychain error also left the screen stuck busy. It now uses `tryPin` (the same 10 attempts and lockout as the lock screen) and fails closed. Bite-checked: the old handler fails 4 screen tests. | Medium | me | P3.4 |
@@ -3277,3 +3280,85 @@ Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vit
 
 Green on GitHub: CI 36849676333 and CodeQL 36849676314 on `1801e8d`.
 
+### P3.7 — screen capture on the lock screens — 2026-10-01
+
+**Read first, not assumed** (`expo-screen-capture` 56.0.5, installed with
+`npx expo install` for SDK 56; its `.d.ts`, `build/ScreenCapture.js`, the Kotlin
+module and its `AndroidManifest.xml`):
+- `preventScreenCaptureAsync(key)` sets the window's `FLAG_SECURE`.
+  `allowScreenCaptureAsync(key)` clears it only when no key remains, so two screens can
+  each hold their own key.
+- The module's own hook does not handle its promises, which reject where the module is
+  missing.
+- Its manifest adds 3 permissions for the screenshot LISTENER (F104).
+
+**The change:**
+- **`src/security/screen-capture.ts`:** `useBlockScreenCapture(key)` blocks capture
+  while mounted, releases it on unmount, and catches failures, so a failure can never
+  crash the lock screen.
+- **Used on the lock overlay** (`"lock-overlay"`, from its first frame, the neutral
+  cover included) and on **Settings → App lock** (`"pin-entry"`, both when a PIN is set
+  and when it is entered to turn the lock off).
+- **App-wide blocking stays the owner's decision:** it would stop the user's own
+  screenshots too.
+
+**My mistake on the way, caught on the device:**
+- I first removed all 3 permissions with `android.blockedPermissions`. Every unit test
+  passed, but on the emulator the release app CRASHED at launch: "Permission Denial:
+  registerScreenCaptureObserver … requires android.permission.DETECT_SCREEN_CAPTURE".
+- The permissions are reverted, and the trade-off goes to the owner (F104). A test now
+  fails if `DETECT_SCREEN_CAPTURE` is ever blocked, and another fails if the module's
+  permission list changes on an upgrade.
+- A plain `expo prebuild` KEPT the stale `tools:node="remove"` lines, so the next APK
+  still lacked the permissions. `--clean` failed (EBUSY, with no Gradle or Java process
+  alive), so exactly those 3 generated lines were removed by hand.
+- `aapt2 dump permissions` on the rebuilt APK confirms all 3 declared.
+
+**Proven on the emulator** (single-ABI release APK, Android 16, API 36):
+- **Control:** the dashboard captured normally (100 % non-black). The image was looked
+  at, not just measured.
+- **Settings → App lock:** the app window's flags include `SECURE`
+  (`dumpsys window windows`), and the capture is 0.00 % non-black.
+- **After setting a PIN and leaving:** `SECURE` is gone, and the capture is normal again
+  (100 %), so the block is released.
+- **The lock screen** (background, then return): `SECURE`, and 0.00 %.
+- **After unlocking:** see F106. A later return from background and a later cold start
+  both captured normally after unlock (100 %, at 4 s and at 10 s).
+
+**F105, found there and fixed:** see its row.
+- Measured with `uiautomator dump --compressed`. The plain dump lists every view,
+  including ones hidden from accessibility services, so it can't show what TalkBack
+  sees. I first misread it this way, then re-measured the OLD build with `--compressed`
+  to be sure the finding was real: 77 labels while locked, money included.
+- **The fix, on the device:** locked, 9 labels (the lock screen's only), no money;
+  unlocked, 68 labels, the ledger back.
+
+**Tests:**
+- `screen-capture.rntest.tsx`: 2 tests (block and release with the key; failures never
+  escape).
+- `HiddenWhileLocked.rntest.tsx`: 3 tests (hidden when covered; reachable when not;
+  never remounts across lock and unlock).
+- `LockOverlay.rntest.tsx` and `security-screen.rntest.tsx`: each now asserts its block.
+- `app.config.test.ts`: the 2 F104 tests.
+- New 100 % jest floors on `screen-capture.ts` and `HiddenWhileLocked.tsx`.
+
+**Bite check, all caught:**
+- the overlay without its block;
+- the PIN screen without its block;
+- failures uncaught;
+- never released on unmount;
+- `DETECT_SCREEN_CAPTURE` blocked again;
+- the shield never hiding;
+- the shield remounting the app on lock.
+
+`npm audit`: the only added package is `expo-screen-capture`, and no other version
+changed. `scripts/audit-gate.mjs`: PASS.
+
+**For P3.9 (noticed, not changed here):** the release APK declares
+`SYSTEM_ALERT_WINDOW` and `WRITE_EXTERNAL_STORAGE` (max SDK 32). P3.9's manifest review
+must find out which library adds them, and whether they are needed.
+
+
+Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1842 at
+100 / 99.68 / 100 / 100 · jest 153 / 153 (screen-capture.ts and HiddenWhileLocked.tsx at
+100 %) · audit gate PASS.

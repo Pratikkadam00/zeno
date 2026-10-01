@@ -56,6 +56,14 @@ const config: ExpoConfig = {
       "USE_FINGERPRINT",
       "POST_NOTIFICATIONS"
     ]
+    // P3.7 (F104): expo-screen-capture's manifest adds READ_EXTERNAL_STORAGE
+    // (API <= 32), READ_MEDIA_IMAGES (33) and DETECT_SCREEN_CAPTURE (34+) for
+    // its screenshot listener. They are NOT blocked here. Blocking
+    // DETECT_SCREEN_CAPTURE crashed the app at launch on Android 14+ (seen on
+    // the emulator: the module registers a ScreenCaptureCallback in OnCreate).
+    // The two read permissions look removable (on API <= 33 the module only
+    // checks them when a screenshot arrives), but that path has not been run on
+    // a device, so they stay until it has (OPEN_ITEMS F104).
   },
   web: {
     bundler: "metro",

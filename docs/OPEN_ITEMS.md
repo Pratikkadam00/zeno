@@ -3,7 +3,7 @@
 **One place for everything not yet solved.** Each item says who acts, exactly what to
 do, and where the full evidence lives (finding numbers point into
 `docs/HARDENING_LOG.md`). When an item is done it is removed from here and its log
-entry marked fixed. Last updated 2026-10-01, after P3.6.
+entry marked fixed. Last updated 2026-10-01, after P3.7.
 
 ---
 
@@ -18,6 +18,7 @@ real sample, or a product decision.
 |---|---|---|---|
 | F96 | What the **Family plan** sells | (a) gate the Family Vault behind the Family plan, and I add a server-side entitlement check on household create/join; or (b) reword the paywall so it doesn't imply something Pro lacks | The paywall sells "Family plan, up to 5 members, $6.99/mo", but household sharing with up to 5 members is free to everyone today (the server caps members regardless of plan; `app/family.tsx` checks no plan). So the plan gives nothing beyond Pro while saying it does. |
 | F14 | What stops someone who holds the **unlocked phone** and moves its **clock forward** past each PIN lockout | (a) build a small native clock that keeps counting through sleep and ignores the wall clock (Android `elapsedRealtime`); a reboot still resets it; or (b) accept it as it is; or (c) an opt-in "erase Zeno's data after N wrong PINs", as iPhones offer (data loss if a child plays with it) | Without a trusted clock, each clock change wins one guess after the first 10. A 4-digit PIN can take up to 9,990 manual clock changes. The uptime clock already installed stops during sleep, so it can't tell a moved clock from a sleeping phone. |
+| F104 | Two **photo-read permissions** the screen-capture library adds for a feature Zeno doesn't use | (a) let me download an Android 13 emulator image (a large download) to prove they can be removed safely, then remove them; or (b) keep them and file Google Play's photo-permission declaration | The third one, `DETECT_SCREEN_CAPTURE`, must stay: removing it crashed the app at launch, as I found on the emulator. Removing the other two looks safe from the library's code, but has not been run on an Android 13 phone. |
 | F90 | Boot **refusals or warnings** for risky production settings | (a) keep warnings (today); or (b) make them refuse to boot, after you confirm in the Render dashboard that none of these is set: `DEMO_LOGIN_PASSWORD`, `ALLOW_UNVERIFIED_OAUTH_TOKENS`, a `*` or `http://` CORS origin, an `http://` `MONITORING_WEBHOOK_URL` or `COACH_BASE_URL` | The plan says "refuse to boot". I made them warnings because `main` auto-deploys and a dashboard value I can't see could take the API down. Each is already blocked at request time. |
 | F77 | **Logout** and the access token | (a) accept it (the token dies within 15 minutes); or (b) I add a per-session revocation list | After logout, the 15-minute access token keeps working until it expires. The refresh token is revoked at once. |
 | F45 | Paywall line **"…and we never see your bank."** | (a) change it to "…and no bank login required." now; or (b) keep it and reword when Plaid ships | True today (bank connect is dev-only). It becomes false the day Plaid ships. |
@@ -46,7 +47,8 @@ real sample, or a product decision.
 
 | # | Item | When |
 |---|---|---|
-| — | P3.7–P3.9: screen capture blocked on the lock screens, tests for all 29 screens, a static scan of the release APK | P3, next, in order |
+| — | P3.8–P3.9: tests for all 29 screens, a static scan of the release APK (incl. why the APK declares `SYSTEM_ALERT_WINDOW` and `WRITE_EXTERNAL_STORAGE`) | P3, next, in order |
+| F106 | Once, right after the first unlock on a fresh install, screenshots of the unlocked app came back black (the block itself was already off); not reproduced in 2 tries | P5 |
 | F103 | A web build failure seen once on CI with no detail; the build step now reports its own log on failure | the next occurrence |
 | F16 | SQLCipher encryption of the local database is configured but never proven on a device (check the file header or `PRAGMA cipher_version`; the release build isn't debuggable, so it needs a rooted emulator image or a debug check) | P3 gate |
 | F1 | `ServiceAutocomplete.tsx` has no test | P3.8 |
@@ -67,6 +69,7 @@ real sample, or a product decision.
 | F18 | CSV import labelled every amount USD, even from a non-US bank | US bank formats stay USD. Other files use the currency their own amounts show (€, £, ₹, Rs., CA$, A$, ISO codes). A file of bare numbers uses **your home currency**, an assumption I've stated here, not hidden. Better still would be letting you pick the currency at review; that is a design change, so it's not done. |
 | F95 | Found while fixing F18: amounts written **CA$** (how the app itself writes Canadian dollars) were detected as **Australian** dollars, in email receipts and CSVs | CA$ now counts as CAD. |
 | F97 / F102 | The **intermittent account-deletion test** on CI | It was a real bug: on the production database server, a save still in flight when an account was deleted could land after the delete and bring the data back (a bank token included), and two quick saves could leave the older one. Saves to one record now happen in order, and deletion waits for saves already under way. The test also had its own bug (a wait that never waited), now fixed. |
+| F105 | Found in P3.7: while the app was **locked**, a screen reader (or any app with accessibility access) could still **read the whole ledger** behind the lock screen, every amount included | The app is now hidden from accessibility services whenever the lock is showing; proven on the emulator (locked: only the lock screen; unlocked: the ledger again). |
 | F100 | Found in P3.5: a **sign-in link someone else sent** signed the phone into **their** account with one tap, and a junk link signed you out | A link now works only on the phone that asked for it, for the email typed there, before it expires, and never while someone is signed in. A link for a different account is thrown away. |
 | F98 | Found in P3.4: Settings → App lock checked the PIN with **no attempt limit**, so anyone holding the unlocked app could try every PIN there, learn it, and turn the lock off | It now counts against the same 10 attempts and lockout as the lock screen. Separately, wrong PINs after the 10th now lock for longer each time (15 min, 30 min, 1 h … up to 24 h) instead of a flat 15 minutes. |
 | F99 | An intermittent CI failure in the screen tests (twice) | Found once CI could report it: the first test in a suite timed out while CI's cold cache transformed the app's modules (about 2 s even on a fast machine; the limit was 5 s). The limit is now 30 s. |

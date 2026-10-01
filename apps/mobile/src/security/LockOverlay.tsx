@@ -5,6 +5,7 @@ import { Fingerprint, ShieldCheck } from "lucide-react-native";
 import { useAuthStore } from "../auth/authStore";
 import { useZenoTheme } from "../theme/theme-provider";
 import { useLockStore } from "./lock-store";
+import { useBlockScreenCapture } from "./screen-capture";
 import { CodeBoxes } from "../components/zeno";
 import { haptics } from "../theme/haptics";
 
@@ -24,6 +25,8 @@ export function LockOverlay() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const attemptedBiometric = useRef(false);
+  // P3.7: no screenshot or recording of the lock screen or the PIN being typed.
+  useBlockScreenCapture("lock-overlay");
 
   useEffect(() => {
     if (!ready || !biometricAvailable) return;
