@@ -46,6 +46,7 @@ real sample, or a product decision.
 | # | Item | When |
 |---|---|---|
 | — | P3.5–P3.9: deep links, no secret in the bundle, screen capture on the lock screens, tests for all 29 screens, a static scan of the release APK | P3, next, in order |
+| F99 | An intermittent CI-only failure in the jest (screen) tests, once, on P3.4's push. The next run passed with no test changed. Jest failures are now GitHub annotations, so the next occurrence names the test | the next occurrence |
 | F97 | An intermittent CI-only failure in the account-deletion test: after a refused deletion, other data was left too (twice among the 12 most recent failed CI runs). Cause unknown; the test now prints the storage errors, so the next occurrence explains it. Possibly a real deletion bug, so it is not retried away | the next occurrence |
 | F16 | SQLCipher encryption of the local database is configured but never proven on a device (check the file header or `PRAGMA cipher_version`; the release build isn't debuggable, so it needs a rooted emulator image or a debug check) | P3 gate |
 | F1 | `ServiceAutocomplete.tsx` has no test | P3.8 |

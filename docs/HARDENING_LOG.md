@@ -56,7 +56,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P3.1 build hardening in `app.config.ts`: no Auto Backup, no cleartext, R8 minify + resource shrink with keep rules; then prebuild, release APK, verify by bytes, full on-device smoke; **F92** (Auto Backup on), **F93** (release not shrunk or obfuscated) (green: CI 36826726239, CodeQL 36826726322 on `aea3587`)
   - [x] P3.2 release console stripping (keep `error`/`warn`); `captureError` never carries tokens or emails (green: CI 36828700036, CodeQL 36828699880 on `87ac086`, which contains P3.2's `68c9fcf`; again on `47211fe`)
   - [x] P3.3 Sentry `beforeSend` scrub (emails, tokens, auth headers, amounts); `sendDefaultPii` false, asserted (green: CI 36834676134, CodeQL 36834676176 on `a74417c`; its own push `3553165` went red on two older intermittent API tests, see "CI on `3553165`")
-  - [~] P3.4 PIN: salt, derivation, lockout with backoff, nothing in logs; the honest threat model; **fixes F98** (Settings checked the PIN with no attempt limit) and adds the backoff; F14 corrected and handed to the owner
+  - [x] P3.4 PIN: salt, derivation, lockout with backoff, nothing in logs; the honest threat model; **fixes F98** (Settings checked the PIN with no attempt limit) and adds the backoff; F14 corrected and handed to the owner (green: CI 36840438554, CodeQL 36840438566 on `2d6a752`, which contains P3.4's `844b49a`; that push's own run went red once in jest, F99)
   - [ ] P3.5 deep links: every `zeno://` route validates its parameters; `Linking.openURL` only `https:`/`mailto:` on an allowlist
   - [ ] P3.6 no secret in the bundle: `extra` and every `EXPO_PUBLIC_*` on the public-by-design allowlist
   - [ ] P3.7 screen capture blocked on the lock overlay and PIN entry (app-wide `FLAG_SECURE` is the owner's call)
@@ -175,6 +175,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F95 | **FIXED 2026-10-01** (found while fixing F18). ~~Amounts written `CA$` were detected as Australian dollars.~~ The currency detector's AUD rule `/A\$/` matched inside `CA$`, and its CAD rule `/C\$/` did not match `CA$` at all, so `CA$12.00` (the way the app itself writes CAD) read as AUD, in email receipts and CSV imports alike. `CA$` now counts as CAD and is subtracted from the `A$` count (no regex lookbehind, for Hermes). Bite-checked: the old rules fail 3 tests. | Medium (currency honesty) | me | open-items pass |
 | F96 | **OPEN: owner decision.** The paywall sells a Family plan ("up to 5 members, $6.99/mo"), but household sharing with up to 5 members is free to everyone: `app/family.tsx` checks no plan, and the server's 5-member cap applies regardless of plan. So the Family plan gives nothing beyond Pro while its label implies it does. Either gate the Family Vault behind the plan (the server must then check entitlement on create and join), or reword the plan. | Medium (truthfulness of what is sold) | owner | before billing ships |
 | F98 | **FIXED in P3.4.** ~~Settings → App lock checked the PIN with no attempt limit.~~ Turning the lock off called `verifyPin()` directly, outside the lock store's counted `tryPin`. Anyone holding the phone with the app unlocked could try every PIN there without a lockout, learn it (people reuse PINs), and switch the lock off. A keychain error also left the screen stuck busy. It now uses `tryPin` (the same 10 attempts and lockout as the lock screen) and fails closed. Bite-checked: the old handler fails 4 screen tests. | Medium | me | P3.4 |
+| F99 | **OPEN (mine): an intermittent CI-only jest failure, cause unknown.** CI 36839777837 on `844b49a` (P3.4) failed the step "RN component tests + coverage floor (jest)" with only "exit code 1" visible. The same command passed locally (130/130, every floor held), and CI passed on the next push `2d6a752`, which changed no test (it only added the reporter below). Which test failed, or whether a coverage floor did, cannot be read without a GitHub login. Jest now has its built-in `github-actions` reporter, so the next failure is an annotation readable through the public API. That reporter is only proven once something fails. | Low until explained | me | the next occurrence |
 | F97 | **OPEN (mine): an intermittent CI-only failure, cause not yet known.** `real-pg.test.ts`'s F75 test refuses the sync deletes, then expects only Alice's 2 sync rows to remain after the 503. Twice on CI, other namespaces' rows remained too: `plaid` on `3ad75f7` (a Dependabot branch), `billing`, `family` and `plaid` on `3553165`. It has never failed locally (PGlite). Every delete step is awaited and none retries, and each of those rows is written once and seen in the database before the delete. If those deletes failed under load, that is the designed 503 path, and a retry deletes them. If they remained with no error, it is a deletion bug. The CI log needs a GitHub login, so the assertion now prints the storage errors captured during the request. | Medium until explained (account deletion is a promise to the user) | me | the next occurrence |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
@@ -3020,3 +3021,16 @@ stand-in for `app-lock`, so the old code loads and fails on its behaviour.
 Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1765 at
 100 / 99.67 / 100 / 100 · jest 130 / 130, `app/security.tsx` at 100 % on all four.
 Not yet on a device: the P3 gate runs every lock flow on the hardened release APK.
+
+### P3.4 — done — 2026-10-01
+
+- P3.4's push `844b49a` went red once: CI 36839777837, in the jest step, with no detail
+  readable without a login (CodeQL green).
+- Locally the same command passed: 130 tests, every per-file floor held, and the new
+  suite's slowest test took 206 ms against jest's 5 s limit, so it was not a timeout.
+- I did not re-run until green. I added jest's built-in `github-actions` reporter
+  (`2d6a752`), so a failure is readable through the public API, and pushed that.
+- That run was green (CI 36840438554, CodeQL 36840438566) with no test changed. So the
+  failure was intermittent, and it is logged as **F99** next to F97, rather than called
+  fixed.
+
