@@ -1,10 +1,12 @@
 name: Nightly fuzz
 
-# P2.4: the property-based fuzz suite (apps/api/src/fuzz.test.ts) at 10 000
-# runs per route. Every CI run already runs it at 200 per route; this deeper
-# nightly pass is what finds the rare input. A failure prints fast-check's
-# seed and shrunk counterexample: reproduce it locally with
-#   FAST_CHECK_SEED=<seed> npx vitest run apps/api/src/fuzz.test.ts
+# P2.4 / P2.9: the property-based suites at 10 000 runs per route: the fuzz
+# (apps/api/src/fuzz.test.ts, arbitrary input never breaks a route) and the
+# schema-valid properties (apps/api/src/schema-valid.test.ts, valid input gets
+# its exact status). Every CI run already runs both at 200 per route; this
+# deeper nightly pass is what finds the rare input. A failure prints
+# fast-check's seed and shrunk counterexample: reproduce it locally with
+#   FAST_CHECK_SEED=<seed> FUZZ_RUNS=10000 npx vitest run <the failing file>
 on:
   schedule:
     - cron: "17 3 * * *" # 03:17 UTC daily (off the hour, when runners are less busy)

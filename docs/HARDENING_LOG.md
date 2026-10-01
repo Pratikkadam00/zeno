@@ -41,7 +41,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
     - [x] P1.9d thin config, theme and web files: all 13 at 0 uncovered statements, branches and functions (`motion.ts` and `useZenoTokens.ts` moved to jest with 100 % floors). **Fixes F35, F36, F37**
   - [x] P1.10 `apps/api/src/plaid.ts` (was 21 %; now 0 uncovered lines / functions, 1 defensive branch) and the Plaid routes in `app.ts` (now 100 %). Plaid's HTTP is faked, with no Plaid or sandbox calls, by standing instruction. **Fixes F34**
   - [x] P1.11 gate: Tier 1 at 100 % statements / functions / lines and 99.61 % branches (≥ 95 %); jest floors at 100 %; green on GitHub (CI 36744248345, CodeQL 36744248343)
-- [~] **P2 — API on real Postgres, authorization matrix, fuzzing** (gate re-opened 2026-10-01: a check against the plan's own P2 text found two items only half done; see P2.9) (inline, one item at a time; no parallel agents from here on, by the owner's instruction)
+- [x] **P2 — API on real Postgres, authorization matrix, fuzzing** (gate passed again 2026-10-01 after P2.9 closed the two half-done plan items; F90 waits on the owner) (inline, one item at a time; no parallel agents from here on, by the owner's instruction)
   - [x] P2.1 real Postgres in tests (PGlite locally, a `postgres` server in CI, proven by a server-mode test): schema from empty, upsert, a restart round trip for every store, account deletion leaves no row, the refresh race, concurrent sync replays; **fixes F75** (green: CI 36763417730, CodeQL 36763417620 on `229e114`)
   - [x] P2.2 authorization matrix (table-driven from the LIVE route list; 40 routes, 11 token attacks, cross-household), **fixes F76** (green: CI 36764785079, CodeQL 36764784910 on `8d4b5f0`); F77 open for the owner
   - [x] P2.3 rate limits per route (table-driven from the live routes; window, key, 429 envelope, Retry-After); **fixes F78, F79** (green: CI 36765749331, CodeQL 36765749502 on `73766ff`)
@@ -50,8 +50,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P2.6 auth flows: enumeration-safe magic link, 10-minute expiry, single use, production refusals; **fixes F80** (the 6-digit code could be brute-forced) **and F81** (expired sign-in rows kept in Postgres for good) (green: CI 36770819652, CodeQL 36770819744 on `f9f9540`)
   - [x] P2.7 outbound-call inventory: every call site listed and checked by a source scan, each run against its host with a deadline, the one request-derived URL part guarded; **fixes F82** (the 5xx alert was unbounded), **F83** (anyone could force a JWKS re-fetch per request), **F84** (a coach request could run about 3.5 minutes) (green: CI 36773329340, CodeQL 36773328872 on `70fa1e5`)
   - [x] P2.8 the RevenueCat webhook: replay, duplicates, out-of-order retries, auth, malformed bodies, durability; **fixes F85** (the payload was trusted and arrival order mattered), **F86** (the secret compare leaked its length), **F87** (a lookup in flight re-cached an older answer, or re-created a deleted user's billing row) (green: CI 36775230680, CodeQL 36775230616 on `d0cfc0c`)
-  - [~] P2.9 the plan gaps found by checking P2 against `PRODUCTION_HARDENING_PLAN.md` line by line: **F88** (no same-code-path / timing test for unknown vs revoked tokens, plan P2.2) and **F89** (the fuzz never generates schema-valid input to check the expected status, plan P2.4); closing F89 found and **fixed F91** (`/events` counted inherited names like `toString`, and `constructor` with a label was a 500)
-  - [x] P2 gate (first pass; re-run after P2.9): route-inventory test green (40 routes); real-PG suite green locally (PGlite, 13 tests) and in CI (a Postgres 18 server, proven by the server-mode test) on `d0cfc0c`; nightly fuzz configuration green locally (first scheduled run pending)
+  - [x] P2.9 the plan gaps found by checking P2 against `PRODUCTION_HARDENING_PLAN.md` line by line: **F88** (no same-code-path / timing test for unknown vs revoked tokens, plan P2.2) and **F89** (the fuzz never generates schema-valid input to check the expected status, plan P2.4); closing F89 found and **fixed F91** (`/events` counted inherited names like `toString`, and `constructor` with a label was a 500) (green: CI 36823714811, CodeQL 36823714765 on `7a9ea77`)
+  - [x] P2 gate (passed again on `7a9ea77` after P2.9; first pass on `d0cfc0c`): route-inventory test green (40 routes); real-PG suite green locally (PGlite, 13 tests) and in CI (a Postgres 18 server, proven by the server-mode test) on `d0cfc0c`; nightly fuzz configuration green locally (first scheduled run pending)
 - [ ] **P3 — Mobile hardening (MASVS) + tests for all 29 screens**
 - [ ] **P4 — Website component tests, Playwright, CSP, DAST**
 - [ ] **P5 — Mobile end-to-end (Maestro on the emulator)**
@@ -2506,4 +2506,26 @@ are now `[224, 47, 5, 0]`, and the property test's Google bodies carrying only a
 
 Gates after the final code edit: `tsc -b --force` and every workspace typecheck 0 · lint 0 ·
 vitest 131 files / 1708 tests at 100 / 99.66 / 100 / 100 · jest 114 / 114.
+
+### P2.9 — done; P2 gate passed again — 2026-10-01
+
+Green on GitHub: CI 36823714811 (typecheck & test, semgrep, gitleaks) and CodeQL
+36823714765 on `7a9ea77`.
+
+**Every plan P2 item, as of `7a9ea77`:**
+- **Done as written:** 1 (real Postgres), 2 (the matrix, now with the same-code-path and
+  timing check), 3 (rate limits), 4 (fuzzing, now with schema-valid input and the expected
+  status), 5 (log and error hygiene), 7 (outbound inventory).
+- **Met by a different design, recorded:** 8's "same event id twice ignored". The webhook
+  never applies a payload (F85), so a replay can only cause one extra RevenueCat lookup.
+- **The owner's call:** F90, 6's boot refusals (warnings today); and 3's webhook limit
+  sizing (P8).
+
+**The nightly fuzz has not run yet.** Read from GitHub at 06:14 UTC: the workflow is
+`active`, registered on `main` since 2026-09-30 19:41 UTC, with a valid
+`cron: "17 3 * * *"`, yet it shows 0 runs, so the 03:17 UTC run on 2026-10-01 never
+happened. The cause is not visible from here. GitHub documents that scheduled runs can
+be delayed, or dropped under load. Its configuration passed locally (fuzz 165 s; the
+schema-valid properties 58 s). The owner can start it from the Actions tab
+(`workflow_dispatch`); otherwise it is checked again after the next 03:17 UTC.
 
