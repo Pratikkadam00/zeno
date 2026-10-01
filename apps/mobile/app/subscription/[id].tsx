@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { useSubscriptionStore, type SubscriptionNotificationSettings } from "../../src/data/subscription-store";
 import { cancelNotificationsForSubscription, scheduleRenewalNotificationsWithPreferences } from "../../src/notifications/notificationService";
 import { currencySymbol, formatMoney } from "../../src/utils/format";
+import { isIsoDay } from "../../src/utils/iso-day";
 import { formatDaysLabel, formatShortDate, getDaysRemaining } from "../../src/utils/subscription-ui";
 import { AlertTriangle, Bell, BellOff, ChevronLeft, CircleCheck, Clock, MoreHorizontal } from "lucide-react-native";
 import { Button, Card, ColumnHeads, Input, LedgerLine, SectionHead, ServiceAvatar, Stamp } from "../../src/components/zeno";
@@ -40,11 +41,15 @@ function getCycleName(cycle: BillingCycle): string {
   return names[cycle];
 }
 
-function formatAnnualEquivalent(amountMinor: number, cycle: BillingCycle): number {
+// F117: null for a trial or an unknown cycle. There is no recurring yearly
+// figure to state (the same rule as @zeno/shared's monthlyAmount, which gives
+// those cycles no recurring amount); this used to multiply them by 12.
+function formatAnnualEquivalent(amountMinor: number, cycle: BillingCycle): number | null {
   if (cycle === "annual") return amountMinor;
   if (cycle === "weekly") return amountMinor * 52;
   if (cycle === "quarterly") return amountMinor * 4;
-  return amountMinor * 12;
+  if (cycle === "monthly") return amountMinor * 12;
+  return null;
 }
 
 // CHANGE 6: charge history derived from the subscription's billing cadence,
@@ -54,10 +59,16 @@ function formatAnnualEquivalent(amountMinor: number, cycle: BillingCycle): numbe
 // The screen labels it "estimated" when we only have the cadence, not a receipt.
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function stepBack(date: Date, cycle: BillingCycle): Date {
-  if (cycle === "weekly") return new Date(date.getTime() - 7 * DAY_MS);
-  const months = cycle === "annual" ? 12 : cycle === "quarterly" ? 3 : 1;
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() - months, date.getUTCDate()));
+// F116: the k-th charge before `ref`, counted from ref itself with the day
+// clamped to the target month. Stepping from the previous result with
+// Date.UTC(y, m - 1, d) rolled "31 February" into 3 March, so a charge on the
+// 31st listed 31 Mar, 3 Mar, 3 Feb, 3 Jan (measured) instead of 31 Mar, 28 Feb, 31 Jan.
+function chargeBefore(ref: Date, cycle: BillingCycle, k: number): Date {
+  if (cycle === "weekly") return new Date(ref.getTime() - 7 * k * DAY_MS);
+  const months = (cycle === "annual" ? 12 : cycle === "quarterly" ? 3 : 1) * k;
+  const firstOfTarget = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth() - months, 1));
+  const daysInTarget = new Date(Date.UTC(firstOfTarget.getUTCFullYear(), firstOfTarget.getUTCMonth() + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(firstOfTarget.getUTCFullYear(), firstOfTarget.getUTCMonth(), Math.min(ref.getUTCDate(), daysInTarget), ref.getUTCHours(), ref.getUTCMinutes(), ref.getUTCSeconds()));
 }
 
 function buildChargeHistory(sub: Subscription): { date: string; amountMinor: number }[] {
@@ -70,15 +81,12 @@ function buildChargeHistory(sub: Subscription): { date: string; amountMinor: num
   const nowMs = Date.now();
 
   // Walk back to the most recent charge on or before today.
-  let cursor = new Date(refDate);
-  let guard = 0;
-  while (cursor.getTime() > nowMs && guard++ < 120) cursor = stepBack(cursor, sub.billingCycle);
+  let k = 0;
+  while (chargeBefore(refDate, sub.billingCycle, k).getTime() > nowMs && k < 120) k += 1;
 
   const entries: { date: string; amountMinor: number }[] = [];
-  guard = 0;
-  while (cursor.getTime() >= createdMs && entries.length < 12 && guard++ < 120) {
+  for (let cursor = chargeBefore(refDate, sub.billingCycle, k); cursor.getTime() >= createdMs && entries.length < 12 && k < 240; cursor = chargeBefore(refDate, sub.billingCycle, ++k)) {
     entries.push({ date: formatShortDate(cursor.toISOString()), amountMinor: sub.price.amountMinor });
-    cursor = stepBack(cursor, sub.billingCycle);
   }
   return entries;
 }
@@ -145,7 +153,7 @@ export default function SubscriptionDetailScreen() {
   const settings = notificationSettings[sub.id] ?? { sevenDay: true, threeDay: true, dayOf: true };
   const chargeHistory = buildChargeHistory(sub);
   const annualMinor = formatAnnualEquivalent(sub.price.amountMinor, sub.billingCycle);
-  const annualSaving = service?.defaultAnnualPrice && sub.billingCycle === "monthly"
+  const annualSaving = annualMinor !== null && service?.defaultAnnualPrice && sub.billingCycle === "monthly"
     ? annualMinor - service.defaultAnnualPrice.amountMinor
     : null;
 
@@ -169,6 +177,19 @@ export default function SubscriptionDetailScreen() {
     ]);
   }
 
+  // F118: the form is filled from the subscription AS IT IS NOW, when editing
+  // starts. The fields used to be seeded once by useState on the first render,
+  // which came before storage had loaded when the page was opened at a cold
+  // start (a notification, a link): the form then showed no name, $0.00 and
+  // no date for a subscription that had all three.
+  function startEditing() {
+    setEditedName(sub.name);
+    setAmount((sub.price.amountMinor / 100).toFixed(2));
+    setBillingCycle(sub.billingCycle);
+    setRenewalDate(sub.nextRenewalDate?.slice(0, 10) ?? "");
+    setIsEditing(true);
+  }
+
   function openMenu() {
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
@@ -178,7 +199,7 @@ export default function SubscriptionDetailScreen() {
           destructiveButtonIndex: 2
         },
         (index) => {
-          if (index === 0) setIsEditing(true);
+          if (index === 0) startEditing();
           else if (index === 1) { pauseSubscription(sub.id); }
           else if (index === 2) handleDelete();
         }
@@ -200,12 +221,12 @@ export default function SubscriptionDetailScreen() {
       // every consumer (roll-forward, reminders, trial guardian) does UTC-day
       // math, and the previous local `T09:00:00` serialization shifted the
       // stored day back by one for users in UTC+10..+14.
-      const parsed = Date.parse(`${renewalDate}T00:00:00.000Z`);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(renewalDate) || Number.isNaN(parsed)) {
-        Alert.alert("Check the renewal date", "Use the YYYY-MM-DD format, e.g. 2026-08-01.");
+      // F115: a REAL day only; Date.parse alone accepted "2026-02-30" as 2 March.
+      if (!isIsoDay(renewalDate)) {
+        Alert.alert("Check the renewal date", "Use a real date in the YYYY-MM-DD format, e.g. 2026-08-01.");
         return;
       }
-      nextRenewalDate = new Date(parsed).toISOString();
+      nextRenewalDate = new Date(`${renewalDate}T00:00:00.000Z`).toISOString();
     }
     updateSubscription(sub.id, {
       name: editedName.trim() || sub.name,
@@ -356,7 +377,7 @@ export default function SubscriptionDetailScreen() {
                     stamp lands, and the amount above is struck through. */}
                 {sub.status === "cancelled" ? (
                   <View style={{ marginTop: 14 }}>
-                    <Stamp tone="verified" size="md" angle={7} sub={`SAVED ${formatMoney(annualMinor, sub.price.currency)}/YR`} animate>
+                    <Stamp tone="verified" size="md" angle={7} sub={annualMinor !== null ? `SAVED ${formatMoney(annualMinor, sub.price.currency)}/YR` : undefined} animate>
                       Verified
                     </Stamp>
                   </View>
@@ -403,7 +424,7 @@ export default function SubscriptionDetailScreen() {
                     <CircleCheck size={20} color={theme.success} strokeWidth={2} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.verifyTitle}>Verified cancelled</Text>
-                      <Text style={styles.verifyBody}>No charge found. You&apos;re saving {formatMoney(annualMinor, sub.price.currency)}/yr.</Text>
+                      <Text style={styles.verifyBody}>{annualMinor !== null ? `No charge found. You're saving ${formatMoney(annualMinor, sub.price.currency)}/yr.` : "No charge found."}</Text>
                     </View>
                   </View>
                 </View>
@@ -457,7 +478,7 @@ export default function SubscriptionDetailScreen() {
                   }
                 />
                 <LedgerLine label="Billing cycle" value={getCycleName(sub.billingCycle)} />
-                <LedgerLine label="Per year" sub="AT CURRENT RATE" value={formatMoney(annualMinor, sub.price.currency)} />
+                <LedgerLine label="Per year" sub={annualMinor !== null ? "AT CURRENT RATE" : "NO SET CYCLE"} value={annualMinor !== null ? formatMoney(annualMinor, sub.price.currency) : "—"} />
                 {annualSaving !== null && annualSaving > 0 ? (
                   // money-positive — the one green figure on this page
                   <LedgerLine
@@ -579,7 +600,7 @@ export default function SubscriptionDetailScreen() {
       <Modal transparent visible={menuVisible} animationType="fade" onRequestClose={() => setMenuVisible(false)}>
         <Pressable accessibilityRole="button" accessibilityLabel="Close menu" style={styles.menuBackdrop} onPress={() => setMenuVisible(false)}>
           <View style={styles.menuCard}>
-            <Pressable accessibilityRole="button" style={styles.menuItem} onPress={() => { setMenuVisible(false); setIsEditing(true); }}>
+            <Pressable accessibilityRole="button" style={styles.menuItem} onPress={() => { setMenuVisible(false); startEditing(); }}>
               <Text style={styles.menuItemText}>Edit</Text>
             </Pressable>
             <View style={styles.menuSep} />

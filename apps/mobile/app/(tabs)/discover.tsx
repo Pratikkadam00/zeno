@@ -26,6 +26,7 @@ import { type as typography } from "../../src/theme/typography";
 import { spacing } from "../../src/theme/spacing";
 import { withAlpha } from "../../src/utils/subscription-ui";
 import { formatMoney } from "../../src/utils/format";
+import { isIsoDay } from "../../src/utils/iso-day";
 import { shareText } from "../../src/utils/share";
 import { recordFunnelEvent } from "../../src/api/client";
 import { Check, ChevronDown, ChevronUp, FileSpreadsheet, MailSearch, Plus, Search, Share2, Upload } from "lucide-react-native";
@@ -762,13 +763,6 @@ function EditSubscriptionModal({ candidate, onClose, onSave }: {
 /** A non-negative amount with at most 2 decimals ("9", "9.", "9.99"); not empty. */
 function isAmountText(text: string): boolean {
   return /^\d+(\.\d{0,2})?$/.test(text.trim());
-}
-
-/** A complete, real calendar day "YYYY-MM-DD" (rejects "2026-1" and "2026-02-30"). */
-function isIsoDay(text: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return false;
-  const parsed = new Date(text);
-  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === text;
 }
 
 async function readPickedText(asset: DocumentPicker.DocumentPickerAsset): Promise<string> {

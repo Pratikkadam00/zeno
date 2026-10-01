@@ -63,10 +63,12 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [~] P3.8 screen tests for all 29 screens, with a jest floor over `app/**` and `src/components/**` (split into steps; each raises the floor)
     - [x] P3.8a the floor itself: directory floors at the measured baseline (12.75 % of 1842 lines) (green: CI 36858191877, CodeQL 36858191900 on `89c3428`; P3.8a's own push `9a2f1a8` went red on F103)
     - [x] P3.8b shared components (`src/components/**`, `components/**`), incl. F1 `ServiceAutocomplete`: every file at 100 % lines; **fixes F1, F107** (green: CI 36860084512, CodeQL 36860084509 on `f78b449`)
-    - [~] P3.8c the tab screens and the tab layout
+    - [x] P3.8c the tab screens and the tab layout
       - [x] P3.8c-1 Ledger, Subscriptions, Calendar, Insights and the tab bar; **fixes F108, F109, F110, F111**; F112 to check on the device (green: CI 36863386995, CodeQL 36863387142 on `6d08eb4`)
-      - [~] P3.8c-2 Discover (the scan, CSV import and Gmail connect); **fixes F113**; F114 to the owner
-    - [ ] P3.8d subscription detail, cancel, add
+      - [x] P3.8c-2 Discover (the scan, CSV import and Gmail connect); **fixes F113**; F114 to the owner (green: CI 36865715523, CodeQL 36865715509 on `bcf81aa`)
+    - [~] P3.8d subscription detail, cancel, add
+      - [~] P3.8d-1 the subscription detail page; **fixes F115, F116, F117, F118**
+      - [ ] P3.8d-2 the cancel guide and Add subscription
     - [ ] P3.8e settings (incl. F29's screen use), profile, notifications, login, paywall, onboarding
     - [ ] P3.8f the rest (budget, recap, family, coach, wrapped, widgets, spend-twin, open-banking, backend, business, partners, public-api) and the root layout
   - [ ] P3.9 static scan of the release APK (MobSF, else apkleaks + manifest review)
@@ -191,7 +193,11 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F111 | **FIXED in P3.8c.** ~~West of UTC, the calendar's day panel was headed with the day BEFORE the one tapped.~~ The tapped key ("2026-10-02") is a local day, but `formatDateHeader` parsed it with `new Date(key)`, which reads a date-only string as UTC midnight. Measured: rendered in America/New_York or America/Los_Angeles that is "Thursday, October 1"; London and Kolkata are unaffected, which is why it was never seen here. The key is now read as a local date. The test bites on this machine (UTC+5:30); on CI's UTC runner both readings coincide. | Medium (the date shown to most US users was wrong) | me | P3.8c |
 | F113 | **FIXED in P3.8c-2.** ~~Editing a scan result's amount or date was broken, and clearing the date crashed the app.~~ Discover's edit sheet drove both fields from the PARSED value. Measured in the test, typing key by key: "9.99" became "999", because "9." was re-rendered as "9", so a $9.99 subscription would be saved as $999. A partial date was rewritten to a different one: "2026-1" becomes 2025-12-31 (measured with Node). And deleting one character ("2026-10-0") or clearing the field made `new Date(text).toISOString()` throw `RangeError: Invalid time value` inside the change handler, which crashes the app. The sheet now keeps the typed text, takes a value only when it is complete and valid (an amount with at most 2 decimals; a real calendar day, so "2026-02-30" is refused), shows a hint otherwise, and disables Save until both are valid. Bite-checked: the committed version fails 3 tests. | High (a crash, and money saved 100x too large) | me | P3.8c-2 |
 | F114 | **OPEN: owner decision (copy).** The Gmail card promises "Scanned on your device — nothing leaves your phone". Checked in `emailScanner.ts`: email content goes only from Google to the phone and is parsed there (it calls only gmail.googleapis.com and Google's OAuth endpoints, never Zeno's API). But "nothing leaves your phone" is absolute. After an import the screen sends a funnel event ("import_completed", source "email", no content), and a signed-in user with sync on uploads encrypted copies of the subscriptions saved. It sits close to the banned "100% on-device" wording. A truthful option: "Scanned on your device — your emails never reach Zeno's servers". | Medium (truthfulness) | owner | before release |
-| F112 | **TO CHECK ON THE DEVICE (not a confirmed bug).** On the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results: a checkbox nested inside each row's "Edit" button. | to be measured | me | P3 gate |
+| F115 | **FIXED in P3.8d.** ~~The subscription page's edit form saved an impossible typed date as a different day.~~ It validated the renewal date with a pattern plus `Date.parse`, which is lenient (F21): measured in Node, "2026-02-30" parses as 2 March, "2026-02-29" as 1 March, "2026-04-31" as 1 May, and each was saved without a word. A shared `isIsoDay` (`src/utils/iso-day.ts`, 14 unit tests) accepts a day only if it survives the round trip unchanged; Discover's edit sheet uses it too. | Medium (data entered wrong) | me | P3.8d |
+| F116 | **FIXED in P3.8d.** ~~The estimated charge history was wrong for anything billed on the 29th to 31st.~~ Each step back was built from the previous step with `Date.UTC(y, m - 1, d)`, so "31 February" rolled into 3 March and every later entry kept the 3rd. Measured: from 31 March it listed 31 Mar, 3 Mar, 3 Feb, 3 Jan. Each step is now counted from the original charge, with the day clamped to the month: 31 Mar, 28 Feb, 31 Jan. | Low (dates shown wrong) | me | P3.8d |
+| F117 | **FIXED in P3.8d.** ~~The subscription page invented a yearly figure for an unknown or trial cycle.~~ `formatAnnualEquivalent` multiplied every cycle that was not annual, weekly or quarterly by 12, so an UNKNOWN cycle got a confident "Per year". A verified cancellation of one said "You're saving $X/yr" and stamped "SAVED $X/YR". That contradicts the app's own rule: @zeno/shared's `monthlyAmount` gives trial and unknown cycles no recurring amount. Those cycles now show "—" ("NO SET CYCLE"), and no saving is claimed. | Medium (truthfulness of money) | me | P3.8d |
+| F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
+| F112 | **TO CHECK ON THE DEVICE (not a confirmed bug).** On the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
 | F105 | **FIXED in P3.7 (found on the emulator).** ~~The locked app stayed readable to accessibility services.~~ The lock overlay is drawn on top of the app, but the app underneath stayed in the accessibility tree. With the app locked, `uiautomator dump --compressed` (the nodes accessibility services get) held 77 labelled nodes, every ledger amount included ("$107.46", "Netflix … $15.49 per mo"). So a screen reader, or any app granted accessibility access, could read the finances through the lock. Now `HiddenWhileLocked` hides the app's content (`no-hide-descendants`, `accessibilityElementsHidden`) whenever the overlay is up, on the same condition that draws it, and never remounts the app. Proven on the device: locked, 9 labels, all the lock screen's, no money; unlocked, the ledger is back. Bite-checked in jest. | High (financial data readable while locked) | me | P3.7 |
 | F106 | **OPEN (mine): seen once, not reproduced.** After the first unlock following a fresh install, three screenshots of the unlocked app came back fully black, although the app window no longer carried `FLAG_SECURE`, the display was awake, and the home screen captured normally. In 2 later attempts (a return from background, and a cold start), the unlocked app captured normally at 4 s and at 10 s. Cause unknown. It fails safe (blocking a screenshot, not leaking one). Re-check during P5's end-to-end runs. | Low | me | P5 |
@@ -3669,3 +3675,42 @@ pattern is on this screen too (a checkbox inside the row's "Edit" button).
 
 Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1842 at
 100 / 99.68 / 100 / 100 · jest 286 / 286, 0 act() warnings, the new floors held.
+
+### P3.8d-1 — the subscription page — 2026-10-01
+
+**Result:**
+- `app/subscription/[id].tsx` is at 100 % lines and statements (135/135), held there
+  file by file.
+- `app/` went from 603 to 670 lines covered (39.51 % to 43.87 %).
+- The jest suite is at 311 tests, 0 act() warnings.
+
+**Tests (25), through the real store:**
+- **Figures:** the price, /month, /week and /quarter, a year as 12, 52 and 4 charges.
+- **Controls:** the urgency banner and its cancel link; the three reminder switches,
+  saved and rescheduled; notes added, edited and cancelled.
+- **Editing:** all four fields saved; an impossible date refused (F115); a zero price
+  refused; Stop editing; an emptied name or date keeping the old one; the form filled at
+  a cold start (F118).
+- **The menu:** the iOS action sheet (Edit, Pause, Delete, dismissed); Delete's
+  confirmation; the Android menu, and its back-button close.
+- **Statuses:** pending (confirm, or charged again), still charging, trial.
+- **Figures that must not be invented:** an unknown cycle (F117); the month-end history
+  (F116, on a pinned clock); no history from a brand-new, unreadable or dateless
+  subscription; not found.
+
+**Found and fixed:** F115, F116, F117, F118 (see their rows). F112 is extended (the
+Android menu nests its items inside the backdrop button).
+
+**Checked, not a bug:** saving an unchanged date writes back the page's DISPLAY copy of
+it. `rollRenewalForward` rebuilds it from day, hours and minutes, so the seconds go. The
+day is unchanged, and renewal dates are day-level everywhere. The test asserts the day.
+
+**Bite check: 7, all caught:**
+- each of F115, F116, F117, F118 reverted on its own;
+- "charged again" marking the subscription verified instead;
+- a reminder toggle saving the opposite value;
+- Delete's confirmation removed.
+
+
+Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1856 at
+100 / 99.68 / 100 / 100 · jest 311 / 311, 0 act() warnings, the new floors held.

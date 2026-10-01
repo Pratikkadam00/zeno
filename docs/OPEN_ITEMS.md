@@ -3,7 +3,7 @@
 **One place for everything not yet solved.** Each item says who acts, exactly what to
 do, and where the full evidence lives (finding numbers point into
 `docs/HARDENING_LOG.md`). When an item is done it is removed from here and its log
-entry marked fixed. Last updated 2026-10-01, after P3.8c-2.
+entry marked fixed. Last updated 2026-10-01, after P3.8d-1.
 
 ---
 
@@ -70,6 +70,10 @@ real sample, or a product decision.
 | F18 | CSV import labelled every amount USD, even from a non-US bank | US bank formats stay USD. Other files use the currency their own amounts show (€, £, ₹, Rs., CA$, A$, ISO codes). A file of bare numbers uses **your home currency**, an assumption I've stated here, not hidden. Better still would be letting you pick the currency at review; that is a design change, so it's not done. |
 | F95 | Found while fixing F18: amounts written **CA$** (how the app itself writes Canadian dollars) were detected as **Australian** dollars, in email receipts and CSVs | CA$ now counts as CAD. |
 | F97 / F102 | The **intermittent account-deletion test** on CI | It was a real bug: on the production database server, a save still in flight when an account was deleted could land after the delete and bring the data back (a bank token included), and two quick saves could leave the older one. Saves to one record now happen in order, and deletion waits for saves already under way. The test also had its own bug (a wait that never waited), now fixed. |
+| F118 | Found in P3.8d: opened from a notification at a cold start, a subscription's **edit form showed no name and $0.00** | The form now fills from the subscription when you start editing. |
+| F117 | Found in P3.8d: for a subscription with an **unknown billing cycle** the app **invented a yearly cost** (and a "you're saving $X/yr") | No yearly figure is claimed without a known cycle. |
+| F116 | Found in P3.8d: the estimated **charge history was wrong for anything billed on the 29th–31st** (31 Mar, 3 Mar, 3 Feb…) | Now 31 Mar, 28 Feb, 31 Jan. |
+| F115 | Found in P3.8d: typing an impossible date like **30 February** saved it as **2 March** | Refused now, here and in Discover. |
 | F113 | Found in P3.8c-2: in Discover, **editing a found subscription's price turned $9.99 into $999**, a partial date was replaced by another date, and **clearing the date crashed the app** | Fixed: the fields keep what you type and Save waits for a valid amount and date. |
 | F110 | Found in P3.8c: **Insights showed every saving 100× too small** ("Save $0.22/mo" for a $22 saving) | Fixed. |
 | F111 | Found in P3.8c: in **US time zones** the calendar's day panel was headed with the **day before** the one you tapped | Fixed (measured in New York and Los Angeles time). |
