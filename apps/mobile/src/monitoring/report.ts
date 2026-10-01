@@ -8,6 +8,7 @@
 // reload is not enough).
 import Constants from "expo-constants";
 import * as Sentry from "@sentry/react-native";
+import { redactValue } from "./redact";
 
 let initialized = false;
 
@@ -49,9 +50,13 @@ export function initErrorReporting(): void {
   initialized = true;
 }
 
+// Redacted before anything leaves (P3.2): no token or email reaches the log or
+// Sentry, whatever the error's message, stack or context carries (redact.ts).
 export function captureError(error: unknown, context?: Record<string, unknown>): void {
-  console.error("[zeno] captured error:", error, context ?? {});
+  const safeError = redactValue(error);
+  const safeContext = context === undefined ? undefined : (redactValue(context) as Record<string, unknown>);
+  console.error("[zeno] captured error:", safeError, safeContext ?? {});
   if (initialized) {
-    Sentry.captureException(error, context ? { extra: context } : undefined);
+    Sentry.captureException(safeError, safeContext ? { extra: safeContext } : undefined);
   }
 }

@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sentryMock = vi.hoisted(() => ({
@@ -114,5 +115,35 @@ describe("scrubBreadcrumb — strips tokens from fetch/xhr breadcrumb URLs", () 
     const { scrubBreadcrumb } = await import("./report");
     const breadcrumb = { category: "fetch", message: "no url on this one" };
     expect(scrubBreadcrumb(breadcrumb)).toEqual(breadcrumb);
+  });
+});
+
+describe("P3.2: captureError never carries a token or an email", () => {
+  // Generated, not a literal: the shape of our refresh/magic tokens (43-char base64url).
+  const TOKEN = randomBytes(32).toString("base64url");
+  const EMAIL = "jane@example.com";
+
+  it("neither the release log nor Sentry receives them, from the error's message, its stack, or the context", async () => {
+    process.env.EXPO_PUBLIC_SENTRY_DSN = "https://fake@o0.ingest.sentry.io/1";
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { initErrorReporting, captureError } = await import("./report");
+    initErrorReporting();
+
+    const error = new Error(`verify?token=${TOKEN} failed for ${EMAIL}`);
+    error.stack = `Error: verify?token=${TOKEN}\n    at verify (authStore.ts:180)`;
+    captureError(error, { componentStack: `in Login (for ${EMAIL})`, request: { header: `Bearer ${TOKEN}` } });
+
+    const logged = consoleError.mock.calls.flat();
+    const sent = sentryMock.captureException.mock.calls.flat();
+    for (const [where, args] of [["console.error", logged], ["Sentry", sent]] as const) {
+      const flat = JSON.stringify(args) + args.map((a) => (a instanceof Error ? `${a.message}\n${a.stack}` : "")).join("");
+      expect(flat, where).not.toContain(TOKEN);
+      expect(flat, where).not.toContain(EMAIL);
+    }
+    // Still useful: the error type, the place it was thrown, the component.
+    expect(sent[0]).toBeInstanceOf(Error);
+    expect((sent[0] as Error).stack).toContain("at verify (authStore.ts:180)");
+    expect(JSON.stringify(sent[1])).toContain("in Login");
+    consoleError.mockRestore();
   });
 });

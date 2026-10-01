@@ -53,8 +53,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P2.9 the plan gaps found by checking P2 against `PRODUCTION_HARDENING_PLAN.md` line by line: **F88** (no same-code-path / timing test for unknown vs revoked tokens, plan P2.2) and **F89** (the fuzz never generates schema-valid input to check the expected status, plan P2.4); closing F89 found and **fixed F91** (`/events` counted inherited names like `toString`, and `constructor` with a label was a 500) (green: CI 36823714811, CodeQL 36823714765 on `7a9ea77`)
   - [x] P2 gate (passed again on `7a9ea77` after P2.9; first pass on `d0cfc0c`): route-inventory test green (40 routes); real-PG suite green locally (PGlite, 13 tests) and in CI (a Postgres 18 server, proven by the server-mode test) on `d0cfc0c`; nightly fuzz configuration green locally (first scheduled run pending)
 - [~] **P3 — Mobile hardening (MASVS) + tests for all 29 screens** (inline, one item at a time, in the plan's order)
-  - [~] P3.1 build hardening in `app.config.ts`: no Auto Backup, no cleartext, R8 minify + resource shrink with keep rules; then prebuild, release APK, verify by bytes, full on-device smoke; **F92** (Auto Backup on), **F93** (release not shrunk or obfuscated)
-  - [ ] P3.2 release console stripping (keep `error`/`warn`); `captureError` never carries tokens or emails
+  - [x] P3.1 build hardening in `app.config.ts`: no Auto Backup, no cleartext, R8 minify + resource shrink with keep rules; then prebuild, release APK, verify by bytes, full on-device smoke; **F92** (Auto Backup on), **F93** (release not shrunk or obfuscated) (green: CI 36826726239, CodeQL 36826726322 on `aea3587`)
+  - [~] P3.2 release console stripping (keep `error`/`warn`); `captureError` never carries tokens or emails
   - [ ] P3.3 Sentry `beforeSend` scrub; `sendDefaultPii` false
   - [ ] P3.4 PIN: salt, derivation, lockout with backoff, nothing in logs; the honest threat model
   - [ ] P3.5 deep links: every `zeno://` route validates its parameters; `Linking.openURL` only `https:`/`mailto:` on an allowlist
@@ -2624,4 +2624,76 @@ process. The emulator was shut down after the run (`emu kill`; no `qemu` left).
 - My accessibility-tree parser crashed on nodes without an attribute (made tolerant).
 - I called the translucent sheet an "R8 regression" after one A/B build. Rebuilding and
   re-testing showed it does not reproduce on the R8 build (F94).
+
+### P3.1 — done — 2026-10-01
+
+Green on GitHub: CI 36826726239 and CodeQL 36826726322 on `aea3587`.
+
+### P3.2 — release console stripping; error reports carry no token or email — 2026-10-01
+
+**Measured first.** The app's own code has no `console.log`, `info` or `debug` at all:
+only 18 `console.warn` and 1 `console.error`, which the plan says to keep. Each `warn`
+prints a fixed message plus the caught error, from the local data stores (budgets, quiet
+hours, exchange rates, notification settings, price history, subscriptions, erase steps),
+none of which holds a token or an email.
+
+The release JS bundle (`expo export --platform android --no-bytecode`) told a different
+story: it shipped 18 `console.log`, 4 `info`, 9 `debug` and 1 `trace`, all from bundled
+libraries, attributed one by one through the bundle's source map. Among them is
+RevenueCat's logger, which forwards every SDK message to `console` at its level; the app
+never calls `setLogLevel`, so it runs at the default. The two `expo-notifications` debug
+lines were read: neither logs a push token.
+
+**The change:**
+- **`babel-plugin-transform-remove-console` 6.9.4**, a dev dependency pinned exactly, with
+  no dependencies of its own. `npm audit` counts were identical before and after
+  (19 moderate, 1 high, all pre-existing), and CI's `scripts/audit-gate.mjs` passes.
+- **`babel.config.js`:** production only, `exclude: ["error", "warn"]`. The Babel cache
+  is now keyed by the environment instead of `api.cache(true)`, which would have frozen
+  whichever environment loaded first.
+- **Re-exported and recounted:** 0 `log`, 0 `info`, 0 `debug`, 0 `trace`; `warn` (221) and
+  `error` (107) unchanged.
+
+**`captureError` (`src/monitoring/report.ts`).** It has one caller, `AppErrorBoundary`,
+which passes only the React component stack, so no token or email path exists today. But
+nothing guaranteed it: the error's message and stack are free text. Now
+`src/monitoring/redact.ts` redacts the error (message AND stack) and the context before
+anything reaches `console.error` or Sentry:
+- URL query values of credential keys (`token`, `code`, …): the magic-link verify URL and
+  Gmail's revoke URL carry one-time tokens there;
+- `Bearer <token>`;
+- JWTs;
+- email addresses;
+- any 32+ character base64url or hex run containing a digit (our 43-character tokens).
+  The digit keeps long CamelCase component names readable.
+
+An Error with nothing to redact is passed through as the same object, so its stack and
+identity are intact. Past a depth of 4 a value is dropped as `[truncated]`, never passed
+through unredacted. P3.3's Sentry `beforeSend` will reuse it.
+
+**Tests** (25 in `src/monitoring`: 14 in `redact.test.ts`, 11 in `report.test.ts`; plus 3 in `babel.config.test.ts`): every real token
+shape from this codebase is removed; ordinary diagnostics (amounts, ids, routes, long
+component names) are untouched; `captureError` end to end, where neither the log nor
+Sentry receives the token or the email from the message, the stack or the context, while
+the error type, the throw site and the component survive; and the Babel config (production
+strips `log`/`info`/`debug`/`trace` and keeps `warn`/`error`; development and test strip
+nothing; `BABEL_ENV` wins; the cache is keyed by environment; reanimated's plugin stays
+last).
+
+**Bite checks:** 13 mutations, all caught. Two of them, at first, were NOT:
+- Removing the JWT rule or the Bearer rule changed nothing, because every sample token
+  was also long enough for the long-token rule.
+- The Bearer rule does close a real gap: a SHORT bearer token (under 32 characters) is
+  caught by nothing else. That sample is now tested.
+- The JWT rule adds no safety: every RS256 JWT's header alone is 36 characters. It is
+  kept for its specific label, which is now what its test checks, stated as such.
+
+**Also, my own test bug caught before it counted.** I first wrote a depth test asserting
+that an email nested five levels deep passes through unredacted. That was a hole, not a
+feature; the code now drops such values. Coverage then dipped below the ratchet (99.62 %
+against 99.66 %) on one new branch, an Error with no stack. It is now tested: it is
+redacted and stays stackless.
+
+Gates after the final edit: `tsc -b --force` and every workspace typecheck 0 · lint 0 ·
+vitest 133 files / 1727 tests at 100 / 99.66 / 100 / 100 · jest 114 / 114.
 
