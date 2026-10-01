@@ -59,7 +59,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P3.4 PIN: salt, derivation, lockout with backoff, nothing in logs; the honest threat model; **fixes F98** (Settings checked the PIN with no attempt limit) and adds the backoff; F14 corrected and handed to the owner (green: CI 36840438554, CodeQL 36840438566 on `2d6a752`, which contains P3.4's `844b49a`; two runs went red in jest on a cold-cache timeout, F99, fixed)
   - [x] P3.5 deep links: every `zeno://` route validates its parameters; `Linking.openURL` only `https:`/`mailto:` on an allowlist; **fixes F100** (anyone's sign-in link signed the phone into their account, and a junk one signed the user out); CI on the way found and fixed **F102** (explaining F97) (green: CI 36847517276, CodeQL 36847517287 on `3b8be1e`, which contains P3.5's `44791e7`)
   - [x] P3.6 no secret in the bundle: `extra` and every `EXPO_PUBLIC_*` on the public-by-design allowlist (none found in the bundle, the config or the built APK; guards added) (green: CI 36849676333, CodeQL 36849676314 on `1801e8d`)
-  - [~] P3.7 screen capture blocked on the lock overlay and PIN entry (app-wide `FLAG_SECURE` is the owner's call); proven on the emulator; **fixes F105** (the locked app stayed readable to accessibility services); F104 and F106 logged
+  - [x] P3.7 screen capture blocked on the lock overlay and PIN entry (app-wide `FLAG_SECURE` is the owner's call); proven on the emulator; **fixes F105** (the locked app stayed readable to accessibility services); F104 and F106 logged (green: CI 36854703994, CodeQL 36854704080 on `39c9c46`)
   - [ ] P3.8 screen tests for all 29 screens, with a jest floor over `app/**` and `src/components/**`
   - [ ] P3.9 static scan of the release APK (MobSF, else apkleaks + manifest review)
   - [ ] P3 gate: hardened release APK verified on the emulator (every flow in `DEVICE_TEST_FINDINGS.md`); jest floor in CI; MASVS checklist with evidence per control
@@ -3362,3 +3362,8 @@ must find out which library adds them, and whether they are needed.
 Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1842 at
 100 / 99.68 / 100 / 100 · jest 153 / 153 (screen-capture.ts and HiddenWhileLocked.tsx at
 100 %) · audit gate PASS.
+
+### P3.7 — done — 2026-10-01
+
+Green on GitHub: CI 36854703994 and CodeQL 36854704080 on `39c9c46`.
+
