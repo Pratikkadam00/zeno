@@ -16,6 +16,10 @@
 module.exports = {
   preset: "jest-expo",
   testMatch: ["**/*.rntest.tsx"],
+  // "github-actions" (built into jest 29.7) turns each failure into a GitHub
+  // annotation, readable from the public API; it is inert off GitHub Actions.
+  // Without it a CI-only jest failure showed only "exit code 1".
+  reporters: ["default", "github-actions"],
   setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
   // Reanimated 4 runs on react-native-worklets, whose `.native` entry throws
   // under jest ("Native part of Worklets doesn't seem to be initialized").
