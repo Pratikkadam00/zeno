@@ -3,7 +3,7 @@
 **One place for everything not yet solved.** Each item says who acts, exactly what to
 do, and where the full evidence lives (finding numbers point into
 `docs/HARDENING_LOG.md`). When an item is done it is removed from here and its log
-entry marked fixed. Last updated 2026-10-01, after P3.8e-2.
+entry marked fixed. Last updated 2026-10-01, after P3.8f-1.
 
 ---
 
@@ -23,6 +23,7 @@ real sample, or a product decision.
 | F90 | Boot **refusals or warnings** for risky production settings | (a) keep warnings (today); or (b) make them refuse to boot, after you confirm in the Render dashboard that none of these is set: `DEMO_LOGIN_PASSWORD`, `ALLOW_UNVERIFIED_OAUTH_TOKENS`, a `*` or `http://` CORS origin, an `http://` `MONITORING_WEBHOOK_URL` or `COACH_BASE_URL` | The plan says "refuse to boot". I made them warnings because `main` auto-deploys and a dashboard value I can't see could take the API down. Each is already blocked at request time. |
 | F77 | **Logout** and the access token | (a) accept it (the token dies within 15 minutes); or (b) I add a per-session revocation list | After logout, the 15-minute access token keeps working until it expires. The refresh token is revoked at once. |
 | F45 | Paywall line **"…and we never see your bank."** (and Settings' "We never ask for your bank login", Profile's "We never see your bank login") | (a) change it to "…and no bank login required." now; or (b) keep it and reword when Plaid ships | True today (bank connect is dev-only). It becomes false the day Plaid ships. |
+| F140 | **Envelopes** (sold as Pro) can't be set up: every envelope is "New envelope", $100, with only a "Log $5" button | (a) a design for the envelope editor (name, amount, a spend of any size), which I then build; or (b) take envelopes off the paywall until it exists | It's one of the three things Pro sells. The design only drew it as a locked row. |
 | F138 | **Sample data** for new users | (a) none in release builds, as now: a new ledger starts empty, as onboarding says; or (b) an opt-in "Try it with sample data" on the empty ledger, clearly labelled, no reminders, removable in one tap | Until P3.8e-2, every new user's ledger started with 5 subscriptions that weren't theirs ($107.46/mo), with real reminders for them, and 5 of the 10 free slots used. Development builds still get the samples. |
 | F127 | What **"Export my data"** covers | (a) keep the export to subscriptions and their notes, as the row now says; or (b) I add budgets and price history to the file, as the design's "EVERYTHING, AS CSV" promises | Until P3.8e-1 the row said "everything" and the file lacked even the notes. Notes are in now, and the row says what the file holds. |
 | F25 | How to present **305 of 509 catalog entries** that hold unresearched data (a guessed cancel link, "difficulty: medium", generic steps) | e.g. an "unverified" label and the homepage instead of a guessed link, or `noindex` on the website until curated | They are shown as fact in the app and on 305 public cancel-guide pages. |
@@ -79,6 +80,12 @@ real sample, or a product decision.
 | F126 | Found in P3.8e-1: Settings showed **"Version 1.0.0"**; the app is 0.1.0 | Shows the real version. |
 | F125 | Found in P3.8e-1: Settings and Profile showed an **internal account id where your email belongs** (or a made-up "you@example.com") | Your email is shown now. |
 | F124 | Found in P3.8e-1: Settings' **"Push notifications" switch did nothing** | It's now "Renewal reminders" (as designed) and really turns every reminder off and on. |
+| F145 | Found in P3.8f-1: the coach said cancelling its picks would **"get under" your budget when they didn't** | It says so only when it's true. |
+| F144 | Found in P3.8f-1: setting a budget **started at $5**, not the suggested amount, and Start saved $5 | It starts at the suggestion. |
+| F143 | Found in P3.8f-1: the budget recap gave a **brand-new user a "5-month streak" to share**, and called an estimate "Actually spent" | Only months after you set the budget count, and it says "Estimated spend". |
+| F142 | Found in P3.8f-1: the coach told users to **"add an AI key on the server"** | It says coaching isn't available right now. |
+| F141 | Found in P3.8f-1: the budget marked the **free** Spend Coach as **Pro** | Badge removed. |
+| F139 | Found in P3.8f-1: the budget's cut list read **"$99.00/mo · $1,188.00/yr"** for a $99 yearly plan | Each shows its own cycle. |
 | F138 | Found in P3.8e-2: **every new user's ledger started with 5 sample subscriptions** (Adobe, Netflix…) as if they were theirs, with real reminders | A new ledger starts empty now, as onboarding says (your decision on an opt-in sample is above). |
 | F137 | Found in P3.8e-2: a purchase that left Pro **inactive still said "Zeno Pro is active"** | It says Pro isn't active yet and points to Restore purchases. |
 | F136 | Found in P3.8e-2: buying **Family said "Welcome to Pro"** | Names the plan bought. |

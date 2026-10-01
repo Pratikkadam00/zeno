@@ -1,4 +1,4 @@
-import type { SubscriptionCategory } from "@zeno/shared";
+import { monthlyAmount, type Subscription, type SubscriptionCategory } from "@zeno/shared";
 import { router, Stack } from "expo-router";
 import {
   Banknote,
@@ -28,6 +28,7 @@ import { useSubscriptionStore } from "../src/data/subscription-store";
 import { budgetStatus, computeBudgetForecast, computeCategoryForecast, suggestedCapMinor, type BudgetStatus } from "../src/finance/budget";
 import { useZenoTokens } from "../src/theme/useZenoTokens";
 import type { ZenoTokens } from "../src/theme/zeno";
+import { annualAmountMinor, billingSuffix } from "../src/utils/billing-label";
 import { currencySymbol, formatMoney } from "../src/utils/format";
 import { formatShortDate } from "../src/utils/subscription-ui";
 
@@ -70,7 +71,11 @@ export default function BudgetScreen() {
   const forecast = computeBudgetForecast(subscriptions, undefined, fx);
   const { committedMinor, projectedMinor, remaining, daysLeftInMonth } = forecast;
 
-  const [setupCapMinor, setSetupCapMinor] = useState(() => suggestedCapMinor(projectedMinor));
+  // F144: null until the user changes it, then their value. It was seeded once
+  // from the forecast on the FIRST render, before the subscriptions load, when
+  // the forecast is $0: the setup cap read $5, not the suggestion.
+  const [chosenCapMinor, setChosenCapMinor] = useState<number | null>(null);
+  const setupCapMinor = chosenCapMinor ?? suggestedCapMinor(projectedMinor);
   const [incomeInput, setIncomeInput] = useState("");
 
   const statusColors: Record<BudgetStatus, { soft: string; main: string }> = {
@@ -110,15 +115,15 @@ export default function BudgetScreen() {
 
           <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: 12, letterSpacing: t.letterSpacing.caps, textTransform: "uppercase", color: c.textTertiary, marginBottom: 8 }}>Your monthly cap</Text>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 16, marginBottom: 12 }}>
-            <IconButton variant="secondary" size={44} label="Lower cap" onPress={() => setSetupCapMinor((m) => Math.max(500, m - 500))}>
+            <IconButton variant="secondary" size={44} label="Lower cap" onPress={() => setChosenCapMinor(Math.max(500, setupCapMinor - 500))}>
               <Minus size={20} color={c.textPrimary} strokeWidth={2} />
             </IconButton>
             <View style={{ minWidth: 120, alignItems: "center" }}><AmountDisplay amount={setupCapMinor / 100} currency={currencySymbol(homeCurrency)} size="lg" /></View>
-            <IconButton variant="secondary" size={44} label="Raise cap" onPress={() => setSetupCapMinor((m) => m + 500)}>
+            <IconButton variant="secondary" size={44} label="Raise cap" onPress={() => setChosenCapMinor(setupCapMinor + 500)}>
               <Plus size={20} color={c.textPrimary} strokeWidth={2} />
             </IconButton>
           </View>
-          <Pressable accessibilityRole="button" onPress={() => setSetupCapMinor(suggestedCapMinor(projectedMinor))} style={{ alignSelf: "center", marginBottom: 6 }}>
+          <Pressable accessibilityRole="button" onPress={() => setChosenCapMinor(null)} style={{ alignSelf: "center", marginBottom: 6 }}>
             <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: 13, color: c.accentText }}>Use suggested · {dollarsRound(suggestedCapMinor(projectedMinor))}</Text>
           </Pressable>
           <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: 12, color: c.textTertiary, textAlign: "center" }}>
@@ -143,9 +148,12 @@ export default function BudgetScreen() {
   const committedPct = Math.min(100, capMinor > 0 ? (committedMinor / capMinor) * 100 : 0);
   const statusLabel = status === "over" ? "Over" : status === "approaching" ? "Close" : "On pace";
 
+  // F139: ordered by what each costs a MONTH (as the coach does), not by the
+  // raw per-cycle price, which put a $99/yr plan after a $10/mo one; a cycle
+  // with no recurring charge isn't a way to cut this month.
   const cutCandidates = subscriptions
-    .filter((s) => s.status === "active")
-    .sort((a, b) => a.price.amountMinor - b.price.amountMinor)
+    .filter((s) => s.status === "active" && monthlyAmount(s) > 0)
+    .sort((a, b) => monthlyAmount(a) - monthlyAmount(b))
     .slice(0, 3);
 
   const categoryForecast = computeCategoryForecast(subscriptions, undefined, fx);
@@ -220,7 +228,7 @@ export default function BudgetScreen() {
                   <ServiceAvatar name={s.name} size={34} />
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: 14, color: c.textPrimary }}>{s.name}</Text>
-                    <Text style={{ fontFamily: t.fonts.mono.regular, fontSize: 12, color: c.textTertiary }}>{formatMoney(s.price.amountMinor, s.price.currency)}/mo · {formatMoney(s.price.amountMinor * 12, s.price.currency)}/yr</Text>
+                    <Text style={{ fontFamily: t.fonts.mono.regular, fontSize: 12, color: c.textTertiary }}>{cutLine(s)}</Text>
                   </View>
                   <Button variant="secondary" size="sm" onPress={() => router.push(`/subscription/cancel/${s.id}` as never)}>Cancel</Button>
                 </View>
@@ -236,7 +244,8 @@ export default function BudgetScreen() {
             <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: 13.5, color: c.textPrimary }}>Ask the Spend Coach</Text>
             <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: 12, color: c.textSecondary }}>What to cut to hit {dollarsRound(capMinor)} — and how much it saves.</Text>
           </View>
-          {!isPro ? <Badge tone="accent">Pro</Badge> : <ChevronRight size={18} color={c.textTertiary} strokeWidth={2} />}
+          {/* F141: no "Pro" badge; the coach is free on every plan (coach.tsx checks no plan). */}
+          <ChevronRight size={18} color={c.textTertiary} strokeWidth={2} />
         </Pressable>
 
         {/* Forecast — still to renew */}
@@ -400,6 +409,15 @@ export default function BudgetScreen() {
       </ScrollView>
     </View>
   );
+}
+
+/** F139: "$X/mo · $Y/yr" was printed for every cycle ("$99.00/mo · $1,188.00/yr"
+ *  for a yearly plan). The price with its own cycle, and a year of it unless
+ *  that is the same line. */
+function cutLine(s: Subscription): string {
+  const price = `${formatMoney(s.price.amountMinor, s.price.currency)}${billingSuffix(s.billingCycle)}`;
+  const year = annualAmountMinor(s.price.amountMinor, s.billingCycle);
+  return year !== null && s.billingCycle !== "annual" ? `${price} · ${formatMoney(year, s.price.currency)}/yr` : price;
 }
 
 function SectionLabel({ t, Icon, children, pro }: { t: ReturnType<typeof useZenoTokens>; Icon: ComponentType<{ size?: number; color?: string; strokeWidth?: number }>; children: string; pro?: boolean }) {

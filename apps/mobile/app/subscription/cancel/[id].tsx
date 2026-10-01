@@ -16,6 +16,7 @@ import type { ThemeTokens } from "../../../src/theme/tokens";
 import { type as typography } from "../../../src/theme/typography";
 import { fonts } from "../../../src/theme/zeno";
 import { spacing } from "../../../src/theme/spacing";
+import { annualAmountMinor } from "../../../src/utils/billing-label";
 
 // ─── Pure helpers (logic unchanged) ──────────────────────────────────────────
 
@@ -60,16 +61,6 @@ function getGenericSteps(serviceName: string): string[] {
     "Look for Cancel or Manage subscription",
     "Follow prompts to confirm cancellation"
   ];
-}
-
-// F117: null for a trial or an unknown cycle, as on the subscription page and
-// in @zeno/shared's monthlyAmount: no recurring yearly figure to promise.
-function getAnnualAmountMinor(amountMinor: number, cycle: BillingCycle): number | null {
-  if (cycle === "weekly")    return amountMinor * 52;
-  if (cycle === "quarterly") return amountMinor * 4;
-  if (cycle === "annual")    return amountMinor;
-  if (cycle === "monthly")   return amountMinor * 12;
-  return null;
 }
 
 // F119: the stored price is PER BILLING CYCLE. The success card labelled it
@@ -139,7 +130,8 @@ export default function SubscriptionCancelScreen() {
   const sub = subscription;
   const service = sub.serviceSlug ? findServiceBySlug(sub.serviceSlug) : undefined;
   const difficulty = service?.cancellationDifficulty ? getDifficultyMeta(service.cancellationDifficulty, theme) : null;
-  const annualMinor = getAnnualAmountMinor(sub.price.amountMinor, sub.billingCycle);
+  // F117: null for a trial or an unknown cycle (src/utils/billing-label.ts).
+  const annualMinor = annualAmountMinor(sub.price.amountMinor, sub.billingCycle);
   const daysRemaining = getDaysRemaining(sub.nextRenewalDate);
   const renewalLabel = getRenewalLabel(daysRemaining, sub.nextRenewalDate);
   const steps = service?.cancellationGuideSteps?.length

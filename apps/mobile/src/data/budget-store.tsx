@@ -8,6 +8,8 @@ export type BudgetCategoryCap = { category: string; capMinor: number };
 
 export type BudgetConfig = {
   capMinor: number | null; // monthly recurring cap; null = not set yet
+  /** When the cap was set (ISO). F143: the recap counts only months after it. */
+  capSetAt: string | null;
   incomeMinor: number | null; // optional monthly income (sensitive PII)
   envelopes: BudgetEnvelope[];
   categoryCaps: BudgetCategoryCap[];
@@ -16,7 +18,7 @@ export type BudgetConfig = {
 // Stored in the SQLCipher-encrypted app_meta table (NOT plaintext AsyncStorage) —
 // the budget config holds the user's stated monthly income, which is sensitive PII.
 const META_KEY = "budget.config.v1";
-const defaultConfig: BudgetConfig = { capMinor: null, incomeMinor: null, envelopes: [], categoryCaps: [] };
+const defaultConfig: BudgetConfig = { capMinor: null, capSetAt: null, incomeMinor: null, envelopes: [], categoryCaps: [] };
 
 // expo-sqlite is not configured for web; web sessions stay in-memory.
 const persistenceEnabled = Platform.OS !== "web";
@@ -64,6 +66,14 @@ export function BudgetStoreProvider({ children }: { children: ReactNode }) {
         if (raw && !cancelled) {
           try {
             const stored = { ...defaultConfig, ...(JSON.parse(raw) as Partial<BudgetConfig>) };
+            // F143: a cap saved before capSetAt existed has no date. Nothing
+            // proves it is older, so it counts from now (saved, so it stays put).
+            if (stored.capMinor != null && !stored.capSetAt) {
+              stored.capSetAt = new Date().toISOString();
+              void writeAppMeta(db, META_KEY, JSON.stringify(stored)).catch((error) => {
+                console.warn("Failed to persist budget config.", error);
+              });
+            }
             configRef.current = stored;
             setConfig(stored);
           } catch (error) {
@@ -101,7 +111,12 @@ export function BudgetStoreProvider({ children }: { children: ReactNode }) {
       config,
       hydrated,
       setCap(capMinor) {
-        update((current) => ({ ...current, capMinor }));
+        // F143: the date a cap is first set; cleared with the cap.
+        update((current) => ({
+          ...current,
+          capMinor,
+          capSetAt: capMinor === null ? null : current.capMinor !== null && current.capSetAt ? current.capSetAt : new Date().toISOString()
+        }));
       },
       setIncome(incomeMinor) {
         update((current) => ({ ...current, incomeMinor }));

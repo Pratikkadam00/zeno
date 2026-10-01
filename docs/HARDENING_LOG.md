@@ -71,8 +71,11 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
       - [x] P3.8d-2 the cancel guide and Add subscription; **fixes F119, F120, F121, F122, F123**, F117 extended (green: CI 36875048540, CodeQL 36875048572 on `3b82e24`)
     - [x] P3.8e settings (incl. F29's screen use), profile, notifications, login, paywall, onboarding
       - [x] P3.8e-1 Settings, Profile, Notifications; **fixes F124, F125, F126, F128, F129, F130, F131**, F127 in part (rest to the owner); F29's screen use covered (green: CI 36883987644, CodeQL 36883987826 on `9edfe26`)
-      - [x] P3.8e-2 login, paywall, onboarding; **fixes F132, F133, F134, F135, F136, F137, F138** (F134 and F138 each with an owner part)
-    - [ ] P3.8f the rest (budget, recap, family, coach, wrapped, widgets, spend-twin, open-banking, backend, business, partners, public-api) and the root layout
+      - [x] P3.8e-2 login, paywall, onboarding; **fixes F132, F133, F134, F135, F136, F137, F138** (F134 and F138 each with an owner part) (green: CI 36886091140, CodeQL 36886091373 on `696e6c6`)
+    - [~] P3.8f the rest (budget, recap, family, coach, wrapped, widgets, spend-twin, open-banking, backend, business, partners, public-api) and the root layout
+      - [x] P3.8f-1 budget, budget recap, coach; **fixes F139, F141, F142, F143, F144, F145**; F140 to the owner
+      - [ ] P3.8f-2 family, wrapped, the preview screens, open-banking (rendered with the API faked; no Plaid call)
+      - [ ] P3.8f-3 the root layout
   - [ ] P3.9 static scan of the release APK (MobSF, else apkleaks + manifest review)
   - [ ] P3 gate: hardened release APK verified on the emulator (every flow in `DEVICE_TEST_FINDINGS.md`); jest floor in CI; MASVS checklist with evidence per control
 - [ ] **P4 — Website component tests, Playwright, CSP, DAST**
@@ -218,6 +221,13 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F136 | **FIXED in P3.8e-2.** ~~Buying Family showed "Welcome to Pro".~~ The success screen now names the plan bought. | Low | me | P3.8e-2 |
 | F137 | **FIXED in P3.8e-2.** ~~A purchase that left no active plan still said "Zeno Pro is active".~~ When the store completes a purchase but RevenueCat reports the free plan (for example an entitlement not attached to the product), the screen announced success and showed "Welcome to Pro". It now says Pro isn't active yet and points to Restore purchases. | Medium (a false confirmation of something paid for) | me | P3.8e-2 |
 | F138 | **FIXED in P3.8e-2 (scope to the owner).** ~~Every new user's ledger started with 5 subscriptions that weren't theirs.~~ The store wrote the sample rows (Adobe, Midjourney, Netflix, Disney+ Family, Super Duolingo) into every database on first launch, release builds too. A new user saw $107.46/mo committed, got renewal reminders for services they may never have had, and started with 5 of the free plan's 10 slots used. Onboarding says "your ledger starts empty", and the design's Home has a first-discovery empty state. The samples are now written only in development builds (`__DEV__`); a release build starts, and hydrates, empty. Whether a release should offer a clearly labelled sample is in OPEN_ITEMS. | High (invented data in the user's own records) | me + owner (scope) | P3.8e-2 |
+| F139 | **FIXED in P3.8f-1.** ~~The budget's "get back under" list priced everything as monthly.~~ Each candidate read "$X/mo · $(12X)/yr", so a $99 yearly plan showed "$99.00/mo · $1,188.00/yr". It now shows the price with its own cycle, plus a year of it when that is a different figure. The list was also ordered by the raw per-cycle price, which put a $99/yr plan ($8.25 a month) after a $10/mo one; it is now ordered by monthly cost, as the coach does. A trial or unknown cycle, which has no monthly charge, is no longer offered as a cut. The yearly rule is shared with the cancel guide (`annualAmountMinor` in `src/utils/billing-label.ts`). | Low (truthfulness of money) | me | P3.8f-1 |
+| F140 | **OPEN: owner decision.** Envelopes, one of the three features the paywall sells as Pro, can't be set up. "Add envelope" always makes one named "New envelope" funded with $100, and the only action is "Log $5". There is no name, no funding amount, and no other spend. The store already takes a name and an amount. The design shows envelopes only as a locked row, so the editor was never designed, and I haven't invented one ("port, don't redesign"). | Medium (a paid feature that doesn't work as sold) | owner | before selling Pro |
+| F141 | **FIXED in P3.8f-1.** ~~The budget showed a "Pro" badge on "Ask the Spend Coach".~~ The coach checks no plan (`app/coach.tsx`) and the paywall lists it as free. The badge is gone. | Low (truthfulness) | me | P3.8f-1 |
+| F142 | **FIXED in P3.8f-1.** ~~The coach told users to "Add an AI key on the server to unlock personalized coaching."~~ That is a developer's instruction, and it was also shown when the phone was just offline. It now says personalized coaching isn't available right now, and that the insights shown are computed on the device. | Low | me | P3.8f-1 |
+| F143 | **FIXED in P3.8f-1.** ~~The budget recap invented a streak and called an estimate "Actually spent".~~ The recap's history is rebuilt from today's subscription list (each one assumed charged since it was added to Zeno, none once cancelled), and every complete month was compared with TODAY's cap. A new user's past months are $0, so installing the app and setting a budget gave "Under cap", a 5-month streak, and "Share my 5-month streak": "I've stayed under my subscription budget for 5 months straight." The budget now records when the cap was set (`capSetAt`; an older undated cap counts from now). Only complete months that began after it count, for the recap, the streak and the share (`budgetRecap` in `src/finance/budget.ts`), and the figure is labelled "Estimated spend". | High (an invented claim the app offers to share) | me | P3.8f-1 |
+| F144 | **FIXED in P3.8f-1.** ~~The budget's setup cap started at $5, not the suggested cap.~~ It was seeded once on the first render, before the subscriptions load, when the forecast is $0 (the same pattern as F118). "Use suggested · $155" was shown beside a $5 cap, and "Start tracking" saved $5. The cap now follows the suggestion until the user changes it. | Medium | me | P3.8f-1 |
+| F145 | **FIXED in P3.8f-1.** ~~The coach said cancelling its picks would "get under" the budget when they didn't.~~ It took the cheapest subscriptions until their savings covered the overage, but when every subscription together saved less, it still ended "…and get under." It says that only when the cuts cover the overage; otherwise "That alone won't get you under this month." | Medium (advice about money that was false) | me | P3.8f-1 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **TO CHECK ON THE DEVICE (not a confirmed bug).** On the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -3900,3 +3910,51 @@ in OPEN_ITEMS.
 
 Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1902 at
 100 / 99.68 / 100 / 100 · jest 441 / 441, 0 act() warnings, the new floors held.
+
+### P3.8f-1 — the budget, its recap, the Spend Coach — 2026-10-01
+
+**Result:**
+- `app/budget.tsx` (75/75 lines), `app/budget-recap.tsx` (32/32) and `app/coach.tsx`
+  (56/56) are at 100 % lines and statements, held there file by file.
+- `app/` went from 1137 to 1295 lines covered (84.75 % of 1528); statements 1490 of
+  1758 (84.75 %).
+- The jest suite is at 478 tests, 0 act() warnings. Vitest is at 1915.
+
+**Budget tests (16), on a pinned clock, with figures from the real forecast:**
+- **Setup:** the forecast; the suggested cap as the start (F144); the $5 steps; the
+  floor; Start.
+- **Over, close, on pace:** the cuts, each with its own cycle and in monthly order
+  (F139); trials not offered; the running total of what's still to renew; Edit.
+- **Other:** the coach without a Pro badge (F141); the recap link; income; another
+  currency counted, not guessed; the free plan's locked rows.
+- **Pro:** category caps; envelopes (add, log, over, remove).
+
+**Recap tests (6):** no budget; a budget set today (F143: no recap, no streak); a 2-month
+streak, shared; one month; over the cap; a cheaper month after an over-cap one.
+
+**Coach tests (14):**
+- **Consent:** nothing is sent before it; Not now; enable later.
+- **What's sent:** names, categories and monthly amounts, never an email-found
+  subscription.
+- **Answers:** the AI's advice; no AI model, or offline (F142); waiting; no summary;
+  leaving early.
+- **Budget:** over, with cuts that don't cover it or that do (F145); on pace.
+- **Other:** categories and insights; another currency; nothing tracked.
+
+**Found:**
+- Fixed: F139, F141, F142, F143, F144, F145 (see their rows).
+- F140 (envelopes can't be set up) is the owner's decision.
+
+**To check in P3.8f-2:** the recap says "Budget adherence rolls into your Year in Review"
+next to a Pro badge. Whether the Year in Review uses budgets, and whether it is Pro, is
+read in `app/wrapped.tsx` next.
+
+**Bite check: 12, all caught:**
+- **F139:** the cycle text; the order; trials offered;
+- **F141, F142**;
+- **F143:** the rule; the screen ignoring it; "Actually spent"; the store never dating
+  the cap; an undated stored cap;
+- **F144, F145**.
+
+Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1915 at
+100 / 99.69 / 100 / 100 · jest 478 / 478, 0 act() warnings, the new floors held.

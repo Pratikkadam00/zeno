@@ -151,3 +151,36 @@ export function budgetStatus(projectedMinor: number, capMinor: number): BudgetSt
   if (projectedMinor > 0.85 * capMinor) return "approaching";
   return "under";
 }
+
+export type BudgetRecap = { recapIndex: number; streak: number };
+
+/**
+ * Which month the recap covers, and the streak under the cap (F143). Only a
+ * COMPLETE month that began after the cap was set counts: the recap compared
+ * months before any budget existed against today's cap, and a new user's past
+ * months are $0 (nothing was tracked yet), so installing the app and setting a
+ * budget gave a "5-month streak under cap" to share. Null until such a month
+ * exists. `history` is oldest first, in UTC months (buildMonthlySpendHistory).
+ */
+export function budgetRecap(
+  history: { year: number; month: number; amountMinor: number }[],
+  capMinor: number,
+  capSetAt: string | null,
+  now: Date = new Date()
+): BudgetRecap | null {
+  const setAt = capSetAt ? Date.parse(capSetAt) : Number.NaN;
+  if (Number.isNaN(setAt)) return null;
+  const currentMonth = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
+  const counts = (point: { year: number; month: number }) => {
+    const start = Date.UTC(point.year, point.month, 1);
+    return start >= setAt && start < currentMonth;
+  };
+  let recapIndex = -1;
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (counts(history[i]!)) { recapIndex = i; break; }
+  }
+  if (recapIndex < 0) return null;
+  let streak = 0;
+  for (let i = recapIndex; i >= 0 && counts(history[i]!) && history[i]!.amountMinor <= capMinor; i--) streak++;
+  return { recapIndex, streak };
+}

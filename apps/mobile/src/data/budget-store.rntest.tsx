@@ -45,12 +45,31 @@ describe("hydration", () => {
     mockRead.mockResolvedValue(JSON.stringify({ capMinor: 5000, incomeMinor: 300000 }));
     const { result } = await mounted();
     expect(mockRead).toHaveBeenCalledWith(db, "budget.config.v1");
-    expect(result.current.config).toEqual({ capMinor: 5000, incomeMinor: 300000, envelopes: [], categoryCaps: [] });
+    expect(result.current.config).toEqual({ capMinor: 5000, capSetAt: expect.any(String), incomeMinor: 300000, envelopes: [], categoryCaps: [] });
+  });
+
+  it("F143: a stored cap without a date is dated now (saved); a dated one keeps its date", async () => {
+    const before = Date.now();
+    mockRead.mockResolvedValue(JSON.stringify({ capMinor: 5000 }));
+    const first = await mounted();
+    expect(Date.parse(first.result.current.config.capSetAt!)).toBeGreaterThanOrEqual(before);
+    expect(lastWritten()).toMatchObject({ capMinor: 5000, capSetAt: first.result.current.config.capSetAt });
+    first.unmount();
+    mockWrite.mockClear();
+    mockRead.mockResolvedValue(JSON.stringify({ capMinor: 5000, capSetAt: "2026-03-01T00:00:00.000Z" }));
+    const second = await mounted();
+    expect(second.result.current.config.capSetAt).toBe("2026-03-01T00:00:00.000Z");
+    expect(mockWrite).not.toHaveBeenCalled();
+    second.unmount();
+    mockRead.mockResolvedValue(JSON.stringify({ capMinor: 5000 }));
+    mockWrite.mockRejectedValueOnce(new Error("disk"));
+    await mounted();
+    await waitFor(() => expect(console.warn).toHaveBeenCalledWith("Failed to persist budget config.", expect.any(Error)));
   });
 
   it("nothing stored → defaults", async () => {
     const { result } = await mounted();
-    expect(result.current.config).toEqual({ capMinor: null, incomeMinor: null, envelopes: [], categoryCaps: [] });
+    expect(result.current.config).toEqual({ capMinor: null, capSetAt: null, incomeMinor: null, envelopes: [], categoryCaps: [] });
   });
 
   it("a corrupt stored value is ignored with a warning (defaults kept)", async () => {
@@ -94,8 +113,17 @@ describe("hydration", () => {
 describe("actions persist exactly what they set", () => {
   it("cap and income", async () => {
     const { result } = await mounted();
+    const before = Date.now();
     act(() => result.current.setCap(8000));
     expect(lastWritten()).toMatchObject({ capMinor: 8000 });
+    // F143: dated when first set, kept when the cap changes, cleared with it.
+    const setAt = result.current.config.capSetAt!;
+    expect(Date.parse(setAt)).toBeGreaterThanOrEqual(before);
+    act(() => result.current.setCap(9000));
+    expect(result.current.config.capSetAt).toBe(setAt);
+    act(() => result.current.setCap(null));
+    expect(result.current.config.capSetAt).toBeNull();
+    act(() => result.current.setCap(8000));
     act(() => result.current.setIncome(420000));
     expect(result.current.config).toMatchObject({ capMinor: 8000, incomeMinor: 420000 });
     expect(mockWrite.mock.calls.at(-1)![0]).toBe(db);
@@ -142,8 +170,8 @@ describe("actions persist exactly what they set", () => {
     mockRead.mockResolvedValue(JSON.stringify({ capMinor: 5000, incomeMinor: 300000, envelopes: [{ id: "e", name: "x", icon: "i", fundedMinor: 1, spentMinor: 0 }], categoryCaps: [] }));
     const { result } = await mounted();
     await act(async () => { await result.current.reset(); });
-    expect(result.current.config).toEqual({ capMinor: null, incomeMinor: null, envelopes: [], categoryCaps: [] });
-    expect(lastWritten()).toEqual({ capMinor: null, incomeMinor: null, envelopes: [], categoryCaps: [] });
+    expect(result.current.config).toEqual({ capMinor: null, capSetAt: null, incomeMinor: null, envelopes: [], categoryCaps: [] });
+    expect(lastWritten()).toEqual({ capMinor: null, capSetAt: null, incomeMinor: null, envelopes: [], categoryCaps: [] });
   });
 
   it("F27: a reset whose write fails REJECTS (an erase must not report success), memory still reset", async () => {
@@ -163,7 +191,7 @@ describe("actions persist exactly what they set", () => {
       void result.current.reset();
       result.current.setCap(100);
     });
-    expect(result.current.config).toEqual({ capMinor: 100, incomeMinor: null, envelopes: [], categoryCaps: [] });
+    expect(result.current.config).toEqual({ capMinor: 100, capSetAt: expect.any(String), incomeMinor: null, envelopes: [], categoryCaps: [] });
   });
 
   it("a failed write keeps the new state and warns", async () => {

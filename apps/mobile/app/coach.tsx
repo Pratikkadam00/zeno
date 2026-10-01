@@ -62,7 +62,10 @@ export default function CoachScreen() {
         accumulated += candidate.monthlyMinor;
       }
     }
-    return { capMinor, projectedMinor: forecast.projectedMinor, status, overByMinor, cuts };
+    // F145: it said "and get under" even when every candidate together saved
+    // less than the overage (the loop just ran out of subscriptions).
+    const cutsCoverOverage = cuts.reduce((sum, cut) => sum + cut.monthlyMinor, 0) >= overByMinor;
+    return { capMinor, projectedMinor: forecast.projectedMinor, status, overByMinor, cuts, cutsCoverOverage };
   }, [budgetConfig.capMinor, subscriptions, fx]);
 
   useEffect(() => {
@@ -127,7 +130,10 @@ export default function CoachScreen() {
               ? "Deterministic insights, computed entirely on your device."
               : aiActive
                 ? "Personalized coaching from your configured AI model, grounded in your subscriptions."
-                : "Deterministic insights computed on-device. Add an AI key on the server to unlock personalized coaching."}
+                : loadingAi
+                  ? "Asking your AI coach for personalized coaching."
+                  // F142: told users to "add an AI key on the server"; also shown offline.
+                  : "Personalized coaching isn't available right now. These insights are computed on your device."}
           </Text>
           <Text style={{ color: theme.quietText, marginTop: 6, fontSize: 12 }}>
             General information, not financial advice.
@@ -198,7 +204,8 @@ export default function CoachScreen() {
                 </Text>
                 {budgetAdvice.cuts.length > 0 ? (
                   <Text style={{ color: theme.secondary, marginTop: 8, fontWeight: "800" }}>
-                    Cancel {budgetAdvice.cuts.map((cut) => cut.name).join(" + ")} → save {money(budgetAdvice.cuts.reduce((sum, cut) => sum + cut.monthlyMinor, 0))}/mo and get under.
+                    Cancel {budgetAdvice.cuts.map((cut) => cut.name).join(" + ")} → save {money(budgetAdvice.cuts.reduce((sum, cut) => sum + cut.monthlyMinor, 0))}/mo
+                    {budgetAdvice.cutsCoverOverage ? " and get under." : ". That alone won't get you under this month."}
                   </Text>
                 ) : null}
               </>

@@ -10,6 +10,7 @@ import { useZenoTokens } from "../src/theme/useZenoTokens";
 import { currencySymbol, formatMoney } from "../src/utils/format";
 import { shareText } from "../src/utils/share";
 import { recordFunnelEvent } from "../src/api/client";
+import { budgetRecap } from "../src/finance/budget";
 
 export default function BudgetRecapScreen() {
   const t = useZenoTokens();
@@ -24,12 +25,15 @@ export default function BudgetRecapScreen() {
   const money = (minor: number) => formatMoney(minor, homeCurrency);
   const dollarsRound = (minor: number) => `${currencySymbol(homeCurrency)}${Math.round(minor / 100)}`;
 
-  const history = buildMonthlySpendHistory(subscriptions, 6, undefined, fx).map((point) => ({ label: point.label, amountMinor: point.amountMinor }));
-  // Recap the most recent COMPLETE month (the current month is still partial).
-  const recapIndex = history.length >= 2 ? history.length - 2 : history.length - 1;
-  const recap = history[recapIndex];
-  const prev = history[recapIndex - 1];
+  const history = buildMonthlySpendHistory(subscriptions, 6, undefined, fx);
   const capMinor = config.capMinor ?? 0;
+  // F143: the most recent complete month that began after the cap was set
+  // (src/finance/budget.ts), never a month from before any budget existed.
+  const result = config.capMinor == null ? null : budgetRecap(history, capMinor, config.capSetAt);
+  const recapIndex = result?.recapIndex ?? -1;
+  const recap = result ? history[recapIndex] : undefined;
+  const prev = result ? history[recapIndex - 1] : undefined;
+  const streak = result?.streak ?? 0;
 
   const Header = (
     <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingTop: 6, paddingBottom: 8 }}>
@@ -42,7 +46,7 @@ export default function BudgetRecapScreen() {
     </View>
   );
 
-  if (!recap || config.capMinor == null) {
+  if (!recap) {
     return (
       <View style={{ flex: 1, backgroundColor: c.bgApp, paddingTop: insets.top }}>
         <Stack.Screen options={{ headerShown: false }} />
@@ -59,13 +63,6 @@ export default function BudgetRecapScreen() {
   const under = recap.amountMinor <= capMinor;
   const diffMinor = Math.abs(capMinor - recap.amountMinor);
   const maxMinor = Math.max(...history.map((h) => h.amountMinor), capMinor, 1);
-
-  // Consecutive complete months (back from the recap month) that stayed under cap.
-  let streak = 0;
-  for (let i = recapIndex; i >= 0; i--) {
-    if (history[i].amountMinor <= capMinor) streak++;
-    else break;
-  }
 
   // Streak = retention mechanic + recurring share trigger (3.3). Only worth
   // sharing once it's a genuine streak, matching the badge's own threshold.
@@ -88,7 +85,7 @@ export default function BudgetRecapScreen() {
             size="lg"
             angle={-5}
             tone={under ? "verified" : "alert"}
-            sub={`CAP ${dollarsRound(capMinor)} · SPENT ${money(recap.amountMinor)}`}
+            sub={`CAP ${dollarsRound(capMinor)} · EST. ${money(recap.amountMinor)}`}
           >
             {under ? "Under cap" : "Over cap"}
           </Stamp>
@@ -123,7 +120,9 @@ export default function BudgetRecapScreen() {
         <View style={{ borderTopWidth: 1, borderColor: c.ruleStrong, marginTop: 14 }}>
           <LedgerLine label="The cap" value={dollarsRound(capMinor)} />
           <LedgerLine
-            label="Actually spent"
+            // F143: an estimate from the renewals Zeno tracks (no bank data), not
+            // what was "actually spent", as it said.
+            label="Estimated spend"
             value={money(recap.amountMinor)}
             valueColor={under ? c.stampVerified : c.stampAlert}
             strong
