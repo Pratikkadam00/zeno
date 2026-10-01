@@ -9,7 +9,6 @@ export interface Insight {
     | "duplicate"
     | "annual_saving"
     | "trial_ending"
-    | "price_spike"
     | "spend_summary"
     | "high_spend"
     | "cancellation_reminder";

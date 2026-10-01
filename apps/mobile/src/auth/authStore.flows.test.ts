@@ -43,11 +43,21 @@ vi.mock("../api/config", () => ({ getApiBaseUrl: () => "https://api.test/api/v1"
 const http = vi.hoisted(() => ({ timedFetch: vi.fn() }));
 vi.mock("../api/http", () => http);
 
-const vault = vi.hoisted(() => ({ store: new Map<string, string>() }));
+// `hold`, when set, delays the answer to a read of `holdKey`. The value is taken
+// when the read starts, as the device keychain does, so a test can order a slow
+// launch read against other auth work.
+const vault = vi.hoisted(() => ({ store: new Map<string, string>(), hold: null as Promise<void> | null, holdKey: "", reached: () => {} }));
 vi.mock("expo-secure-store", () => ({
   WHEN_UNLOCKED_THIS_DEVICE_ONLY: "whenUnlockedThisDeviceOnly",
   setItemAsync: async (k: string, v: string) => { vault.store.set(k, v); },
-  getItemAsync: async (k: string) => vault.store.get(k) ?? null,
+  getItemAsync: async (k: string) => {
+    const value = vault.store.get(k) ?? null;
+    if (vault.hold && k === vault.holdKey) {
+      vault.reached();
+      await vault.hold;
+    }
+    return value;
+  },
   deleteItemAsync: async (k: string) => { vault.store.delete(k); }
 }));
 
@@ -134,6 +144,75 @@ describe("hydrate", () => {
     http.timedFetch.mockResolvedValueOnce(envelope(sessionData(3)));
     await vi.advanceTimersByTimeAsync(14 * 60 * 1000);
     expect(calls()[0]?.url).toBe("https://api.test/api/v1/auth/refresh");
+  });
+});
+
+describe("launch races (F154)", () => {
+  // The launch read of the keychain is held until released; meanwhile the user
+  // signs in or chooses local-only. That later decision must stand.
+  // Returns [a promise that resolves once the held read has started, release].
+  function holdLaunchRead(key = "zeno.auth.accessToken.v1"): [Promise<void>, () => void] {
+    let release: () => void = () => {};
+    const reached = new Promise<void>((r) => { vault.reached = r; });
+    vault.holdKey = key;
+    vault.hold = new Promise<void>((r) => { release = r; });
+    return [reached, () => { vault.hold = null; release(); }];
+  }
+
+  it("a sign-in link verified while the launch read is pending stays signed in", async () => {
+    const [reached, release] = holdLaunchRead();
+    linkRequested();
+    http.timedFetch.mockResolvedValueOnce(envelope(linkSession()));
+    const launching = useAuthStore.getState().hydrate();
+    await reached;
+    await useAuthStore.getState().verifyMagicLink("t".repeat(40));
+    release();
+    await launching;
+    expect(useAuthStore.getState()).toMatchObject({ status: "authenticated", isAuthenticated: true, accountId: "acct_1" });
+  });
+
+  it("an older account's session read at launch doesn't replace a sign-in made meanwhile", async () => {
+    storeSession(1);
+    const [reached, release] = holdLaunchRead();
+    linkRequested();
+    http.timedFetch.mockResolvedValueOnce(envelope(linkSession(EMAIL, 2)));
+    const launching = useAuthStore.getState().hydrate();
+    await reached;
+    await useAuthStore.getState().verifyMagicLink("t".repeat(40));
+    release();
+    await launching;
+    expect(useAuthStore.getState()).toMatchObject({ status: "authenticated", accountId: "acct_2" });
+  });
+
+  it("'continue without an account' chosen while the launch read of that choice is pending stays chosen", async () => {
+    const [reached, release] = holdLaunchRead("zeno.auth.localOnly.v1");
+    const launching = useAuthStore.getState().hydrate();
+    await reached;
+    await useAuthStore.getState().continueLocalOnly();
+    release();
+    await launching;
+    expect(useAuthStore.getState().status).toBe("local_only");
+  });
+
+  it("a sign-in made while the local-only flag is being read also stands", async () => {
+    const [reached, release] = holdLaunchRead("zeno.auth.localOnly.v1");
+    linkRequested();
+    http.timedFetch.mockResolvedValueOnce(envelope(linkSession()));
+    const launching = useAuthStore.getState().hydrate();
+    await reached;
+    await useAuthStore.getState().verifyMagicLink("t".repeat(40));
+    release();
+    await launching;
+    expect(useAuthStore.getState()).toMatchObject({ status: "authenticated", accountId: "acct_1" });
+  });
+
+  it("with no decision meanwhile, launch still reads 'signed out' as before", async () => {
+    const [reached, release] = holdLaunchRead();
+    const launching = useAuthStore.getState().hydrate();
+    await reached;
+    release();
+    await launching;
+    expect(useAuthStore.getState().status).toBe("anonymous");
   });
 });
 

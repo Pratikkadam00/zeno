@@ -78,9 +78,14 @@ module.exports = {
     // 84.75).
     // P3.8f-2 measured app/ at 1426/1536 lines, 1642/1763 statements (92.83,
     // 93.13).
-    "./app/": { lines: 92.83, statements: 93.13 },
+    // P3.8f-3 measured app/ at 1535/1535 lines, 1761/1762 statements (100,
+    // 99.94): every screen tested. The one statement is calendar.tsx's guard
+    // for a malformed day key, which its callers can't produce.
+    "./app/": { lines: 100, statements: 99.94 },
     // Finished screens are held file by file. Exact paths, since "(tabs)" in a
     // glob is pattern syntax.
+    "./app/_layout.tsx": { lines: 100, statements: 100 },
+    "./app/(tabs)/analytics.tsx": { lines: 100, statements: 100 },
     "./app/(tabs)/dashboard.tsx": { lines: 100, statements: 100 },
     "./app/(tabs)/subscriptions.tsx": { lines: 100, statements: 100 },
     "./app/(tabs)/_layout.tsx": { lines: 100, statements: 100 },

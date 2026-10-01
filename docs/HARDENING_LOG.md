@@ -60,7 +60,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P3.5 deep links: every `zeno://` route validates its parameters; `Linking.openURL` only `https:`/`mailto:` on an allowlist; **fixes F100** (anyone's sign-in link signed the phone into their account, and a junk one signed the user out); CI on the way found and fixed **F102** (explaining F97) (green: CI 36847517276, CodeQL 36847517287 on `3b8be1e`, which contains P3.5's `44791e7`)
   - [x] P3.6 no secret in the bundle: `extra` and every `EXPO_PUBLIC_*` on the public-by-design allowlist (none found in the bundle, the config or the built APK; guards added) (green: CI 36849676333, CodeQL 36849676314 on `1801e8d`)
   - [x] P3.7 screen capture blocked on the lock overlay and PIN entry (app-wide `FLAG_SECURE` is the owner's call); proven on the emulator; **fixes F105** (the locked app stayed readable to accessibility services); F104 and F106 logged (green: CI 36854703994, CodeQL 36854704080 on `39c9c46`)
-  - [~] P3.8 screen tests for all 29 screens, with a jest floor over `app/**` and `src/components/**` (split into steps; each raises the floor)
+  - [x] P3.8 screen tests for all 29 screens, with a jest floor over `app/**` and `src/components/**` (split into steps; each raises the floor); done 2026-10-01, every `app/` line covered, F107-F154
     - [x] P3.8a the floor itself: directory floors at the measured baseline (12.75 % of 1842 lines) (green: CI 36858191877, CodeQL 36858191900 on `89c3428`; P3.8a's own push `9a2f1a8` went red on F103)
     - [x] P3.8b shared components (`src/components/**`, `components/**`), incl. F1 `ServiceAutocomplete`: every file at 100 % lines; **fixes F1, F107** (green: CI 36860084512, CodeQL 36860084509 on `f78b449`)
     - [x] P3.8c the tab screens and the tab layout
@@ -72,10 +72,10 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
     - [x] P3.8e settings (incl. F29's screen use), profile, notifications, login, paywall, onboarding
       - [x] P3.8e-1 Settings, Profile, Notifications; **fixes F124, F125, F126, F128, F129, F130, F131**, F127 in part (rest to the owner); F29's screen use covered (green: CI 36883987644, CodeQL 36883987826 on `9edfe26`)
       - [x] P3.8e-2 login, paywall, onboarding; **fixes F132, F133, F134, F135, F136, F137, F138** (F134 and F138 each with an owner part) (green: CI 36886091140, CodeQL 36886091373 on `696e6c6`)
-    - [~] P3.8f the rest (budget, recap, family, coach, wrapped, widgets, spend-twin, open-banking, backend, business, partners, public-api) and the root layout
+    - [x] P3.8f the rest (budget, recap, family, coach, wrapped, widgets, spend-twin, open-banking, backend, business, partners, public-api) and the root layout
       - [x] P3.8f-1 budget, budget recap, coach; **fixes F139, F141, F142, F143, F144, F145**; F140 to the owner (green: CI 36891888873, CodeQL 36891888831 on `d1bfa19`)
-      - [x] P3.8f-2 family, wrapped, the preview screens, open-banking (rendered with the API faked; no Plaid call); **fixes F146-F153**
-      - [ ] P3.8f-3 the root layout
+      - [x] P3.8f-2 family, wrapped, the preview screens, open-banking (rendered with the API faked; no Plaid call); **fixes F146-F153** (green: CI 36894599444, CodeQL 36894599463 on `396a5cc`)
+      - [x] P3.8f-3 the root layout; **fixes F154**; every `app/` line covered
   - [ ] P3.9 static scan of the release APK (MobSF, else apkleaks + manifest review)
   - [ ] P3 gate: hardened release APK verified on the emulator (every flow in `DEVICE_TEST_FINDINGS.md`); jest floor in CI; MASVS checklist with evidence per control
 - [ ] **P4 — Website component tests, Playwright, CSP, DAST**
@@ -236,6 +236,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F151 | **FIXED in P3.8f-2.** ~~Two developer screens were reachable in release builds.~~ Every file in `app/` is a route, so a deep link opened `open-banking` ("Connect a sandbox bank" called the server's Plaid sandbox) and `backend` (the API's address and capabilities). Release builds now show "This screen isn't part of this version of Zeno"; development builds are unchanged. The Plaid code is untouched (owner: "keep the code only"), and the tests fake its calls, so no Plaid call is made. | Medium (exposure) | me | P3.8f-2 |
 | F152 | **FIXED in P3.8f-2.** ~~Widgets promised "we'll let you know when it ships".~~ Nothing in the app would. The promise is gone; the "not available yet" stays. | Low | me | P3.8f-2 |
 | F153 | **FIXED in P3.8f-2.** ~~"Notify me when it's ready" on Business, Partners and Public API was a fake waitlist.~~ The button only flipped the screen's own state and then said "You're on the list ✓ We'll let you know the moment this ships". Nothing was recorded anywhere. P3.8b's test checked that behaviour and I didn't see it was false then. The button and the promise are gone, and `ui.tsx`'s `PrimaryButton`, its only user, with them. | Medium (a control that lies) | me | P3.8f-2 |
+| F154 | **FIXED in P3.8f-3.** ~~Opening the app from a sign-in link could leave you signed out.~~ At launch the root layout starts `hydrate()` (read the keychain) and, for a sign-in link, `verifyMagicLink()` together. When the verification finished first, `hydrate()`'s keychain read, begun before the new session was saved, came back "no session" and set the user signed out. The session sat in the keychain, but the screen showed sign-in until the next launch. The same overwrite applied to any sign-in or "continue without an account" made during launch, and a stale read of an OLDER account's session would have put that account back over the new one. Reproduced with a controlled keychain fake (the probe ended "authenticated", then "anonymous"). `hydrate()` now notes the count of sign-ins and local-only choices when it starts, and stands down after each read if one happened meanwhile. | Medium (a sign-in that silently didn't stick) | me | P3.8f-3 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **TO CHECK ON THE DEVICE (not a confirmed bug).** On the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -4013,3 +4014,57 @@ Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vit
 
 Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1915 at
 100 / 99.69 / 100 / 100 · jest 513 / 513, 0 act() warnings, the new floors held.
+
+### P3.8f-3 — the root layout; P3.8 complete — 2026-10-01
+
+**Result:**
+- `app/_layout.tsx` is at 100 % lines and statements (109/109), as is
+  `app/(tabs)/analytics.tsx` (61/61).
+- **Every line of every screen in `app/` is now covered: 1535/1535.** Statements are
+  1761/1762. The one left is `calendar.tsx`'s guard for a malformed day key, which its
+  callers can't produce (the key is the calendar's own `YYYY-MM-DD`). The `app/` floor
+  is now lines 100, statements 99.94.
+- The jest suite is at 547 tests in 38 suites, 0 act() warnings. Vitest is at 1920.
+
+**Root layout tests (34), with the subscription and budget stores and the lock cover
+real:**
+- **Start-up:** fonts loading, loaded, or failed; the animated splash; the holding screen
+  while the session is read; notification handlers set up and removed.
+- **The auth gate:** four redirects, and three cases that stay put.
+- **The sign-in link:** at launch and while open; another screen's link; no token; a
+  refused link.
+- **Billing identity:** signed in, local-only, a billing failure, signed out.
+- **The lock:** fail-closed until loaded, with the app hidden from screen readers;
+  locked; unlocked; signed out.
+- **Data:** reminders reconciled after the 500 ms settle, and F124's switch reaching the
+  scheduler as an empty list; the widget; a pending cancellation resolved.
+- **App state:** lock on the way out and on return, then reminders reconciled; a
+  sign-out racing an event; no listener while signed out.
+
+**Found and fixed:** F154 (see its row). It was found by reading the layout's start-up
+order, then proven with a held keychain read before any change.
+
+**Also:**
+- **Dead code:** Insights' `"price_spike"` insight type is declared but never produced by
+  the engine; it and the colour function's fallback (reachable only through it) are
+  removed.
+- **A measuring mistake, caught by the gates:** a vitest coverage run filtered to one
+  file let `autoUpdate` raise the global branch floor to 100. The full gate then failed.
+  `vitest.config.ts` is restored to 99.69, and the trap is in my notes.
+
+**Bite check: 4, all caught**, after two tests were made to discriminate. The first
+pass of reverts showed that one guard and one counter were never actually needed by
+those tests:
+- the guard after the session read (needs a stale OLDER session);
+- the guard after the local-only read;
+- the sign-in count;
+- the local-only count (needs the held read to start before the choice is saved).
+
+**P3.8 overall (a-f, 2026-09-30 to 2026-10-01):**
+- Every screen and shared component is tested through the real stores and held at 100 %
+  lines.
+- Findings F107-F154 came from it, nearly all real bugs in what the app showed or did.
+- The owner's share is in OPEN_ITEMS: F114, F127, F134, F138, F140, F146.
+
+Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1920 at
+100 / 99.69 / 100 / 100 · jest 547 / 547, 0 act() warnings, the new floors held.

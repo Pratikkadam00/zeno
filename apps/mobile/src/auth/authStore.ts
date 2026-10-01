@@ -121,14 +121,23 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
   error: null,
 
   async hydrate() {
+    // F154: launch reads the keychain while a sign-in can complete (a sign-in
+    // link opens the app and is verified alongside this). A read that started
+    // before that sign-in saved its session returns "none" and used to sign the
+    // user straight back out. Any sign-in or local-only choice made meanwhile
+    // wins: this stands down.
+    const decisionsAtStart = authDecisions;
     set({ status: "loading", error: null });
     const session = await readStoredSession();
+    if (authDecisions !== decisionsAtStart) return;
     if (!session?.refreshToken) {
       stopRefreshTimer();
       // No session — but the user may have previously chosen "Continue without
       // an account". That choice persists across restarts so they land straight
       // back in the app instead of seeing onboarding again every launch.
-      if (await readLocalOnlyFlag()) {
+      const localOnly = await readLocalOnlyFlag();
+      if (authDecisions !== decisionsAtStart) return;
+      if (localOnly) {
         set({ status: "local_only", isAuthenticated: false, accountId: null, email: null, error: null });
         return;
       }
@@ -158,6 +167,7 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
   // coach, Family Vault) stays gated on a real login, unchanged.
   async continueLocalOnly() {
     await persistLocalOnlyFlag();
+    authDecisions += 1;
     set({ status: "local_only", isAuthenticated: false, accountId: null, email: null, error: null });
   },
 
@@ -414,7 +424,12 @@ function stopRefreshTimer(): void {
   }
 }
 
+// F154: counts sign-ins and local-only choices, so a launch read that began
+// before one of them knows its answer is stale.
+let authDecisions = 0;
+
 function setAuthenticated(set: (partial: Partial<AuthStoreState>) => void, session: StoredSession): void {
+  authDecisions += 1;
   // A real login always supersedes a prior "local-only" choice — clear it so a
   // later sign-out doesn't fall back into local-only mode with a stale flag.
   void clearLocalOnlyFlag();

@@ -43,7 +43,6 @@ function insightAccentColor(type: Insight["type"], theme: ThemeTokens): string {
     case "high_spend":            return theme.secondary;
     case "spend_summary":         return theme.mutedText; // was surfaceAlt = the icon tile's own bg, so the icon was painted invisible
     case "cancellation_reminder": return theme.quietText;
-    default:                      return theme.quietText;
   }
 }
 
