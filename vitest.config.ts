@@ -70,7 +70,7 @@ export default defineConfig({
       // only ever rises; a drop below any floor fails `npm run test:coverage`.
       thresholds: {
         statements: 100,
-        branches: 99.66,
+        branches: 99.67,
         functions: 100,
         lines: 100,
         autoUpdate: true

@@ -3,7 +3,7 @@
 **One place for everything not yet solved.** Each item says who acts, exactly what to
 do, and where the full evidence lives (finding numbers point into
 `docs/HARDENING_LOG.md`). When an item is done it is removed from here and its log
-entry marked fixed. Last updated 2026-10-01, after P3.2.
+entry marked fixed. Last updated 2026-10-01, after P3.3.
 
 ---
 
@@ -44,7 +44,7 @@ real sample, or a product decision.
 
 | # | Item | When |
 |---|---|---|
-| — | P3.3–P3.9: Sentry `beforeSend` scrub, the PIN review, deep links, no secret in the bundle, screen capture on the lock screens, tests for all 29 screens, a static scan of the release APK | P3, next, in order |
+| — | P3.4–P3.9: the PIN review, deep links, no secret in the bundle, screen capture on the lock screens, tests for all 29 screens, a static scan of the release APK | P3, next, in order |
 | F14 | The PIN lockout uses the device clock, so moving the clock forward skips the 15-minute wait (each cycle still costs 10 attempts) | P3.4 |
 | F16 | SQLCipher encryption of the local database is configured but never proven on a device (check the file header or `PRAGMA cipher_version`; the release build isn't debuggable, so it needs a rooted emulator image or a debug check) | P3 gate |
 | F1 | `ServiceAutocomplete.tsx` has no test | P3.8 |
@@ -52,7 +52,7 @@ real sample, or a product decision.
 | F94 | A translucent Settings sheet, seen once on device and not reproduced in 5 attempts | P3.8 / P5 |
 | F21 | `Date.parse` silently shifts impossible dates ("02/30" becomes 2 March) | P6 |
 | — | R8 warns about RevenueCat's Amazon Appstore SDK ("may be assumed not reachable" in later R8 versions). Not used for Google Play; re-check on each RevenueCat upgrade | each RevenueCat upgrade |
-| — | Sentry and RevenueCat code paths haven't run under R8 (no keys yet). Re-run the device smoke when the keys exist | after the keys above |
+| — | Sentry and RevenueCat code paths haven't run under R8 (no keys yet). Re-run the device smoke when the keys exist, and in the Sentry UI check one JS error and one native crash for scrubbed content (P3.3: a native crash skips `beforeSend`; only its breadcrumbs are scrubbed, by `beforeBreadcrumb`) | after the keys above |
 | — | Size the webhook's 30/min limit, and an edge rate limiter (the app's is per instance) | P8 |
 
 ---

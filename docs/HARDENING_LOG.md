@@ -54,8 +54,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P2 gate (passed again on `7a9ea77` after P2.9; first pass on `d0cfc0c`): route-inventory test green (40 routes); real-PG suite green locally (PGlite, 13 tests) and in CI (a Postgres 18 server, proven by the server-mode test) on `d0cfc0c`; nightly fuzz configuration green locally (first scheduled run pending)
 - [~] **P3 — Mobile hardening (MASVS) + tests for all 29 screens** (inline, one item at a time, in the plan's order)
   - [x] P3.1 build hardening in `app.config.ts`: no Auto Backup, no cleartext, R8 minify + resource shrink with keep rules; then prebuild, release APK, verify by bytes, full on-device smoke; **F92** (Auto Backup on), **F93** (release not shrunk or obfuscated) (green: CI 36826726239, CodeQL 36826726322 on `aea3587`)
-  - [~] P3.2 release console stripping (keep `error`/`warn`); `captureError` never carries tokens or emails
-  - [ ] P3.3 Sentry `beforeSend` scrub; `sendDefaultPii` false
+  - [x] P3.2 release console stripping (keep `error`/`warn`); `captureError` never carries tokens or emails (green: CI 36828700036, CodeQL 36828699880 on `87ac086`, which contains P3.2's `68c9fcf`; again on `47211fe`)
+  - [~] P3.3 Sentry `beforeSend` scrub (emails, tokens, auth headers, amounts); `sendDefaultPii` false, asserted
   - [ ] P3.4 PIN: salt, derivation, lockout with backoff, nothing in logs; the honest threat model
   - [ ] P3.5 deep links: every `zeno://` route validates its parameters; `Linking.openURL` only `https:`/`mailto:` on an allowlist
   - [ ] P3.6 no secret in the bundle: `extra` and every `EXPO_PUBLIC_*` on the public-by-design allowlist
@@ -2795,3 +2795,94 @@ Gates after the final edit: `tsc -b --force` and every workspace typecheck 0 · 
 vitest 1743 tests at 100 / 99.66 / 100 / 100 · jest 119 / 119, with the per-file floors
 held.
 
+### P3.2 — done — 2026-10-01
+
+Green on GitHub: CI 36828700036 and CodeQL 36828699880 on `87ac086` (P3.2's own commit
+`68c9fcf` was pushed with it and has no run of its own), and again on `47211fe`.
+
+### P3.3 — what Sentry receives — 2026-10-01
+
+**Read first, not assumed** (`@sentry/react-native` 7.11.0 on `@sentry/core` 10.37.0,
+from `node_modules`):
+- `sendDefaultPii`, `attachScreenshot`, `attachViewHierarchy` and
+  `enableCaptureFailedRequests` all default to false (`options.d.ts`, and `sdk.js`'s
+  `DEFAULT_OPTIONS`). With `sendDefaultPii` false the client tells Sentry's relay
+  `infer_ip: 'never'` (`client.js`).
+- `beforeBreadcrumb` runs BEFORE a breadcrumb is stored (`core/breadcrumbs.js`), and the
+  RN SDK copies the STORED breadcrumb to the native layer (`scopeSync.js`), so native
+  crash reports get the scrubbed one.
+- `beforeSend` is stripped from the options given to the native SDK (`wrapper.js`): a
+  native (Java/NDK) crash never passes through it. It carries the native stack plus the
+  synced scope. That scope holds only breadcrumbs: the app calls no `setUser`, `setTag`,
+  `setExtra` or `setContext` (source search).
+
+**Before:** `Sentry.init` had `tracesSampleRate: 0` and a `beforeBreadcrumb` that only
+stripped query strings from fetch/xhr URLs. There was no `beforeSend`. An error from
+anywhere other than `captureError` (the global handler, an unhandled rejection) went out
+unredacted, as did any console breadcrumb's message and arguments. Amounts went out
+everywhere: P3.2 deliberately kept them in the on-device log.
+
+**Change** (`src/monitoring/sentry-scrub.ts`, wired in `report.ts`):
+- `Sentry.init` now spells out `sendDefaultPii: false`, `attachScreenshot: false` and
+  `attachViewHierarchy: false`, even though they match today's defaults, so a changed
+  default or a careless edit fails a test.
+- `scrubText` = redact.ts's rules plus amounts: a currency marker next to a number
+  (`$`, `€`, `£`, `₹`, `Rs.`), or a number followed by an ISO code. `CA$12.00` becomes
+  `CA[amount]`. A bare number can't be told apart from a line number or an id, so it is
+  kept, except under a money-named key (`amount`, `price`, `cost`, `total`, `balance`,
+  `spend`, `income`). That rule over-redacts on purpose: a `totalCount` is hidden too,
+  and its test says so.
+- `scrubBreadcrumb` (every breadcrumb):
+  - message and data are scrubbed;
+  - fetch/xhr URLs still lose their whole query string.
+- `scrubEvent` (`beforeSend`) returns a copy, never mutates the SDK's event, and never
+  drops one.
+  - **Scrubbed:** message, logentry, each exception's value, each frame's source-context
+    lines, breadcrumbs, extra, contexts other than `trace`, string tags, and the request's
+    URL (query stripped), headers and data.
+  - **Dropped whole:** user, frame `vars`, the `Authorization`/`Cookie`/`Set-Cookie`/
+    `Proxy-Authorization` headers, cookies, query_string, env.
+  - **Kept, because Sentry needs them to group and symbolicate:** event_id, release,
+    frames' filename/function/line, and the `trace` context's ids.
+- The old test "non-http breadcrumbs are left untouched, even with `?token=`" asserted
+  the narrow behaviour. It is replaced: a navigation breadcrumb's token is now redacted
+  and its harmless query (`?tab=2`) kept.
+
+**Tests:** `sentry-scrub.test.ts` has 23. The 5 breadcrumb tests moved there from
+`report.test.ts`, which now has 6 (was 11), and its init test asserts the exact options.
+- One event carries a token, an email and an amount in every free-text place. The test
+  checks that none survives anywhere in the serialised event, nor the IP.
+- An empty and a sparse event come back unchanged.
+- The SDK's event is not mutated.
+
+**Bite check: 13 mutations, all caught.** The files were restored byte-identical
+(`cmp`):
+- no amount rule;
+- no `beforeSend`;
+- no `sendDefaultPii`;
+- no `attachScreenshot`;
+- user kept;
+- auth headers kept;
+- `vars` kept;
+- breadcrumb message raw;
+- `trace` scrubbed;
+- no money keys;
+- http query kept;
+- request URL query kept;
+- the event mutated in place.
+
+**A flake fixed on the way.** The long-token rule needs a digit, and about 0.067 % of
+random 43-character tokens have none (1 in 1,489: `(54/64)^43`). P3.2's
+`redact.test.ts` "a bare refresh token" therefore failed about once in 1,490 runs. Both
+test files now draw the sample until it has a digit. The rule's limit is unchanged and
+still documented in `redact.ts`.
+
+**Not provable here:** no DSN exists, so no event has reached a real Sentry project. The
+device smoke "after the keys" in `OPEN_ITEMS.md` now includes checking one JS error and
+one native crash in the Sentry UI for scrubbed content.
+
+
+Gates after the final code edit: `tsc -b --force` and every workspace typecheck 0 · lint 0 ·
+vitest 134 files / 1761 tests at 100 / 99.67 / 100 / 100 (the ratchet rose from 99.66
+because the branch count grew to 2774; the same 9 defensive branches stay uncovered) ·
+jest 119 / 119, with the per-file floors held.

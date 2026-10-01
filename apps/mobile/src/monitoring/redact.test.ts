@@ -9,7 +9,16 @@ import { redactError, redactText, redactValue } from "./redact";
  * base64url refresh/magic tokens (randomBytes(32).toString("base64url") on the
  * API), an RS256 access token, an Authorization header, an email address.
  */
-const OUR_TOKEN = randomBytes(32).toString("base64url");
+// The long-token rule needs a digit; about 0.07 % of random tokens have none
+// (the documented limit), so the sample is drawn until it has one, or "a bare
+// refresh token" below would fail about once in 1,490 runs.
+function tokenWithDigit(): string {
+  for (;;) {
+    const token = randomBytes(32).toString("base64url");
+    if (/\d/.test(token)) return token;
+  }
+}
+const OUR_TOKEN = tokenWithDigit();
 const JWT = `eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.${Buffer.from(JSON.stringify({ sub: "acct_1", email: "jane@example.com" })).toString("base64url")}.${randomBytes(64).toString("base64url")}`;
 const SHORT_BEARER = "sk-9f2c";
 const SECRETS = [OUR_TOKEN, JWT, "jane.doe+zeno@mail.example.co.uk", "4/0AanRRrt-secret-code", SHORT_BEARER];

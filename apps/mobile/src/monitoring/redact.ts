@@ -28,7 +28,7 @@ export function redactText(text: string): string {
     .replace(LONG_TOKEN, "[redacted]");
 }
 
-const MAX_DEPTH = 4;
+export const MAX_DEPTH = 4;
 
 /** A copy of `value` with every string redacted. Objects and arrays are walked
  *  to a bounded depth (cycles, huge trees); anything deeper is DROPPED as
