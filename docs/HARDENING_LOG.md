@@ -60,7 +60,13 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P3.5 deep links: every `zeno://` route validates its parameters; `Linking.openURL` only `https:`/`mailto:` on an allowlist; **fixes F100** (anyone's sign-in link signed the phone into their account, and a junk one signed the user out); CI on the way found and fixed **F102** (explaining F97) (green: CI 36847517276, CodeQL 36847517287 on `3b8be1e`, which contains P3.5's `44791e7`)
   - [x] P3.6 no secret in the bundle: `extra` and every `EXPO_PUBLIC_*` on the public-by-design allowlist (none found in the bundle, the config or the built APK; guards added) (green: CI 36849676333, CodeQL 36849676314 on `1801e8d`)
   - [x] P3.7 screen capture blocked on the lock overlay and PIN entry (app-wide `FLAG_SECURE` is the owner's call); proven on the emulator; **fixes F105** (the locked app stayed readable to accessibility services); F104 and F106 logged (green: CI 36854703994, CodeQL 36854704080 on `39c9c46`)
-  - [ ] P3.8 screen tests for all 29 screens, with a jest floor over `app/**` and `src/components/**`
+  - [~] P3.8 screen tests for all 29 screens, with a jest floor over `app/**` and `src/components/**` (split into steps; each raises the floor)
+    - [~] P3.8a the floor itself: directory floors at the measured baseline (12.75 % of 1842 lines)
+    - [ ] P3.8b shared components (`src/components/**`, `components/**`), incl. F1 `ServiceAutocomplete`
+    - [ ] P3.8c the tab screens and the tab layout
+    - [ ] P3.8d subscription detail, cancel, add
+    - [ ] P3.8e settings (incl. F29's screen use), profile, notifications, login, paywall, onboarding
+    - [ ] P3.8f the rest (budget, recap, family, coach, wrapped, widgets, spend-twin, open-banking, backend, business, partners, public-api) and the root layout
   - [ ] P3.9 static scan of the release APK (MobSF, else apkleaks + manifest review)
   - [ ] P3 gate: hardened release APK verified on the emulator (every flow in `DEVICE_TEST_FINDINGS.md`); jest floor in CI; MASVS checklist with evidence per control
 - [ ] **P4 — Website component tests, Playwright, CSP, DAST**
@@ -3367,3 +3373,44 @@ Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vit
 
 Green on GitHub: CI 36854703994 and CodeQL 36854704080 on `39c9c46`.
 
+### P3.8a — the screen-test floor — 2026-10-01
+
+**The plan's ask, quoted** (`PRODUCTION_HARDENING_PLAN.md`): screen tests for all 29
+screens, "renders with seed data, empty, loading, error; every pressable does its
+navigation or mutation (router and stores mocked at the boundary); every touchable
+labelled; reduce-motion path", with a jest coverage floor over `app/**` and
+`src/components/**`, "ratcheting to 100 % lines".
+
+**Measured baseline, not estimated** (jest, the three trees):
+- **Scope:** `app/**`, `src/components/**`, and `components/**` (where `ServiceAutocomplete`
+  lives, outside `src/`).
+- **Overall:** 235 of 1842 lines (12.75 %) across 51 files; 7 files at 100 %.
+- **By folder:**
+  - `app/`: 117/1515 lines (7.72 %), 128/1750 statements (7.31 %);
+  - `src/components/`: 118/307 lines, 123/328 statements;
+  - `components/`: 0/20.
+- **Most screens are at 0 %.** The partly covered ones: `subscription/[id]` 39 %,
+  `subscription/cancel/[id]` 43 % (P3.5's route tests), `Ledger.tsx` 84 %.
+
+**The floor:**
+- `jest.config.js` now collects coverage from all three trees and sets a DIRECTORY floor
+  for `./app/` (7.72 % lines, 7.31 % statements) and for `./src/components/` (38.43 %,
+  37.5 %).
+- Read in jest 29.7's `CoverageReporter.js` before relying on it: a directory key is a
+  "path" group, checked on the COMBINED coverage of the files under it; a glob key is
+  checked file by file.
+- Jest truncates (it reads 118/307 as 38.43 %, not 38.44 %), so the floors are set to
+  what jest reports.
+- `components/`, at 0 %, gets its floor when P3.8b covers it; a 0 % floor checks
+  nothing.
+- **Each step after this raises the floors to what it measured, so they only go up.**
+  P3.8 is split into 6 steps (in the tracker): the whole item is about 1600 untested
+  lines, too much for one commit.
+
+**Bite-checked:** leaving out `Kit.rntest.tsx` drops `src/components/` to 13.07 %
+lines, and the run fails. Leaving out the route tests drops `app/` to 2.7 %, and it
+fails.
+
+
+Gates after the final code edit: typecheck 0 · lint 0 · vitest 1842 · jest 153 / 153 with
+the new directory floors held.

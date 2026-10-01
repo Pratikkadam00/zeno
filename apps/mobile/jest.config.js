@@ -44,6 +44,11 @@ module.exports = {
   // floor. A file gets a per-file 100 % floor in coverageThreshold as soon as
   // its tests land; `npm run test:rn:coverage` (CI) fails below any floor.
   collectCoverageFrom: [
+    // P3.8: every screen and every shared component, measured as a whole (the
+    // directory floors below) as well as file by file where a file is done.
+    "app/**/*.tsx",
+    "src/components/**/*.{ts,tsx}",
+    "components/**/*.tsx",
     "src/data/budget-store.tsx",
     "src/data/subscription-store.tsx",
     "src/theme/theme-provider.tsx",
@@ -57,6 +62,13 @@ module.exports = {
   ],
   coverageReporters: ["text", "json-summary"],
   coverageThreshold: {
+    // P3.8 ratchet. A DIRECTORY key is checked on the combined coverage of every
+    // file under it (jest's CoverageReporter: a "path" threshold group), a glob
+    // key file by file. Each P3.8 step raises these to what it measured; they
+    // only ever go up, to 100 % lines. Started at the measured baseline:
+    // app/ 117/1515 lines, src/components/ 118/307, components/ 0/20.
+    "./app/": { lines: 7.72, statements: 7.31 },
+    "./src/components/": { lines: 38.43, statements: 37.5 },
     "./src/data/budget-store.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
     "./src/data/subscription-store.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
     "./src/theme/theme-provider.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
