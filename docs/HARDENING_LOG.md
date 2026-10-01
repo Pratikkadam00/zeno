@@ -57,7 +57,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P3.2 release console stripping (keep `error`/`warn`); `captureError` never carries tokens or emails (green: CI 36828700036, CodeQL 36828699880 on `87ac086`, which contains P3.2's `68c9fcf`; again on `47211fe`)
   - [x] P3.3 Sentry `beforeSend` scrub (emails, tokens, auth headers, amounts); `sendDefaultPii` false, asserted (green: CI 36834676134, CodeQL 36834676176 on `a74417c`; its own push `3553165` went red on two older intermittent API tests, see "CI on `3553165`")
   - [x] P3.4 PIN: salt, derivation, lockout with backoff, nothing in logs; the honest threat model; **fixes F98** (Settings checked the PIN with no attempt limit) and adds the backoff; F14 corrected and handed to the owner (green: CI 36840438554, CodeQL 36840438566 on `2d6a752`, which contains P3.4's `844b49a`; two runs went red in jest on a cold-cache timeout, F99, fixed)
-  - [~] P3.5 deep links: every `zeno://` route validates its parameters; `Linking.openURL` only `https:`/`mailto:` on an allowlist; **fixes F100** (anyone's sign-in link signed the phone into their account, and a junk one signed the user out)
+  - [x] P3.5 deep links: every `zeno://` route validates its parameters; `Linking.openURL` only `https:`/`mailto:` on an allowlist; **fixes F100** (anyone's sign-in link signed the phone into their account, and a junk one signed the user out); CI on the way found and fixed **F102** (explaining F97) (green: CI 36847517276, CodeQL 36847517287 on `3b8be1e`, which contains P3.5's `44791e7`)
   - [ ] P3.6 no secret in the bundle: `extra` and every `EXPO_PUBLIC_*` on the public-by-design allowlist
   - [ ] P3.7 screen capture blocked on the lock overlay and PIN entry (app-wide `FLAG_SECURE` is the owner's call)
   - [ ] P3.8 screen tests for all 29 screens, with a jest floor over `app/**` and `src/components/**`
@@ -3199,3 +3199,10 @@ members). Both fixed.
 
 Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1835 at
 100 / 99.68 / 100 / 100 · jest 146 / 146.
+
+### P3.5 — done — 2026-10-01
+
+Green on GitHub: CI 36847517276 and CodeQL 36847517287 on `3b8be1e`. It contains P3.5
+(`44791e7`), the web-build reporting (`3e541c9`) and F102. Its "Build web" step
+passed, so F103 stays a single unexplained occurrence, which will now report itself.
+
