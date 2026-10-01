@@ -55,7 +55,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
 - [~] **P3 — Mobile hardening (MASVS) + tests for all 29 screens** (inline, one item at a time, in the plan's order)
   - [x] P3.1 build hardening in `app.config.ts`: no Auto Backup, no cleartext, R8 minify + resource shrink with keep rules; then prebuild, release APK, verify by bytes, full on-device smoke; **F92** (Auto Backup on), **F93** (release not shrunk or obfuscated) (green: CI 36826726239, CodeQL 36826726322 on `aea3587`)
   - [x] P3.2 release console stripping (keep `error`/`warn`); `captureError` never carries tokens or emails (green: CI 36828700036, CodeQL 36828699880 on `87ac086`, which contains P3.2's `68c9fcf`; again on `47211fe`)
-  - [~] P3.3 Sentry `beforeSend` scrub (emails, tokens, auth headers, amounts); `sendDefaultPii` false, asserted
+  - [x] P3.3 Sentry `beforeSend` scrub (emails, tokens, auth headers, amounts); `sendDefaultPii` false, asserted (green: CI 36834676134, CodeQL 36834676176 on `a74417c`; its own push `3553165` went red on two older intermittent API tests, see "CI on `3553165`")
   - [ ] P3.4 PIN: salt, derivation, lockout with backoff, nothing in logs; the honest threat model
   - [ ] P3.5 deep links: every `zeno://` route validates its parameters; `Linking.openURL` only `https:`/`mailto:` on an allowlist
   - [ ] P3.6 no secret in the bundle: `extra` and every `EXPO_PUBLIC_*` on the public-by-design allowlist
@@ -2932,3 +2932,9 @@ how it slipped through.
 
 Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1761 at
 100 / 99.67 / 100 / 100 · jest 119 / 119.
+
+### P3.3 — done — 2026-10-01
+
+Green on GitHub: CI 36834676134 and CodeQL 36834676176 on `a74417c`, the first green run
+containing P3.3's `3553165`. F97 stays open until a CI failure explains it.
+
