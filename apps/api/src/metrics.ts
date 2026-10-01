@@ -19,7 +19,7 @@ let inFlight = 0;
 // cardinality into this in-memory map. No device id, account id, or anything
 // else that could re-identify or correlate a device's events is ever recorded
 // here — event name + an optional coarse label (e.g. a SKU) only.
-const PRODUCT_EVENT_LABELS: Record<string, readonly string[]> = {
+export const PRODUCT_EVENT_LABELS: Record<string, readonly string[]> = {
   import_completed: ["csv", "email"],
   share_card_generated: ["found_money", "wrapped_summary", "wrapped_total", "wrapped_most_expensive", "wrapped_top_category", "wrapped_busiest_month", "budget_streak"],
   free_cap_hit: [],
@@ -33,7 +33,11 @@ const eventTotals = new Map<string, number>(); // `${event}|${label}` -> count
 // event's allowed set, a missing label where one is required, or a label
 // where the event doesn't take one.
 export function recordProductEvent(event: string, label?: string): boolean {
-  const allowedLabels = PRODUCT_EVENT_LABELS[event];
+  // Own keys only (finding F91): a plain object literal also "has" every name
+  // it inherits, so "toString", "valueOf" and "__proto__" were accepted and
+  // counted, and "constructor" or "hasOwnProperty" with a label threw (a 500)
+  // when .includes was called on a function.
+  const allowedLabels = Object.hasOwn(PRODUCT_EVENT_LABELS, event) ? PRODUCT_EVENT_LABELS[event] : undefined;
   if (!allowedLabels) {
     return false;
   }

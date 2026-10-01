@@ -38,4 +38,4 @@ jobs:
       - name: Fuzz every route
         env:
           FUZZ_RUNS: "10000"
-        run: npx vitest run apps/api/src/fuzz.test.ts
+        run: npx vitest run apps/api/src/fuzz.test.ts apps/api/src/schema-valid.test.ts

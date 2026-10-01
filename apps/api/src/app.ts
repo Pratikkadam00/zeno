@@ -164,29 +164,29 @@ const currencyCodeSchema = z.enum(CURRENCY_CODES);
 // spend, but rules out a value large enough to produce formatting/overflow
 // surprises once combined across members.
 const monthlySpendMinorSchema = z.number().int().min(0).max(100_000_000_00);
-const familyCreateSchema = z.object({
+export const familyCreateSchema = z.object({
   ownerName: z.string().min(1).max(80),
   monthlySpendMinor: monthlySpendMinorSchema.optional(),
   currency: currencyCodeSchema.optional()
 });
-const familyJoinSchema = z.object({
+export const familyJoinSchema = z.object({
   shareCode: z.string().min(4).max(12),
   memberName: z.string().min(1).max(80),
   monthlySpendMinor: monthlySpendMinorSchema.optional(),
   currency: currencyCodeSchema.optional()
 });
-const familySpendSchema = z.object({
+export const familySpendSchema = z.object({
   monthlySpendMinor: monthlySpendMinorSchema,
   currency: currencyCodeSchema.optional()
 });
 // Shape-only validation — event/label are checked against the fixed allowlist
 // in recordProductEvent (metrics.ts), not here, since that allowlist is the
 // single source of truth shared with the Prometheus rendering.
-const productEventSchema = z.object({
+export const productEventSchema = z.object({
   event: z.string().min(1).max(64),
   label: z.string().min(1).max(64).optional()
 });
-const coachRequestSchema = z.object({
+export const coachRequestSchema = z.object({
   totalMonthlyMinor: z.number().int().min(0),
   currency: currencyCodeSchema.optional(),
   subscriptions: z.array(z.object({
@@ -207,13 +207,13 @@ const coachRequestSchema = z.object({
 // therefore not validated either: a value we would have rejected made
 // RevenueCat retry 5 times and then drop the event, so the re-verification it
 // signals never happened.
-const revenueCatWebhookSchema = z.object({
+export const revenueCatWebhookSchema = z.object({
   event: z.object({ app_user_id: z.string().min(1).max(256) }).passthrough()
 }).passthrough();
 // Real Plaid public tokens are short (well under 200 chars); 512 is a
 // generous cap, bounding the value before it's forwarded verbatim into a
 // server-to-server call to Plaid rather than relying on the 1MB bodyLimit alone.
-const plaidExchangeSchema = z.object({ publicToken: z.string().min(1).max(512) });
+export const plaidExchangeSchema = z.object({ publicToken: z.string().min(1).max(512) });
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({

@@ -50,3 +50,29 @@ describe("recordProductEvent", () => {
     expect(body).toContain('zeno_product_events_total{event="import_completed",label="email"} 1');
   });
 });
+
+describe("F91: only the allowlist's OWN event names count", () => {
+  beforeEach(() => resetMetrics());
+
+  it("a name every object inherits is an unknown event: never recorded, never a throw", () => {
+    for (const event of ["toString", "valueOf", "constructor", "hasOwnProperty", "isPrototypeOf", "__proto__", "propertyIsEnumerable", "toLocaleString"]) {
+      for (const label of [undefined, "csv", "x"]) {
+        expect(() => recordProductEvent(event, label), `${event} / ${label}`).not.toThrow();
+        expect(recordProductEvent(event, label), `${event} / ${label}`).toBe(false);
+      }
+    }
+    expect(renderMetrics()).not.toMatch(/toString|valueOf|constructor|hasOwnProperty|__proto__/);
+  });
+
+  it("POST /api/v1/events answers 400, not 200 or 500, for those names", async () => {
+    const { buildApp } = await import("./app");
+    const app = await buildApp();
+    let n = 0;
+    for (const payload of [{ event: "toString" }, { event: "__proto__" }, { event: "constructor", label: "csv" }, { event: "hasOwnProperty", label: "x" }]) {
+      n += 1;
+      const r = await app.inject({ method: "POST", url: "/api/v1/events", remoteAddress: `192.0.2.${n}`, payload });
+      expect(r.statusCode, JSON.stringify(payload)).toBe(400);
+      expect(r.json().error.message).toBe("Unknown event or label.");
+    }
+  });
+});

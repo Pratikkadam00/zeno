@@ -41,7 +41,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
     - [x] P1.9d thin config, theme and web files: all 13 at 0 uncovered statements, branches and functions (`motion.ts` and `useZenoTokens.ts` moved to jest with 100 % floors). **Fixes F35, F36, F37**
   - [x] P1.10 `apps/api/src/plaid.ts` (was 21 %; now 0 uncovered lines / functions, 1 defensive branch) and the Plaid routes in `app.ts` (now 100 %). Plaid's HTTP is faked, with no Plaid or sandbox calls, by standing instruction. **Fixes F34**
   - [x] P1.11 gate: Tier 1 at 100 % statements / functions / lines and 99.61 % branches (≥ 95 %); jest floors at 100 %; green on GitHub (CI 36744248345, CodeQL 36744248343)
-- [x] **P2 — API on real Postgres, authorization matrix, fuzzing** (gate passed 2026-10-01; evidence in the P2 gate entry) (inline, one item at a time; no parallel agents from here on, by the owner's instruction)
+- [~] **P2 — API on real Postgres, authorization matrix, fuzzing** (gate re-opened 2026-10-01: a check against the plan's own P2 text found two items only half done; see P2.9) (inline, one item at a time; no parallel agents from here on, by the owner's instruction)
   - [x] P2.1 real Postgres in tests (PGlite locally, a `postgres` server in CI, proven by a server-mode test): schema from empty, upsert, a restart round trip for every store, account deletion leaves no row, the refresh race, concurrent sync replays; **fixes F75** (green: CI 36763417730, CodeQL 36763417620 on `229e114`)
   - [x] P2.2 authorization matrix (table-driven from the LIVE route list; 40 routes, 11 token attacks, cross-household), **fixes F76** (green: CI 36764785079, CodeQL 36764784910 on `8d4b5f0`); F77 open for the owner
   - [x] P2.3 rate limits per route (table-driven from the live routes; window, key, 429 envelope, Retry-After); **fixes F78, F79** (green: CI 36765749331, CodeQL 36765749502 on `73766ff`)
@@ -50,7 +50,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P2.6 auth flows: enumeration-safe magic link, 10-minute expiry, single use, production refusals; **fixes F80** (the 6-digit code could be brute-forced) **and F81** (expired sign-in rows kept in Postgres for good) (green: CI 36770819652, CodeQL 36770819744 on `f9f9540`)
   - [x] P2.7 outbound-call inventory: every call site listed and checked by a source scan, each run against its host with a deadline, the one request-derived URL part guarded; **fixes F82** (the 5xx alert was unbounded), **F83** (anyone could force a JWKS re-fetch per request), **F84** (a coach request could run about 3.5 minutes) (green: CI 36773329340, CodeQL 36773328872 on `70fa1e5`)
   - [x] P2.8 the RevenueCat webhook: replay, duplicates, out-of-order retries, auth, malformed bodies, durability; **fixes F85** (the payload was trusted and arrival order mattered), **F86** (the secret compare leaked its length), **F87** (a lookup in flight re-cached an older answer, or re-created a deleted user's billing row) (green: CI 36775230680, CodeQL 36775230616 on `d0cfc0c`)
-  - [x] P2 gate: route-inventory test green (40 routes); real-PG suite green locally (PGlite, 13 tests) and in CI (a Postgres 18 server, proven by the server-mode test) on `d0cfc0c`; nightly fuzz configuration green locally (first scheduled run pending)
+  - [~] P2.9 the plan gaps found by checking P2 against `PRODUCTION_HARDENING_PLAN.md` line by line: **F88** (no same-code-path / timing test for unknown vs revoked tokens, plan P2.2) and **F89** (the fuzz never generates schema-valid input to check the expected status, plan P2.4); closing F89 found and **fixed F91** (`/events` counted inherited names like `toString`, and `constructor` with a label was a 500)
+  - [x] P2 gate (first pass; re-run after P2.9): route-inventory test green (40 routes); real-PG suite green locally (PGlite, 13 tests) and in CI (a Postgres 18 server, proven by the server-mode test) on `d0cfc0c`; nightly fuzz configuration green locally (first scheduled run pending)
 - [ ] **P3 — Mobile hardening (MASVS) + tests for all 29 screens**
 - [ ] **P4 — Website component tests, Playwright, CSP, DAST**
 - [ ] **P5 — Mobile end-to-end (Maestro on the emulator)**
@@ -154,6 +155,10 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F85 | **FIXED in P2.8.** ~~The billing webhook trusted its payload, in arrival order.~~ Each event's claimed plan was written straight into the entitlement cache. RevenueCat retries a failed delivery up to 5 times over about 2.5 hours and may deliver twice, and its own docs recommend calling `GET /subscribers` after any webhook. So an old event arriving late overwrote newer state. Proven: a user who had just bought Pro read as free after an 80-minute-late retry of an old EXPIRATION. Worse, the header is a static secret, not a signature over the body, so anyone holding it could grant any plan to any account (proven: a forged INITIAL_PURCHASE made a free user Pro). Now a webhook reads only `app_user_id` and drops that user's cached entitlement, durably before RevenueCat hears 200 (a refused delete answers 503, so RevenueCat retries). The next read asks RevenueCat. This is idempotent and order-independent by construction, which a property test checks over random runs of events, duplicates and orders. The unread fields are no longer validated: a value we rejected (an event type over 64 characters, say) made RevenueCat retry and then drop the event. | High (entitlement integrity; the secret alone granted paid plans) | me | P2.8 |
 | F86 | **FIXED in P2.8.** ~~The webhook secret compare leaked the secret's length.~~ `timingSafeEqual` needs equal lengths, so a guess of the wrong length returned early. It now compares SHA-256 digests of both sides: one 32-byte compare for every guess (checked for 6 lengths). | Low (a timing side channel on a shared secret) | me | P2.8 |
 | F87 | **FIXED in P2.8.** ~~A RevenueCat lookup in flight could put an older answer back.~~ If a webhook or an account deletion dropped a user's cached entitlement while a lookup was in flight, the lookup cached its older answer when it landed. After a deletion, that re-created the deleted user's billing row (an F75-class gap). Proven on real Postgres: a `billing` row existed after `DELETE /account` had answered. Every drop now bumps the user's generation, and a lookup caches only if its generation is still current. Another user's lookup is unaffected. | Medium (deletion completeness; stale plans) | me | P2.8 |
+| F88 | **FIXED in P2.9.** ~~No test for the token path's sameness.~~ The plan (P2.2) asks that unknown and revoked tokens take "the same code path" with "no timing leak on the token path". No test checked this, and I had not said so. Measured first: every rejected token takes 28–29 µs (the RSA verify dominates), revoked vs unknown-signer 0.8 µs apart; only a non-JWT string is faster (7.9 µs), which tells its sender nothing. `token-path.test.ts` now pins identical status, body AND headers for six kinds of rejected token, and the timing within 25 %. | Test gap (plan item not done) | me | P2.9 |
+| F89 | **FIXED in P2.9.** ~~The fuzz never sent schema-valid input.~~ The plan (P2.4) says the fuzz is "driven by each zod schema: valid ⇒ expected status". `fuzz.test.ts` sends arbitrary bodies and checks only "never a 500, always the envelope, no internals"; it never builds a known-valid body and checks the success status. Half the item; I had not said so. `schema-valid.test.ts` now generates input from each of the 18 routes' own zod schemas and checks the exact status each handler's rule gives it; it found F91. | Test gap (plan item half done) | me | P2.9 |
+| F90 | **OPEN: owner decision.** The plan (P2.6) says demo login, wildcard CORS and `http://` URLs "all refuse to boot" in production. P2.6 made only an `http://` `MAGIC_LINK_REDIRECT_URL` fatal; a set `DEMO_LOGIN_PASSWORD`, a `*` or `http://` CORS origin and an `http://` alert or coach URL are **warnings**. Why: `main` auto-deploys to Render, each of these is already blocked at request time (tested), and a new boot refusal on a dashboard value nobody can see from the repo could take the API down. To follow the plan literally, confirm none of these is set in the Render dashboard and say so; they become fatal in one small change. | Deviation from plan (owner's call) | owner | P2.9 or P8 |
+| F91 | **FIXED in P2.9.** ~~`POST /api/v1/events` (public) mishandled names every object inherits.~~ `recordProductEvent` looked the event up on a plain object literal, so inherited names were "found". Proven on the old code: `toString`, `valueOf` and `__proto__` answered 200 and became their own series in `/metrics` (outside the allowlist); `constructor` or `hasOwnProperty` with a label answered **500** (`.includes` called on a function), and each 500 also pages the alert webhook. The P2.4 fuzz missed it: random strings never hit those exact names. Now only the allowlist's own keys count (`Object.hasOwn`). Swept the API for the same pattern: the only other keyed object literal (`guideOverrides[slug]` in the catalog) is keyed by the catalog's own static slugs, not request data. | Medium (an anonymous 500 and metric pollution on a public route) | me | P2.9 |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -2393,4 +2398,112 @@ does not revoke the 15-minute access token) stays open as an owner decision.
 
 **Next: P3, mobile hardening (MASVS) and tests for all 29 screens.** It starts with an
 inventory of the screens and of the mobile storage, network and platform surfaces.
+
+### Self-audit of P2 against the plan — 2026-10-01
+
+Asked by the owner to check "everything is according to plan and nothing is guessing",
+I read `PRODUCTION_HARDENING_PLAN.md` § P2 and checked each line against the code and
+tests as they are now (not against this log). Result:
+
+- **Done as written:** P2.1 (real Postgres), P2.3 (rate-limit table equals the live 40
+  routes), P2.5 (log and error hygiene), P2.7 (outbound inventory; the open-banking
+  "intents" are a mock adapter with no outbound call, checked in
+  `packages/shared/src/finance/open-banking.ts`). P2.2's named token attacks are all in
+  the matrix; "revoked `jti`" is covered by a deleted account's token, as the API has no
+  `jti`. P2.4's 413 and 415 are tested in `app.routes.test.ts`.
+- **Not done, and not reported as missing:** F88 (P2.2's timing / same-code-path test)
+  and F89 (P2.4's schema-valid property). Both are now P2.9.
+- **Met by a different design, documented at the time:** P2.8 asks that a replayed event
+  id be ignored. The webhook no longer applies payloads at all (F85), so a replay can only
+  cause one extra RevenueCat lookup; no event id is tracked. The property test sends
+  duplicates and checks the outcome. Left as is.
+- **Deviations that are the owner's call:** F90 (warnings instead of boot refusals), and
+  the webhook's 30/min limit not being among the strictest (plan P2.3), already logged for
+  P8 sizing.
+- **Numbers re-traced to a source:** undici's 300 s default (bundled source), the SDK
+  retry worst case (`client.js`), RevenueCat's retry schedule (its docs), and 0.24 %/day
+  (2 400 guesses ÷ 1 000 000 codes). Earlier wrong numbers (38 routes, 22 tests, "no
+  default timeout") were already corrected.
+
+### P2.9 — the plan gaps (F88, F89) and what closing them found (F91) — 2026-10-01
+
+**F88: the token path (plan P2.2).** Read first: `verifyAccessToken` rejects every token
+by returning `null`, and the guard turns `null` into one 401. A bad signature stops after
+the RSA verify; an expired genuine token right after it; a revoked one goes on to one
+SHA-256 of `sub` and a map lookup. Measured before writing any test (3 000 interleaved
+samples per kind, after warm-up):
+
+| Token | Median | p10–p90 |
+|---|---|---|
+| live (accepted) | 29.1 µs | 28.7–30.3 |
+| revoked (F76) | 28.9 µs | 28.6–30.1 |
+| expired | 28.5 µs | 27.9–29.9 |
+| foreign signing key | 28.1 µs | 27.7–29.3 |
+| not a JWT at all | 7.9 µs | 6.5–8.9 |
+
+Revoked vs unknown-signer: 0.8 µs (about 3 %), inside the spread and far below network
+jitter. The one fast path is a string that is not shaped like a JWT, which tells its
+sender nothing they did not know. `apps/api/src/token-path.test.ts` (2 tests):
+1. Six kinds of rejected token (revoked, expired, foreign key, wrong audience, not a JWT,
+   none) get the same status, body (minus the request id) and response headers (minus
+   the id, the date and the length). The matrix already checked status and body; headers
+   are new.
+2. The timing of revoked, expired, unknown-signer and live tokens, round-robin, 1 000
+   samples each: every median within 25 % of the revoked one. Ran 3 times in a row:
+   green. Its limit, stated plainly: it catches a difference above 25 % (about 7 µs
+   here), not a subtler one.
+
+**Bite checks:** extra work on the revoked branch only (caught by the timing test); the
+guard sending a `WWW-Authenticate` header only when a token was presented (caught by the
+headers check). A third mutation, throwing inside the revoked branch, changed nothing the
+caller can see (the function's own `try/catch` returns `null`), so there was nothing to
+catch.
+
+**F89: schema-valid input (plan P2.4).** `apps/api/src/schema-valid.test.ts` (19 tests):
+- Input is generated from `z.toJSONSchema()` of each route's own schema (the 15 request
+  schemas in `app.ts` and `routes/auth.ts`, now exported, plus the two shared sync
+  schemas), with the edges (minimum and maximum lengths, numbers and array sizes) weighted
+  in, then filtered through the schema's own `safeParse`, so every input is valid by the
+  real schema's definition (the Google `.refine` included). Probed first: every schema
+  converts, using only object, string, integer, array, enum, pattern, email and default;
+  any other keyword throws, so a new schema cannot be silently half-tested.
+- The expected status is each handler's rule, read from the handler and named in the test:
+  events 200 only for an allowlisted event and label, else 400; household create 200 until
+  5 per owner, then 409; join 200 only when the trimmed, upper-cased code is a real one,
+  else 404; spend on your own household 200; coach (no provider) 200; webhook 200; Plaid
+  exchange (unconfigured) 503; sync pull and push 200 (a body over the 1 MiB limit 413);
+  magic link 200, and the 6th for one address within 15 minutes 429; verify, legacy
+  verify, Apple, Google and refresh 401; demo login (off) 404; logout 200.
+- A guard test scans the route code for every schema-parsing call site and fails if one
+  has no entry (bite-checked by adding a route).
+- 200 runs per route in CI, 10 000 nightly (added to `nightly-fuzz.yml`). Measured at
+  10 000: 58 s for all 19, the slowest route 10.2 s; the per-test timeout is
+  `max(120 s, runs × 60 ms)`.
+
+**Bite checks** (each alone, then restored): a handler rejecting input its schema
+accepts; the household cap 5 → 4; join no longer normalising the code; a valid boundary
+(spend at the maximum) crashing the handler; a new schema-parsed route with no entry; the
+per-address magic-link cap 5 → 4. All caught, but the last only after a fix: at first it
+was NOT caught, because random addresses never repeat, so the cap was never reached. The
+magic-link generator now draws often from a small pool of addresses (with case variants,
+as the server lower-cases them).
+
+**Also corrected in my own test before it counted:** I first asserted a `success` field
+on the response envelope; the envelope (`packages/shared/src/api.ts`) is
+`{ data, error, meta }`. Fixed to check `error` is `null` on a 200 and set otherwise.
+
+**F91, found by the F89 property test on its 3rd generated case** (fast-check: "failed after 3 tests"): `{"event":"toString"}` answered
+`recorded: true`. Probed further: see the F91 row. Two regression tests in
+`metrics.test.ts` (every inherited name × three labels never recorded and never a throw;
+the route answers 400 for them), plus the property test: all 3 fail on the old lookup.
+
+**Coverage moved up, and why:** branches 99.62 % → 99.66 % (9 uncovered, from 10; the
+ratchet in `vitest.config.ts` rose with it). The newly covered branch is
+`routes/auth.ts:419`, `idToken ?? accessToken ?? serverAuthCode ?? ""`. Its arm counts
+are now `[224, 47, 5, 0]`, and the property test's Google bodies carrying only a
+`serverAuthCode` reach the third arm. Its last arm (`""`) is unreachable: the schema's
+`.refine` requires one of the three.
+
+Gates after the final code edit: `tsc -b --force` and every workspace typecheck 0 · lint 0 ·
+vitest 131 files / 1708 tests at 100 / 99.66 / 100 / 100 · jest 114 / 114.
 

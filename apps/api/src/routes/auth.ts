@@ -18,11 +18,11 @@ const defaultMagicLinkRedirect = process.env.MAGIC_LINK_REDIRECT_URL ?? "zeno://
 // alone to keep oversized values out of normalizeEmail/hashToken/Resend calls.
 const emailSchema = z.string().email().max(254);
 
-const magicLinkRequestSchema = z.object({
+export const magicLinkRequestSchema = z.object({
   email: emailSchema
 });
 
-const magicLinkVerifyQuerySchema = z.object({
+export const magicLinkVerifyQuerySchema = z.object({
   token: z.string().min(32).optional(),
   email: emailSchema.optional(),
   code: z.string().min(6).max(12).optional()
@@ -30,7 +30,7 @@ const magicLinkVerifyQuerySchema = z.object({
   message: "Provide either token or email and code."
 });
 
-const legacyMagicLinkVerifySchema = z.object({
+export const legacyMagicLinkVerifySchema = z.object({
   email: emailSchema,
   code: z.string().min(6).max(12)
 });
@@ -44,7 +44,7 @@ const nonceSchema = z.string().min(16).max(256);
 
 // `email` is still ACCEPTED from older clients but never used (finding F23): the
 // session email comes only from the verified identity token.
-const appleOAuthSchema = z.object({
+export const appleOAuthSchema = z.object({
   identityToken: z.string().min(10),
   nonce: nonceSchema,
   authorizationCode: z.string().min(4).optional(),
@@ -54,7 +54,7 @@ const appleOAuthSchema = z.object({
   fullName: z.string().min(1).max(160).optional()
 });
 
-const googleOAuthSchema = z.object({
+export const googleOAuthSchema = z.object({
   idToken: z.string().min(10).optional(),
   nonce: nonceSchema.optional(),
   accessToken: z.string().min(10).optional(),
@@ -66,16 +66,16 @@ const googleOAuthSchema = z.object({
   message: "A nonce is required with idToken."
 });
 
-const refreshSchema = z.object({
+export const refreshSchema = z.object({
   refreshToken: z.string().min(32)
 });
 
-const demoLoginSchema = z.object({
+export const demoLoginSchema = z.object({
   email: emailSchema,
   password: z.string().min(8).max(128)
 });
 
-const logoutSchema = z.object({
+export const logoutSchema = z.object({
   refreshToken: z.string().min(32).optional()
 });
 
