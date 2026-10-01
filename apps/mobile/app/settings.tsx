@@ -15,6 +15,7 @@ import { type as typography } from "../src/theme/typography";
 import { fonts, palette } from "../src/theme/zeno";
 import { csvSafeCell } from "../src/utils/csv-export";
 import { currencySymbol } from "../src/utils/format";
+import Constants from "expo-constants";
 import { router } from "expo-router";
 import {
   Banknote,
@@ -58,7 +59,8 @@ const TERMS_URL = getLegalUrls().terms;
 const PRIVACY_URL = getLegalUrls().privacy;
 const FEEDBACK_EMAIL = getFeedbackMailto();
 const SHARE_URL = getSiteUrl();
-const APP_VERSION = "1.0.0";
+// F126: the build's own version (app.config.ts), not a hard-coded "1.0.0".
+const APP_VERSION = Constants.expoConfig?.version ?? "unknown";
 
 type UserPlan = "free" | "pro" | "family";
 type IconCmp = ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
@@ -86,20 +88,19 @@ function formatHour(hour: number): string {
 export default function SettingsScreen() {
   const { theme, scheme, toggleScheme, resetPreferences } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { plan, accountId, status, logout } = useAuthStore(
+  const { plan, email, status, logout } = useAuthStore(
     useShallow((state) => ({
       plan: state.plan,
-      accountId: state.accountId,
+      email: state.email,
       status: state.status,
       logout: state.logout
     }))
   );
   const isLocalOnly = status === "local_only";
-  const { subscriptions, clearAllData, quietHours, setQuietHours, homeCurrency, setHomeCurrency, exchangeRatesAvailable, coachAiConsent, setCoachAiConsent } = useSubscriptionStore();
+  const { subscriptions, clearAllData, quietHours, setQuietHours, remindersEnabled, setRemindersEnabled, homeCurrency, setHomeCurrency, exchangeRatesAvailable, coachAiConsent, setCoachAiConsent } = useSubscriptionStore();
   const { reset: resetBudget } = useBudgetStore();
   const lockEnabled = useLockStore((s) => s.enabled);
   const disableAppLock = useLockStore((s) => s.disable);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   // P4 debt closed: the option pickers are designed LedgerSheets, not system
   // Alert dialogs (which can't show the current value, can't be styled, and on
   // Android render a cramped stack of buttons).
@@ -117,13 +118,15 @@ export default function SettingsScreen() {
   const CURRENCY_OPTIONS: CurrencyCode[] = ["USD", "EUR", "GBP", "INR", "CAD", "AUD"];
   const homeCurrencyLabel = `${homeCurrency} (${currencySymbol(homeCurrency)})`;
 
-  const userEmail = isLocalOnly ? "Local-only mode" : accountId ?? "you@example.com";
+  // F125: the signed-in email, never the account id or a made-up address.
+  const userEmail = isLocalOnly ? "Local-only mode" : email ?? "Signed in";
   const userPlan = (plan ?? "free") as UserPlan;
   const planLabel = userPlan === "pro" ? "Pro" : userPlan === "family" ? "Family" : "Free plan";
 
   function exportData() {
     // CHANGE 8: your data is yours — one-tap CSV export of everything tracked.
-    const header = "name,amount,currency,billingCycle,nextRenewalDate,status,category";
+    // F127: the user's notes are their data too; they were left out.
+    const header = "name,amount,currency,billingCycle,nextRenewalDate,status,category,notes";
     const rows = subscriptions.map((s) =>
       [
         csvSafeCell(s.name),
@@ -132,7 +135,8 @@ export default function SettingsScreen() {
         s.billingCycle,
         s.nextRenewalDate ?? "",
         s.status,
-        s.category
+        s.category,
+        s.notes ? csvSafeCell(s.notes) : ""
       ].join(",")
     );
     const csv = [header, ...rows].join("\n");
@@ -215,7 +219,7 @@ export default function SettingsScreen() {
       rows: [
         { id: "profile", Icon: User, iconBg: palette.category.blue, label: "Profile", value: userEmail.length > 22 ? `${userEmail.slice(0, 19)}...` : userEmail, chevron: true, onPress: () => router.push("/profile" as never) },
         { id: "plan", Icon: CreditCard, iconBg: palette.category.violet, label: "Plan & billing", value: planLabel, chevron: true, onPress: () => router.push("/paywall") },
-        { id: "security", Icon: ShieldCheck, iconBg: palette.category.green, label: "Security", sub: "App lock · Face ID + PIN", value: lockEnabled ? "On" : "Off", chevron: true, onPress: () => router.push("/security" as never) }
+        { id: "security", Icon: ShieldCheck, iconBg: palette.category.green, label: "Security", sub: "App lock · PIN + biometrics", value: lockEnabled ? "On" : "Off", chevron: true, onPress: () => router.push("/security" as never) }
       ]
     },
     {
@@ -244,7 +248,9 @@ export default function SettingsScreen() {
     {
       title: "Notifications",
       rows: [
-        { id: "notifications", Icon: Bell, iconBg: palette.category.coral, label: "Push notifications", isSwitch: true, switchValue: notificationsEnabled, onToggle: setNotificationsEnabled },
+        // F124: was "Push notifications", a switch held in this screen's state
+        // that changed nothing. Now the design's master switch for reminders.
+        { id: "notifications", Icon: Bell, iconBg: palette.category.coral, label: "Renewal reminders", sub: "7D · 3D · DAY OF", isSwitch: true, switchValue: remindersEnabled, onToggle: setRemindersEnabled },
         { id: "quiet-hours", Icon: MoonStar, iconBg: palette.category.violet, label: "Quiet hours", sub: quietHours.enabled ? `${quietWindowLabel} · reminders shift to morning` : "Off", isSwitch: true, switchValue: quietHours.enabled, onToggle: (value) => setQuietHours({ enabled: value }) },
         {
           id: "quiet-window", Icon: Clock, iconBg: palette.category.slate, label: "Quiet window", value: quietWindowLabel, chevron: true,
@@ -264,7 +270,7 @@ export default function SettingsScreen() {
           onToggle: (value: boolean) => setCoachAiConsent(value ? "granted" : "declined")
         },
         { id: "connected", Icon: MailSearch, iconBg: palette.category.blue, label: "Connected inboxes", value: connectedInboxes, chevron: true, onPress: () => router.push("/discover") },
-        { id: "export", Icon: Download, iconBg: palette.category.slate, label: "Export my data", sub: "Download everything as CSV", chevron: true, onPress: exportData },
+        { id: "export", Icon: Download, iconBg: palette.category.slate, label: "Export my data", sub: "Your subscriptions and notes, as CSV", chevron: true, onPress: exportData },
         { id: "delete", Icon: Trash2, iconBg: palette.semantic.danger, label: "Delete all my data", sub: "Erase all your data from this device", chevron: true, onPress: confirmDelete }
       ]
     },

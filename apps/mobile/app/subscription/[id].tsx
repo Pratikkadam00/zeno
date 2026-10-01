@@ -16,16 +16,9 @@ import type { ThemeTokens } from "../../src/theme/tokens";
 import { type as typography } from "../../src/theme/typography";
 import { fonts } from "../../src/theme/zeno";
 import { spacing } from "../../src/theme/spacing";
+import { billingSuffix } from "../../src/utils/billing-label";
 
 // ─── Pure helpers (logic unchanged) ──────────────────────────────────────────
-
-function getBillingLabel(cycle: BillingCycle): string {
-  if (cycle === "annual") return "/year";
-  if (cycle === "weekly") return "/week";
-  if (cycle === "quarterly") return "/quarter";
-  if (cycle === "trial") return "/trial";
-  return "/month";
-}
 
 /** Cycle as a standalone noun for a ledger line ("Monthly"), not the "/month"
  *  suffix getBillingLabel renders next to an amount. */
@@ -371,7 +364,7 @@ export default function SubscriptionDetailScreen() {
                   <Text style={[styles.amountWhole, sub.status === "cancelled" ? styles.amountVoided : null]}>{amountWhole}</Text>
                   <Text style={[styles.amountDecimal, sub.status === "cancelled" ? styles.amountVoided : null]}>.{amountDecimal}</Text>
                 </View>
-                <Text style={styles.amountPeriod}>{getBillingLabel(sub.billingCycle)}</Text>
+                <Text style={styles.amountPeriod}>{billingSuffix(sub.billingCycle)}</Text>
 
                 {/* A verified cancellation is the app's ONE celebration: the
                     stamp lands, and the amount above is struck through. */}

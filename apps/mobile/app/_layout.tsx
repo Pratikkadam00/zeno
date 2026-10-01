@@ -13,6 +13,7 @@ import { BudgetStoreProvider } from "../src/data/budget-store";
 import { SubscriptionStoreProvider, useSubscriptionStore } from "../src/data/subscription-store";
 import { cleanupNotificationHandlers, setupNotificationHandlers } from "../src/notifications/notificationHandlers";
 import { registerForPushNotifications, rescheduleAllNotifications } from "../src/notifications/notificationService";
+import { reminderSubscriptions } from "../src/notifications/reminder-subscriptions";
 import { refreshWidgetSnapshot } from "../src/widgets/widgetBridge";
 import { useZenoFonts } from "../src/theme/fonts";
 import { HiddenWhileLocked } from "../src/security/HiddenWhileLocked";
@@ -70,7 +71,7 @@ export default function RootLayout() {
 function RootStack() {
   const { theme, scheme } = useZenoTheme();
   const statusBarStyle = scheme === "dark" ? "light" : "dark";
-  const { subscriptions, notificationSettings, quietHours, widgetSnapshot, hydrated, runCancellationVerification } = useSubscriptionStore();
+  const { subscriptions, notificationSettings, quietHours, remindersEnabled, widgetSnapshot, hydrated, runCancellationVerification } = useSubscriptionStore();
   const segments = useSegments();
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const {
@@ -91,17 +92,8 @@ function RootStack() {
   const lockReady = useLockStore((s) => s.ready);
   const hydrateLock = useLockStore((s) => s.hydrate);
   const lockNow = useLockStore((s) => s.lockNow);
-  const notificationSubscriptions = useMemo(() => subscriptions
-    .filter((subscription) => subscription.status === "active" && subscription.nextRenewalDate)
-    .map((subscription) => ({
-      id: subscription.id,
-      name: subscription.name,
-      amount: subscription.price.amountMinor / 100,
-      currency: subscription.price.currency,
-      nextRenewalDate: subscription.nextRenewalDate ?? "",
-      isTrial: subscription.billingCycle === "trial",
-      billingCycle: subscription.billingCycle
-    })), [subscriptions]);
+  // F124: none at all while Settings' "Renewal reminders" switch is off.
+  const notificationSubscriptions = useMemo(() => reminderSubscriptions(subscriptions, remindersEnabled), [subscriptions, remindersEnabled]);
 
   useEffect(() => {
     void hydrate();

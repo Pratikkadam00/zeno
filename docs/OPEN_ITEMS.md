@@ -3,7 +3,7 @@
 **One place for everything not yet solved.** Each item says who acts, exactly what to
 do, and where the full evidence lives (finding numbers point into
 `docs/HARDENING_LOG.md`). When an item is done it is removed from here and its log
-entry marked fixed. Last updated 2026-10-01, after P3.8d-2.
+entry marked fixed. Last updated 2026-10-01, after P3.8e-1.
 
 ---
 
@@ -22,7 +22,8 @@ real sample, or a product decision.
 | F114 | The Gmail card's promise **"Scanned on your device — nothing leaves your phone"** | (a) "Scanned on your device — your emails never reach Zeno's servers" (true: verified in the code); or (b) keep it | Emails really are read only on the phone. But "nothing" is absolute: after an import the app sends an anonymous "import completed" event, and with sync on, encrypted copies of what you save go to the server. |
 | F90 | Boot **refusals or warnings** for risky production settings | (a) keep warnings (today); or (b) make them refuse to boot, after you confirm in the Render dashboard that none of these is set: `DEMO_LOGIN_PASSWORD`, `ALLOW_UNVERIFIED_OAUTH_TOKENS`, a `*` or `http://` CORS origin, an `http://` `MONITORING_WEBHOOK_URL` or `COACH_BASE_URL` | The plan says "refuse to boot". I made them warnings because `main` auto-deploys and a dashboard value I can't see could take the API down. Each is already blocked at request time. |
 | F77 | **Logout** and the access token | (a) accept it (the token dies within 15 minutes); or (b) I add a per-session revocation list | After logout, the 15-minute access token keeps working until it expires. The refresh token is revoked at once. |
-| F45 | Paywall line **"…and we never see your bank."** | (a) change it to "…and no bank login required." now; or (b) keep it and reword when Plaid ships | True today (bank connect is dev-only). It becomes false the day Plaid ships. |
+| F45 | Paywall line **"…and we never see your bank."** (and Settings' "We never ask for your bank login", Profile's "We never see your bank login") | (a) change it to "…and no bank login required." now; or (b) keep it and reword when Plaid ships | True today (bank connect is dev-only). It becomes false the day Plaid ships. |
+| F127 | What **"Export my data"** covers | (a) keep the export to subscriptions and their notes, as the row now says; or (b) I add budgets and price history to the file, as the design's "EVERYTHING, AS CSV" promises | Until P3.8e-1 the row said "everything" and the file lacked even the notes. Notes are in now, and the row says what the file holds. |
 | F25 | How to present **305 of 509 catalog entries** that hold unresearched data (a guessed cancel link, "difficulty: medium", generic steps) | e.g. an "unverified" label and the homepage instead of a guessed link, or `noindex` on the website until curated | They are shown as fact in the app and on 305 public cancel-guide pages. |
 
 ### Actions in your accounts
@@ -52,7 +53,6 @@ real sample, or a product decision.
 | F106 | Once, right after the first unlock on a fresh install, screenshots of the unlocked app came back black (the block itself was already off); not reproduced in 2 tries | P5 |
 | F103 | The **web build fails on CI now and then**: it downloads the site's three Google fonts at build time, and that download sometimes fails on the runner (likely cause; the next occurrence's report will confirm it). Fix: serve the same font files from the repo, so the build needs no network | P4 (website), or sooner if you want it |
 | F16 | SQLCipher encryption of the local database is configured but never proven on a device (check the file header or `PRAGMA cipher_version`; the release build isn't debuggable, so it needs a rooted emulator image or a debug check) | P3 gate |
-| F29 | The Settings screen's *use* of the new inbox count isn't covered by a screen test yet (the hook itself is, at 100 %) | P3.8 |
 | F112 | On the calendar's day panel the "Cancel" link sits inside the row's button; check on the device whether screen-reader users can reach it | P3 gate |
 | F94 | A translucent Settings sheet, seen once on device and not reproduced in 5 attempts | P3.8 / P5 |
 | F21 | `Date.parse` silently shifts impossible dates ("02/30" becomes 2 March) | P6 |
@@ -70,6 +70,13 @@ real sample, or a product decision.
 | F18 | CSV import labelled every amount USD, even from a non-US bank | US bank formats stay USD. Other files use the currency their own amounts show (€, £, ₹, Rs., CA$, A$, ISO codes). A file of bare numbers uses **your home currency**, an assumption I've stated here, not hidden. Better still would be letting you pick the currency at review; that is a design change, so it's not done. |
 | F95 | Found while fixing F18: amounts written **CA$** (how the app itself writes Canadian dollars) were detected as **Australian** dollars, in email receipts and CSVs | CA$ now counts as CAD. |
 | F97 / F102 | The **intermittent account-deletion test** on CI | It was a real bug: on the production database server, a save still in flight when an account was deleted could land after the delete and bring the data back (a bank token included), and two quick saves could leave the older one. Saves to one record now happen in order, and deletion waits for saves already under way. The test also had its own bug (a wait that never waited), now fixed. |
+| F131 | Found in P3.8e-1: a subscription with an **unknown billing cycle** showed its price as **"/month"** | No cycle is shown when the app doesn't know it. |
+| F130 | Found in P3.8e-1: a **yearly plan's price rise** read "$99.00 → $119.00**/mo**" | It shows the plan's own cycle now ("/year"). |
+| F129 | Found in P3.8e-1: **Notifications' "Upcoming reminders" weren't the real ones**: reminders you'd switched off, wrong days for free trials, quiet hours ignored | The screen now lists exactly what the phone will show. |
+| F128 | Found in P3.8e-1: Profile said the lock used **"Face ID + PIN"** on every phone, even without biometrics, and on Android | It says "PIN" or "PIN + biometrics", as the phone allows. |
+| F126 | Found in P3.8e-1: Settings showed **"Version 1.0.0"**; the app is 0.1.0 | Shows the real version. |
+| F125 | Found in P3.8e-1: Settings and Profile showed an **internal account id where your email belongs** (or a made-up "you@example.com") | Your email is shown now. |
+| F124 | Found in P3.8e-1: Settings' **"Push notifications" switch did nothing** | It's now "Renewal reminders" (as designed) and really turns every reminder off and on. |
 | F123 | Found in P3.8d-2: Add subscription **started every price at $9.99**, so a service with no known price was saved at $9.99 unless you noticed | The amount starts empty now; Save waits for one. |
 | F122 | Found in P3.8d-2: Add subscription read **"1,99" as $1.00** and "1e3" as $1,000 | Only a plain amount (up to 2 decimals) can be saved. |
 | F121 | Found in P3.8d-2: **a note typed on Add subscription was thrown away** | Saved now. |

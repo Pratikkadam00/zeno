@@ -76,6 +76,10 @@ type AuthStoreState = {
   status: AuthStatus;
   isAuthenticated: boolean;
   accountId: string | null;
+  /** F125: the signed-in email, from the session's access token (every token
+   *  the API issues carries it). Null when signed out, local-only, or a token
+   *  without one: the UI then says so instead of showing the account id. */
+  email: string | null;
   plan: BillingPlan;
   accessTokenExpiresAt: number | null;
   lastMagicLinkEmail: string | null;
@@ -110,6 +114,7 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
   status: "loading",
   isAuthenticated: false,
   accountId: null,
+  email: null,
   plan: "free",
   accessTokenExpiresAt: null,
   lastMagicLinkEmail: null,
@@ -124,7 +129,7 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
       // an account". That choice persists across restarts so they land straight
       // back in the app instead of seeing onboarding again every launch.
       if (await readLocalOnlyFlag()) {
-        set({ status: "local_only", isAuthenticated: false, accountId: null, error: null });
+        set({ status: "local_only", isAuthenticated: false, accountId: null, email: null, error: null });
         return;
       }
       setAnonymous(set);
@@ -136,6 +141,7 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
         status: "authenticated",
         isAuthenticated: true,
         accountId: session.accountId,
+        email: emailClaim(session.accessToken),
         accessTokenExpiresAt: session.accessTokenExpiresAt,
         error: null
       });
@@ -152,7 +158,7 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
   // coach, Family Vault) stays gated on a real login, unchanged.
   async continueLocalOnly() {
     await persistLocalOnlyFlag();
-    set({ status: "local_only", isAuthenticated: false, accountId: null, error: null });
+    set({ status: "local_only", isAuthenticated: false, accountId: null, email: null, error: null });
   },
 
   async loginWithMagicLink(email: string) {
@@ -338,7 +344,7 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
         }
         stopRefreshTimer();
         await clearStoredSession();
-        set({ status: "anonymous", isAuthenticated: false, accountId: null, accessTokenExpiresAt: null, error: getErrorMessage(error) });
+        set({ status: "anonymous", isAuthenticated: false, accountId: null, email: null, accessTokenExpiresAt: null, error: getErrorMessage(error) });
       }
     })();
     try {
@@ -416,6 +422,7 @@ function setAuthenticated(set: (partial: Partial<AuthStoreState>) => void, sessi
     status: "authenticated",
     isAuthenticated: true,
     accountId: session.accountId,
+    email: emailClaim(session.accessToken),
     accessTokenExpiresAt: session.accessTokenExpiresAt,
     error: null
   });
@@ -426,6 +433,7 @@ function setAnonymous(set: (partial: Partial<AuthStoreState>) => void): void {
     status: "anonymous",
     isAuthenticated: false,
     accountId: null,
+    email: null,
     plan: "free",
     accessTokenExpiresAt: null,
     error: null

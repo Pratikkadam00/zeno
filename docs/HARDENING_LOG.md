@@ -68,8 +68,10 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
       - [x] P3.8c-2 Discover (the scan, CSV import and Gmail connect); **fixes F113**; F114 to the owner (green: CI 36865715523, CodeQL 36865715509 on `bcf81aa`)
     - [x] P3.8d subscription detail, cancel, add
       - [x] P3.8d-1 the subscription detail page; **fixes F115, F116, F117, F118** (green: CI 36869210309, CodeQL 36869210211 on `c6422f8`)
-      - [x] P3.8d-2 the cancel guide and Add subscription; **fixes F119, F120, F121, F122, F123**, F117 extended
-    - [ ] P3.8e settings (incl. F29's screen use), profile, notifications, login, paywall, onboarding
+      - [x] P3.8d-2 the cancel guide and Add subscription; **fixes F119, F120, F121, F122, F123**, F117 extended (green: CI 36875048540, CodeQL 36875048572 on `3b82e24`)
+    - [~] P3.8e settings (incl. F29's screen use), profile, notifications, login, paywall, onboarding
+      - [x] P3.8e-1 Settings, Profile, Notifications; **fixes F124, F125, F126, F128, F129, F130, F131**, F127 in part (rest to the owner); F29's screen use covered
+      - [ ] P3.8e-2 login, paywall, onboarding
     - [ ] P3.8f the rest (budget, recap, family, coach, wrapped, widgets, spend-twin, open-banking, backend, business, partners, public-api) and the root layout
   - [ ] P3.9 static scan of the release APK (MobSF, else apkleaks + manifest review)
   - [ ] P3 gate: hardened release APK verified on the emulator (every flow in `DEVICE_TEST_FINDINGS.md`); jest floor in CI; MASVS checklist with evidence per control
@@ -132,7 +134,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F42 | **FIXED in P1.9b.** ~~Reminders could be scheduled twice and the duplicates were never cleaned up.~~ The debounced data effect and the foreground listener each start a reconcile; two overlapping runs both read the queue before either scheduled, giving 12 pending notifications for 6 wanted. The diff also KEPT every copy whose key matched. Reconciles now run one at a time (a failed run does not block the next), and extra copies are cancelled. | Low–Medium (duplicate reminders) | me (agent) | P1.9b |
 | F43 | **FIXED (P1.9 follow-up).** ~~A token refresh that fails for ANY reason signs the user out. `authStore.refreshToken()` (lines 298-301) clears the stored session in its catch, including when offline, on a timeout, or on a 502/503 while Render's free tier wakes up. Opening the app offline more than 15 minutes after the last token refresh therefore deletes the 30-day refresh token. Only a definitive server rejection (401) should end the session.~~ Now only a 401 or 400 ends it; offline, timeouts, 429 and 5xx keep the session and retry. | Medium (availability of sign-in) | me | P1.9 follow-up |
 | F44 | **FIXED (P1.9 follow-up).** ~~Banned "automatic discovery" copy: `app/open-banking.tsx:45` says "auto-discovers recurring charges" (it also claims "we only receive transactions", although the server holds the Plaid access token), and `app/(tabs)/discover.tsx:655` says "automatically discover what you pay for". Both violate the standing truthfulness rails.~~ Both are reworded (exact text in the log entry below). | Medium (truthfulness) | me | P1.9 follow-up |
-| F45 | **OPEN: owner decision.** The paywall (`app/paywall.tsx:257`) says "…and we never see your bank." That is true in production today, where bank connect is dev-only, but it becomes false the day Plaid ships, because the server then stores the Plaid access token and fetches transactions. Suggested wording: "…and no bank login required." (the required phrase), or keep it and reword when Plaid ships. Not changed: it is paywall marketing copy. | Low now, High if Plaid ships (truthfulness) | owner | P4 or before Plaid ships |
+| F45 | **OPEN: owner decision.** (P3.8e-1: the same question covers Settings' "We never ask for your bank login" and Profile's "We never see your bank login".) The paywall (`app/paywall.tsx:257`) says "…and we never see your bank." That is true in production today, where bank connect is dev-only, but it becomes false the day Plaid ships, because the server then stores the Plaid access token and fetches transactions. Suggested wording: "…and no bank login required." (the required phrase), or keep it and reword when Plaid ships. Not changed: it is paywall marketing copy. | Low now, High if Plaid ships (truthfulness) | owner | P4 or before Plaid ships |
 | F46 | **FIXED in P1.9a.** ~~A RETIRED encryption key sealed new data.~~ With `STORAGE_ENCRYPTION_KEY` unset or malformed and a valid `STORAGE_ENCRYPTION_KEYS_PREVIOUS`, `sealValue` used `keyring()[0]`, a previous key (possibly retired because it leaked). Meanwhile `config.ts` told the operator the tokens stayed in memory. Only the primary key seals and counts as "configured" now; previous keys only open old rows. | Medium | me (agent) | P1.9a |
 | F47 | **FIXED in P1.9a.** ~~One malformed row stopped every later store from loading at boot.~~ Hydrators run in order (auth, plaid, billing, sync, family); one throwing left all later namespaces empty. Each namespace is now isolated, and a failure is logged by namespace name only (never keys or values). | Medium-Low | me (agent) | P1.9a |
 | F48 | **FIXED in P1.9a.** ~~A sync push was acked "accepted" even when its database write failed.~~ `kvPersistAwait` now reports whether the row landed. A failed write counts as rejected and undoes the in-memory write, but only if no newer change for the same item landed meanwhile. | Medium (latent: no sync client yet) | me (agent) | P1.9a |
@@ -201,6 +203,14 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F121 | **FIXED in P3.8d-2.** ~~A note typed on Add subscription was thrown away.~~ The form had a notes field; the save never passed it, and the store had no way to take one. Now saved (trimmed; an empty note saves none). | Low | me | P3.8d-2 |
 | F122 | **FIXED in P3.8d-2.** ~~Add subscription read the amount with `parseFloat`.~~ "1,99" saved as $1.00, "9.99.9" as $9.99, "1e3" as $1,000. The amount must now be digits with at most 2 decimals and more than zero, or Save stays disabled. The rule is Discover's (F113), moved to `src/utils/amount-text.ts` and shared. | Medium (truthfulness of money) | me | P3.8d-2 |
 | F123 | **FIXED in P3.8d-2.** ~~Add subscription started every amount at $9.99.~~ A custom service, or a catalog one with no price (Substack, Steam…), was saved at $9.99 unless the user noticed a price they never typed; and picking an unpriced service after a priced one kept the old price. The amount now starts empty (Save waits for one), and an unpriced pick clears it. | Medium (invented figure) | me | P3.8d-2 |
+| F124 | **FIXED in P3.8e-1.** ~~Settings' "Push notifications" switch did nothing.~~ It was held in the screen's own state: switching it off changed nothing and was forgotten on leaving. It is now the design's "Renewal reminders" master switch (`ui_kits/app/SettingsScreen.jsx`): persisted (`notification.enabled.v1`, default on, reset by a wipe), and while off the root layout hands the scheduler an empty list, which cancels every pending reminder. Each subscription's own switches are kept for when it is turned back on. | Medium (a control that lies) | me | P3.8e-1 |
+| F125 | **FIXED in P3.8e-1.** ~~Settings and Profile showed the account id as the user's email.~~ Both displayed `accountId` (an internal `acct_…` id) where the email belongs, and the made-up "you@example.com" when it was missing. The auth store now keeps the email from the session's own access token (every token the API issues carries it) and clears it on sign-out, local-only and a rejected refresh; with none, the screens say "Signed in". Profile still shows the id, labelled ACCOUNT ID. | Low (truthfulness) | me | P3.8e-1 |
+| F126 | **FIXED in P3.8e-1.** ~~Settings showed "Version 1.0.0", hard-coded.~~ The build is 0.1.0 (`app.config.ts`). It now reads `Constants.expoConfig.version`. | Low | me | P3.8e-1 |
+| F127 | **PART FIXED in P3.8e-1; the rest is an owner decision.** ~~"Export my data — Download everything as CSV" left out the user's notes.~~ Notes are now a column (formula-guarded like the name). The row now says "Your subscriptions and notes, as CSV", which is what the file holds. The design promises "EVERYTHING, AS CSV" (budgets and price history aren't in the file); whether the export grows to that is in OPEN_ITEMS. | Low (truthfulness) | owner (scope) | P3.8e-1 |
+| F128 | **FIXED in P3.8e-1.** ~~Profile said the app lock was "On · Face ID + PIN" on every device.~~ That included phones with no biometrics enrolled, and Android, which has no Face ID. It now says "On · PIN + biometrics" or "On · PIN", from the lock store's `biometricAvailable`. Settings' Security row says "App lock · PIN + biometrics". | Low (truthfulness) | me | P3.8e-1 |
+| F129 | **FIXED in P3.8e-1.** ~~The Notifications screen's "Upcoming reminders" were not the reminders the phone would show.~~ It listed `createRenewalReminderPlan` from @zeno/shared, called with no preferences, while the phone schedules from `buildRenewalTriggers`. So it listed reminders the user had switched off; it ignored quiet hours; it showed a trial as 7 / 3 / 0 days when the scheduler fires 2 / 1 / 0; and it worked in UTC days, not the scheduler's 9 AM local. The scheduler's own list is now one function (`upcomingReminders`, the first half of the reconcile), and the screen lists exactly that, by each notification's real title. The store's unused `reminderPlan` and the now-unused `notificationLabel` were removed. | Medium (a schedule that isn't the schedule) | me | P3.8e-1 |
+| F130 | **FIXED in P3.8e-1.** ~~A price rise always read "/mo".~~ The price history holds the price per billing cycle, so a yearly plan going from $99 to $119 read "$99.00 → $119.00/mo". It now ends in the plan's own cycle. | Low (truthfulness of money) | me | P3.8e-1 |
+| F131 | **FIXED in P3.8e-1.** ~~The subscription page labelled an unknown cycle's price "/month".~~ The same class as F117: a cycle the app doesn't know was presented as monthly. The suffix is now shared (`src/utils/billing-label.ts`), and an unknown cycle has none. | Low (truthfulness of money) | me | P3.8e-1 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **TO CHECK ON THE DEVICE (not a confirmed bug).** On the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -3784,3 +3794,50 @@ Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vit
 
 Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1874 at
 100 / 99.68 / 100 / 100 · jest 359 / 359, 0 act() warnings, the new floors held.
+
+### P3.8e-1 — Settings, Profile, Notifications — 2026-10-01
+
+**Result:**
+- `app/settings.tsx` (95/95 lines), `app/profile.tsx` (20/20) and `app/notifications.tsx`
+  (23/23) are at 100 % lines and statements, held there file by file.
+- `app/` went from 815 to 948 lines covered (62.24 % of 1523); statements 1098 of 1757
+  (62.49 %). The floors are jest's truncated values.
+- The jest suite is at 403 tests, 0 act() warnings. Vitest is at 1888.
+
+**Settings tests (23), through the real stores, the real erase flow and the external-link
+allowlist:**
+- **Account:** the email and plan; a long email shortened; the version; every row's
+  destination; Pro and Family; F29's inbox count, now covered on the screen.
+- **App and notifications:** dark mode; home currency, with its sheet; the reminders
+  switch (F124), saved and read back; quiet hours and their window; the sheets closing
+  unchanged; AI coaching and what it says is sent.
+- **Data:** the CSV export (notes, formula guard, quoting); Delete all my data (cancel,
+  delete, a step that fails); the More links.
+- **Leaving:** sign out; local-only exit; Cancel my Zeno account (server first, then the
+  device); the server refusing; a local step failing after the server deleted it.
+
+**Profile tests (10):** the email (F125), the id labelled as such, the plans, the lock
+state (F128), the rows, sign out and local-only.
+
+**Notifications tests (10), with the scheduler's real list:** the reminders that will
+fire, soonest first; one switched off; a trial's ladder; the master switch off, with the
+reason shown; the 12 cap; every flag kind and where it goes; a yearly price rise (F130).
+
+**Found and fixed:** F124, F125, F126, F128, F129, F130, F131; F127 in part, the rest to
+the owner (see their rows).
+
+**Checked, not a bug:**
+- Settings' "Your subscriptions are encrypted on this device": `useSQLCipher: true`, and
+  the key is set with `PRAGMA key` (F16 still has to prove it on a device).
+- "We never ask for your bank login": no screen links to `open-banking` (dev-only Plaid;
+  untouched, per the owner). Added to F45, which is the same question.
+
+**Bite check: 18, all caught:**
+- **F124:** the switch, the store's read-back, its reset on a wipe, the empty list.
+- **F125:** the store at sign-in, at launch and on local-only; Settings; Profile.
+- **F126, F127**, and **F128** in Profile and in Settings.
+- **F129:** the screen ignoring the switches; the list unsorted.
+- **F130**; **F131** in the shared suffix and on the subscription page.
+
+Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1888 at
+100 / 99.68 / 100 / 100 · jest 403 / 403, 0 act() warnings, the new floors held.

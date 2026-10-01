@@ -313,12 +313,21 @@ export function rescheduleAllNotifications(
   return run;
 }
 
-async function reconcileNotifications(
+/** One reminder the phone will show: what it says and when. */
+export type UpcomingReminder = BuiltTrigger;
+
+/**
+ * Every reminder the reconcile below will keep scheduled, soonest first: the
+ * per-subscription switches, quiet hours, the weekly and trial ladders and the
+ * iOS cap all applied. The Notifications screen lists THIS (F129), so what it
+ * says is coming up is exactly what will fire.
+ */
+export function upcomingReminders(
   subscriptions: RenewalNotificationSubscription[],
-  preferencesById: Record<string, RenewalNotificationPreferences>,
-  quietHours: QuietHours | undefined
-): Promise<void> {
-  const now = Date.now();
+  preferencesById: Record<string, RenewalNotificationPreferences> = {},
+  quietHours?: QuietHours,
+  now: number = Date.now()
+): UpcomingReminder[] {
   // Build every candidate trigger across ALL subscriptions first, then keep the
   // soonest MAX_SCHEDULED_NOTIFICATIONS — otherwise, past ~21 subscriptions
   // (3 reminders each) later subs silently exhaust iOS's 64-slot budget and the
@@ -337,7 +346,15 @@ async function reconcileNotifications(
     );
   });
   allTriggers.sort((a, b) => a.fireAt.getTime() - b.fireAt.getTime());
-  const desired = allTriggers.slice(0, MAX_SCHEDULED_NOTIFICATIONS);
+  return allTriggers.slice(0, MAX_SCHEDULED_NOTIFICATIONS);
+}
+
+async function reconcileNotifications(
+  subscriptions: RenewalNotificationSubscription[],
+  preferencesById: Record<string, RenewalNotificationPreferences>,
+  quietHours: QuietHours | undefined
+): Promise<void> {
+  const desired = upcomingReminders(subscriptions, preferencesById, quietHours, Date.now());
 
   // Reconcile the desired set against what's already pending instead of a blind
   // cancel-all + reschedule-all (P4.1): a reschedule whose set is unchanged does

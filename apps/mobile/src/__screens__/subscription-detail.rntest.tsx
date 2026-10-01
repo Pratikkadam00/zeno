@@ -300,6 +300,7 @@ describe("detail, figures that must not be invented", () => {
   it("F117: an unknown cycle has no yearly figure, and a verified cancellation of one claims no saving", async () => {
     await open("u", [sub({ id: "u", billingCycle: "unknown", status: "cancelled" })]);
     expect(screen.getByText("NO SET CYCLE")).toBeTruthy(); // the Per year line, valued "—"
+    expect(screen.queryByText("/month")).toBeNull(); // F131: no invented cycle after the price
     expect(screen.getAllByText("—").length).toBeGreaterThan(0);
     expect(screen.getByText("No charge found.")).toBeTruthy();
     expect(screen.queryByText(/SAVED/)).toBeNull();

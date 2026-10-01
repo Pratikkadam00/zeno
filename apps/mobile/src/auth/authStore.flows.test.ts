@@ -137,6 +137,47 @@ describe("hydrate", () => {
   });
 });
 
+describe("the signed-in email (F125)", () => {
+  it("comes from the session's own token at sign-in, and goes at sign-out", async () => {
+    linkRequested();
+    http.timedFetch.mockResolvedValueOnce(envelope(linkSession()));
+    await useAuthStore.getState().verifyMagicLink("t".repeat(40));
+    expect(useAuthStore.getState()).toMatchObject({ accountId: "acct_1", email: EMAIL });
+    http.timedFetch.mockResolvedValueOnce(envelope({}));
+    await useAuthStore.getState().logout();
+    expect(useAuthStore.getState().email).toBeNull();
+  });
+
+  it("is read from a stored session at launch, even when the refresh is offline", async () => {
+    storeSession(1, Date.now() + 10_000);
+    vault.store.set("zeno.auth.accessToken.v1", accessFor(EMAIL));
+    http.timedFetch.mockRejectedValueOnce(new TypeError("Network request failed"));
+    await useAuthStore.getState().hydrate();
+    expect(useAuthStore.getState()).toMatchObject({ status: "authenticated", email: EMAIL });
+  });
+
+  it("a token without one gives null, never a guess", async () => {
+    storeSession(1);
+    await useAuthStore.getState().hydrate();
+    expect(useAuthStore.getState()).toMatchObject({ status: "authenticated", accountId: "acct_1", email: null });
+  });
+
+  it("local-only and a rejected refresh clear it", async () => {
+    useAuthStore.setState({ email: EMAIL });
+    await useAuthStore.getState().continueLocalOnly();
+    expect(useAuthStore.getState().email).toBeNull();
+    useAuthStore.setState({ email: EMAIL });
+    vault.store.set("zeno.auth.localOnly.v1", "1");
+    await useAuthStore.getState().hydrate();
+    expect(useAuthStore.getState()).toMatchObject({ status: "local_only", email: null });
+    storeSession();
+    useAuthStore.setState({ email: EMAIL });
+    http.timedFetch.mockResolvedValueOnce(errorEnvelope("Refresh token reused."));
+    await useAuthStore.getState().refreshToken();
+    expect(useAuthStore.getState().email).toBeNull();
+  });
+});
+
 describe("local-only mode", () => {
   it("persists the choice; a real login clears it; logout clears it too", async () => {
     await useAuthStore.getState().continueLocalOnly();

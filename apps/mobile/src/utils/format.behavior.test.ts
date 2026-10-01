@@ -1,6 +1,6 @@
 import { CURRENCY_CODES } from "@zeno/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { currencySymbol, formatMoney, notificationLabel } from "./format";
+import { currencySymbol, formatMoney } from "./format";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -42,10 +42,3 @@ describe("currencySymbol", () => {
   });
 });
 
-describe("notificationLabel", () => {
-  it("labels each reminder kind", () => {
-    expect(notificationLabel("seven_day")).toBe("7-day");
-    expect(notificationLabel("three_day")).toBe("3-day cancel");
-    expect(notificationLabel("day_of")).toBe("Day-of");
-  });
-});

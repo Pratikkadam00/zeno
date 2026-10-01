@@ -1,12 +1,15 @@
 import { router, Stack } from "expo-router";
 import { AlarmClock, AlertTriangle, Bell, BellOff, ChevronLeft, Clock, TrendingUp } from "lucide-react-native";
-import type { ComponentType, ReactNode } from "react";
+import { useMemo, type ComponentType, type ReactNode } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ListRow } from "../src/components/zeno";
 import { useSubscriptionStore } from "../src/data/subscription-store";
+import { upcomingReminders } from "../src/notifications/notificationService";
+import { reminderSubscriptions } from "../src/notifications/reminder-subscriptions";
 import { useZenoTokens } from "../src/theme/useZenoTokens";
-import { formatMoney, notificationLabel } from "../src/utils/format";
+import { billingSuffix } from "../src/utils/billing-label";
+import { formatMoney } from "../src/utils/format";
 import { formatShortDate } from "../src/utils/subscription-ui";
 
 type IconCmp = ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
@@ -24,13 +27,20 @@ export default function NotificationsScreen() {
   const t = useZenoTokens();
   const c = t.color;
   const insets = useSafeAreaInsets();
-  const { subscriptions, reminderPlan, endingTrials, priceHikes } = useSubscriptionStore();
+  const { subscriptions, notificationSettings, quietHours, remindersEnabled, endingTrials, priceHikes } = useSubscriptionStore();
+  // F129: exactly what the scheduler keeps (src/notifications/notificationService.ts):
+  // each subscription's switches, quiet hours, the trial and weekly ladders and
+  // Settings' master switch. It listed a separate plan that ignored all of them.
+  const reminders = useMemo(
+    () => upcomingReminders(reminderSubscriptions(subscriptions, remindersEnabled), notificationSettings, quietHours),
+    [subscriptions, remindersEnabled, notificationSettings, quietHours]
+  );
 
   const attention = subscriptions.filter((s) => s.status === "attention");
   const pending = subscriptions.filter((s) => s.status === "pending");
 
   const flagsCount = attention.length + pending.length + endingTrials.length + priceHikes.length;
-  const hasAny = flagsCount > 0 || reminderPlan.length > 0;
+  const hasAny = flagsCount > 0 || reminders.length > 0;
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bgApp, paddingTop: insets.top }}>
@@ -53,6 +63,11 @@ export default function NotificationsScreen() {
           <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: t.fontSize.bodySm, color: c.textTertiary, textAlign: "center", marginTop: 4 }}>
             We&apos;ll flag renewals, free trials, price changes, and cancellation results here.
           </Text>
+          {!remindersEnabled ? (
+            <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: t.fontSize.bodySm, color: c.textTertiary, textAlign: "center", marginTop: 8 }}>
+              Renewal reminders are off in Settings.
+            </Text>
+          ) : null}
         </View>
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 + insets.bottom }}>
@@ -102,7 +117,9 @@ export default function NotificationsScreen() {
                     divider={i < arr.length - 1}
                     leading={tile(TrendingUp, c.info, c.ruleStrong, 8)}
                     title={`${hike.subscription.name} went up ${hike.increasePct}%`}
-                    subtitle={`${formatMoney(hike.previousMinor, hike.subscription.price.currency)} → ${formatMoney(hike.currentMinor, hike.subscription.price.currency)}/mo`}
+                    // F130: the history holds the price per billing cycle; "/mo" was
+                    // printed for every cycle ("$99.00 → $119.00/mo" for a yearly plan).
+                    subtitle={`${formatMoney(hike.previousMinor, hike.subscription.price.currency)} → ${formatMoney(hike.currentMinor, hike.subscription.price.currency)}${billingSuffix(hike.subscription.billingCycle)}`}
                     chevron
                     onPress={() => router.push(`/subscription/${hike.subscription.id}` as never)}
                   />
@@ -112,21 +129,21 @@ export default function NotificationsScreen() {
           ) : null}
 
           {/* Scheduled reminders */}
-          {reminderPlan.length > 0 ? (
+          {reminders.length > 0 ? (
             <>
               <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: 10.5, letterSpacing: 1.8, textTransform: "uppercase", color: c.textTertiary, paddingHorizontal: 4, paddingTop: 22, paddingBottom: 8 }}>
                 Upcoming reminders
               </Text>
               <View>
-                {reminderPlan.slice(0, 12).map((plan, i, arr) => (
+                {reminders.slice(0, 12).map((reminder, i, arr) => (
                   <ListRow
-                    key={`${plan.subscriptionId}-${plan.kind}-${i}`}
+                    key={`${reminder.subscriptionId}-${reminder.fireAt.getTime()}`}
                     divider={i < arr.length - 1}
                     leading={tile(Bell, c.textSecondary, c.ruleStrong, 8)}
-                    title={`${notificationLabel(plan.kind)} — ${plan.serviceName}`}
-                    subtitle={new Date(plan.triggerAt).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                    title={reminder.title}
+                    subtitle={reminder.fireAt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
                     chevron
-                    onPress={() => router.push(`/subscription/${plan.subscriptionId}` as never)}
+                    onPress={() => router.push(`/subscription/${reminder.subscriptionId}` as never)}
                   />
                 ))}
               </View>

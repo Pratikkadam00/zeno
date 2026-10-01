@@ -321,6 +321,31 @@ describe("cancelAllNotifications / cancelNotificationsForSubscription", () => {
   });
 });
 
+describe("upcomingReminders — the list the Notifications screen shows (F129)", () => {
+  it("is exactly what the reconcile schedules: same reminders, same times, soonest first", async () => {
+    const subs = [sub("later", 30), sub("sooner", 10), sub("trial", 5, { isTrial: true })];
+    const prefs = { later: { sevenDay: false, threeDay: true, dayOf: true } };
+    const quiet = { enabled: true, startHour: 8, endHour: 10 };
+    const list = service.upcomingReminders(subs, prefs, quiet);
+    await service.rescheduleAllNotifications(subs, prefs, quiet);
+    expect(list.map((r) => [r.subscriptionId, r.fireAt.getTime(), r.title])).toEqual(
+      queue.map((n) => [n.content.data?.subscriptionId, (n.trigger as { date: Date }).date.getTime(), n.content.title])
+    );
+    expect(list.map((r) => r.fireAt.getTime())).toEqual([...list.map((r) => r.fireAt.getTime())].sort((a, b) => a - b));
+    // A trial's ladder is 2 days, 1 day and the day itself, not 7 / 3 / 0.
+    expect(list.filter((r) => r.subscriptionId === "trial").map((r) => r.title)).toEqual([
+      "⚠️ Sub trial free trial ends in 2 days",
+      "⏰ Sub trial free trial ends tomorrow",
+      "Sub trial free trial ends today"
+    ]);
+    expect(list.some((r) => r.subscriptionId === "later" && r.title.includes("7 days"))).toBe(false);
+  });
+
+  it("nothing in, nothing out", () => {
+    expect(service.upcomingReminders([])).toEqual([]);
+  });
+});
+
 describe("rescheduleAllNotifications — inputs", () => {
   it("skips subscriptions whose renewal is unparseable or already past", async () => {
     await service.rescheduleAllNotifications([

@@ -14,18 +14,21 @@ import { fonts, palette } from "../src/theme/zeno";
 export default function ProfileScreen() {
   const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { plan, accountId, status, logout } = useAuthStore(
+  const { plan, accountId, email: signedInEmail, status, logout } = useAuthStore(
     useShallow((state) => ({
       plan: state.plan,
       accountId: state.accountId,
+      email: state.email,
       status: state.status,
       logout: state.logout
     }))
   );
   const lockEnabled = useLockStore((s) => s.enabled);
+  const biometricAvailable = useLockStore((s) => s.biometricAvailable);
   const isLocalOnly = status === "local_only";
 
-  const email = isLocalOnly ? "Local-only mode" : accountId ?? "you@example.com";
+  // F125: the signed-in email, never the account id or a made-up address.
+  const email = isLocalOnly ? "Local-only mode" : signedInEmail ?? "Signed in";
   const planLabel = plan === "pro" ? "Pro" : plan === "family" ? "Family" : "Free plan";
 
   const confirmSignOut = () => {
@@ -77,7 +80,8 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>App lock</Text>
-              <Text style={styles.rowSub}>{lockEnabled ? "On · Face ID + PIN" : "Off"}</Text>
+              <Text style={styles.rowSub}>{/* F128: said "Face ID + PIN" on every device, biometrics or not. */}
+              {lockEnabled ? (biometricAvailable ? "On · PIN + biometrics" : "On · PIN") : "Off"}</Text>
             </View>
             <Text style={styles.chevron}>›</Text>
           </Pressable>

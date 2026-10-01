@@ -329,6 +329,18 @@ describe("mutations", () => {
     expect(JSON.parse(mockMeta.get("notification.quietHours.v1")!)).toEqual({ enabled: true, startHour: 23, endHour: 8 });
   });
 
+  it("F124: the reminders switch starts on, persists, and is read back (only an explicit 'false' is off)", async () => {
+    const { result } = await mounted([]);
+    expect(result.current.remindersEnabled).toBe(true);
+    act(() => result.current.setRemindersEnabled(false));
+    expect(result.current.remindersEnabled).toBe(false);
+    expect(mockMeta.get("notification.enabled.v1")).toBe("false");
+    for (const [stored, expected] of [["false", false], ["true", true], ["garbage", true]] as const) {
+      const again = await mounted([], { "notification.enabled.v1": stored });
+      expect(again.result.current.remindersEnabled).toBe(expected);
+    }
+  });
+
   it("home currency and AI consent persist", async () => {
     const { result } = await mounted([]);
     act(() => result.current.setHomeCurrency("GBP"));
@@ -347,6 +359,7 @@ describe("mutations", () => {
       ["notification.settings.v1", () => result.current.updateNotificationSettings("a", { sevenDay: false })],
       ["price.history.v1", () => result.current.updateSubscription("a", { amountMinor: 4242 })],
       ["notification.quietHours.v1", () => result.current.setQuietHours({ enabled: true })],
+      ["notification.enabled.v1", () => result.current.setRemindersEnabled(false)],
       ["fx.homeCurrency.v1", () => result.current.setHomeCurrency("INR")],
       ["coach.aiConsent.v1", () => result.current.setCoachAiConsent("granted")]
     ];
@@ -356,7 +369,7 @@ describe("mutations", () => {
     }
     await act(async () => { result.current.deleteSubscription("a"); });
     const messages = (console.warn as jest.Mock).mock.calls.map((c) => c[0]);
-    for (const m of ["Failed to persist subscription.", "Failed to persist notification settings.", "Failed to persist price history.", "Failed to persist quiet hours.", "Failed to persist home currency.", "Failed to persist AI-coach consent.", "Failed to delete subscription."]) {
+    for (const m of ["Failed to persist subscription.", "Failed to persist notification settings.", "Failed to persist price history.", "Failed to persist quiet hours.", "Failed to persist the reminders switch.", "Failed to persist home currency.", "Failed to persist AI-coach consent.", "Failed to delete subscription."]) {
       expect(messages).toContain(m);
     }
   });
@@ -372,12 +385,13 @@ describe("with no database (it failed to open)", () => {
     act(() => result.current.updateSubscription("sub_netflix", { amountMinor: 99_999 }));
     act(() => result.current.updateNotificationSettings("sub_netflix", { dayOf: false }));
     act(() => result.current.setQuietHours({ enabled: true }));
+    act(() => result.current.setRemindersEnabled(false));
     act(() => result.current.setHomeCurrency("EUR"));
     act(() => result.current.setCoachAiConsent("granted"));
     act(() => result.current.deleteSubscription("sub_adobe"));
     expect(result.current.subscriptions.find((s) => s.id === "sub_netflix")?.price.amountMinor).toBe(99_999);
     expect(result.current.subscriptions.some((s) => s.id === "sub_adobe")).toBe(false);
-    expect(result.current).toMatchObject({ homeCurrency: "EUR", coachAiConsent: "granted", quietHours: { enabled: true } });
+    expect(result.current).toMatchObject({ homeCurrency: "EUR", coachAiConsent: "granted", quietHours: { enabled: true }, remindersEnabled: false });
     await act(async () => { await result.current.clearAllData(); });
     expect(result.current.subscriptions).toEqual([]);
     expect(mockCancelAll).toHaveBeenCalledTimes(1);
@@ -393,10 +407,13 @@ describe("clearAllData", () => {
     const { result } = await mounted([sub({ id: "a" })], {
       "coach.aiConsent.v1": "granted",
       "notification.quietHours.v1": JSON.stringify({ enabled: true, startHour: 21, endHour: 7 }),
-      "fx.homeCurrency.v1": "INR"
+      "fx.homeCurrency.v1": "INR",
+      "notification.enabled.v1": "false"
     });
-    expect(result.current).toMatchObject({ homeCurrency: "INR", quietHours: { enabled: true } });
+    expect(result.current).toMatchObject({ homeCurrency: "INR", quietHours: { enabled: true }, remindersEnabled: false });
     await act(async () => { await result.current.clearAllData(); });
+    expect(result.current.remindersEnabled).toBe(true);
+    expect(mockMeta.get("notification.enabled.v1")).toBe("true");
     expect(result.current.homeCurrency).toBe("USD");
     expect(result.current.quietHours).toEqual({ enabled: false, startHour: 22, endHour: 8 });
     expect(mockMeta.get("fx.homeCurrency.v1")).toBe("USD");
@@ -422,13 +439,14 @@ describe("clearAllData", () => {
       .mockRejectedValueOnce(new Error("x")) // notification settings
       .mockRejectedValueOnce(new Error("x")) // AI-coach consent
       .mockRejectedValueOnce(new Error("x")) // quiet hours
+      .mockRejectedValueOnce(new Error("x")) // reminders switch (F124)
       .mockRejectedValueOnce(new Error("x")); // home currency
     mockCancelAll.mockRejectedValueOnce(new Error("x"));
     let rejected: unknown;
     await act(async () => { await result.current.clearAllData().catch((e: unknown) => { rejected = e; }); });
-    expect(rejected).toEqual(new Error("Could not clear: subscriptions, price history, notification settings, AI-coach consent, quiet hours, home currency, scheduled notifications"));
+    expect(rejected).toEqual(new Error("Could not clear: subscriptions, price history, notification settings, AI-coach consent, quiet hours, reminders switch, home currency, scheduled notifications"));
     const messages = (console.warn as jest.Mock).mock.calls.map((c) => c[0]);
-    for (const m of ["subscriptions", "price history", "notification settings", "AI-coach consent", "quiet hours", "home currency", "scheduled notifications"]) {
+    for (const m of ["subscriptions", "price history", "notification settings", "AI-coach consent", "quiet hours", "reminders switch", "home currency", "scheduled notifications"]) {
       expect(messages).toContain(`Failed to clear ${m}.`);
     }
     expect(result.current.subscriptions).toEqual([]);

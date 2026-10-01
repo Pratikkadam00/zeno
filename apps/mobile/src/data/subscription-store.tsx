@@ -1,5 +1,5 @@
 import { searchServices } from "@zeno/service-catalog";
-import { buildYearInReview, createAnalyticsSnapshot, createBusinessSummary, createFamilyVaultSummary, createRenewalReminderPlan, createSpendSummary, createSpendTwin, createWidgetSnapshot, demoBusinessWorkspace, demoFamilyMembers, detectPriceHikes, getEndingTrials, monthlyAmountIn, partnerIntegrationManifests, type AnalyticsSnapshot, type BillingCycle, type BusinessSubscriptionSummary, type CurrencyCode, type EndingTrial, type ExchangeRates, type FamilyVaultSummary, type FxContext, type PartnerIntegrationManifest, type PriceHike, type PriceHistoryEntry, type RenewalReminderPlan, type SpendSummary, type SpendTwinComparison, type Subscription, type SubscriptionCategory, type SubscriptionStatus, type WidgetSnapshot, type YearInReview } from "@zeno/shared";
+import { buildYearInReview, createAnalyticsSnapshot, createBusinessSummary, createFamilyVaultSummary, createSpendSummary, createSpendTwin, createWidgetSnapshot, demoBusinessWorkspace, demoFamilyMembers, detectPriceHikes, getEndingTrials, monthlyAmountIn, partnerIntegrationManifests, type AnalyticsSnapshot, type BillingCycle, type BusinessSubscriptionSummary, type CurrencyCode, type EndingTrial, type ExchangeRates, type FamilyVaultSummary, type FxContext, type PartnerIntegrationManifest, type PriceHike, type PriceHistoryEntry, type SpendSummary, type SpendTwinComparison, type Subscription, type SubscriptionCategory, type SubscriptionStatus, type WidgetSnapshot, type YearInReview } from "@zeno/shared";
 import * as Crypto from "expo-crypto";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform } from "react-native";
@@ -65,7 +65,6 @@ type SubscriptionStore = {
   businessSummary: BusinessSubscriptionSummary;
   yearInReview: YearInReview;
   partnerIntegrations: PartnerIntegrationManifest[];
-  reminderPlan: RenewalReminderPlan[];
   upcoming: Subscription[];
   endingTrials: EndingTrial[];
   priceHikes: PriceHike[];
@@ -82,6 +81,11 @@ type SubscriptionStore = {
   updateNotificationSettings: (id: string, changes: Partial<SubscriptionNotificationSettings>) => void;
   quietHours: QuietHours;
   setQuietHours: (changes: Partial<QuietHours>) => void;
+  /** F124: Settings' "Renewal reminders" switch. Off schedules no reminder for
+   *  any subscription (the per-subscription choices are kept for when it is
+   *  turned back on). Was a switch that changed nothing. */
+  remindersEnabled: boolean;
+  setRemindersEnabled: (enabled: boolean) => void;
   // Home-currency aggregate conversion (Phase 5.2). exchangeRatesAvailable is
   // false until the first successful fetch (or a cached table from a prior
   // session) — until then every aggregate below falls back to the honest,
@@ -116,6 +120,7 @@ const defaultNotificationSettings: SubscriptionNotificationSettings = {
 const seededMetaKey = "subscriptions.seeded.v1";
 const notificationSettingsMetaKey = "notification.settings.v1";
 const quietHoursMetaKey = "notification.quietHours.v1";
+const remindersEnabledMetaKey = "notification.enabled.v1";
 const priceHistoryMetaKey = "price.history.v1";
 const homeCurrencyMetaKey = "fx.homeCurrency.v1";
 const exchangeRatesMetaKey = "fx.rates.v1";
@@ -136,6 +141,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
     seedSubscriptions.map((subscription) => [subscription.id, defaultNotificationSettings])
   ));
   const [quietHours, setQuietHoursState] = useState<QuietHours>(defaultQuietHours);
+  const [remindersEnabled, setRemindersEnabledState] = useState(true);
   const [homeCurrency, setHomeCurrencyState] = useState<CurrencyCode>(defaultHomeCurrency);
   const [coachAiConsent, setCoachAiConsentState] = useState<CoachAiConsent>("unset");
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates | undefined>(undefined);
@@ -185,6 +191,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         const persisted = await listSubscriptions(db);
         const storedSettings = await readAppMeta(db, notificationSettingsMetaKey);
         const storedQuietHours = await readAppMeta(db, quietHoursMetaKey);
+        const storedRemindersEnabled = await readAppMeta(db, remindersEnabledMetaKey);
         const storedPriceHistory = await readAppMeta(db, priceHistoryMetaKey);
         const storedHomeCurrency = await readAppMeta(db, homeCurrencyMetaKey);
         const storedRates = await readAppMeta(db, exchangeRatesMetaKey);
@@ -199,6 +206,9 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         const hydratedQuietHours = normalizeQuietHours(storedQuietHours, defaultQuietHours);
         quietHoursRef.current = hydratedQuietHours;
         setQuietHoursState(hydratedQuietHours);
+        // Only an explicit "false" turns reminders off; missing or anything
+        // else keeps the default (on), as before this setting existed.
+        setRemindersEnabledState(storedRemindersEnabled !== "false");
         setHomeCurrencyState(normalizeHomeCurrency(storedHomeCurrency, defaultHomeCurrency));
         setCoachAiConsentState(normalizeCoachConsent(storedCoachConsent));
 
@@ -358,6 +368,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
       hydrated,
       notificationSettings,
       quietHours,
+      remindersEnabled,
       homeCurrency,
       coachAiConsent,
       exchangeRatesAvailable: Boolean(exchangeRates),
@@ -372,7 +383,6 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
       businessSummary: createBusinessSummary(demoBusinessWorkspace, displaySubscriptions, new Date(), homeCurrency, exchangeRates),
       yearInReview: buildYearInReview(displaySubscriptions, new Date(), fx),
       partnerIntegrations: partnerIntegrationManifests,
-      reminderPlan: createRenewalReminderPlan(displaySubscriptions),
       upcoming: [...displaySubscriptions]
         .filter((subscription): subscription is Subscription & { nextRenewalDate: string } =>
           subscription.status === "active" && Boolean(subscription.nextRenewalDate) && subscription.billingCycle !== "trial")
@@ -552,6 +562,15 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
           });
         }
       },
+      setRemindersEnabled(enabled) {
+        setRemindersEnabledState(enabled);
+        const db = dbRef.current;
+        if (db) {
+          void writeAppMeta(db, remindersEnabledMetaKey, String(enabled)).catch((error) => {
+            console.warn("Failed to persist the reminders switch.", error);
+          });
+        }
+      },
       setHomeCurrency(currency) {
         setHomeCurrencyState(currency);
         const db = dbRef.current;
@@ -596,6 +615,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         // Reminder and currency preferences go back to their defaults too.
         quietHoursRef.current = defaultQuietHours;
         setQuietHoursState(defaultQuietHours);
+        setRemindersEnabledState(true);
         setHomeCurrencyState(defaultHomeCurrency);
         // (c) clear the SQLite rows and every persisted per-user setting.
         const db = dbRef.current;
@@ -605,6 +625,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
           await attempt("notification settings", () => writeAppMeta(db, notificationSettingsMetaKey, JSON.stringify({})));
           await attempt("AI-coach consent", () => writeAppMeta(db, coachAiConsentMetaKey, "unset"));
           await attempt("quiet hours", () => writeAppMeta(db, quietHoursMetaKey, JSON.stringify(defaultQuietHours)));
+          await attempt("reminders switch", () => writeAppMeta(db, remindersEnabledMetaKey, "true"));
           await attempt("home currency", () => writeAppMeta(db, homeCurrencyMetaKey, defaultHomeCurrency));
         }
         // (d) cancel every scheduled renewal notification.
@@ -617,7 +638,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         return searchServices(query, 8);
       }
     };
-  }, [hydrated, notificationSettings, priceHistory, quietHours, displaySubscriptions, fx, widgetSnapshot, homeCurrency, coachAiConsent, exchangeRates, ratesLastFetchedAt]);
+  }, [hydrated, notificationSettings, priceHistory, quietHours, remindersEnabled, displaySubscriptions, fx, widgetSnapshot, homeCurrency, coachAiConsent, exchangeRates, ratesLastFetchedAt]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

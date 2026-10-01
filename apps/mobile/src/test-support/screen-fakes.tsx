@@ -49,7 +49,11 @@ export const fakeNotificationsModule = {
   scheduleRenewalNotifications: jest.fn(async () => {}),
   rescheduleAllNotifications: jest.fn(),
   registerForPushNotifications: jest.fn(async () => ({ status: "granted" })),
-  clearStoredPushToken: jest.fn(async () => {})
+  clearStoredPushToken: jest.fn(async () => {}),
+  // The REAL list (pure: no native call), resolved when called so this file
+  // still imports no app code: a screen must list what the scheduler keeps.
+  upcomingReminders: (...args: unknown[]) =>
+    (jest.requireActual("../notifications/notificationService") as { upcomingReminders: (...a: unknown[]) => unknown }).upcomingReminders(...args)
 };
 
 export const routerMock = {
