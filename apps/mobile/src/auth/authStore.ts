@@ -12,6 +12,7 @@ import { create } from "zustand";
 import { getApiBaseUrl } from "../api/config";
 import { timedFetch } from "../api/http";
 import type { BillingPlan } from "../billing/revenueCat";
+import { emailClaim } from "./jwt-claims";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -28,6 +29,15 @@ const tokenKeys = {
 // user explicitly chose "Continue without an account" on onboarding. Checked
 // only when there's no stored session, so it never overrides a real login.
 const localOnlyKey = "zeno.auth.localOnly.v1";
+
+// P3.5 (F100): a sign-in link is honoured only if THIS device asked for one, for
+// this email, and that request has not expired (the server's own
+// expiresInSeconds). Without it, anyone could send "zeno://auth/verify?token=
+// <a token for THEIR account>" and one tap signed the phone into their account;
+// a junk token signed a signed-in user out.
+const pendingMagicLinkKey = "zeno.auth.pendingMagicLink.v1";
+export const LINK_NOT_REQUESTED = "This sign-in link wasn't requested on this phone, or it has expired. Request a new one.";
+export const LINK_WRONG_ACCOUNT = "That sign-in link is for a different email than the one you entered here.";
 
 type AuthStatus = "loading" | "anonymous" | "pending" | "authenticated" | "local_only";
 
@@ -148,7 +158,8 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
   async loginWithMagicLink(email: string) {
     set({ status: "pending", error: null, lastMagicLinkEmail: email.trim() });
     try {
-      await apiPost<MagicLinkResponse>("/auth/magic-link", { email: email.trim() });
+      const sent = await apiPost<MagicLinkResponse>("/auth/magic-link", { email: email.trim() });
+      await savePendingMagicLink({ email: email.trim().toLowerCase(), expiresAt: Date.now() + sent.expiresInSeconds * 1000 });
       set({ status: "anonymous", isAuthenticated: false, error: null });
     } catch (error) {
       set({ status: "anonymous", isAuthenticated: false, error: getErrorMessage(error) });
@@ -175,9 +186,28 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
   },
 
   async verifyMagicLink(token: string) {
+    // Refused BEFORE any server call, so a foreign link neither spends a token
+    // nor touches the session already on this device.
+    const pending = get().isAuthenticated ? null : await readPendingMagicLink();
+    if (!pending) {
+      set({ error: LINK_NOT_REQUESTED });
+      throw new Error(LINK_NOT_REQUESTED);
+    }
     set({ status: "loading", error: null });
+    let session: AuthSessionResponse;
     try {
-      const session = await apiGet<AuthSessionResponse>(`/auth/verify?token=${encodeURIComponent(token)}`);
+      session = await apiGet<AuthSessionResponse>(`/auth/verify?token=${encodeURIComponent(token)}`);
+    } catch (error) {
+      set({ status: "anonymous", isAuthenticated: false, error: getErrorMessage(error) });
+      throw error;
+    }
+    // A valid link, but for another account: discard the session it issued.
+    if (emailClaim(session.accessToken)?.trim().toLowerCase() !== pending.email) {
+      set({ status: "anonymous", isAuthenticated: false, error: LINK_WRONG_ACCOUNT });
+      throw new Error(LINK_WRONG_ACCOUNT);
+    }
+    try {
+      await clearPendingMagicLink();
       await persistSession(session);
       startRefreshTimer(get);
       setAuthenticated(set, toStoredSession(session));
@@ -331,6 +361,8 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
       // is a complete reset back to onboarding — not a silent fall-through into
       // local-only mode on the next launch.
       await clearLocalOnlyFlag();
+      // An unused sign-in request holds an email address: a sign-out forgets it.
+      await clearPendingMagicLink();
       setAnonymous(set);
     }
   },
@@ -503,6 +535,41 @@ async function clearStoredSession(): Promise<void> {
 }
 
 let memoryLocalOnly = false;
+
+type PendingMagicLink = { email: string; expiresAt: number };
+let memoryPendingMagicLink: string | null = null;
+
+async function savePendingMagicLink(pending: PendingMagicLink): Promise<void> {
+  const value = JSON.stringify(pending);
+  if (Platform.OS === "web") {
+    memoryPendingMagicLink = value;
+    return;
+  }
+  await SecureStore.setItemAsync(pendingMagicLinkKey, value, {
+    keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY
+  });
+}
+
+/** The unexpired pending request, or null (none, expired, or unreadable). */
+async function readPendingMagicLink(): Promise<PendingMagicLink | null> {
+  const raw = Platform.OS === "web" ? memoryPendingMagicLink : await SecureStore.getItemAsync(pendingMagicLinkKey);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<PendingMagicLink> | null;
+    if (typeof parsed?.email !== "string" || typeof parsed.expiresAt !== "number" || parsed.expiresAt <= Date.now()) return null;
+    return { email: parsed.email, expiresAt: parsed.expiresAt };
+  } catch {
+    return null;
+  }
+}
+
+async function clearPendingMagicLink(): Promise<void> {
+  if (Platform.OS === "web") {
+    memoryPendingMagicLink = null;
+    return;
+  }
+  await SecureStore.deleteItemAsync(pendingMagicLinkKey);
+}
 
 async function persistLocalOnlyFlag(): Promise<void> {
   if (Platform.OS === "web") {

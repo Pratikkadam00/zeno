@@ -1,10 +1,11 @@
 import { router } from "expo-router";
 import { Check, Infinity as InfinityIcon, PieChart, ShieldCheck, Sparkles, Users, Wallet, X } from "lucide-react-native";
-import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, ToastAndroid, View } from "react-native";
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, ToastAndroid, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { useAuthStore } from "../src/auth/authStore";
 import { getLegalUrls } from "../src/config/site";
+import { openExternalUrl } from "../src/utils/external-link";
 import { getOfferings, getPackagePrice, purchaseFamily, purchaseLifetime, purchasePro, restorePurchases, type BillingPlan, type ProBillingPeriod, type ZenoOfferings } from "../src/billing/revenueCat";
 import { useZenoTheme } from "../src/theme/theme-provider";
 import type { ThemeTokens } from "../src/theme/tokens";
@@ -61,7 +62,7 @@ function showSuccessToast(message: string) {
   Alert.alert("Success", message);
 }
 
-function openLegalUrl(url: string) { void Linking.openURL(url); }
+function openLegalUrl(url: string) { void openExternalUrl(url); }
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Purchase failed. Please try again.";

@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -15,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "../src/auth/authStore";
 import { getLegalUrls } from "../src/config/site";
+import { openExternalUrl } from "../src/utils/external-link";
 import { useZenoTheme } from "../src/theme/theme-provider";
 import { fonts } from "../src/theme/zeno";
 import type { ThemeTokens } from "../src/theme/tokens";
@@ -137,7 +137,7 @@ export default function LoginScreen() {
   }
 
   function openLink(url: string): void {
-    void Linking.openURL(url);
+    void openExternalUrl(url);
   }
 
   return (

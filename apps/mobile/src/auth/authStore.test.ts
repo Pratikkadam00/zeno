@@ -37,12 +37,21 @@ vi.mock("expo-secure-store", () => ({
 
 const { useAuthStore } = await import("./authStore");
 
+// P3.5: a magic link is honoured only after THIS device requested one for the
+// same email, and the issued access token carries that email.
+const EMAIL = "me@zeno.test";
+const jwtPart = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
+const ACCESS_TOKEN = `${jwtPart({ alg: "RS256" })}.${jwtPart({ sub: "acct_1", email: EMAIL })}.sig`;
+function linkRequested() {
+  fakeStore.set("zeno.auth.pendingMagicLink.v1", JSON.stringify({ email: EMAIL, expiresAt: Date.now() + 600_000 }));
+}
+
 function authSessionEnvelope() {
   return new Response(
     JSON.stringify({
       data: {
         accountId: "acct_1",
-        accessToken: "access-token",
+        accessToken: ACCESS_TOKEN,
         refreshToken: "refresh-token",
         expiresInSeconds: 900,
         refreshExpiresInSeconds: 2_592_000,
@@ -104,6 +113,7 @@ describe("local-only mode", () => {
     // A fresh Response per call — verifyMagicLink and the later logout() each
     // read the body once, and a shared Response instance can only be read once.
     timedFetchMock.mockImplementation(async () => authSessionEnvelope());
+    linkRequested();
     await useAuthStore.getState().verifyMagicLink("some-magic-token");
     expect(useAuthStore.getState().status).toBe("authenticated");
     expect(useAuthStore.getState().accountId).toBe("acct_1");
@@ -130,6 +140,7 @@ describe("refreshToken — concurrent-call de-duplication", () => {
   it("collapses concurrent refreshToken() calls into a single request and leaves the user authenticated", async () => {
     // Establish a real logged-in session first.
     timedFetchMock.mockImplementationOnce(async () => authSessionEnvelope());
+    linkRequested();
     await useAuthStore.getState().verifyMagicLink("some-magic-token");
     expect(useAuthStore.getState().status).toBe("authenticated");
 
@@ -170,6 +181,7 @@ describe("refreshToken — concurrent-call de-duplication", () => {
 
   it("a later refreshToken() call (after the in-flight one settles) makes a fresh request", async () => {
     timedFetchMock.mockImplementationOnce(async () => authSessionEnvelope());
+    linkRequested();
     await useAuthStore.getState().verifyMagicLink("some-magic-token");
 
     let refreshCalls = 0;
@@ -191,6 +203,7 @@ describe("refreshToken — concurrent-call de-duplication", () => {
 
 async function login() {
   timedFetchMock.mockResolvedValueOnce(authSessionEnvelope());
+  linkRequested();
   await useAuthStore.getState().verifyMagicLink("token-123");
 }
 
@@ -216,7 +229,7 @@ describe("token hygiene — nothing is left on the device after sign-out", () =>
     await login();
     await logout();
     const dump = JSON.stringify([...fakeStore.entries()]);
-    expect(dump).not.toContain("access-token");
+    expect(dump).not.toContain(ACCESS_TOKEN);
     expect(dump).not.toContain("refresh-token");
   });
 
@@ -237,7 +250,7 @@ describe("getValidAccessToken — the gate every authed request passes through",
   it("returns the stored token without a network call while it is still valid", async () => {
     await login();
     timedFetchMock.mockReset();
-    await expect(useAuthStore.getState().getValidAccessToken()).resolves.toBe("access-token");
+    await expect(useAuthStore.getState().getValidAccessToken()).resolves.toBe(ACCESS_TOKEN);
     expect(timedFetchMock).not.toHaveBeenCalled();
   });
 

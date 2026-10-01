@@ -1,12 +1,13 @@
 import { findServiceBySlug } from "@zeno/service-catalog";
 import type { BillingCycle, CancellationDifficulty } from "@zeno/shared";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { Alert, Animated, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Animated, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useEffect, useMemo, useState } from "react";
 import { useSubscriptionStore } from "../../../src/data/subscription-store";
 import { cancelNotificationsForSubscription } from "../../../src/notifications/notificationService";
 import { formatMoney } from "../../../src/utils/format";
+import { openExternalUrl } from "../../../src/utils/external-link";
 import { formatShortDate, getDaysRemaining, withAlpha } from "../../../src/utils/subscription-ui";
 import { Check, ChevronDown, ChevronLeft, ChevronUp, ExternalLink, Mail, Phone, PiggyBank, Search } from "lucide-react-native";
 import { Button, LedgerLine, ServiceAvatar, Stamp } from "../../../src/components/zeno";
@@ -138,9 +139,13 @@ export default function SubscriptionCancelScreen() {
       setShowConfirm(true);
       return;
     }
+    let opened = false;
     try {
-      await Linking.openURL(cancelUrl);
+      opened = await openExternalUrl(cancelUrl);
     } catch {
+      opened = false;
+    }
+    if (!opened) {
       Alert.alert("Couldn't open the page", "Open your browser and go to the service's account or billing settings to cancel.");
     }
     setCurrentStep(1);
@@ -367,7 +372,7 @@ export default function SubscriptionCancelScreen() {
               <View>
                 <View style={styles.supportSep} />
                 {service?.supportContact?.email ? (
-                  <Pressable accessibilityRole="button" style={styles.supportRow} onPress={() => void Linking.openURL(`mailto:${service.supportContact?.email}`)}>
+                  <Pressable accessibilityRole="button" style={styles.supportRow} onPress={() => void openExternalUrl(`mailto:${service.supportContact?.email}`)}>
                     <View style={styles.supportRowInner}>
                       <Mail size={16} color={theme.primary} strokeWidth={2} />
                       <Text style={styles.supportRowText}>Email support</Text>
@@ -377,7 +382,7 @@ export default function SubscriptionCancelScreen() {
                 {service?.supportContact?.phone ? (
                   <>
                     {service.supportContact.email ? <View style={styles.supportSep} /> : null}
-                    <Pressable accessibilityRole="button" style={styles.supportRow} onPress={() => void Linking.openURL(`tel:${service.supportContact?.phone}`)}>
+                    <Pressable accessibilityRole="button" style={styles.supportRow} onPress={() => void openExternalUrl(`tel:${service.supportContact?.phone}`)}>
                       <View style={styles.supportRowInner}>
                         <Phone size={16} color={theme.primary} strokeWidth={2} />
                         <Text style={styles.supportRowText}>Call support</Text>
@@ -389,7 +394,7 @@ export default function SubscriptionCancelScreen() {
                 <Pressable
                   accessibilityRole="button"
                   style={styles.supportRow}
-                  onPress={() => void Linking.openURL(`https://www.google.com/search?q=${encodeURIComponent(`how to cancel ${sub.name}`)}`)}
+                  onPress={() => void openExternalUrl(`https://www.google.com/search?q=${encodeURIComponent(`how to cancel ${sub.name}`)}`)}
                 >
                   <View style={styles.supportRowInner}>
                     <Search size={16} color={theme.primary} strokeWidth={2} />

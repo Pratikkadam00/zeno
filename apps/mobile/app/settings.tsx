@@ -4,6 +4,7 @@ import { useShallow } from "zustand/react/shallow";
 import { deleteAccountOnServer } from "../src/api/client";
 import { useConnectedInboxesLabel } from "../src/discovery/connected-inboxes";
 import { getFeedbackMailto, getLegalUrls, getSiteUrl } from "../src/config/site";
+import { openExternalUrl } from "../src/utils/external-link";
 import { useAuthStore } from "../src/auth/authStore";
 import { useBudgetStore } from "../src/data/budget-store";
 import { useSubscriptionStore } from "../src/data/subscription-store";
@@ -39,7 +40,6 @@ import {
 } from "lucide-react-native";
 import {
   Alert,
-  Linking,
   Pressable,
   ScrollView,
   Share,
@@ -271,11 +271,11 @@ export default function SettingsScreen() {
     {
       title: "More",
       rows: [
-        { id: "rate", Icon: Star, iconBg: palette.category.amber, label: "Rate Zeno", chevron: true, onPress: () => void Linking.openURL(APP_STORE_REVIEW_URL) },
-        { id: "feedback", Icon: HelpCircle, iconBg: palette.category.teal, label: "Help & feedback", chevron: true, onPress: () => void Linking.openURL(FEEDBACK_EMAIL) },
+        { id: "rate", Icon: Star, iconBg: palette.category.amber, label: "Rate Zeno", chevron: true, onPress: () => void openExternalUrl(APP_STORE_REVIEW_URL) },
+        { id: "feedback", Icon: HelpCircle, iconBg: palette.category.teal, label: "Help & feedback", chevron: true, onPress: () => void openExternalUrl(FEEDBACK_EMAIL) },
         { id: "share", Icon: MessageSquare, iconBg: palette.category.pink, label: "Share with friends", chevron: true, onPress: () => void Share.share({ url: SHARE_URL, message: SHARE_URL }) },
-        { id: "privacy", Icon: FileText, iconBg: palette.ink[700], label: "Privacy Policy", chevron: true, onPress: () => void Linking.openURL(PRIVACY_URL) },
-        { id: "terms", Icon: FileText, iconBg: palette.ink[700], label: "Terms of Service", chevron: true, onPress: () => void Linking.openURL(TERMS_URL) }
+        { id: "privacy", Icon: FileText, iconBg: palette.ink[700], label: "Privacy Policy", chevron: true, onPress: () => void openExternalUrl(PRIVACY_URL) },
+        { id: "terms", Icon: FileText, iconBg: palette.ink[700], label: "Terms of Service", chevron: true, onPress: () => void openExternalUrl(TERMS_URL) }
       ]
     }
   ];

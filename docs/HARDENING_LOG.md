@@ -57,7 +57,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P3.2 release console stripping (keep `error`/`warn`); `captureError` never carries tokens or emails (green: CI 36828700036, CodeQL 36828699880 on `87ac086`, which contains P3.2's `68c9fcf`; again on `47211fe`)
   - [x] P3.3 Sentry `beforeSend` scrub (emails, tokens, auth headers, amounts); `sendDefaultPii` false, asserted (green: CI 36834676134, CodeQL 36834676176 on `a74417c`; its own push `3553165` went red on two older intermittent API tests, see "CI on `3553165`")
   - [x] P3.4 PIN: salt, derivation, lockout with backoff, nothing in logs; the honest threat model; **fixes F98** (Settings checked the PIN with no attempt limit) and adds the backoff; F14 corrected and handed to the owner (green: CI 36840438554, CodeQL 36840438566 on `2d6a752`, which contains P3.4's `844b49a`; two runs went red in jest on a cold-cache timeout, F99, fixed)
-  - [ ] P3.5 deep links: every `zeno://` route validates its parameters; `Linking.openURL` only `https:`/`mailto:` on an allowlist
+  - [~] P3.5 deep links: every `zeno://` route validates its parameters; `Linking.openURL` only `https:`/`mailto:` on an allowlist; **fixes F100** (anyone's sign-in link signed the phone into their account, and a junk one signed the user out)
   - [ ] P3.6 no secret in the bundle: `extra` and every `EXPO_PUBLIC_*` on the public-by-design allowlist
   - [ ] P3.7 screen capture blocked on the lock overlay and PIN entry (app-wide `FLAG_SECURE` is the owner's call)
   - [ ] P3.8 screen tests for all 29 screens, with a jest floor over `app/**` and `src/components/**`
@@ -174,6 +174,8 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F94 | **OPEN: observed once, not reproduced.** On the first R8 run, the Settings → Home currency sheet drew translucent: the Settings rows showed through the currency list (two captures, 4 s apart, so not mid-animation). The sheet's content sits on `c.surfaceCard`, which is opaque white (`palette.white`). It did NOT reproduce in 5 later attempts: the same R8 build 3 times (persisted state, a fresh install, and the exact first path: onboarding → Sign in → typed email → Add → Settings), once without R8, once with minify only. So it is not an R8 regression; the cause is unknown. Watch for it in P3.8's screen tests and P5's end-to-end runs. | Unknown (visual; once) | me | P3.8 / P5 |
 | F95 | **FIXED 2026-10-01** (found while fixing F18). ~~Amounts written `CA$` were detected as Australian dollars.~~ The currency detector's AUD rule `/A\$/` matched inside `CA$`, and its CAD rule `/C\$/` did not match `CA$` at all, so `CA$12.00` (the way the app itself writes CAD) read as AUD, in email receipts and CSV imports alike. `CA$` now counts as CAD and is subtracted from the `A$` count (no regex lookbehind, for Hermes). Bite-checked: the old rules fail 3 tests. | Medium (currency honesty) | me | open-items pass |
 | F96 | **OPEN: owner decision.** The paywall sells a Family plan ("up to 5 members, $6.99/mo"), but household sharing with up to 5 members is free to everyone: `app/family.tsx` checks no plan, and the server's 5-member cap applies regardless of plan. So the Family plan gives nothing beyond Pro while its label implies it does. Either gate the Family Vault behind the plan (the server must then check entitlement on create and join), or reword the plan. | Medium (truthfulness of what is sold) | owner | before billing ships |
+| F100 | **FIXED in P3.5.** ~~A sign-in link someone else sent was honoured.~~ `_layout.tsx` passed every `zeno://auth/verify?token=` link straight to `verifyMagicLink`, in any state. Someone could request a link for THEIR own email and send the victim `zeno://auth/verify?token=<theirs>`, and one tap signed the victim's phone into the sender's account. A junk token took the failure path, `clearStoredSession()`, which signed a signed-in user OUT; the old test "a failed verification clears any session" had written that down as intended. Now a link is honoured only if this device requested one for that email, the request is unexpired (the server's `expiresInSeconds`), and nobody is signed in. Otherwise it is refused before any server call. After verifying, the access token's `email` claim must match the email typed, or the session is discarded unstored. Bite-checked: the old handler fails 6 tests. | High (account takeover of the app's sync target; forced sign-out) | me | P3.5 |
+| F101 | **OPEN: owner input.** Settings → "Rate Zeno" opens `https://apps.apple.com/` on every platform, so Android users land on Apple's store front page, not Zeno's listing. The fix needs the real listing links (the App Store id and the Play package page), which exist only once the app is published. | Low | owner | before store release |
 | F98 | **FIXED in P3.4.** ~~Settings → App lock checked the PIN with no attempt limit.~~ Turning the lock off called `verifyPin()` directly, outside the lock store's counted `tryPin`. Anyone holding the phone with the app unlocked could try every PIN there without a lockout, learn it (people reuse PINs), and switch the lock off. A keychain error also left the screen stuck busy. It now uses `tryPin` (the same 10 attempts and lockout as the lock screen) and fails closed. Bite-checked: the old handler fails 4 screen tests. | Medium | me | P3.4 |
 | F99 | **FIXED 2026-10-01 (cause found on the second occurrence).** The jest `github-actions` reporter named it on CI 36840880514 (`f7aa418`, a docs-only push): `security-screen.rntest.tsx`'s FIRST test "Exceeded timeout of 5000 ms". A suite's first render pays for transforming the RN module graph, and CI's transform cache is cold: measured here with `--no-cache`, ~2.1 s for each suite's first test (206 ms warm), on a 24-core machine. The jest project's `testTimeout` is now 30 s. The first occurrence (`844b49a`) left no detail; it was the same step and the same new suite, so very likely the same, but not proven. Original: **an intermittent CI-only jest failure, cause unknown.** CI 36839777837 on `844b49a` (P3.4) failed the step "RN component tests + coverage floor (jest)" with only "exit code 1" visible. The same command passed locally (130/130, every floor held), and CI passed on the next push `2d6a752`, which changed no test (it only added the reporter below). Which test failed, or whether a coverage floor did, cannot be read without a GitHub login. Jest now has its built-in `github-actions` reporter, so the next failure is an annotation readable through the public API. That reporter is only proven once something fails. | Low until explained | me | the next occurrence |
 | F97 | **OPEN (mine): an intermittent CI-only failure, cause not yet known.** `real-pg.test.ts`'s F75 test refuses the sync deletes, then expects only Alice's 2 sync rows to remain after the 503. Twice on CI, other namespaces' rows remained too: `plaid` on `3ad75f7` (a Dependabot branch), `billing`, `family` and `plaid` on `3553165`. It has never failed locally (PGlite). Every delete step is awaited and none retries, and each of those rows is written once and seen in the database before the delete. If those deletes failed under load, that is the designed 503 path, and a retry deletes them. If they remained with no error, it is a deletion bug. The CI log needs a GitHub login, so the assertion now prints the storage errors captured during the request. | Medium until explained (account deletion is a promise to the user) | me | the next occurrence |
@@ -3047,3 +3049,115 @@ Not yet on a device: the P3 gate runs every lock flow on the hardened release AP
 - No test can make CI's speed bite. The evidence is the annotation plus the cold-cache
   measurement, and the next CI runs are the check.
 
+### P3.5 — deep links and outbound links — 2026-10-01
+
+**Inventory (read from the code):**
+- **29 files** under `app/`: 27 screens and 2 layouts. Every screen is reachable as
+  `zeno://<path>`, and the root layout's lock overlay covers all of them.
+- **Two take a parameter:** `subscription/[id]` and `subscription/cancel/[id]`. No other
+  screen calls `useLocalSearchParams` or the global variant (source search).
+- **No route found acting as soon as it opens:** a search of each screen's `useEffect`
+  (the first 6 lines of each) for network, delete, create, join, purchase, open or
+  link calls found none outside `_layout.tsx`. That is a search, not a full read of
+  every effect; P3.8's screen tests cover the rest.
+- **One link handler:** `_layout.tsx`, for `zeno://auth/verify?token=`.
+- **9 calls that hand a URL to the OS:** login (terms, privacy), the paywall (terms,
+  privacy), Settings (rate, feedback mailto, privacy, terms), and the cancel guide (the
+  catalog's cancel link, the support mailto and tel, the Google-search fallback).
+
+**F100 (found, fixed): see its row.** The fix, in `authStore.ts`:
+- **Remembering the request:** `loginWithMagicLink` stores `{ email (lowercased),
+  expiresAt }` in SecureStore (`WHEN_UNLOCKED_THIS_DEVICE_ONLY`; in memory on web).
+  `expiresAt` comes from the server's own `expiresInSeconds`.
+- **Before any server call:** `verifyMagicLink` refuses when nobody requested a link,
+  the request has expired or can't be read, or someone is already signed in. The
+  session already on the phone is untouched.
+- **After verifying:** the new access token's `email` claim (`issueSession` signs it,
+  `auth.ts`) must equal the email typed, ignoring case and spaces. Otherwise the session
+  is discarded, nothing stored.
+- **Clean-up:** the request is cleared on success and on sign-out, since it holds an
+  email address.
+- **The claim reader** (`src/auth/jwt-claims.ts`) is pure TypeScript, so it doesn't
+  depend on `atob`/`TextDecoder` in Hermes. It is checked against Node's decoding over
+  500 random Unicode strings, and every malformed input returns null.
+- `_layout.tsx` catches a refused link: no unhandled rejection, no navigation.
+- **One consequence, stated:** a link now signs in only the phone that asked for it.
+  Requesting on the phone and tapping the link on another device no longer works there.
+  That is the point.
+
+**Parameter routes:** both look the id up among THIS user's own subscriptions by exact
+equality, and show "Subscription not found" otherwise. Tested on both routes:
+- an unknown id, no id, an empty id, a path, a repeated parameter (an array), a
+  trailing-space lookalike, a different case: all "not found", with no subscription
+  name shown;
+- the user's own id opens it.
+
+**The outbound allowlist** (`src/utils/external-link.ts`, the only `Linking.openURL` left
+in the app):
+- **https:** only to our site host, `apps.apple.com`, `www.google.com`, and the hosts
+  of the bundled catalog's links.
+- **mailto:** only to exactly one address, with no headers.
+- **tel:** only digits and `+ - ( )` and spaces.
+- **Refused:** everything else, including http, `javascript:`, `intent:`, `file:`, other
+  apps' schemes, lookalike hosts, subdomains not on the list, and `https://site@evil`.
+- Parsed with string operations, because Hermes's `URL` doesn't reliably expose `.host`
+  (`config/site.ts`).
+- **The catalog, measured with the right fields this time:** 1018 links (509 cancel
+  links plus 509 websites), all https, across 498 hosts, every one accepted
+  (`external-link.catalog.test.ts`). No entry has a support email or phone, so the
+  cancel screen's mailto and tel rows never render today.
+- `scripts/external-link-guard.test.ts` fails if `Linking.openURL` or
+  `openBrowserAsync` appears in any other mobile source file.
+
+**Tests:**
+- `jwt-claims.test.ts`: 19.
+- `external-link.test.ts`: 33.
+- `external-link.catalog.test.ts`: 2.
+- `external-link-guard.test.ts`: 2.
+- `authStore.flows.test.ts`: 10 new; 4 rewritten to request a link first. The old "a
+  failed verification clears any session" is replaced by its opposite.
+- `authStore.test.ts`: its 4 sign-ins now request a link first.
+- `subscription-routes.rntest.tsx`: 16 jest tests.
+
+**Bite check: 16 mutations, all caught.** The 6 files were restored byte-identical
+(`cmp`):
+- the OLD `verifyMagicLink` fails 6 tests;
+- a signed-in user switchable;
+- no account check;
+- the check without normalising;
+- the request kept after success;
+- sign-out keeping it;
+- expiry ignored;
+- the request never saved;
+- every URL allowed;
+- subdomains allowed;
+- mailto headers allowed;
+- plain http accepted;
+- a raw `Linking.openURL` back in Settings;
+- UTF-8 read as Latin-1;
+- the detail route taking an array's first id;
+- the cancel route ignoring case.
+
+**My mistake on the way:** my first catalog probe read `cancellationUrl` and
+`supportContact`, which are the fields of the converted `ServiceRecord`, not the raw
+`Service` (`cancelUrl`, `supportEmail`, `supportPhone`). It reported "509 links, 486
+hosts", counting only websites. The type checker caught it in my helper, and the probe
+was re-run on the real fields: 1018 links, 498 hosts.
+
+**Not covered by a test, stated:**
+- **`_layout.tsx`'s catch:** `app/_layout.tsx` has no test yet (P3.8).
+- **The cancel screen's alert for a refused link:** unreachable today, since every
+  catalog link is allowed.
+- **Google sign-in:** expo-auth-session opens Google's own fixed authorisation endpoint,
+  not through this helper. It is not a URL from the app's data.
+- **On a device:** this is checked at the P3 gate.
+
+
+Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1831 at
+100 / 99.68 / 100 / 100 (9 branches uncovered, 2846 − 2837) · jest 146 / 146. The first
+coverage run after my last fix had a vitest WORKER crash ("Worker exited unexpectedly"):
+one file's 11 tests never ran and coverage fell with them; no test failed. The re-run
+above was clean. One crash, logged; if it recurs it gets its own finding.
+The gate before that one failed for a real reason: the "no request at all, signed out"
+case was untested (`authStore.ts:556`), and 3 lint warnings (fast-check default-import
+members). Both fixed.

@@ -51,9 +51,19 @@ vi.mock("expo-secure-store", () => ({
   deleteItemAsync: async (k: string) => { vault.store.delete(k); }
 }));
 
-const { useAuthStore, createNoncePair } = await import("./authStore");
+const { useAuthStore, createNoncePair, LINK_NOT_REQUESTED, LINK_WRONG_ACCOUNT } = await import("./authStore");
 
 // ── helpers ─────────────────────────────────────────────────────────────────
+// P3.5: sign-in links need a request from this device for the same email, and
+// the issued access token carries that email (a JWT-shaped token).
+const EMAIL = "me@x.com";
+const jwtPart = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
+const accessFor = (email: string, n = 1) => `${jwtPart({ alg: "RS256" })}.${jwtPart({ sub: `acct_${n}`, email })}.sig${n}`;
+const linkSession = (email = EMAIL, n = 1) => ({ ...sessionData(n), accessToken: accessFor(email, n) });
+const PENDING_KEY = "zeno.auth.pendingMagicLink.v1";
+function linkRequested(email = EMAIL, expiresAt = Date.now() + 600_000) {
+  vault.store.set(PENDING_KEY, JSON.stringify({ email, expiresAt }));
+}
 const sessionData = (n = 1) => ({ accountId: `acct_${n}`, accessToken: `access-${n}`, refreshToken: `refresh-${n}`, expiresInSeconds: 900, refreshExpiresInSeconds: 2_592_000, tokenType: "Bearer" });
 const envelope = (data: unknown, status = 200) => new Response(JSON.stringify({ data, error: null }), { status });
 const errorEnvelope = (message: string, status = 401) => new Response(JSON.stringify({ data: null, error: { code: "E", message } }), { status });
@@ -132,7 +142,8 @@ describe("local-only mode", () => {
     await useAuthStore.getState().continueLocalOnly();
     expect(useAuthStore.getState().status).toBe("local_only");
     expect(vault.store.get("zeno.auth.localOnly.v1")).toBe("1");
-    http.timedFetch.mockResolvedValueOnce(envelope(sessionData()));
+    linkRequested();
+    http.timedFetch.mockResolvedValueOnce(envelope(linkSession()));
     await useAuthStore.getState().verifyMagicLink("t".repeat(40));
     await vi.waitFor(() => expect(vault.store.has("zeno.auth.localOnly.v1")).toBe(false));
   });
@@ -152,19 +163,118 @@ describe("magic link", () => {
     expect(useAuthStore.getState()).toMatchObject({ status: "anonymous", error: "Too many requests." });
   });
 
-  it("verification URL-encodes the token and stores the session device-only", async () => {
-    http.timedFetch.mockResolvedValueOnce(envelope(sessionData()));
+  it("requesting a link remembers it (email lowercased) until the server's own expiry", async () => {
+    const before = Date.now();
+    http.timedFetch.mockResolvedValueOnce(envelope({ delivered: true, channel: "resend", expiresInSeconds: 600 }));
+    await useAuthStore.getState().loginWithMagicLink("  Me@X.com ");
+    const pending = JSON.parse(vault.store.get(PENDING_KEY)!) as { email: string; expiresAt: number };
+    expect(pending.email).toBe("me@x.com");
+    expect(pending.expiresAt).toBeGreaterThanOrEqual(before + 600_000);
+    expect(pending.expiresAt).toBeLessThanOrEqual(Date.now() + 600_000);
+  });
+
+  it("verification URL-encodes the token, stores the session device-only, and forgets the request", async () => {
+    linkRequested();
+    http.timedFetch.mockResolvedValueOnce(envelope(linkSession()));
     await useAuthStore.getState().verifyMagicLink("a+b/c=");
     expect(calls()[0]?.url).toBe("https://api.test/api/v1/auth/verify?token=a%2Bb%2Fc%3D");
     expect(useAuthStore.getState()).toMatchObject({ status: "authenticated", accountId: "acct_1" });
+    expect(vault.store.has(PENDING_KEY)).toBe(false);
   });
 
-  it("a failed verification clears any session and reports the error", async () => {
-    storeSession();
+  it("a failed verification (in the sign-in flow) reports the error and keeps the request for the real link", async () => {
+    linkRequested();
     http.timedFetch.mockResolvedValueOnce(errorEnvelope("Link expired."));
     await expect(useAuthStore.getState().verifyMagicLink("t".repeat(40))).rejects.toThrow("Link expired.");
-    expect(vault.store.has("zeno.auth.refreshToken.v1")).toBe(false);
     expect(useAuthStore.getState()).toMatchObject({ status: "anonymous", error: "Link expired." });
+    expect(vault.store.has(PENDING_KEY)).toBe(true);
+  });
+
+  it("a failure while saving the session leaves nothing half-stored", async () => {
+    linkRequested();
+    http.timedFetch.mockResolvedValueOnce(envelope(linkSession()));
+    const original = vault.store.set.bind(vault.store);
+    vault.store.set = (k: string, v: string) => {
+      if (k === "zeno.auth.refreshToken.v1") throw new Error("keychain full");
+      return original(k, v);
+    };
+    try {
+      await expect(useAuthStore.getState().verifyMagicLink("t".repeat(40))).rejects.toThrow("keychain full");
+    } finally {
+      vault.store.set = original;
+    }
+    expect(vault.store.has("zeno.auth.accessToken.v1")).toBe(false);
+    expect(useAuthStore.getState()).toMatchObject({ status: "anonymous", isAuthenticated: false, error: "keychain full" });
+  });
+});
+
+describe("P3.5 (F100): a sign-in link someone else sent does nothing", () => {
+  it("with no request from this device it is refused WITHOUT a server call, and the session on the phone survives", async () => {
+    storeSession();
+    await useAuthStore.getState().hydrate();
+    await expect(useAuthStore.getState().verifyMagicLink("t".repeat(40))).rejects.toThrow(LINK_NOT_REQUESTED);
+    expect(http.timedFetch).not.toHaveBeenCalled();
+    expect(vault.store.get("zeno.auth.refreshToken.v1")).toBe("refresh-1");
+    expect(useAuthStore.getState()).toMatchObject({ status: "authenticated", accountId: "acct_1", error: LINK_NOT_REQUESTED });
+  });
+
+  it("signed out and no request at all: refused WITHOUT a server call", async () => {
+    await expect(useAuthStore.getState().verifyMagicLink("t".repeat(40))).rejects.toThrow(LINK_NOT_REQUESTED);
+    expect(http.timedFetch).not.toHaveBeenCalled();
+    expect(useAuthStore.getState()).toMatchObject({ isAuthenticated: false, error: LINK_NOT_REQUESTED });
+  });
+
+  it("a signed-in user is never switched, even while a request is pending", async () => {
+    storeSession();
+    await useAuthStore.getState().hydrate();
+    linkRequested();
+    await expect(useAuthStore.getState().verifyMagicLink("t".repeat(40))).rejects.toThrow(LINK_NOT_REQUESTED);
+    expect(http.timedFetch).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().accountId).toBe("acct_1");
+  });
+
+  it("an expired, unreadable or malformed request counts as none", async () => {
+    for (const raw of [
+      JSON.stringify({ email: EMAIL, expiresAt: Date.now() - 1 }),
+      "{not json",
+      "null",
+      JSON.stringify({ email: 42, expiresAt: Date.now() + 600_000 }),
+      JSON.stringify({ email: EMAIL, expiresAt: "soon" })
+    ]) {
+      vault.store.set(PENDING_KEY, raw);
+      await expect(useAuthStore.getState().verifyMagicLink("t".repeat(40)), raw).rejects.toThrow(LINK_NOT_REQUESTED);
+    }
+    expect(http.timedFetch).not.toHaveBeenCalled();
+  });
+
+  it("a valid link for ANOTHER account is discarded: nothing stored, not signed in", async () => {
+    linkRequested("me@x.com");
+    http.timedFetch.mockResolvedValueOnce(envelope(linkSession("attacker@evil.example")));
+    await expect(useAuthStore.getState().verifyMagicLink("t".repeat(40))).rejects.toThrow(LINK_WRONG_ACCOUNT);
+    expect(vault.store.has("zeno.auth.accessToken.v1")).toBe(false);
+    expect(vault.store.has("zeno.auth.refreshToken.v1")).toBe(false);
+    expect(useAuthStore.getState()).toMatchObject({ status: "anonymous", isAuthenticated: false, error: LINK_WRONG_ACCOUNT });
+  });
+
+  it("a token with no readable email claim is discarded the same way", async () => {
+    linkRequested();
+    http.timedFetch.mockResolvedValueOnce(envelope(sessionData()));
+    await expect(useAuthStore.getState().verifyMagicLink("t".repeat(40))).rejects.toThrow(LINK_WRONG_ACCOUNT);
+    expect(vault.store.has("zeno.auth.accessToken.v1")).toBe(false);
+  });
+
+  it("the email comparison ignores case and surrounding spaces", async () => {
+    linkRequested("me@x.com");
+    http.timedFetch.mockResolvedValueOnce(envelope(linkSession(" ME@X.com ")));
+    await useAuthStore.getState().verifyMagicLink("t".repeat(40));
+    expect(useAuthStore.getState().status).toBe("authenticated");
+  });
+
+  it("signing out forgets an unused request (it holds an email address)", async () => {
+    linkRequested();
+    http.timedFetch.mockResolvedValue(envelope({}));
+    await useAuthStore.getState().logout();
+    expect(vault.store.has(PENDING_KEY)).toBe(false);
   });
 });
 
@@ -401,9 +511,11 @@ describe("API envelope errors", () => {
 describe("web platform: sessions and the local-only flag live in memory only", () => {
   it("never touches SecureStore", async () => {
     platform.OS = "web";
-    http.timedFetch.mockResolvedValueOnce(envelope(sessionData()));
+    http.timedFetch.mockResolvedValueOnce(envelope({ delivered: true, channel: "dev_log", expiresInSeconds: 600 }));
+    await useAuthStore.getState().loginWithMagicLink(EMAIL);
+    http.timedFetch.mockResolvedValueOnce(envelope(linkSession()));
     await useAuthStore.getState().verifyMagicLink("t".repeat(40));
-    expect(await useAuthStore.getState().getAccessToken()).toBe("access-1");
+    expect(await useAuthStore.getState().getAccessToken()).toBe(accessFor(EMAIL));
     await useAuthStore.getState().continueLocalOnly();
     expect(vault.store.size).toBe(0);
     http.timedFetch.mockResolvedValueOnce(envelope({}));

@@ -3,7 +3,7 @@
 **One place for everything not yet solved.** Each item says who acts, exactly what to
 do, and where the full evidence lives (finding numbers point into
 `docs/HARDENING_LOG.md`). When an item is done it is removed from here and its log
-entry marked fixed. Last updated 2026-10-01, after P3.4.
+entry marked fixed. Last updated 2026-10-01, after P3.5.
 
 ---
 
@@ -36,6 +36,7 @@ real sample, or a product decision.
 | — | **RevenueCat:** set **both** `REVENUECAT_SECRET_KEY` and `REVENUECAT_WEBHOOK_AUTH` on Render, and the public SDK keys in the app build | Render; RevenueCat dashboard; EAS env | Since P2.8 a webhook only asks the server to re-check with RevenueCat; without the secret key every user reads as free (the server now warns about this at boot). |
 | — | **Sentry:** create the project and set `EXPO_PUBLIC_SENTRY_DSN`, plus org, project and auth token for the source-map and R8 mapping upload | Sentry; EAS env | Until then crash reporting is off, and once on, an R8-obfuscated release crash can't be read without the mapping. |
 | F11 | **Google client IDs** (A3). Then I move Google sign-in and Gmail connect off the custom-scheme redirect | Google Cloud console | Google's own guide says custom URI schemes are no longer supported on Android, so these sign-ins are likely rejected there. I can't confirm or fix without the IDs. |
+| F101 | The real **store listing links** (App Store id, Play package page), once published | send them | "Rate Zeno" opens Apple's store front page on every platform, Android included. |
 | F19 | One **real Wells Fargo CSV export** (redact it) | send the file | The detector assumes a header row WF may not have. If wrong, the first transaction is silently dropped. |
 | — | Before shipping iOS: the annual **encryption self-classification** report (BIS / NSA) | export compliance | `app.config.ts` declares non-exempt encryption (SQLCipher), relying on the mass-market exemption, which requires the filing. |
 
@@ -45,7 +46,7 @@ real sample, or a product decision.
 
 | # | Item | When |
 |---|---|---|
-| — | P3.5–P3.9: deep links, no secret in the bundle, screen capture on the lock screens, tests for all 29 screens, a static scan of the release APK | P3, next, in order |
+| — | P3.6–P3.9: deep links, no secret in the bundle, screen capture on the lock screens, tests for all 29 screens, a static scan of the release APK | P3, next, in order |
 | F97 | An intermittent CI-only failure in the account-deletion test: after a refused deletion, other data was left too (twice among the 12 most recent failed CI runs). Cause unknown; the test now prints the storage errors, so the next occurrence explains it. Possibly a real deletion bug, so it is not retried away | the next occurrence |
 | F16 | SQLCipher encryption of the local database is configured but never proven on a device (check the file header or `PRAGMA cipher_version`; the release build isn't debuggable, so it needs a rooted emulator image or a debug check) | P3 gate |
 | F1 | `ServiceAutocomplete.tsx` has no test | P3.8 |
@@ -65,6 +66,7 @@ real sample, or a product decision.
 | F29 | Settings' "Connected inboxes" always said "None connected", even with Gmail connected | It now reads the device's real list on every visit ("1 inbox", "Unavailable" if the keychain can't be read). |
 | F18 | CSV import labelled every amount USD, even from a non-US bank | US bank formats stay USD. Other files use the currency their own amounts show (€, £, ₹, Rs., CA$, A$, ISO codes). A file of bare numbers uses **your home currency**, an assumption I've stated here, not hidden. Better still would be letting you pick the currency at review; that is a design change, so it's not done. |
 | F95 | Found while fixing F18: amounts written **CA$** (how the app itself writes Canadian dollars) were detected as **Australian** dollars, in email receipts and CSVs | CA$ now counts as CAD. |
+| F100 | Found in P3.5: a **sign-in link someone else sent** signed the phone into **their** account with one tap, and a junk link signed you out | A link now works only on the phone that asked for it, for the email typed there, before it expires, and never while someone is signed in. A link for a different account is thrown away. |
 | F98 | Found in P3.4: Settings → App lock checked the PIN with **no attempt limit**, so anyone holding the unlocked app could try every PIN there, learn it, and turn the lock off | It now counts against the same 10 attempts and lockout as the lock screen. Separately, wrong PINs after the 10th now lock for longer each time (15 min, 30 min, 1 h … up to 24 h) instead of a flat 15 minutes. |
 | F99 | An intermittent CI failure in the screen tests (twice) | Found once CI could report it: the first test in a suite timed out while CI's cold cache transformed the app's modules (about 2 s even on a fast machine; the limit was 5 s). The limit is now 30 s. |
 | F15 | "Do paid server features check the plan on the server?" (due in P2, never confirmed) | Confirmed: every Pro feature (unlimited subscriptions, category and envelope budgets) runs only on the device, and the AI coach is free, so the server holds nothing paid to gate. The real gap this exposed is F96 above. |

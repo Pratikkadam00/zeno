@@ -159,7 +159,14 @@ function RootStack() {
         return;
       }
 
-      await verifyMagicLink(token);
+      // A refused or failed link (not requested here, expired, another account)
+      // is shown by the auth store's `error` on the login screen; it must not
+      // become an unhandled rejection or navigate anywhere.
+      try {
+        await verifyMagicLink(token);
+      } catch {
+        return;
+      }
       router.replace("/dashboard");
     };
 
