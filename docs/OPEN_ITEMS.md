@@ -49,7 +49,7 @@ real sample, or a product decision.
 |---|---|---|
 | — | P3.8–P3.9: tests for all 29 screens, a static scan of the release APK (incl. why the APK declares `SYSTEM_ALERT_WINDOW` and `WRITE_EXTERNAL_STORAGE`) | P3, next, in order |
 | F106 | Once, right after the first unlock on a fresh install, screenshots of the unlocked app came back black (the block itself was already off); not reproduced in 2 tries | P5 |
-| F103 | A web build failure seen once on CI with no detail; the build step now reports its own log on failure | the next occurrence |
+| F103 | The **web build fails on CI now and then**: it downloads the site's three Google fonts at build time, and that download sometimes fails on the runner (likely cause; the next occurrence's report will confirm it). Fix: serve the same font files from the repo, so the build needs no network | P4 (website), or sooner if you want it |
 | F16 | SQLCipher encryption of the local database is configured but never proven on a device (check the file header or `PRAGMA cipher_version`; the release build isn't debuggable, so it needs a rooted emulator image or a debug check) | P3 gate |
 | F1 | `ServiceAutocomplete.tsx` has no test | P3.8 |
 | F29 | The Settings screen's *use* of the new inbox count isn't covered by a screen test yet (the hook itself is, at 100 %) | P3.8 |

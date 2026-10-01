@@ -83,7 +83,8 @@ jobs:
         run: |
           set -o pipefail
           if ! npm run build --workspace @zeno/web 2>&1 | tee "$RUNNER_TEMP/web-build.log"; then
-            msg=$(tail -n 40 "$RUNNER_TEMP/web-build.log" | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'BEGIN{ORS="%0A"} {print}')
+            # The first error lines (the cause) and then the last 40 (the context).
+            msg=$({ grep -m 8 -iE "error|failed|could not" "$RUNNER_TEMP/web-build.log"; echo "..."; tail -n 40 "$RUNNER_TEMP/web-build.log"; } | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'BEGIN{ORS="%0A"} {print}')
             echo "::error title=Build web failed::${msg}"
             exit 1
           fi
