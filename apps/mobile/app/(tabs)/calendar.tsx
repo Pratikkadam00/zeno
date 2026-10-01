@@ -17,11 +17,6 @@ import { spacing } from "../../src/theme/spacing";
 
 // ─── Helpers (logic unchanged) ────────────────────────────────────────────────
 
-function parseDate(value: string | undefined): Date | null {
-  if (!value) return null;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
 
 function toDateKey(dateValue: string | undefined): string | null {
   if (!dateValue) return null;
@@ -37,10 +32,15 @@ function getThisMonthKey(date: Date): string {
   return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, "0")}`;
 }
 
-function formatDateHeader(dateString: string): string {
-  const parsed = parseDate(dateString);
-  if (!parsed) return dateString;
-  return parsed.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+// F111: the key is a LOCAL calendar day ("2026-10-02", built from local
+// getters in toDateKey). `new Date(key)` reads a date-only string as UTC
+// midnight, which is the previous evening anywhere west of UTC: a tap on 2
+// October showed "Thursday, October 1" in New York. Build the local date.
+function formatDateHeader(dateKey: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  if (!match) return dateKey;
+  const local = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return local.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 }
 
 function cycleBadge(sub: Subscription): string {

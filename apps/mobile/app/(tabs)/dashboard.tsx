@@ -288,8 +288,10 @@ export default function DashboardScreen() {
           ))}
         </View>
 
-        {/* Ways to save */}
-        {allInsights.length > 0 ? (
+        {/* Ways to save. F108: only when there is something to show; the spend
+            summary alone (the seed data's only insight) is not previewed here, and
+            used to leave a "Ways to save" heading over an empty section. */}
+        {savingOpportunity > 20 || previewInsights.length > 0 ? (
           <>
             <SectionTitle t={t} onSeeAll={() => router.push("/analytics")} seeAllLabel="MORE ↗">
               Ways to save

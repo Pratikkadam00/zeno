@@ -202,7 +202,10 @@ export default function AnalyticsScreen() {
                       {insight.savingAmount && insight.savingAmount > 0 ? (
                         <View style={styles.insightSavingPill}>
                           <Text style={styles.insightSavingText}>
-                            Save {formatMoney(insight.savingAmount, homeCurrency)}/mo
+                            {/* F110: savingAmount is in whole currency units (the
+                                engine's monthlyDollars); formatMoney takes MINOR
+                                units, so this read 100x too small ("$0.22"). */}
+                            Save {formatMoney(Math.round(insight.savingAmount * 100), homeCurrency)}/mo
                           </Text>
                         </View>
                       ) : null}

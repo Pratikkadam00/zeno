@@ -92,12 +92,23 @@ const SubscriptionRow = memo(function SubscriptionRow({
         </Text>
       </View>
     );
+  const subtitle = subscription.status === "active" ? categoryLabel(subscription.category).toUpperCase() : badge.label;
+  // F109: the trailing column (price, renewal date) is a custom node, so
+  // ListRow's derived name left it out: a screen reader heard "Netflix,
+  // ENTERTAINMENT" with no price or date. The name now follows what is shown.
+  const trailingText =
+    subscription.status === "cancelled"
+      ? "Verified"
+      : subscription.status === "attention"
+        ? money
+        : `${money}, ${subscription.status === "paused" ? "paused" : `next ${formatShortDate(subscription.nextRenewalDate, "no date")}`}`;
   return (
     <ListRow
       divider={!isLast}
       leading={<ServiceAvatar name={subscription.name} style={dimmed ? { opacity: 0.45 } : undefined} />}
       title={subscription.name}
-      subtitle={subscription.status === "active" ? categoryLabel(subscription.category).toUpperCase() : badge.label}
+      subtitle={subtitle}
+      accessibilityLabel={`${subscription.name}, ${subtitle}, ${trailingText}`}
       onPress={() => onPress(subscription.id)}
       style={dimmed ? { opacity: 0.6 } : undefined}
       trailing={trailing}

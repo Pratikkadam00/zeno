@@ -40,6 +40,8 @@ export default defineConfig({
         // vitest's node environment cannot render); it lives outside src/ so the
         // rule above missed it. Tier 2 (jest screen/component tests) owns it.
         "apps/mobile/components/**",
+        // The jest screen-test harness (P3.8): test support, not shipped code.
+        "apps/mobile/src/test-support/**",
         "apps/web/app/**",
         "apps/web/components/**",
         // React Native providers/components that vitest's node environment cannot

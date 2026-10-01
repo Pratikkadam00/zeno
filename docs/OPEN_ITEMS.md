@@ -3,7 +3,7 @@
 **One place for everything not yet solved.** Each item says who acts, exactly what to
 do, and where the full evidence lives (finding numbers point into
 `docs/HARDENING_LOG.md`). When an item is done it is removed from here and its log
-entry marked fixed. Last updated 2026-10-01, after P3.8b.
+entry marked fixed. Last updated 2026-10-01, after P3.8c-1.
 
 ---
 
@@ -52,6 +52,7 @@ real sample, or a product decision.
 | F103 | The **web build fails on CI now and then**: it downloads the site's three Google fonts at build time, and that download sometimes fails on the runner (likely cause; the next occurrence's report will confirm it). Fix: serve the same font files from the repo, so the build needs no network | P4 (website), or sooner if you want it |
 | F16 | SQLCipher encryption of the local database is configured but never proven on a device (check the file header or `PRAGMA cipher_version`; the release build isn't debuggable, so it needs a rooted emulator image or a debug check) | P3 gate |
 | F29 | The Settings screen's *use* of the new inbox count isn't covered by a screen test yet (the hook itself is, at 100 %) | P3.8 |
+| F112 | On the calendar's day panel the "Cancel" link sits inside the row's button; check on the device whether screen-reader users can reach it | P3 gate |
 | F94 | A translucent Settings sheet, seen once on device and not reproduced in 5 attempts | P3.8 / P5 |
 | F21 | `Date.parse` silently shifts impossible dates ("02/30" becomes 2 March) | P6 |
 | — | R8 warns about RevenueCat's Amazon Appstore SDK ("may be assumed not reachable" in later R8 versions). Not used for Google Play; re-check on each RevenueCat upgrade | each RevenueCat upgrade |
@@ -68,6 +69,10 @@ real sample, or a product decision.
 | F18 | CSV import labelled every amount USD, even from a non-US bank | US bank formats stay USD. Other files use the currency their own amounts show (€, £, ₹, Rs., CA$, A$, ISO codes). A file of bare numbers uses **your home currency**, an assumption I've stated here, not hidden. Better still would be letting you pick the currency at review; that is a design change, so it's not done. |
 | F95 | Found while fixing F18: amounts written **CA$** (how the app itself writes Canadian dollars) were detected as **Australian** dollars, in email receipts and CSVs | CA$ now counts as CAD. |
 | F97 / F102 | The **intermittent account-deletion test** on CI | It was a real bug: on the production database server, a save still in flight when an account was deleted could land after the delete and bring the data back (a bank token included), and two quick saves could leave the older one. Saves to one record now happen in order, and deletion waits for saves already under way. The test also had its own bug (a wait that never waited), now fixed. |
+| F110 | Found in P3.8c: **Insights showed every saving 100× too small** ("Save $0.22/mo" for a $22 saving) | Fixed. |
+| F111 | Found in P3.8c: in **US time zones** the calendar's day panel was headed with the **day before** the one you tapped | Fixed (measured in New York and Los Angeles time). |
+| F109 | Found in P3.8c: screen-reader users heard a subscription row **without its price or date** | The row now announces what it shows. |
+| F108 | Found in P3.8c: an empty "Ways to save" heading on the dashboard | It now appears only when there is a saving to show. |
 | F107 | Found in P3.8b: users who turned on **reduce motion** still saw a component's first animation (the "verified" stamp slammed in, with its buzz) | The app now remembers the setting once it is read at launch, so later screens start still. |
 | F1 | `ServiceAutocomplete` (the name suggestions on "Add subscription") had no test | 8 tests against the real catalog. |
 | F105 | Found in P3.7: while the app was **locked**, a screen reader (or any app with accessibility access) could still **read the whole ledger** behind the lock screen, every amount included | The app is now hidden from accessibility services whenever the lock is showing; proven on the emulator (locked: only the lock screen; unlocked: the ledger again). |

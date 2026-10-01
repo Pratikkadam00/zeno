@@ -62,8 +62,10 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P3.7 screen capture blocked on the lock overlay and PIN entry (app-wide `FLAG_SECURE` is the owner's call); proven on the emulator; **fixes F105** (the locked app stayed readable to accessibility services); F104 and F106 logged (green: CI 36854703994, CodeQL 36854704080 on `39c9c46`)
   - [~] P3.8 screen tests for all 29 screens, with a jest floor over `app/**` and `src/components/**` (split into steps; each raises the floor)
     - [x] P3.8a the floor itself: directory floors at the measured baseline (12.75 % of 1842 lines) (green: CI 36858191877, CodeQL 36858191900 on `89c3428`; P3.8a's own push `9a2f1a8` went red on F103)
-    - [~] P3.8b shared components (`src/components/**`, `components/**`), incl. F1 `ServiceAutocomplete`: every file at 100 % lines; **fixes F1, F107**
-    - [ ] P3.8c the tab screens and the tab layout
+    - [x] P3.8b shared components (`src/components/**`, `components/**`), incl. F1 `ServiceAutocomplete`: every file at 100 % lines; **fixes F1, F107** (green: CI 36860084512, CodeQL 36860084509 on `f78b449`)
+    - [~] P3.8c the tab screens and the tab layout
+      - [~] P3.8c-1 Ledger, Subscriptions, Calendar, Insights and the tab bar; **fixes F108, F109, F110, F111**; F112 to check on the device
+      - [ ] P3.8c-2 Discover (the scan, CSV import and Gmail connect)
     - [ ] P3.8d subscription detail, cancel, add
     - [ ] P3.8e settings (incl. F29's screen use), profile, notifications, login, paywall, onboarding
     - [ ] P3.8f the rest (budget, recap, family, coach, wrapped, widgets, spend-twin, open-banking, backend, business, partners, public-api) and the root layout
@@ -183,6 +185,11 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F102 | **FIXED 2026-10-01 (found through F97).** ~~Postgres writes to one row could land out of order.~~ `pg.ts` sent every query straight to a 5-connection pool, and on a real server each connection finishes in its own time. So a fire-and-forget upsert issued just before an account deletion could land AFTER the delete. The API answered "deleted" while the row (a Plaid bank token, an entitlement, a household) was back in Postgres, and the next boot loaded it again: F75's promise broken. Likewise two quick upserts of one key could leave the OLDER value. PGlite runs one connection in order, which is why only CI's server showed it. Now operations on one row run in the order they were issued, and a delete-by-field (account deletion's sync purge) or a namespace clear first waits for every write already in flight in that namespace. Bite-checked on PGlite, no timing involved: the old `pg.ts` fails 2 tests (the deleted user's Plaid row survives; the stale `{v:1}` beats `{v:2}`), and removing the namespace wait fails a third. | High (deleted data resurrected) | me | P3.5 (found in CI) |
 | F103 | **OPEN (mine), likely cause found 2026-10-01, fix scheduled for P4.** It recurred on CI 36857434988 (`9a2f1a8`), and the new annotation showed the build failing in `next/font/google`: the font files that its generated CSS (`hanken_grotesk_….module.css`) references were "module not found". `apps/web/app/layout.tsx` loads Space Grotesk, Hanken Grotesk and JetBrains Mono through `next/font/google`, which downloads them from Google Fonts at BUILD time, the build's only network step. So the likely cause is that download failing on the runner (unproven: the annotation held only the last 40 lines, so it now also carries the first error lines). The fix is to self-host the fonts so the build is offline. Measured first: the site serves 13 variable `woff2` files (179 KB) split by character range, and the TTFs the mobile packages already have are about 5x heavier, so the right files are the current `woff2`s with their exact `unicode-range`s (read from the build's CSS). That changes how the site loads fonts and needs a visual check, so it goes in P4. Earlier text: **OPEN (mine): one CI-only web build failure, no detail yet.** CI 36845816550 (`44791e7`) failed "Build web" with only "exit code 1". The same build passes here, and that commit changed nothing under `apps/web`. The next run failed earlier (F97), so the build step has not run since. The step now posts its last 40 log lines as an annotation on failure, so a recurrence explains itself. | Low until explained | me | the next occurrence |
 | F107 | **FIXED in P3.8b (found by its own test).** ~~Reduce-motion users still saw the first animation of a component.~~ `useReducedMotion` started at "motion on" and learned the OS setting asynchronously, so every animated component's FIRST effect ran as if motion were allowed. A `Stamp` mounted under reduce-motion still sprang in from 1.7x and fired its haptic, and the spring kept going after the setting arrived. Now the last answer known in the app run is kept, so every component mounting after the first read starts from it. The launch splash makes that first read, long before any stamp appears. The splash itself still starts before the answer, but its effect re-runs and jumps to the static frame. Bite-checked: removing the cache fails 2 tests. | Medium (accessibility: motion for users who turned it off) | me | P3.8b |
+| F108 | **FIXED in P3.8c.** ~~The dashboard showed a "Ways to save" heading over an empty section.~~ The section appeared whenever the insights engine returned anything, but the only insight the seed data produces is the spend summary, which the dashboard deliberately does not preview. Seen on the emulator too (the heading straight above the buttons). Now it appears only with a saving to show or an insight to preview. | Low | me | P3.8c |
+| F109 | **FIXED in P3.8c.** ~~Screen readers heard a subscription row without its price or date.~~ On the Subscriptions tab each row's trailing column (price, next date, "PAUSED", "!", the Verified stamp) is a custom node, and ListRow's derived name covers only the title and subtitle. VoiceOver/TalkBack read "Netflix, ENTERTAINMENT" while sighted users saw "$15.49, OCT 2". The row's name now follows what is shown. | Medium (accessibility) | me | P3.8c |
+| F110 | **FIXED in P3.8c.** ~~Insight cards showed savings 100x too small.~~ `analytics.tsx` passed `insight.savingAmount`, which is in WHOLE currency units (the engine's `monthlyDollars`), to `formatMoney`, which takes MINOR units: "Save $0.22/mo" for a $22 saving. The header pill and the dashboard used the whole-unit value correctly. Checked that the engine's own titles are right: it has its own local `formatMoney` in whole units. | Medium (money shown wrong) | me | P3.8c |
+| F111 | **FIXED in P3.8c.** ~~West of UTC, the calendar's day panel was headed with the day BEFORE the one tapped.~~ The tapped key ("2026-10-02") is a local day, but `formatDateHeader` parsed it with `new Date(key)`, which reads a date-only string as UTC midnight. Measured: rendered in America/New_York or America/Los_Angeles that is "Thursday, October 1"; London and Kolkata are unaffected, which is why it was never seen here. The key is now read as a local date. The test bites on this machine (UTC+5:30); on CI's UTC runner both readings coincide. | Medium (the date shown to most US users was wrong) | me | P3.8c |
+| F112 | **TO CHECK ON THE DEVICE (not a confirmed bug).** On the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
 | F105 | **FIXED in P3.7 (found on the emulator).** ~~The locked app stayed readable to accessibility services.~~ The lock overlay is drawn on top of the app, but the app underneath stayed in the accessibility tree. With the app locked, `uiautomator dump --compressed` (the nodes accessibility services get) held 77 labelled nodes, every ledger amount included ("$107.46", "Netflix … $15.49 per mo"). So a screen reader, or any app granted accessibility access, could read the finances through the lock. Now `HiddenWhileLocked` hides the app's content (`no-hide-descendants`, `accessibilityElementsHidden`) whenever the overlay is up, on the same condition that draws it, and never remounts the app. Proven on the device: locked, 9 labels, all the lock screen's, no money; unlocked, the ledger is back. Bite-checked in jest. | High (financial data readable while locked) | me | P3.7 |
 | F106 | **OPEN (mine): seen once, not reproduced.** After the first unlock following a fresh install, three screenshots of the unlocked app came back fully black, although the app window no longer carried `FLAG_SECURE`, the display was awake, and the home screen captured normally. In 2 later attempts (a return from background, and a cold start), the unlocked app captured normally at 4 s and at 10 s. Cause unknown. It fails safe (blocking a screenshot, not leaking one). Re-check during P5's end-to-end runs. | Low | me | P5 |
@@ -3487,3 +3494,108 @@ optional `style` props).
 Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1842 at
 100 / 99.68 / 100 / 100 · jest 208 / 208, 0 act() warnings, every component file at 100 %
 lines and statements.
+
+### P3.8c-1 — the Ledger, Subscriptions, Calendar and Insights tabs, and the tab bar — 2026-10-01
+
+**The harness** (`src/test-support/`, out of every coverage scope):
+- **Real:** the screens run through the app's real theme, subscription store and budget
+  store providers, with their hydration and aggregates, the bundled seed data and the
+  catalog.
+- **Faked, at the module boundary only:** SQLite (an in-memory map), the FX fetch,
+  notifications, the router, and safe-area metrics.
+- **`unnamedControls()`** fails a test if any button, link, tab or switch has no
+  accessible name.
+- **Animations are settled inside act()** (fake timers), so no frame updates state
+  after a test. The whole jest suite still has 0 act() warnings.
+- **A cycle avoided:** a `jest.mock` factory that required the harness pulled in the
+  real providers, which import the very modules being mocked (the fakes were undefined).
+  So the fakes now live in `screen-fakes.tsx`, which imports no app code.
+
+**Expected values come from the app's own logic, not typed numbers:**
+- the seed file;
+- `generateInsights`;
+- `computeBudgetForecast`;
+- `calendarUtils`;
+- `formatShortDate` and `formatMoney`.
+
+Fixtures for each insight type were first checked to make the engine produce that type,
+so no UI assertion can pass vacuously. I also removed one vacuous test I had written: an
+invalid-day press, whose panel can never open.
+
+**Tests (51, all behaviour):**
+- `dashboard.rntest.tsx` (17):
+  - the $107.46 total;
+  - the free counter, and the upgrade at the limit;
+  - every upcoming row and fixed control, and where each goes;
+  - empty;
+  - needs-attention (still charging, trial ending today, in 1 day or in N days, a price
+    rise);
+  - the budget line over, approaching and on pace;
+  - plan, a failed plan check, other currencies;
+  - "Ways to save";
+  - reduced motion (shown at once), with a control proving the count-up would
+    otherwise not have reached the total.
+- `subscriptions.rntest.tsx` (8):
+  - every row's full name (F109);
+  - the add button;
+  - search with its 200 ms debounce;
+  - every filter as a tab with its count;
+  - every status;
+  - empty filters;
+  - an unknown status from older data;
+  - empty.
+- `calendar.rntest.tsx` (9):
+  - the three ledger lines against `calendarUtils`;
+  - the weekly groups;
+  - the day panel (open, rows, cancel, close, the two-renewal total);
+  - empty;
+  - other currencies;
+  - paused and cancelled excluded;
+  - missing and invalid dates;
+  - F111.
+- `analytics.rntest.tsx` (11):
+  - the spend and the budget entry;
+  - dismissing every insight down to "All caught up";
+  - the sort flip and its spoken state;
+  - F110 ("Save $22.00/mo", was "$0.22");
+  - insight actions;
+  - every insight type;
+  - the budget pill in 3 states;
+  - empty;
+  - other currencies.
+- `tabs-layout.rntest.tsx` (6):
+  - the 5 tabs in order;
+  - the tab haptic;
+  - each icon focused and unfocused;
+  - reduced motion;
+  - the centre Discover action.
+
+**Found and fixed:** F108, F109, F110, F111 (see their rows). F112 is logged to check on
+the device.
+
+**Coverage and floors:**
+- `app/` went from 117 to 424 of 1515 lines (7.72 % to 27.98 %).
+- The dashboard, subscriptions, calendar and tab-layout files are held at 100 % lines
+  per file, and the dashboard, subscriptions and tab-layout files at 100 % statements.
+  The keys are exact paths, because `(tabs)` in a glob is pattern syntax.
+- `analytics.tsx`: 98.38 % lines. Its one uncovered line is the `default:` of
+  `insightAccentColor`, reached only by an insight type (`price_spike`) the engine
+  declares but never produces.
+
+**Bite check: 8, all caught:**
+- each of F108, F109, F110 reverted (F111 bite-checked separately: the old parse is
+  19,800,000 ms, 5.5 h, off);
+- "approaching" moved from 85 % to 95 %;
+- the Pending filter dropping "still charging";
+- the calendar's cancel link opening the detail page;
+- the sort never flipping;
+- the centre tab losing its haptic.
+
+The floor bites too: without `dashboard.rntest.tsx`, `app/` falls to 23.23 % and the
+dashboard file to 0 %.
+
+
+Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings (my first run failed lint
+on the new tests: 20 `require()` in mock factories, now `jest.requireActual`; an export
+above imports; 2 unnamed stand-in components) · vitest 1842 at 100 / 99.68 / 100 / 100 ·
+jest 259 / 259, 0 act() warnings, the new floors held.
