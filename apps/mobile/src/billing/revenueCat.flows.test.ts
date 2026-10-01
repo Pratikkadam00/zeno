@@ -24,7 +24,8 @@ const rc = vi.hoisted(() => ({
   getProducts: vi.fn(),
   purchasePackage: vi.fn(),
   purchaseStoreProduct: vi.fn(),
-  restorePurchases: vi.fn()
+  restorePurchases: vi.fn(),
+  checkTrialOrIntroductoryPriceEligibility: vi.fn()
 }));
 vi.mock("react-native-purchases", () => ({ default: rc }));
 
@@ -237,6 +238,29 @@ describe("purchases", () => {
     constants.extra = {};
     const unconfigured = await load();
     expect(await unconfigured.restorePurchases()).toBe("free");
+  });
+});
+
+describe("getTrialEligibility (F134)", () => {
+  it("iOS: each product's status, read from RevenueCat", async () => {
+    const m = await load();
+    rc.checkTrialOrIntroductoryPriceEligibility.mockResolvedValue({ zeno_pro_annual: { status: 2, description: "eligible" }, zeno_pro_monthly: { status: 1, description: "used" } });
+    expect(await m.getTrialEligibility(["zeno_pro_annual", "zeno_pro_monthly"])).toEqual({ zeno_pro_annual: 2, zeno_pro_monthly: 1 });
+    expect(rc.checkTrialOrIntroductoryPriceEligibility).toHaveBeenCalledWith(["zeno_pro_annual", "zeno_pro_monthly"]);
+  });
+
+  it("unknown (empty) when it fails, when there is nothing to ask, off iOS, or with no store", async () => {
+    const m = await load();
+    rc.checkTrialOrIntroductoryPriceEligibility.mockRejectedValue(new Error("no group"));
+    expect(await m.getTrialEligibility(["zeno_pro_annual"])).toEqual({});
+    expect(await m.getTrialEligibility([])).toEqual({});
+    platform.OS = "android";
+    expect(await m.getTrialEligibility(["zeno_pro_annual"])).toEqual({});
+    platform.OS = "ios";
+    constants.extra = {};
+    const unconfigured = await load();
+    expect(await unconfigured.getTrialEligibility(["zeno_pro_annual"])).toEqual({});
+    expect(rc.checkTrialOrIntroductoryPriceEligibility).toHaveBeenCalledTimes(1);
   });
 });
 

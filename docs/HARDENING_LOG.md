@@ -69,9 +69,9 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
     - [x] P3.8d subscription detail, cancel, add
       - [x] P3.8d-1 the subscription detail page; **fixes F115, F116, F117, F118** (green: CI 36869210309, CodeQL 36869210211 on `c6422f8`)
       - [x] P3.8d-2 the cancel guide and Add subscription; **fixes F119, F120, F121, F122, F123**, F117 extended (green: CI 36875048540, CodeQL 36875048572 on `3b82e24`)
-    - [~] P3.8e settings (incl. F29's screen use), profile, notifications, login, paywall, onboarding
-      - [x] P3.8e-1 Settings, Profile, Notifications; **fixes F124, F125, F126, F128, F129, F130, F131**, F127 in part (rest to the owner); F29's screen use covered
-      - [ ] P3.8e-2 login, paywall, onboarding
+    - [x] P3.8e settings (incl. F29's screen use), profile, notifications, login, paywall, onboarding
+      - [x] P3.8e-1 Settings, Profile, Notifications; **fixes F124, F125, F126, F128, F129, F130, F131**, F127 in part (rest to the owner); F29's screen use covered (green: CI 36883987644, CodeQL 36883987826 on `9edfe26`)
+      - [x] P3.8e-2 login, paywall, onboarding; **fixes F132, F133, F134, F135, F136, F137, F138** (F134 and F138 each with an owner part)
     - [ ] P3.8f the rest (budget, recap, family, coach, wrapped, widgets, spend-twin, open-banking, backend, business, partners, public-api) and the root layout
   - [ ] P3.9 static scan of the release APK (MobSF, else apkleaks + manifest review)
   - [ ] P3 gate: hardened release APK verified on the emulator (every flow in `DEVICE_TEST_FINDINGS.md`); jest floor in CI; MASVS checklist with evidence per control
@@ -211,6 +211,13 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F129 | **FIXED in P3.8e-1.** ~~The Notifications screen's "Upcoming reminders" were not the reminders the phone would show.~~ It listed `createRenewalReminderPlan` from @zeno/shared, called with no preferences, while the phone schedules from `buildRenewalTriggers`. So it listed reminders the user had switched off; it ignored quiet hours; it showed a trial as 7 / 3 / 0 days when the scheduler fires 2 / 1 / 0; and it worked in UTC days, not the scheduler's 9 AM local. The scheduler's own list is now one function (`upcomingReminders`, the first half of the reconcile), and the screen lists exactly that, by each notification's real title. The store's unused `reminderPlan` and the now-unused `notificationLabel` were removed. | Medium (a schedule that isn't the schedule) | me | P3.8e-1 |
 | F130 | **FIXED in P3.8e-1.** ~~A price rise always read "/mo".~~ The price history holds the price per billing cycle, so a yearly plan going from $99 to $119 read "$99.00 → $119.00/mo". It now ends in the plan's own cycle. | Low (truthfulness of money) | me | P3.8e-1 |
 | F131 | **FIXED in P3.8e-1.** ~~The subscription page labelled an unknown cycle's price "/month".~~ The same class as F117: a cycle the app doesn't know was presented as monthly. The suffix is now shared (`src/utils/billing-label.ts`), and an unknown cycle has none. | Low (truthfulness of money) | me | P3.8e-1 |
+| F132 | **FIXED in P3.8e-2.** ~~Android showed "Continue with Apple", which could only fail there.~~ The store's `loginWithApple` throws "Sign in with Apple is only available on supported Apple devices" when Apple's API is unavailable, which on Android is always. The button is now iOS-only. | Low | me | P3.8e-2 |
+| F133 | **FIXED in P3.8e-2.** ~~The paywall promised "we'll remind you before it [the trial] ends".~~ Nothing in the app schedules a reminder for Zeno's own trial. The line now reads "No charge until the trial ends · cancel anytime". | Medium (a promise nothing keeps) | me | P3.8e-2 |
+| F134 | **FIXED in P3.8e-2.** ~~The paywall always said "Start 7-day free trial · No charge until trial ends".~~ It did so with no store configured, for a product without a trial, and for a returning user who no longer qualifies, who was then charged at once after being told "no charge". A trial is now promised only when the store offers this user one (`src/billing/free-trial.ts`). On iOS that means the product's intro price is free and RevenueCat's `checkTrialOrIntroductoryPriceEligibility` says ELIGIBLE; its docs say to show non-intro pricing on UNKNOWN. On Android it means the default option (what `purchasePackage` buys) has a free phase; Google Play leaves a new-customer offer out when the user isn't eligible (RevenueCat's Google Play offers guide). The trial's length is the store's own. Otherwise the button says "Subscribe for $X/yr" and "Charged today". Store setup is an owner check (OPEN_ITEMS). | High (money: charged after "no charge") | me + owner (store setup) | P3.8e-2 |
+| F135 | **FIXED in P3.8e-2.** ~~Closing the store's purchase sheet showed an error ("Purchase was cancelled.").~~ RevenueCat marks it with code "1" (PURCHASE_CANCELLED_ERROR); it is now silent. Real failures still show. | Low | me | P3.8e-2 |
+| F136 | **FIXED in P3.8e-2.** ~~Buying Family showed "Welcome to Pro".~~ The success screen now names the plan bought. | Low | me | P3.8e-2 |
+| F137 | **FIXED in P3.8e-2.** ~~A purchase that left no active plan still said "Zeno Pro is active".~~ When the store completes a purchase but RevenueCat reports the free plan (for example an entitlement not attached to the product), the screen announced success and showed "Welcome to Pro". It now says Pro isn't active yet and points to Restore purchases. | Medium (a false confirmation of something paid for) | me | P3.8e-2 |
+| F138 | **FIXED in P3.8e-2 (scope to the owner).** ~~Every new user's ledger started with 5 subscriptions that weren't theirs.~~ The store wrote the sample rows (Adobe, Midjourney, Netflix, Disney+ Family, Super Duolingo) into every database on first launch, release builds too. A new user saw $107.46/mo committed, got renewal reminders for services they may never have had, and started with 5 of the free plan's 10 slots used. Onboarding says "your ledger starts empty", and the design's Home has a first-discovery empty state. The samples are now written only in development builds (`__DEV__`); a release build starts, and hydrates, empty. Whether a release should offer a clearly labelled sample is in OPEN_ITEMS. | High (invented data in the user's own records) | me + owner (scope) | P3.8e-2 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **TO CHECK ON THE DEVICE (not a confirmed bug).** On the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -3841,3 +3848,55 @@ the owner (see their rows).
 
 Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1888 at
 100 / 99.68 / 100 / 100 · jest 403 / 403, 0 act() warnings, the new floors held.
+
+### P3.8e-2 — sign-in, the paywall, onboarding — 2026-10-01
+
+**Result:**
+- `app/login.tsx` (55/55 lines), `app/paywall.tsx` (116/116) and `app/index.tsx`
+  (onboarding, 18/18) are at 100 % lines and statements, held there file by file.
+- `app/` went from 948 to 1137 lines covered (74.31 % of 1530); statements 1313 of
+  1769 (74.22 %).
+- The jest suite is at 441 tests, 0 act() warnings. Vitest is at 1902.
+
+**Sign-in tests (11):**
+- **Consent:** the 16+ / Terms gate locks every way in, from the buttons and the
+  keyboard; the legal links.
+- **Magic link:** email rules; the link sent; a failure shown; locked while in flight and
+  while the store is loading.
+- **Other ways in:** Apple, Google and the dev account; no Apple on Android (F132);
+  signed in, to the ledger.
+- Three guards that could never run were removed: each duplicated its button's own
+  `disabled`. The magic link keeps its guard, since the keyboard's send key reaches it.
+
+**Paywall tests (21), with packages shaped like react-native-purchases' and the real
+trial rule:**
+- **Prices:** live and fallback prices; the per-month figure and the saving, only from
+  plain USD; a localized price as written.
+- **The trial (F134, F133):** iOS eligible and not; no trial product, or no store; the
+  Android free phase.
+- **Buying:** Pro, Family (F136) and Lifetime; a purchase with no active plan (F137); a
+  cancelled sheet (F135) and real failures, each way to buy; locked while buying.
+- **Other:** restore (found, none, failed); the links; closing; leaving before the store
+  answers.
+
+**Onboarding tests (5):** the sample ledger (total computed, labelled as a sample); the
+three beats; sign-in; continue without an account; skip; reduced motion.
+
+**Found and fixed:** F132-F138 (see their rows). F134 and F138 each have an owner part
+in OPEN_ITEMS.
+
+**For P3.9 and the P3 gate:**
+- The dev-only demo password is a literal behind `__DEV__` in `app/login.tsx`. The
+  release-APK scan must confirm it is not in the bundle.
+- The login's Terms and Privacy links sit inside the consent checkbox, the same nesting
+  as F112, to check with a screen reader on the device.
+
+**Bite check: 10, all caught:**
+- **F132, F133**;
+- **F134:** a hard-coded label; eligibility ignored; a paid intro taken for a trial;
+  eligibility asked off iOS;
+- **F135, F136, F137**;
+- **F138:** samples in a release build.
+
+Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1902 at
+100 / 99.68 / 100 / 100 · jest 441 / 441, 0 act() warnings, the new floors held.

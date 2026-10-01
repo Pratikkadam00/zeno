@@ -147,6 +147,24 @@ export async function restorePurchases(): Promise<BillingPlan> {
   return getPlanFromCustomerInfo(customerInfo);
 }
 
+/**
+ * iOS only (RevenueCat computes it there; Android reports UNKNOWN, and Google
+ * Play already leaves out offers the user can't get). Product id to
+ * INTRO_ELIGIBILITY_STATUS. Empty when it can't be known: the paywall then
+ * promises no trial (F134).
+ */
+export async function getTrialEligibility(productIds: string[]): Promise<Record<string, number>> {
+  if (Platform.OS !== "ios" || productIds.length === 0 || !(await initRevenueCat())) {
+    return {};
+  }
+  try {
+    const result = await Purchases.checkTrialOrIntroductoryPriceEligibility(productIds);
+    return Object.fromEntries(Object.entries(result).map(([id, entry]) => [id, entry.status]));
+  } catch {
+    return {};
+  }
+}
+
 export function getPackagePrice(packageToFormat: PurchasesPackage | null, fallback: string): string {
   return packageToFormat?.product.priceString ?? fallback;
 }

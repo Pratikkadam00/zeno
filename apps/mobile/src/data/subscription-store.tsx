@@ -134,11 +134,22 @@ const persistenceEnabled = Platform.OS !== "web";
 
 const StoreContext = createContext<SubscriptionStore | null>(null);
 
+/**
+ * F138: the 5 sample subscriptions are for DEVELOPMENT builds only. They were
+ * written into every user's database on first launch, release builds too, so a
+ * new user saw a $107.46/mo ledger that wasn't theirs, got renewal reminders
+ * for services they may never have had, and started with 5 of the free plan's
+ * 10 slots used, while onboarding said "your ledger starts empty".
+ */
+function demoRows(): Subscription[] {
+  return __DEV__ ? seedSubscriptions : [];
+}
+
 export function SubscriptionStoreProvider({ children }: { children: ReactNode }) {
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>(seedSubscriptions);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>(demoRows);
   const [hydrated, setHydrated] = useState(!persistenceEnabled);
   const [notificationSettings, setNotificationSettings] = useState<Record<string, SubscriptionNotificationSettings>>(() => Object.fromEntries(
-    seedSubscriptions.map((subscription) => [subscription.id, defaultNotificationSettings])
+    demoRows().map((subscription) => [subscription.id, defaultNotificationSettings])
   ));
   const [quietHours, setQuietHoursState] = useState<QuietHours>(defaultQuietHours);
   const [remindersEnabled, setRemindersEnabledState] = useState(true);
@@ -147,7 +158,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates | undefined>(undefined);
   const [ratesLastFetchedAt, setRatesLastFetchedAt] = useState<string | null>(null);
   const [priceHistory, setPriceHistory] = useState<Record<string, PriceHistoryEntry[]>>(() => Object.fromEntries(
-    seedSubscriptions.map((subscription) => [subscription.id, [{ at: subscription.createdAt, amountMinor: subscription.price.amountMinor }]])
+    demoRows().map((subscription) => [subscription.id, [{ at: subscription.createdAt, amountMinor: subscription.price.amountMinor }]])
   ));
   const dbRef = useRef<ZenoDatabase | null>(null);
 
@@ -182,7 +193,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
 
         const alreadySeeded = await readAppMeta(db, seededMetaKey);
         if (!alreadySeeded) {
-          for (const subscription of seedSubscriptions) {
+          for (const subscription of demoRows()) {
             await upsertSubscription(db, subscription);
           }
           await writeAppMeta(db, seededMetaKey, new Date().toISOString());

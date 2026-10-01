@@ -102,6 +102,23 @@ describe("hydration", () => {
     expect(repo.upsertSubscription).toHaveBeenCalledTimes(5);
   });
 
+  it("F138: a RELEASE build's first launch writes no sample rows and starts empty (and stays so)", async () => {
+    const g = globalThis as { __DEV__?: boolean };
+    const wasDev = g.__DEV__;
+    g.__DEV__ = false;
+    try {
+      const r = renderHook(() => store.useSubscriptionStore(), { wrapper });
+      expect(r.result.current.subscriptions).toEqual([]); // not even before storage loads
+      expect(r.result.current.notificationSettings).toEqual({});
+      await waitFor(() => expect(r.result.current.hydrated).toBe(true));
+      expect(r.result.current.subscriptions).toEqual([]);
+      expect(repo.upsertSubscription).not.toHaveBeenCalled();
+      expect(mockMeta.has("subscriptions.seeded.v1")).toBe(true);
+    } finally {
+      g.__DEV__ = wasDev;
+    }
+  });
+
   it("an already-seeded database is loaded as-is (no re-seed)", async () => {
     const { result } = await mounted([sub({ id: "sub_only" })]);
     expect(result.current.subscriptions.map((s) => s.id)).toEqual(["sub_only"]);

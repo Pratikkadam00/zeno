@@ -3,7 +3,7 @@
 **One place for everything not yet solved.** Each item says who acts, exactly what to
 do, and where the full evidence lives (finding numbers point into
 `docs/HARDENING_LOG.md`). When an item is done it is removed from here and its log
-entry marked fixed. Last updated 2026-10-01, after P3.8e-1.
+entry marked fixed. Last updated 2026-10-01, after P3.8e-2.
 
 ---
 
@@ -23,6 +23,7 @@ real sample, or a product decision.
 | F90 | Boot **refusals or warnings** for risky production settings | (a) keep warnings (today); or (b) make them refuse to boot, after you confirm in the Render dashboard that none of these is set: `DEMO_LOGIN_PASSWORD`, `ALLOW_UNVERIFIED_OAUTH_TOKENS`, a `*` or `http://` CORS origin, an `http://` `MONITORING_WEBHOOK_URL` or `COACH_BASE_URL` | The plan says "refuse to boot". I made them warnings because `main` auto-deploys and a dashboard value I can't see could take the API down. Each is already blocked at request time. |
 | F77 | **Logout** and the access token | (a) accept it (the token dies within 15 minutes); or (b) I add a per-session revocation list | After logout, the 15-minute access token keeps working until it expires. The refresh token is revoked at once. |
 | F45 | Paywall line **"…and we never see your bank."** (and Settings' "We never ask for your bank login", Profile's "We never see your bank login") | (a) change it to "…and no bank login required." now; or (b) keep it and reword when Plaid ships | True today (bank connect is dev-only). It becomes false the day Plaid ships. |
+| F138 | **Sample data** for new users | (a) none in release builds, as now: a new ledger starts empty, as onboarding says; or (b) an opt-in "Try it with sample data" on the empty ledger, clearly labelled, no reminders, removable in one tap | Until P3.8e-2, every new user's ledger started with 5 subscriptions that weren't theirs ($107.46/mo), with real reminders for them, and 5 of the 10 free slots used. Development builds still get the samples. |
 | F127 | What **"Export my data"** covers | (a) keep the export to subscriptions and their notes, as the row now says; or (b) I add budgets and price history to the file, as the design's "EVERYTHING, AS CSV" promises | Until P3.8e-1 the row said "everything" and the file lacked even the notes. Notes are in now, and the row says what the file holds. |
 | F25 | How to present **305 of 509 catalog entries** that hold unresearched data (a guessed cancel link, "difficulty: medium", generic steps) | e.g. an "unverified" label and the homepage instead of a guessed link, or `noindex` on the website until curated | They are shown as fact in the app and on 305 public cancel-guide pages. |
 
@@ -39,6 +40,7 @@ real sample, or a product decision.
 | — | **RevenueCat:** set **both** `REVENUECAT_SECRET_KEY` and `REVENUECAT_WEBHOOK_AUTH` on Render, and the public SDK keys in the app build | Render; RevenueCat dashboard; EAS env | Since P2.8 a webhook only asks the server to re-check with RevenueCat; without the secret key every user reads as free (the server now warns about this at boot). |
 | — | **Sentry:** create the project and set `EXPO_PUBLIC_SENTRY_DSN`, plus org, project and auth token for the source-map and R8 mapping upload | Sentry; EAS env | Until then crash reporting is off, and once on, an R8-obfuscated release crash can't be read without the mapping. |
 | F11 | **Google client IDs** (A3). Then I move Google sign-in and Gmail connect off the custom-scheme redirect | Google Cloud console | Google's own guide says custom URI schemes are no longer supported on Android, so these sign-ins are likely rejected there. I can't confirm or fix without the IDs. |
+| F134 | Set up the **Pro free trial** in both stores so the paywall can offer it: an App Store introductory offer (free, 1 week if you keep the design's "7-day"), and on Google Play a **new-customer-acquisition** offer (not "developer determined", which Play shows even to people who already had a trial) | App Store Connect; Play Console | The paywall now promises a trial only when the store offers this user one. Without these offers it says "Subscribe" and "Charged today", which is true but loses the trial. |
 | F101 | The real **store listing links** (App Store id, Play package page), once published | send them | "Rate Zeno" opens Apple's store front page on every platform, Android included. |
 | F19 | One **real Wells Fargo CSV export** (redact it) | send the file | The detector assumes a header row WF may not have. If wrong, the first transaction is silently dropped. |
 | — | Before shipping iOS: the annual **encryption self-classification** report (BIS / NSA) | export compliance | `app.config.ts` declares non-exempt encryption (SQLCipher), relying on the mass-market exemption, which requires the filing. |
@@ -77,6 +79,13 @@ real sample, or a product decision.
 | F126 | Found in P3.8e-1: Settings showed **"Version 1.0.0"**; the app is 0.1.0 | Shows the real version. |
 | F125 | Found in P3.8e-1: Settings and Profile showed an **internal account id where your email belongs** (or a made-up "you@example.com") | Your email is shown now. |
 | F124 | Found in P3.8e-1: Settings' **"Push notifications" switch did nothing** | It's now "Renewal reminders" (as designed) and really turns every reminder off and on. |
+| F138 | Found in P3.8e-2: **every new user's ledger started with 5 sample subscriptions** (Adobe, Netflix…) as if they were theirs, with real reminders | A new ledger starts empty now, as onboarding says (your decision on an opt-in sample is above). |
+| F137 | Found in P3.8e-2: a purchase that left Pro **inactive still said "Zeno Pro is active"** | It says Pro isn't active yet and points to Restore purchases. |
+| F136 | Found in P3.8e-2: buying **Family said "Welcome to Pro"** | Names the plan bought. |
+| F135 | Found in P3.8e-2: closing the store's purchase sheet **showed an error** | Silent now; real failures still show. |
+| F134 | Found in P3.8e-2: the paywall **always promised "7-day free trial · No charge until trial ends"**, even to someone the store would charge at once | It promises a trial only when the store offers you one (store setup is above). |
+| F133 | Found in P3.8e-2: the paywall promised **"we'll remind you before [the trial] ends"**; nothing does | The promise is gone. |
+| F132 | Found in P3.8e-2: **Android showed "Continue with Apple"**, which can only fail there | iOS only now. |
 | F123 | Found in P3.8d-2: Add subscription **started every price at $9.99**, so a service with no known price was saved at $9.99 unless you noticed | The amount starts empty now; Save waits for one. |
 | F122 | Found in P3.8d-2: Add subscription read **"1,99" as $1.00** and "1e3" as $1,000 | Only a plain amount (up to 2 decimals) can be saved. |
 | F121 | Found in P3.8d-2: **a note typed on Add subscription was thrown away** | Saved now. |

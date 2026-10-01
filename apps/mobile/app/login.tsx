@@ -90,10 +90,10 @@ export default function LoginScreen() {
     }
   }
 
+  // Apple, Google and the demo account are reached only through their buttons,
+  // which are disabled until consent is given and while anything is in flight.
+  // (The magic link also has the keyboard's send key, hence its own guard.)
   async function handleApple() {
-    if (!ageConfirmed) {
-      return;
-    }
     setActiveProvider("apple");
     setMessage(null);
     try {
@@ -106,10 +106,6 @@ export default function LoginScreen() {
   }
 
   async function handleDemoLogin() {
-    if (!canSubmitDemo) {
-      return;
-    }
-
     setActiveProvider("demo");
     setMessage(null);
     try {
@@ -122,9 +118,6 @@ export default function LoginScreen() {
   }
 
   async function handleGoogle() {
-    if (!ageConfirmed) {
-      return;
-    }
     setActiveProvider("google");
     setMessage(null);
     try {
@@ -248,6 +241,9 @@ export default function LoginScreen() {
               </View>
 
               <View style={styles.socialStack}>
+                {/* F132: iOS only. On Android this button could only fail ("Sign in
+                    with Apple is only available on supported Apple devices"). */}
+                {Platform.OS === "ios" ? (
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Continue with Apple"
@@ -268,6 +264,7 @@ export default function LoginScreen() {
                     </>
                   )}
                 </Pressable>
+                ) : null}
 
                 <Pressable
                   accessibilityRole="button"

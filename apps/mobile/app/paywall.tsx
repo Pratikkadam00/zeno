@@ -6,7 +6,8 @@ import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { useAuthStore } from "../src/auth/authStore";
 import { getLegalUrls } from "../src/config/site";
 import { openExternalUrl } from "../src/utils/external-link";
-import { getOfferings, getPackagePrice, purchaseFamily, purchaseLifetime, purchasePro, restorePurchases, type BillingPlan, type ProBillingPeriod, type ZenoOfferings } from "../src/billing/revenueCat";
+import { freeTrialOf } from "../src/billing/free-trial";
+import { getOfferings, getPackagePrice, getTrialEligibility, purchaseFamily, purchaseLifetime, purchasePro, restorePurchases, type BillingPlan, type ProBillingPeriod, type ZenoOfferings } from "../src/billing/revenueCat";
 import { useZenoTheme } from "../src/theme/theme-provider";
 import type { ThemeTokens } from "../src/theme/tokens";
 import { type as typography } from "../src/theme/typography";
@@ -64,6 +65,12 @@ function showSuccessToast(message: string) {
 
 function openLegalUrl(url: string) { void openExternalUrl(url); }
 
+// F135: closing the store's own purchase sheet is a choice, not a failure.
+// RevenueCat marks it with code "1" (PURCHASE_CANCELLED_ERROR).
+function isPurchaseCancelled(error: unknown): boolean {
+  return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "1";
+}
+
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Purchase failed. Please try again.";
 }
@@ -112,13 +119,22 @@ export default function PaywallScreen() {
   const [offerings, setOfferings]               = useState<ZenoOfferings | null>(null);
   const [isLoadingOfferings, setIsLoadingOfferings] = useState(true);
   const [isPurchasing, setIsPurchasing]         = useState(false);
-  const [isPurchaseSuccess, setIsPurchaseSuccess] = useState(false);
+  // The plan just bought (F136: the success screen said "Welcome to Pro" after
+  // a Family purchase); null until a purchase completes.
+  const [purchasedPlan, setPurchasedPlan]       = useState<BillingPlan | null>(null);
+  const [trialEligibility, setTrialEligibility] = useState<Record<string, number>>({});
   const [error, setError]                       = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
     void getOfferings()
-      .then((nextOfferings) => { if (mounted) setOfferings(nextOfferings); })
+      .then(async (nextOfferings) => {
+        if (!mounted) return;
+        setOfferings(nextOfferings);
+        const ids = [nextOfferings.proMonthly, nextOfferings.proAnnual].flatMap((pkg) => (pkg ? [pkg.product.identifier] : []));
+        const eligibility = await getTrialEligibility(ids);
+        if (mounted) setTrialEligibility(eligibility);
+      })
       .catch((loadError) => { if (mounted) setError(getErrorMessage(loadError)); })
       .finally(() => { if (mounted) setIsLoadingOfferings(false); });
     return () => { mounted = false; };
@@ -156,6 +172,22 @@ export default function PaywallScreen() {
       ? (annualPerMonth ? `billed as ${proAnnualPrice}/year` : "billed annually · cancel anytime")
       : "billed monthly · cancel anytime";
 
+  // F134: a free trial is promised only when the store offers this user one
+  // (src/billing/free-trial.ts); it was "7-day free trial" whatever the store said.
+  const selectedPackage = period === "annual" ? offerings?.proAnnual ?? null : period === "monthly" ? offerings?.proMonthly ?? null : null;
+  const freeTrial = freeTrialOf(selectedPackage, Platform.OS, selectedPackage ? trialEligibility[selectedPackage.product.identifier] : undefined);
+  const ctaLabel = period === "lifetime"
+    ? `Buy once for ${lifetimePrice}`
+    : freeTrial
+      ? `Start ${freeTrial.length} free trial`
+      : `Subscribe for ${period === "annual" ? `${proAnnualPrice}/yr` : `${proMonthlyPrice}/mo`}`;
+  // F133: it also said "we'll remind you before it does"; nothing schedules that.
+  const ctaSubText = period === "lifetime"
+    ? "One-time payment · no recurring charge, ever"
+    : freeTrial
+      ? "No charge until the trial ends · cancel anytime"
+      : "Charged today · cancel anytime";
+
   async function handlePurchasePro() {
     if (period === "lifetime") {
       setIsPurchasing(true);
@@ -163,7 +195,7 @@ export default function PaywallScreen() {
       try {
         finishPurchase(await purchaseLifetime());
       } catch (purchaseError) {
-        setError(getErrorMessage(purchaseError));
+        if (!isPurchaseCancelled(purchaseError)) setError(getErrorMessage(purchaseError));
       } finally {
         setIsPurchasing(false);
       }
@@ -175,7 +207,7 @@ export default function PaywallScreen() {
       const plan = await purchasePro(period);
       finishPurchase(plan);
     } catch (purchaseError) {
-      setError(getErrorMessage(purchaseError));
+      if (!isPurchaseCancelled(purchaseError)) setError(getErrorMessage(purchaseError));
     } finally {
       setIsPurchasing(false);
     }
@@ -188,7 +220,7 @@ export default function PaywallScreen() {
       const plan = await purchaseFamily();
       finishPurchase(plan);
     } catch (purchaseError) {
-      setError(getErrorMessage(purchaseError));
+      if (!isPurchaseCancelled(purchaseError)) setError(getErrorMessage(purchaseError));
     } finally {
       setIsPurchasing(false);
     }
@@ -215,16 +247,23 @@ export default function PaywallScreen() {
 
   function finishPurchase(plan: BillingPlan) {
     setPlan(plan);
+    // F137: the store took the purchase but RevenueCat reports no active plan
+    // (e.g. an entitlement not attached to the product). It said "Zeno Pro is
+    // active" regardless.
+    if (plan === "free") {
+      setError("The store completed the purchase, but Zeno Pro isn't active on this account yet. Try Restore purchases in a moment.");
+      return;
+    }
     showSuccessToast(`Zeno ${plan === "family" ? "Family" : "Pro"} is active.`);
-    setIsPurchaseSuccess(true);
+    setPurchasedPlan(plan);
   }
 
   // ── Success state ──
-  if (isPurchaseSuccess) {
+  if (purchasedPlan !== null) {
     return (
       <SafeAreaView style={[styles.safeArea, styles.successScreen]} edges={["top", "bottom"]}>
         <Sparkles size={48} color={theme.primary} strokeWidth={2} />
-        <Text style={styles.successTitle}>Welcome to Pro</Text>
+        <Text style={styles.successTitle}>{purchasedPlan === "family" ? "Welcome to Family" : "Welcome to Pro"}</Text>
         <Text style={styles.successBody}>
           You now have access to everything.{"\n"}Time to find what you can cancel.
         </Text>
@@ -384,14 +423,10 @@ export default function PaywallScreen() {
         >
           {isPurchasing
             ? <ActivityIndicator color={theme.onPrimary} />
-            : <Text style={styles.ctaBtnText}>{period === "lifetime" ? `Buy once for ${lifetimePrice}` : "Start 7-day free trial"}</Text>
+            : <Text style={styles.ctaBtnText}>{ctaLabel}</Text>
           }
         </Pressable>
-        <Text style={styles.ctaSubText}>
-          {period === "lifetime"
-            ? "One-time payment · no recurring charge, ever"
-            : "No charge until trial ends · we'll remind you before it does"}
-        </Text>
+        <Text style={styles.ctaSubText}>{ctaSubText}</Text>
 
         {/* Family plan row */}
         <Pressable
