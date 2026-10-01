@@ -52,7 +52,17 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P2.8 the RevenueCat webhook: replay, duplicates, out-of-order retries, auth, malformed bodies, durability; **fixes F85** (the payload was trusted and arrival order mattered), **F86** (the secret compare leaked its length), **F87** (a lookup in flight re-cached an older answer, or re-created a deleted user's billing row) (green: CI 36775230680, CodeQL 36775230616 on `d0cfc0c`)
   - [x] P2.9 the plan gaps found by checking P2 against `PRODUCTION_HARDENING_PLAN.md` line by line: **F88** (no same-code-path / timing test for unknown vs revoked tokens, plan P2.2) and **F89** (the fuzz never generates schema-valid input to check the expected status, plan P2.4); closing F89 found and **fixed F91** (`/events` counted inherited names like `toString`, and `constructor` with a label was a 500) (green: CI 36823714811, CodeQL 36823714765 on `7a9ea77`)
   - [x] P2 gate (passed again on `7a9ea77` after P2.9; first pass on `d0cfc0c`): route-inventory test green (40 routes); real-PG suite green locally (PGlite, 13 tests) and in CI (a Postgres 18 server, proven by the server-mode test) on `d0cfc0c`; nightly fuzz configuration green locally (first scheduled run pending)
-- [ ] **P3 — Mobile hardening (MASVS) + tests for all 29 screens**
+- [~] **P3 — Mobile hardening (MASVS) + tests for all 29 screens** (inline, one item at a time, in the plan's order)
+  - [~] P3.1 build hardening in `app.config.ts`: no Auto Backup, no cleartext, R8 minify + resource shrink with keep rules; then prebuild, release APK, verify by bytes, full on-device smoke; **F92** (Auto Backup on), **F93** (release not shrunk or obfuscated)
+  - [ ] P3.2 release console stripping (keep `error`/`warn`); `captureError` never carries tokens or emails
+  - [ ] P3.3 Sentry `beforeSend` scrub; `sendDefaultPii` false
+  - [ ] P3.4 PIN: salt, derivation, lockout with backoff, nothing in logs; the honest threat model
+  - [ ] P3.5 deep links: every `zeno://` route validates its parameters; `Linking.openURL` only `https:`/`mailto:` on an allowlist
+  - [ ] P3.6 no secret in the bundle: `extra` and every `EXPO_PUBLIC_*` on the public-by-design allowlist
+  - [ ] P3.7 screen capture blocked on the lock overlay and PIN entry (app-wide `FLAG_SECURE` is the owner's call)
+  - [ ] P3.8 screen tests for all 29 screens, with a jest floor over `app/**` and `src/components/**`
+  - [ ] P3.9 static scan of the release APK (MobSF, else apkleaks + manifest review)
+  - [ ] P3 gate: hardened release APK verified on the emulator (every flow in `DEVICE_TEST_FINDINGS.md`); jest floor in CI; MASVS checklist with evidence per control
 - [ ] **P4 — Website component tests, Playwright, CSP, DAST**
 - [ ] **P5 — Mobile end-to-end (Maestro on the emulator)**
 - [ ] **P6 — Mutation + property-based testing**
@@ -159,6 +169,9 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F89 | **FIXED in P2.9.** ~~The fuzz never sent schema-valid input.~~ The plan (P2.4) says the fuzz is "driven by each zod schema: valid ⇒ expected status". `fuzz.test.ts` sends arbitrary bodies and checks only "never a 500, always the envelope, no internals"; it never builds a known-valid body and checks the success status. Half the item; I had not said so. `schema-valid.test.ts` now generates input from each of the 18 routes' own zod schemas and checks the exact status each handler's rule gives it; it found F91. | Test gap (plan item half done) | me | P2.9 |
 | F90 | **OPEN: owner decision.** The plan (P2.6) says demo login, wildcard CORS and `http://` URLs "all refuse to boot" in production. P2.6 made only an `http://` `MAGIC_LINK_REDIRECT_URL` fatal; a set `DEMO_LOGIN_PASSWORD`, a `*` or `http://` CORS origin and an `http://` alert or coach URL are **warnings**. Why: `main` auto-deploys to Render, each of these is already blocked at request time (tested), and a new boot refusal on a dashboard value nobody can see from the repo could take the API down. To follow the plan literally, confirm none of these is set in the Render dashboard and say so; they become fatal in one small change. | Deviation from plan (owner's call) | owner | P2.9 or P8 |
 | F91 | **FIXED in P2.9.** ~~`POST /api/v1/events` (public) mishandled names every object inherits.~~ `recordProductEvent` looked the event up on a plain object literal, so inherited names were "found". Proven on the old code: `toString`, `valueOf` and `__proto__` answered 200 and became their own series in `/metrics` (outside the allowlist); `constructor` or `hasOwnProperty` with a label answered **500** (`.includes` called on a function), and each 500 also pages the alert webhook. The P2.4 fuzz missed it: random strings never hit those exact names. Now only the allowlist's own keys count (`Object.hasOwn`). Swept the API for the same pattern: the only other keyed object literal (`guideOverrides[slug]` in the catalog) is keyed by the catalog's own static slugs, not request data. | Medium (an anonymous 500 and metric pollution on a public route) | me | P2.9 |
+| F92 | **FIXED in P3.1** (`android.allowBackup: false`; the compiled manifest reads `allowBackup=false`). ~~Android Auto Backup was ON.~~ `app.config.ts` never sets `android.allowBackup`, and Expo's default is `true` (`@expo/config-plugins` `getAllowBackup`: `config.android?.allowBackup ?? true`); the generated manifest has `android:allowBackup="true"`. `expo-secure-store`'s `configureAndroidBackup` only EXCLUDES SecureStore's own data, so a Google backup or device transfer carries the rest: the plaintext AsyncStorage file, including the widget snapshot (monthly spend, the active count, the next renewal's name and amount, `src/widgets/widgetBridge.ts`), and the SQLCipher database WITHOUT its key (the key lives in SecureStore). What the app does on a device restored that way is not verified. | Medium (financial details leave the device in plaintext) | me | P3.1 |
+| F93 | **FIXED in P3.1** (R8 minify + resource shrinking on; 82 % of DEX classes obfuscated; APK 74.8 → 64.1 MB). ~~The release build was not shrunk or obfuscated.~~ `android/app/build.gradle` reads `android.enableMinifyInReleaseBuilds`, default `false`, and nothing sets it, so R8 never runs (`minifyEnabled false`, no resource shrinking), and `proguard-rules.pro` holds only two keep rules. | Low (reverse engineering made easy; a larger APK) | me | P3.1 |
+| F94 | **OPEN: observed once, not reproduced.** On the first R8 run, the Settings → Home currency sheet drew translucent: the Settings rows showed through the currency list (two captures, 4 s apart, so not mid-animation). The sheet's content sits on `c.surfaceCard`, which is opaque white (`palette.white`). It did NOT reproduce in 5 later attempts: the same R8 build 3 times (persisted state, a fresh install, and the exact first path: onboarding → Sign in → typed email → Add → Settings), once without R8, once with minify only. So it is not an R8 regression; the cause is unknown. Watch for it in P3.8's screen tests and P5's end-to-end runs. | Unknown (visual; once) | me | P3.8 / P5 |
 | F6 | My earlier session reports said "all gates green" from LOCAL runs only; GitHub CI had been red for 13 pushes (since `9eb4721`). From now on a gate counts as green only when the GitHub run for that commit is green. | Process | me | — (rule adopted) |
 
 ---
@@ -2528,4 +2541,87 @@ happened. The cause is not visible from here. GitHub documents that scheduled ru
 be delayed, or dropped under load. Its configuration passed locally (fuzz 165 s; the
 schema-valid properties 58 s). The owner can start it from the Actions tab
 (`workflow_dispatch`); otherwise it is checked again after the next 03:17 UTC.
+
+### P3.1 — build hardening — started 2026-10-01
+
+**Read first** (the generated `apps/mobile/android/` is gitignored, so it was read in
+place):
+- Manifest: `android:allowBackup="true"`, with SecureStore's backup-exclusion rules
+  (F92). The release manifest has no `usesCleartextTraffic`; only
+  `src/debug/AndroidManifest.xml` sets it, to `true`, for Metro.
+- `app/build.gradle`: `minifyEnabled` follows `android.enableMinifyInReleaseBuilds`,
+  default `false`; `shrinkResources` follows its own property (F93).
+- `expo-build-properties` 56.0.22 is installed and already used (a `libcrypto.so`
+  packaging fix). Its types list `enableMinifyInReleaseBuilds`,
+  `enableShrinkResourcesInReleaseBuilds`, `extraProguardRules` and `usesCleartextTraffic`.
+- `allowBackup` is not a build property: it is `android.allowBackup` in the Expo config.
+
+**What changed** (`apps/mobile/app.config.ts`, pinned by a new test in `app.config.test.ts`
+that fails without it):
+- `android.allowBackup: false` (F92);
+- `expo-build-properties`: `enableMinifyInReleaseBuilds: true`,
+  `enableShrinkResourcesInReleaseBuilds: true` (F93), and `usesCleartextTraffic: false`
+  (explicit; the debug manifest still allows cleartext for Metro).
+
+`expo prebuild --platform android --no-install` applied all three. The generated manifest
+reads `allowBackup="false"` and `usesCleartextTraffic="false"`, and `gradle.properties`
+sets both R8 properties to `true`.
+
+**The hardened release APK, verified by bytes** (single-ABI x86_64, the documented loop):
+- **Build:** successful. R8 wrote no `missing_rules.txt` (it writes one only when
+  classes are missing). Its 683 warnings all come from one jar, `amazon-appstore-sdk`
+  3.0.5. Gradle traces it to `react-native-purchases` → `purchases-hybrid-common` →
+  `purchases-store-amazon`, RevenueCat's Amazon Appstore path, not used for Google Play.
+  The warning is a bytecode-format notice ("Expected stack map table... in later
+  versions of R8 the method may be assumed not reachable"), so it is a future R8 risk on
+  that path only. The one manifest warning is benign: Expo's file-system provider is
+  tagged `replace` with nothing to replace.
+- **Compiled manifest** (`aapt2 dump xmltree`): `allowBackup=false`,
+  `usesCleartextTraffic=false`, no `debuggable`. Target SDK 36.
+- **DEX** (`dexdump`): 26 618 classes, 21 842 (82 %) with 1–2 character names. What keeps
+  its name fits each library's reflection and JNI needs: the 3 app entry points the
+  manifest names, RevenueCat's public API (its own consumer rules), and 1 170 React Native
+  classes. A 69.6 MB `mapping.txt` was produced.
+- **Size:** 64.1 MB with R8, 74.8 MB for the same build without it.
+
+**No extra keep rules were added.** The plan lists keep rules for RN, Hermes, Sentry,
+RevenueCat and SQLCipher. None was needed on the evidence: no missing classes, and the
+smoke below passes. Each library's AAR ships its own consumer rules. **Not proven by this
+smoke:** Sentry and RevenueCat are inert without their keys (no DSN, no SDK keys), so
+their code paths under R8 have not run. Re-run the smoke once those keys exist (owner,
+P8). And since Sentry auto-upload is disabled, the R8 `mapping.txt` is not uploaded, so a
+release crash would be obfuscated in Sentry until it is (P3.3 / P8).
+
+**The full on-device smoke** (emulator-5554, hardened APK, `pm clear`, every step tapped
+from the accessibility tree):
+1. **Onboarding:** three screens render, with their fonts and layout intact.
+2. **Login, the 16+ gate:** unticked, `Send sign-in link`, `Continue with Apple` and
+   `Continue with Google` are all `enabled=false`. Ticked, Apple and Google are enabled;
+   the magic link also waits for an email address (checked by typing one), then is enabled.
+3. **Add:** search "spotify" → the prefill reads Spotify, 10.00, Monthly, renews
+   Oct 31, 2026 → save → the dashboard goes from **$107.46 to $117.46**, **5/10 to 6/10**
+   free, and **5 to 6** renewals. This exercises the SQLCipher write path under R8.
+4. **Settings → Home currency:** USD `selected=true`, all six currencies listed, the
+   currency-honesty footnote present. (F94 was seen here once.)
+5. **Cancel:**
+   - the Netflix guide's saving is **$185.88/yr** ($15.49 × 12);
+   - "Open cancellation page" hands off to Chrome (focus `ChromeTabbedActivity`);
+   - on returning, the app asks "Did you cancel it?" → "Yes, I cancelled" → the
+     **PENDING · REPORTED OCT 1** stamp, with +$15.49 a month and +$185.88 a year;
+   - Done → the dashboard's still-to-renew is **$101.97** ($117.46 − $15.49), Netflix
+     has left Upcoming, and renewals are 6 → 5.
+
+   A dark bar seen across one line of text was a mid-animation frame of the stamp; it was
+   gone once the screen settled.
+
+The app's pid stayed 14487 from launch to the end (no restart). The app logged zero
+`FATAL`, `ClassNotFound`, `NoSuchMethod` or `NoSuchField` lines. The crash buffer's one
+entry is the emulator's own Bluetooth stack (`droid.bluetooth`, pid 10292), a system
+process. The emulator was shut down after the run (`emu kill`; no `qemu` left).
+
+**Mistakes of mine caught on the way:**
+- Git Bash rewrote `/sdcard/...` into a Windows path (fixed with `MSYS_NO_PATHCONV=1`).
+- My accessibility-tree parser crashed on nodes without an attribute (made tolerant).
+- I called the translucent sheet an "R8 regression" after one A/B build. Rebuilding and
+  re-testing showed it does not reproduce on the R8 build (F94).
 

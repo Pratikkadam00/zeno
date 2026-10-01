@@ -127,3 +127,17 @@ describe("no server secret reaches the client config", () => {
     expect(Object.keys(config.extra ?? {}).sort()).toEqual(["apiBaseUrl", "eas", "google", "revenueCat", "sentryDsn", "siteUrl"]);
   });
 });
+
+describe("P3.1 release hardening (F92, F93)", () => {
+  it("Android Auto Backup is off, R8 minify and resource shrinking are on, and release traffic is TLS only", async () => {
+    const config = await load();
+    expect(config.android?.allowBackup).toBe(false);
+    const buildProperties = config.plugins?.find((plugin) => Array.isArray(plugin) && plugin[0] === "expo-build-properties") as [string, { android?: Record<string, unknown> }] | undefined;
+    expect(buildProperties, "expo-build-properties is configured").toBeDefined();
+    expect(buildProperties![1].android).toMatchObject({
+      enableMinifyInReleaseBuilds: true,
+      enableShrinkResourcesInReleaseBuilds: true,
+      usesCleartextTraffic: false
+    });
+  });
+});

@@ -30,6 +30,12 @@ const config: ExpoConfig = {
   },
   android: {
     package: "app.zeno.mobile",
+    // P3.1 (finding F92). Expo's default is true, and Android Auto Backup then
+    // copied the app's data off the device (Google backup, device transfer):
+    // the plaintext AsyncStorage file, with the widget snapshot naming the next
+    // renewal and the monthly spend, and the SQLCipher database without its key.
+    // expo-secure-store's backup rules (below) only ever excluded its own data.
+    allowBackup: false,
     adaptiveIcon: {
       foregroundImage: "./assets/adaptive-icon.png",
       backgroundColor: "#0A0F2C"
@@ -81,7 +87,15 @@ const config: ExpoConfig = {
         android: {
           packagingOptions: {
             pickFirst: ["**/libcrypto.so"]
-          }
+          },
+          // P3.1 (finding F93): R8 shrinks and obfuscates the release build
+          // (it never ran: the template's default is off). Keep rules come
+          // only from evidence (R8's missing_rules.txt, the on-device smoke).
+          enableMinifyInReleaseBuilds: true,
+          enableShrinkResourcesInReleaseBuilds: true,
+          // Explicit, not implied by the target SDK: release traffic is TLS
+          // only. The debug manifest still allows cleartext for Metro.
+          usesCleartextTraffic: false
         }
       }
     ],
