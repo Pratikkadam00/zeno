@@ -68,7 +68,10 @@ module.exports = {
     // only ever go up, to 100 % lines. Started at the measured baseline:
     // app/ 117/1515 lines, src/components/ 118/307, components/ 0/20.
     "./app/": { lines: 7.72, statements: 7.31 },
-    "./src/components/": { lines: 38.43, statements: 37.5 },
+    // P3.8b: every shared component is fully covered, so each FILE is held at
+    // 100 % (a glob key is checked file by file).
+    "./src/components/**/*.{ts,tsx}": { lines: 100, statements: 100 },
+    "./components/**/*.tsx": { lines: 100, statements: 100 },
     "./src/data/budget-store.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
     "./src/data/subscription-store.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
     "./src/theme/theme-provider.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },

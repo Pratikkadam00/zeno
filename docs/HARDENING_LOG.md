@@ -61,8 +61,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P3.6 no secret in the bundle: `extra` and every `EXPO_PUBLIC_*` on the public-by-design allowlist (none found in the bundle, the config or the built APK; guards added) (green: CI 36849676333, CodeQL 36849676314 on `1801e8d`)
   - [x] P3.7 screen capture blocked on the lock overlay and PIN entry (app-wide `FLAG_SECURE` is the owner's call); proven on the emulator; **fixes F105** (the locked app stayed readable to accessibility services); F104 and F106 logged (green: CI 36854703994, CodeQL 36854704080 on `39c9c46`)
   - [~] P3.8 screen tests for all 29 screens, with a jest floor over `app/**` and `src/components/**` (split into steps; each raises the floor)
-    - [~] P3.8a the floor itself: directory floors at the measured baseline (12.75 % of 1842 lines)
-    - [ ] P3.8b shared components (`src/components/**`, `components/**`), incl. F1 `ServiceAutocomplete`
+    - [x] P3.8a the floor itself: directory floors at the measured baseline (12.75 % of 1842 lines) (green: CI 36858191877, CodeQL 36858191900 on `89c3428`; P3.8a's own push `9a2f1a8` went red on F103)
+    - [~] P3.8b shared components (`src/components/**`, `components/**`), incl. F1 `ServiceAutocomplete`: every file at 100 % lines; **fixes F1, F107**
     - [ ] P3.8c the tab screens and the tab layout
     - [ ] P3.8d subscription detail, cancel, add
     - [ ] P3.8e settings (incl. F29's screen use), profile, notifications, login, paywall, onboarding
@@ -84,7 +84,7 @@ that closes it.
 
 | # | Finding | Severity | Owner | Closes in |
 |---|---|---|---|---|
-| F1 | `apps/mobile/components/subscriptions/ServiceAutocomplete.tsx` (RN component, also exports `servicePriceLabel`) has no test in any runner | Test gap | me | P3 (screen/component tests) |
+| F1 | **FIXED in P3.8b.** ~~`ServiceAutocomplete.tsx` had no test.~~ 8 jest tests against the real bundled catalog; the file is held at 100 % lines. Original: `apps/mobile/components/subscriptions/ServiceAutocomplete.tsx` (RN component, also exports `servicePriceLabel`) has no test in any runner | Test gap | me | P3 (screen/component tests) |
 | F2 | **Production API likely ran with per-client rate limiting broken** from the 2026-09-29 deploy of `9eb4721` until `064fc52` deploys: Fastify 5.12.5 made the numeric `trustProxy: 1` trust nobody, so every visitor shared the load balancer's rate-limit bucket (one noisy client could 429 everyone, incl. login). Render auto-deploys `main` and starts with `tsx` (no typecheck), so the type break did not stop the deploy. **Fixed in code**; the owner should confirm the Render deploy of `064fc52`+ is live. | High (availability of auth) | owner: confirm deploy | P0.2 (fixed) |
 | F3 | Whether the address Render's load balancer appends is the real client or a Cloudflare edge is unverified (Render staff, May 2021: "we set the first IP in the list to the real client IP"). With 1 trusted hop, request.ip is the LAST appended address. Check in Render logs: the pino request log's `remoteAddress` for your own request should equal your public IP. If it shows a Cloudflare IP, set `TRUST_PROXY_HOPS=2`. | Medium (rate-limit granularity) | owner: one log check | P8 |
 | F4 | Render builds with `npm install` (not `npm ci`) and deploys every push to `main` regardless of CI status (`autoDeploy: true`), and the start command (`tsx`) never typechecks. A red CI does not stop a deploy. | High (process) | **fixed in `render.yaml` (P0.4)**; owner: confirm the Render service is Blueprint-managed so the change applies (if it was created by hand, set "Auto-Deploy: After CI checks pass" in the dashboard) | P0.4 |
@@ -182,6 +182,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F96 | **OPEN: owner decision.** The paywall sells a Family plan ("up to 5 members, $6.99/mo"), but household sharing with up to 5 members is free to everyone: `app/family.tsx` checks no plan, and the server's 5-member cap applies regardless of plan. So the Family plan gives nothing beyond Pro while its label implies it does. Either gate the Family Vault behind the plan (the server must then check entitlement on create and join), or reword the plan. | Medium (truthfulness of what is sold) | owner | before billing ships |
 | F102 | **FIXED 2026-10-01 (found through F97).** ~~Postgres writes to one row could land out of order.~~ `pg.ts` sent every query straight to a 5-connection pool, and on a real server each connection finishes in its own time. So a fire-and-forget upsert issued just before an account deletion could land AFTER the delete. The API answered "deleted" while the row (a Plaid bank token, an entitlement, a household) was back in Postgres, and the next boot loaded it again: F75's promise broken. Likewise two quick upserts of one key could leave the OLDER value. PGlite runs one connection in order, which is why only CI's server showed it. Now operations on one row run in the order they were issued, and a delete-by-field (account deletion's sync purge) or a namespace clear first waits for every write already in flight in that namespace. Bite-checked on PGlite, no timing involved: the old `pg.ts` fails 2 tests (the deleted user's Plaid row survives; the stale `{v:1}` beats `{v:2}`), and removing the namespace wait fails a third. | High (deleted data resurrected) | me | P3.5 (found in CI) |
 | F103 | **OPEN (mine), likely cause found 2026-10-01, fix scheduled for P4.** It recurred on CI 36857434988 (`9a2f1a8`), and the new annotation showed the build failing in `next/font/google`: the font files that its generated CSS (`hanken_grotesk_….module.css`) references were "module not found". `apps/web/app/layout.tsx` loads Space Grotesk, Hanken Grotesk and JetBrains Mono through `next/font/google`, which downloads them from Google Fonts at BUILD time, the build's only network step. So the likely cause is that download failing on the runner (unproven: the annotation held only the last 40 lines, so it now also carries the first error lines). The fix is to self-host the fonts so the build is offline. Measured first: the site serves 13 variable `woff2` files (179 KB) split by character range, and the TTFs the mobile packages already have are about 5x heavier, so the right files are the current `woff2`s with their exact `unicode-range`s (read from the build's CSS). That changes how the site loads fonts and needs a visual check, so it goes in P4. Earlier text: **OPEN (mine): one CI-only web build failure, no detail yet.** CI 36845816550 (`44791e7`) failed "Build web" with only "exit code 1". The same build passes here, and that commit changed nothing under `apps/web`. The next run failed earlier (F97), so the build step has not run since. The step now posts its last 40 log lines as an annotation on failure, so a recurrence explains itself. | Low until explained | me | the next occurrence |
+| F107 | **FIXED in P3.8b (found by its own test).** ~~Reduce-motion users still saw the first animation of a component.~~ `useReducedMotion` started at "motion on" and learned the OS setting asynchronously, so every animated component's FIRST effect ran as if motion were allowed. A `Stamp` mounted under reduce-motion still sprang in from 1.7x and fired its haptic, and the spring kept going after the setting arrived. Now the last answer known in the app run is kept, so every component mounting after the first read starts from it. The launch splash makes that first read, long before any stamp appears. The splash itself still starts before the answer, but its effect re-runs and jumps to the static frame. Bite-checked: removing the cache fails 2 tests. | Medium (accessibility: motion for users who turned it off) | me | P3.8b |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
 | F105 | **FIXED in P3.7 (found on the emulator).** ~~The locked app stayed readable to accessibility services.~~ The lock overlay is drawn on top of the app, but the app underneath stayed in the accessibility tree. With the app locked, `uiautomator dump --compressed` (the nodes accessibility services get) held 77 labelled nodes, every ledger amount included ("$107.46", "Netflix … $15.49 per mo"). So a screen reader, or any app granted accessibility access, could read the finances through the lock. Now `HiddenWhileLocked` hides the app's content (`no-hide-descendants`, `accessibilityElementsHidden`) whenever the overlay is up, on the same condition that draws it, and never remounts the app. Proven on the device: locked, 9 labels, all the lock screen's, no money; unlocked, the ledger is back. Bite-checked in jest. | High (financial data readable while locked) | me | P3.7 |
 | F106 | **OPEN (mine): seen once, not reproduced.** After the first unlock following a fresh install, three screenshots of the unlocked app came back fully black, although the app window no longer carried `FLAG_SECURE`, the display was awake, and the home screen captured normally. In 2 later attempts (a return from background, and a cold start), the unlocked app captured normally at 4 s and at 10 s. Cause unknown. It fails safe (blocking a screenshot, not leaking one). Re-check during P5's end-to-end runs. | Low | me | P5 |
@@ -3414,3 +3415,75 @@ fails.
 
 Gates after the final code edit: typecheck 0 · lint 0 · vitest 1842 · jest 153 / 153 with
 the new directory floors held.
+
+### P3.8b — shared components — 2026-10-01
+
+**Result:** every file under `src/components/**` and `components/**` is at 100 % lines
+and statements. Jest now holds each of them there FILE BY FILE, using glob keys
+(`"./src/components/**/*.{ts,tsx}"`, `"./components/**/*.tsx"`), which replace
+P3.8a's directory floor for `src/components/`. The whole jest scope went from 235 to 852
+covered lines (of 2251, now that the component trees are measured whole), and from 7 to
+31 files at 100 %. `app/` is unchanged (117/1515); the screens come next.
+
+**Tests (all checking behaviour, not just rendering):**
+- **`zeno/Primitives.rntest.tsx`, 31 tests:**
+  - Icon: name resolution, the explicit component, the fallback.
+  - ProgressBar: the colour at each threshold (75 % and 100 %), the clamping, the
+    label.
+  - CategoryTag and Badge: the colours chosen from the palette and tones.
+  - IconButton: its role, name and disabled state; the 44 pt `hitSlop` maths; the
+    pressed style.
+  - Switch: its role, state, opposite-value callback, and disabled.
+  - SegmentedControl: tabs with their selected state, and the value reported.
+  - Input: the name from its label or explicit label, the hint, focus, error and
+    disabled.
+  - ListRow: the derived name ("Netflix, Renews Oct 2, $15.49 per mo"), the
+    non-pressable form, and no empty name.
+- **`Components.rntest.tsx`, 15 tests:**
+  - LedgerSheet and ConfirmSheet: options as named buttons with their selected state;
+    the pick with its haptic; Close and Cancel; the backdrop closing on tap; the note.
+  - ComingSoon: says "coming soon", records interest, pretends nothing.
+  - AppErrorBoundary: a crash is shown, reported with the component stack, and
+    recoverable through Try again.
+  - SplashSequence: its safety timer (2250 ms, 700 ms under reduced motion, cleared
+    on unmount).
+  - The ledger kit under reduced motion.
+- **`components/subscriptions/ServiceAutocomplete.rntest.tsx`, 8 tests (F1):** against
+  the REAL catalog, with the data read first (`"netf"` matches only Netflix at
+  $15.49/mo; Speechify is annual-only; Substack has no price).
+
+**Found and fixed on the way:**
+- **F107** (see its row): found by the Stamp's reduced-motion test, which failed
+  against the code.
+- **Dead code removed, not tested:** `ui.tsx`'s `TextLink`, `ThemeToggle` (the retired
+  generational themes) and `Kpi`. A search of every import of `components/ui` found only
+  `ComingSoon`, using `Screen`, `Surface` and `PrimaryButton`.
+- **`Icon.tsx`'s unreachable `return null`:** it is gone, because the fallback is now
+  `Circle`, imported directly.
+- **act() warnings:** the whole jest suite had 3 ("an update … was not wrapped in
+  act"): 1 already in `Kit.rntest.tsx` (now fixed), and 2 from my own Switch tests (now
+  fixed). It now has 0, across 208 tests.
+- **The mock for `@gorhom/bottom-sheet`** needed `__esModule: true`: the library's own
+  mock exports `default` without it.
+
+**Bite check: 11, all caught:**
+- ProgressBar warning from 80 %;
+- Switch reporting the current value;
+- ListRow's name losing the cadence;
+- IconButton ignoring disabled;
+- a case-sensitive exact match;
+- LedgerSheet picking the label;
+- Try again never clearing;
+- the reduced-motion timer at 2250 ms;
+- the F107 cache removed;
+- Input never showing focus;
+- the per-file floor, which fails as soon as one test file is left out.
+
+**Not covered yet, stated:** branches. The plan's ratchet is "100 % lines"; 46 branch arms (counted from the coverage data)
+in these files are still unexercised (e.g. Button and ServiceAvatar variants, and
+optional `style` props).
+
+
+Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1842 at
+100 / 99.68 / 100 / 100 · jest 208 / 208, 0 act() warnings, every component file at 100 %
+lines and statements.

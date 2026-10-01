@@ -37,12 +37,20 @@ export function printIn(index = 0) {
  * mount, then updates if the user toggles it. Callers collapse entrances to
  * opacity-only (or skip springs) when this is true — the paper stops moving.
  */
+// F107: the OS answer arrives asynchronously, so a component's FIRST effect
+// used to run as if motion were allowed: a Stamp mounted under reduce-motion
+// still sprang in from 1.7x and fired its haptic before the answer landed. The
+// last answer known in this app run is kept here, so every component mounting
+// after the first read (the launch splash reads it) starts from the real value.
+let lastKnownReduced = false;
+
 export function useReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
+  const [reduced, setReduced] = useState(lastKnownReduced);
   useEffect(() => {
     let mounted = true;
     void AccessibilityInfo.isReduceMotionEnabled()
       .then((value) => {
+        lastKnownReduced = value;
         if (mounted) {
           setReduced(value);
         }
@@ -52,7 +60,10 @@ export function useReducedMotion(): boolean {
         // the default (motion on) rather than leak an unhandled rejection from
         // every animated component; the listener below still applies toggles.
       });
-    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduced);
+    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", (value) => {
+      lastKnownReduced = value;
+      setReduced(value);
+    });
     return () => {
       mounted = false;
       subscription.remove();

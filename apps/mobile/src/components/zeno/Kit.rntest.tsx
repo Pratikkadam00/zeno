@@ -39,9 +39,10 @@ describe("AmountDisplay", () => {
     expect(screen.getByText("84")).toBeTruthy();
   });
 
-  it("with `animate`, still settles on the exact final value", () => {
+  it("with `animate`, still settles on the exact final value", async () => {
     jest.useFakeTimers();
     wrap(<AmountDisplay amount={84.31} currency="$" animate animateMs={600} />);
+    await act(async () => {}); // the provider's and useReducedMotion's promises
     // drive past the animation window AND the rAF failsafe
     act(() => {
       jest.advanceTimersByTime(1200);

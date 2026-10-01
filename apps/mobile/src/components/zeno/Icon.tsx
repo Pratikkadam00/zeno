@@ -1,4 +1,5 @@
 import * as Lucide from "lucide-react-native";
+import { Circle } from "lucide-react-native";
 import type { ComponentType } from "react";
 
 export type LucideIconComponent = ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
@@ -29,10 +30,8 @@ const registry = Lucide as unknown as Record<string, LucideIconComponent | undef
  * dynamically for convenience and parity with the design-system API.
  */
 export function Icon({ name, icon, size = 20, color = "#000", strokeWidth = 2 }: IconProps) {
-  const Resolved: LucideIconComponent | undefined =
-    icon ?? (name ? registry[toPascal(name)] : undefined) ?? registry.Circle;
-  if (!Resolved) {
-    return null;
-  }
+  // An unknown name falls back to a circle, imported directly so the fallback
+  // can never be missing (the old `return null` guard was unreachable).
+  const Resolved: LucideIconComponent = icon ?? (name ? registry[toPascal(name)] : undefined) ?? Circle;
   return <Resolved size={size} color={color} strokeWidth={strokeWidth} />;
 }

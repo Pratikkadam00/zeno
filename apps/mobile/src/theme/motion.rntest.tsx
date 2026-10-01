@@ -134,12 +134,43 @@ describe("useReducedMotion", () => {
     }
   });
 
+  it("F107: a component mounting after the answer is known STARTS from it (no first frame of motion)", async () => {
+    isReduceMotionEnabled.mockResolvedValueOnce(true);
+    captureSubscription();
+    const first = renderHook(() => useReducedMotion());
+    await settle();
+    first.unmount();
+    isReduceMotionEnabled.mockResolvedValueOnce(true);
+    captureSubscription();
+    const later = renderHook(() => useReducedMotion());
+    expect(later.result.current).toBe(true); // before its own query has answered
+    await settle();
+    // A toggle while the app is open is remembered too.
+    const sub = captureSubscription();
+    isReduceMotionEnabled.mockResolvedValueOnce(true);
+    const third = renderHook(() => useReducedMotion());
+    await settle();
+    act(() => sub.listener!(false));
+    third.unmount();
+    isReduceMotionEnabled.mockResolvedValueOnce(false);
+    captureSubscription();
+    expect(renderHook(() => useReducedMotion()).result.current).toBe(false);
+    await settle();
+  });
+
   it("a failed OS query (native module unavailable) is handled and leaves motion on", async () => {
     // React Native rejects isReduceMotionEnabled() when its native module is
     // missing (Libraries/Components/AccessibilityInfo, RN 0.85), and iOS passes
     // a reject callback to the native side. That rejection must not escape as
     // an unhandled promise rejection (docs/ENGINEERING_STANDARDS.md section 7);
     // jest-circus fails the test if it does.
+    // Precondition: the last answer known in this run is "motion on" (the
+    // hook keeps the last known answer across mounts, F107).
+    isReduceMotionEnabled.mockResolvedValueOnce(false);
+    captureSubscription();
+    const primer = renderHook(() => useReducedMotion());
+    await settle();
+    primer.unmount();
     isReduceMotionEnabled.mockRejectedValueOnce(new Error("AccessibilityInfo native module is not available"));
     const sub = captureSubscription();
     const { result } = renderHook(() => useReducedMotion());
