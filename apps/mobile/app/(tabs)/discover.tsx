@@ -136,15 +136,15 @@ export default function DiscoverScreen() {
   useEffect(() => {
     if (!response || response.type !== "success" || !request || response.url === lastHandledAuthUrl.current) return;
     lastHandledAuthUrl.current = response.url;
-    void handleGmailResponse();
+    void handleGmailResponse(request, response);
   }, [request, response]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function handleGmailResponse() {
-    if (!request || !response) return;
+  // Called only from the effect above, which has already checked both.
+  async function handleGmailResponse(authRequest: NonNullable<typeof request>, authResponse: NonNullable<typeof response>) {
     setError(null);
     setScanStatus("connecting");
     try {
-      const account = await connectGmail(request, response);
+      const account = await connectGmail(authRequest, authResponse);
       setAccounts((prev) => prev.some((a) => a.address === account.address) ? prev : [...prev, account]);
       await runGmailScan();
     } catch (connectError) {
@@ -658,7 +658,6 @@ export default function DiscoverScreen() {
         ) : null}
 
       </ScrollView>
-      <EditSubscriptionModal candidate={editing} onClose={() => setEditing(null)} onSave={saveEditedSubscription} />
     </SafeAreaView>
   );
 }
@@ -673,13 +672,28 @@ function EditSubscriptionModal({ candidate, onClose, onSave }: {
   const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [draft, setDraft] = useState<DetectedSubscription | null>(candidate);
+  // F113: the amount and date fields keep the TEXT the user is typing. They
+  // used to be driven by the parsed value: "9." re-rendered as "9" (so "9.99"
+  // typed key by key became "999"), a partial date was rewritten to another
+  // date, and clearing the date (new Date("").toISOString()) threw a
+  // RangeError in the change handler, a crash. The draft now takes a value
+  // only when the text is a complete, valid one.
+  const [amountText, setAmountText] = useState(candidate ? String(candidate.amount) : "");
+  const [dateText, setDateText] = useState(candidate ? candidate.nextRenewal.slice(0, 10) : "");
   // Deliberate: re-sync the edit draft whenever a different candidate is
   // opened. This component stays mounted across edits (the Modal's `visible`
   // prop toggles instead), so a key-based remount would also unmount the
   // Modal on close and cut its slide-out animation short.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setDraft(candidate); }, [candidate]);
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setDraft(candidate);
+    setAmountText(candidate ? String(candidate.amount) : "");
+    setDateText(candidate ? candidate.nextRenewal.slice(0, 10) : "");
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [candidate]);
   if (!draft) return null;
+  const amountValid = isAmountText(amountText);
+  const dateValid = isIsoDay(dateText);
 
   return (
     <Modal visible={Boolean(candidate)} transparent animationType="slide" onRequestClose={onClose}>
@@ -687,8 +701,31 @@ function EditSubscriptionModal({ candidate, onClose, onSave }: {
         <View style={styles.modalCard}>
           <Text style={styles.modalTitle}>Edit details</Text>
           <TextInput value={draft.name} onChangeText={(name) => setDraft({ ...draft, name })} placeholder="Service name" placeholderTextColor={theme.quietText} style={styles.input} accessibilityLabel="Service name" />
-          <TextInput value={String(draft.amount)} onChangeText={(amount) => setDraft({ ...draft, amount: Number.parseFloat(amount) || 0 })} keyboardType="decimal-pad" placeholder="Amount" placeholderTextColor={theme.quietText} style={styles.input} accessibilityLabel="Amount" />
-          <TextInput value={draft.nextRenewal.slice(0, 10)} onChangeText={(nextRenewal) => setDraft({ ...draft, nextRenewal: new Date(nextRenewal).toISOString() })} placeholder="YYYY-MM-DD" placeholderTextColor={theme.quietText} style={styles.input} accessibilityLabel="Next renewal date" />
+          <TextInput
+            value={amountText}
+            onChangeText={(text) => {
+              setAmountText(text);
+              if (isAmountText(text)) setDraft({ ...draft, amount: Number(text) });
+            }}
+            keyboardType="decimal-pad"
+            placeholder="Amount"
+            placeholderTextColor={theme.quietText}
+            style={styles.input}
+            accessibilityLabel="Amount"
+          />
+          {!amountValid ? <Text style={styles.fieldHint} accessibilityLiveRegion="polite">Enter an amount like 9.99</Text> : null}
+          <TextInput
+            value={dateText}
+            onChangeText={(text) => {
+              setDateText(text);
+              if (isIsoDay(text)) setDraft({ ...draft, nextRenewal: new Date(text).toISOString() });
+            }}
+            placeholder="YYYY-MM-DD"
+            placeholderTextColor={theme.quietText}
+            style={styles.input}
+            accessibilityLabel="Next renewal date"
+          />
+          {!dateValid ? <Text style={styles.fieldHint} accessibilityLiveRegion="polite">Use YYYY-MM-DD</Text> : null}
           <View style={styles.cycleRow}>
             {(["weekly", "monthly", "quarterly", "annual", "unknown"] as const).map((cycle) => (
               <Pressable
@@ -704,7 +741,15 @@ function EditSubscriptionModal({ candidate, onClose, onSave }: {
           </View>
           <View style={styles.modalActions}>
             <Pressable accessibilityRole="button" onPress={onClose} style={styles.modalGhostBtn}><Text style={styles.modalGhostText}>Cancel</Text></Pressable>
-            <Pressable accessibilityRole="button" onPress={() => onSave(draft)} style={styles.modalSaveBtn}><Text style={styles.modalSaveText}>Save</Text></Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !amountValid || !dateValid }}
+              disabled={!amountValid || !dateValid}
+              onPress={() => onSave(draft)}
+              style={[styles.modalSaveBtn, (!amountValid || !dateValid) && styles.dimmed]}
+            >
+              <Text style={styles.modalSaveText}>Save</Text>
+            </Pressable>
           </View>
         </View>
       </View>
@@ -713,6 +758,18 @@ function EditSubscriptionModal({ candidate, onClose, onSave }: {
 }
 
 // ─── Pure helpers (logic unchanged) ──────────────────────────────────────────
+
+/** A non-negative amount with at most 2 decimals ("9", "9.", "9.99"); not empty. */
+function isAmountText(text: string): boolean {
+  return /^\d+(\.\d{0,2})?$/.test(text.trim());
+}
+
+/** A complete, real calendar day "YYYY-MM-DD" (rejects "2026-1" and "2026-02-30"). */
+function isIsoDay(text: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return false;
+  const parsed = new Date(text);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === text;
+}
 
 async function readPickedText(asset: DocumentPicker.DocumentPickerAsset): Promise<string> {
   if (asset.file) return asset.file.text();
@@ -887,6 +944,7 @@ function createStyles(theme: ThemeTokens) {
     modalCard:     { backgroundColor: theme.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, gap: 12 },
     modalTitle:    { ...typography.title3, color: theme.text },
     input:         { minHeight: spacing.rowH + 4, borderRadius: 12, borderWidth: 0.5, borderColor: theme.border, backgroundColor: theme.surfaceAlt, color: theme.text, paddingHorizontal: 14, ...typography.body },
+    fieldHint:     { ...typography.caption1, color: theme.danger, marginTop: -6, marginBottom: 8 },
     cycleRow:      { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     cycleChip:     { borderRadius: 20, borderWidth: 0.5, borderColor: theme.border, paddingHorizontal: 12, paddingVertical: 8 },
     cycleChipActive: { borderColor: theme.primary, backgroundColor: theme.primarySurface },

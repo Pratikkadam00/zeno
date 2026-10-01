@@ -64,8 +64,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
     - [x] P3.8a the floor itself: directory floors at the measured baseline (12.75 % of 1842 lines) (green: CI 36858191877, CodeQL 36858191900 on `89c3428`; P3.8a's own push `9a2f1a8` went red on F103)
     - [x] P3.8b shared components (`src/components/**`, `components/**`), incl. F1 `ServiceAutocomplete`: every file at 100 % lines; **fixes F1, F107** (green: CI 36860084512, CodeQL 36860084509 on `f78b449`)
     - [~] P3.8c the tab screens and the tab layout
-      - [~] P3.8c-1 Ledger, Subscriptions, Calendar, Insights and the tab bar; **fixes F108, F109, F110, F111**; F112 to check on the device
-      - [ ] P3.8c-2 Discover (the scan, CSV import and Gmail connect)
+      - [x] P3.8c-1 Ledger, Subscriptions, Calendar, Insights and the tab bar; **fixes F108, F109, F110, F111**; F112 to check on the device (green: CI 36863386995, CodeQL 36863387142 on `6d08eb4`)
+      - [~] P3.8c-2 Discover (the scan, CSV import and Gmail connect); **fixes F113**; F114 to the owner
     - [ ] P3.8d subscription detail, cancel, add
     - [ ] P3.8e settings (incl. F29's screen use), profile, notifications, login, paywall, onboarding
     - [ ] P3.8f the rest (budget, recap, family, coach, wrapped, widgets, spend-twin, open-banking, backend, business, partners, public-api) and the root layout
@@ -189,7 +189,9 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F109 | **FIXED in P3.8c.** ~~Screen readers heard a subscription row without its price or date.~~ On the Subscriptions tab each row's trailing column (price, next date, "PAUSED", "!", the Verified stamp) is a custom node, and ListRow's derived name covers only the title and subtitle. VoiceOver/TalkBack read "Netflix, ENTERTAINMENT" while sighted users saw "$15.49, OCT 2". The row's name now follows what is shown. | Medium (accessibility) | me | P3.8c |
 | F110 | **FIXED in P3.8c.** ~~Insight cards showed savings 100x too small.~~ `analytics.tsx` passed `insight.savingAmount`, which is in WHOLE currency units (the engine's `monthlyDollars`), to `formatMoney`, which takes MINOR units: "Save $0.22/mo" for a $22 saving. The header pill and the dashboard used the whole-unit value correctly. Checked that the engine's own titles are right: it has its own local `formatMoney` in whole units. | Medium (money shown wrong) | me | P3.8c |
 | F111 | **FIXED in P3.8c.** ~~West of UTC, the calendar's day panel was headed with the day BEFORE the one tapped.~~ The tapped key ("2026-10-02") is a local day, but `formatDateHeader` parsed it with `new Date(key)`, which reads a date-only string as UTC midnight. Measured: rendered in America/New_York or America/Los_Angeles that is "Thursday, October 1"; London and Kolkata are unaffected, which is why it was never seen here. The key is now read as a local date. The test bites on this machine (UTC+5:30); on CI's UTC runner both readings coincide. | Medium (the date shown to most US users was wrong) | me | P3.8c |
-| F112 | **TO CHECK ON THE DEVICE (not a confirmed bug).** On the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. | to be measured | me | P3 gate |
+| F113 | **FIXED in P3.8c-2.** ~~Editing a scan result's amount or date was broken, and clearing the date crashed the app.~~ Discover's edit sheet drove both fields from the PARSED value. Measured in the test, typing key by key: "9.99" became "999", because "9." was re-rendered as "9", so a $9.99 subscription would be saved as $999. A partial date was rewritten to a different one: "2026-1" becomes 2025-12-31 (measured with Node). And deleting one character ("2026-10-0") or clearing the field made `new Date(text).toISOString()` throw `RangeError: Invalid time value` inside the change handler, which crashes the app. The sheet now keeps the typed text, takes a value only when it is complete and valid (an amount with at most 2 decimals; a real calendar day, so "2026-02-30" is refused), shows a hint otherwise, and disables Save until both are valid. Bite-checked: the committed version fails 3 tests. | High (a crash, and money saved 100x too large) | me | P3.8c-2 |
+| F114 | **OPEN: owner decision (copy).** The Gmail card promises "Scanned on your device — nothing leaves your phone". Checked in `emailScanner.ts`: email content goes only from Google to the phone and is parsed there (it calls only gmail.googleapis.com and Google's OAuth endpoints, never Zeno's API). But "nothing leaves your phone" is absolute. After an import the screen sends a funnel event ("import_completed", source "email", no content), and a signed-in user with sync on uploads encrypted copies of the subscriptions saved. It sits close to the banned "100% on-device" wording. A truthful option: "Scanned on your device — your emails never reach Zeno's servers". | Medium (truthfulness) | owner | before release |
+| F112 | **TO CHECK ON THE DEVICE (not a confirmed bug).** On the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results: a checkbox nested inside each row's "Edit" button. | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
 | F105 | **FIXED in P3.7 (found on the emulator).** ~~The locked app stayed readable to accessibility services.~~ The lock overlay is drawn on top of the app, but the app underneath stayed in the accessibility tree. With the app locked, `uiautomator dump --compressed` (the nodes accessibility services get) held 77 labelled nodes, every ledger amount included ("$107.46", "Netflix … $15.49 per mo"). So a screen reader, or any app granted accessibility access, could read the finances through the lock. Now `HiddenWhileLocked` hides the app's content (`no-hide-descendants`, `accessibilityElementsHidden`) whenever the overlay is up, on the same condition that draws it, and never remounts the app. Proven on the device: locked, 9 labels, all the lock screen's, no money; unlocked, the ledger is back. Bite-checked in jest. | High (financial data readable while locked) | me | P3.7 |
 | F106 | **OPEN (mine): seen once, not reproduced.** After the first unlock following a fresh install, three screenshots of the unlocked app came back fully black, although the app window no longer carried `FLAG_SECURE`, the display was awake, and the home screen captured normally. In 2 later attempts (a return from background, and a cold start), the unlocked app captured normally at 4 s and at 10 s. Cause unknown. It fails safe (blocking a screenshot, not leaking one). Re-check during P5's end-to-end runs. | Low | me | P5 |
@@ -3599,3 +3601,71 @@ Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings (my fi
 on the new tests: 20 `require()` in mock factories, now `jest.requireActual`; an export
 above imports; 2 unnamed stand-in components) · vitest 1842 at 100 / 99.68 / 100 / 100 ·
 jest 259 / 259, 0 act() warnings, the new floors held.
+
+### P3.8c-2 — Discover — 2026-10-01
+
+**Result:**
+- `app/(tabs)/discover.tsx` is at 100 % lines and statements (230/230), held there file
+  by file.
+- `app/` went from 424 to 603 lines covered (27.98 % to 39.51 %, of 1526: the total
+  grew with the F113 fix).
+- The jest suite is at 286 tests, 0 act() warnings.
+
+**What is real and what is faked:**
+- **Real:** the subscription store, the CSV parser, the free-plan cap, the found-money
+  summary and the catalog.
+- **Faked:** the inbox scan and connection (`emailScanner`), Google's auth hook, the file
+  picker, sharing, and the funnel event.
+
+**Checked before writing, not assumed:** `process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID` is
+read at run time in jest (a probe set it after import and saw it), so a test can set it.
+
+**Tests (27):**
+- **Before any scan:** the export guides, the empty state, Skip; Connect Gmail without a
+  client id (it explains, opens nothing), with one (opens consent), and disabled until
+  the request is ready.
+- **Gmail:**
+  - an approved connection is scanned, and a failed one is shown;
+  - inboxes are listed, disconnected, and scanned as "all";
+  - progress, and a Cancel that drops late results;
+  - a scan error;
+  - a failed listing or disconnect handled;
+  - a reconnect not listed twice.
+- **CSV:** through the real parser (expected counts taken from `parseCSV` itself); a
+  cancelled pick; a picker failure; read by uri on a phone.
+- **Results:**
+  - named checkboxes;
+  - "already tracked" by name, and by catalog slug alone (added when the slug mutation
+    escaped);
+  - a cancelled match not counted;
+  - select all and none, and the disabled add;
+  - adding (saved, reminders scheduled, the funnel event, back to the ledger);
+  - the free-plan cap at 8 and at 10 tracked;
+  - a paid plan uncapped;
+  - the catalog category mapping for all 11 catalog categories;
+  - the found-money card and its share;
+  - Start over;
+  - the Android toast.
+- **Editing (F113):** keyboard-realistic typing. Each keystroke edits what the field
+  currently shows; my first version passed whole strings and did NOT catch the bug,
+  which I noticed when it passed against the unfixed code.
+
+**Found and fixed: F113 (see its row).** F114 is logged for the owner. F112's nesting
+pattern is on this screen too (a checkbox inside the row's "Edit" button).
+
+**Dead code removed, not tested:**
+- `handleGmailResponse`'s re-check of request and response: its only caller had just
+  checked both, so they are now passed in.
+- An edit sheet mounted on the landing screen, where no row exists to open it.
+
+**Bite check:**
+- the committed version fails the 3 F113 tests;
+- free slots off by one;
+- "already tracked" ignoring the slug, which first ESCAPED (my test matched by name), so
+  a slug-only test was added and it is caught now;
+- a cancelled scan still showing late results;
+- Save allowed with an invalid date.
+
+
+Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1842 at
+100 / 99.68 / 100 / 100 · jest 286 / 286, 0 act() warnings, the new floors held.

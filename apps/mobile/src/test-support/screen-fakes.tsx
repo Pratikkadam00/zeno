@@ -46,6 +46,7 @@ export const fakeNotificationsModule = {
   cancelAllNotifications: jest.fn(async () => {}),
   cancelNotificationsForSubscription: jest.fn(async () => {}),
   scheduleRenewalNotificationsWithPreferences: jest.fn(async () => {}),
+  scheduleRenewalNotifications: jest.fn(async () => {}),
   rescheduleAllNotifications: jest.fn(),
   registerForPushNotifications: jest.fn(async () => ({ status: "granted" })),
   clearStoredPushToken: jest.fn(async () => {})
