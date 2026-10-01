@@ -1,6 +1,20 @@
 import { createSign, generateKeyPairSync } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// Counts the SHA-256 hashes verifyAccessToken does (its revocation lookup), a
+// deterministic measure of "the same code path" that needs no clock.
+const hashes = vi.hoisted(() => ({ sha256: 0 }));
+vi.mock("node:crypto", async (importOriginal) => {
+  const real = await importOriginal<typeof import("node:crypto")>();
+  return {
+    ...real,
+    createHash: (algorithm: string, ...rest: unknown[]) => {
+      if (algorithm === "sha256") hashes.sha256 += 1;
+      return (real.createHash as (...args: unknown[]) => ReturnType<typeof real.createHash>)(algorithm, ...rest);
+    }
+  };
+});
+
 /**
  * F88 (plan P2.2): an unknown token and a revoked one must be indistinguishable
  * to the caller: "identical bodies, no timing leak on the token path (same code
@@ -81,6 +95,29 @@ describe("F88: unknown and revoked tokens are indistinguishable to the caller", 
       expect({ status: other.status, body: other.body, headers: other.headers }, `${other.kind} vs ${first!.kind}`)
         .toEqual({ status: first!.status, body: first!.body, headers: first!.headers });
     }
+  });
+
+  it("every well-formed token does the SAME work whatever its signature says: one revocation lookup each (deterministic)", async () => {
+    // On the Linux CI runner a forged token answered ~35 µs faster than a
+    // genuine one (46.7 vs 82.0 µs median), because a bad signature returned
+    // before the decode, claims and revocation lookup. Now every kind does them.
+    const auth = await import("./routes/auth");
+    const kinds: Record<string, string> = {
+      live: sign(claims()),
+      revoked: sign(claims({ sub: "acct_gone2" })),
+      expired: sign(claims({ exp: now() - 5 })),
+      "foreign key": sign(claims(), foreign.privateKey),
+      "wrong audience": sign(claims({ aud: "zeno-web" })),
+      "wrong issuer": sign(claims({ iss: "evil" }))
+    };
+    expect(await auth.revokeAccessTokensForAccount("acct_gone2")).toBe(true);
+    const work: Record<string, number> = {};
+    for (const [kind, token] of Object.entries(kinds)) {
+      hashes.sha256 = 0;
+      auth.verifyAccessToken(token);
+      work[kind] = hashes.sha256;
+    }
+    expect(work).toEqual(Object.fromEntries(Object.keys(kinds).map((kind) => [kind, 1])));
   });
 
   it("the token check takes the same time for revoked, expired, unknown-signer and live tokens (within 25 %; measured about 3 % apart)", async () => {

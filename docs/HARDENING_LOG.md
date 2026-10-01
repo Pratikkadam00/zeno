@@ -165,7 +165,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F85 | **FIXED in P2.8.** ~~The billing webhook trusted its payload, in arrival order.~~ Each event's claimed plan was written straight into the entitlement cache. RevenueCat retries a failed delivery up to 5 times over about 2.5 hours and may deliver twice, and its own docs recommend calling `GET /subscribers` after any webhook. So an old event arriving late overwrote newer state. Proven: a user who had just bought Pro read as free after an 80-minute-late retry of an old EXPIRATION. Worse, the header is a static secret, not a signature over the body, so anyone holding it could grant any plan to any account (proven: a forged INITIAL_PURCHASE made a free user Pro). Now a webhook reads only `app_user_id` and drops that user's cached entitlement, durably before RevenueCat hears 200 (a refused delete answers 503, so RevenueCat retries). The next read asks RevenueCat. This is idempotent and order-independent by construction, which a property test checks over random runs of events, duplicates and orders. The unread fields are no longer validated: a value we rejected (an event type over 64 characters, say) made RevenueCat retry and then drop the event. | High (entitlement integrity; the secret alone granted paid plans) | me | P2.8 |
 | F86 | **FIXED in P2.8.** ~~The webhook secret compare leaked the secret's length.~~ `timingSafeEqual` needs equal lengths, so a guess of the wrong length returned early. It now compares SHA-256 digests of both sides: one 32-byte compare for every guess (checked for 6 lengths). | Low (a timing side channel on a shared secret) | me | P2.8 |
 | F87 | **FIXED in P2.8.** ~~A RevenueCat lookup in flight could put an older answer back.~~ If a webhook or an account deletion dropped a user's cached entitlement while a lookup was in flight, the lookup cached its older answer when it landed. After a deletion, that re-created the deleted user's billing row (an F75-class gap). Proven on real Postgres: a `billing` row existed after `DELETE /account` had answered. Every drop now bumps the user's generation, and a lookup caches only if its generation is still current. Another user's lookup is unaffected. | Medium (deletion completeness; stale plans) | me | P2.8 |
-| F88 | **FIXED in P2.9.** ~~No test for the token path's sameness.~~ The plan (P2.2) asks that unknown and revoked tokens take "the same code path" with "no timing leak on the token path". No test checked this, and I had not said so. Measured first: every rejected token takes 28–29 µs (the RSA verify dominates), revoked vs unknown-signer 0.8 µs apart; only a non-JWT string is faster (7.9 µs), which tells its sender nothing. `token-path.test.ts` now pins identical status, body AND headers for six kinds of rejected token, and the timing within 25 %. | Test gap (plan item not done) | me | P2.9 |
+| F88 | **FIXED in P2.9, and in CODE after CI caught a real gap** (see the P2.9 timing entry below). ~~No test for the token path's sameness.~~ The plan (P2.2) asks that unknown and revoked tokens take "the same code path" with "no timing leak on the token path". No test checked this, and I had not said so. Measured first: every rejected token takes 28–29 µs (the RSA verify dominates), revoked vs unknown-signer 0.8 µs apart; only a non-JWT string is faster (7.9 µs), which tells its sender nothing. `token-path.test.ts` now pins identical status, body AND headers for six kinds of rejected token, and the timing within 25 %. | Test gap (plan item not done) | me | P2.9 |
 | F89 | **FIXED in P2.9.** ~~The fuzz never sent schema-valid input.~~ The plan (P2.4) says the fuzz is "driven by each zod schema: valid ⇒ expected status". `fuzz.test.ts` sends arbitrary bodies and checks only "never a 500, always the envelope, no internals"; it never builds a known-valid body and checks the success status. Half the item; I had not said so. `schema-valid.test.ts` now generates input from each of the 18 routes' own zod schemas and checks the exact status each handler's rule gives it; it found F91. | Test gap (plan item half done) | me | P2.9 |
 | F90 | **OPEN: owner decision.** The plan (P2.6) says demo login, wildcard CORS and `http://` URLs "all refuse to boot" in production. P2.6 made only an `http://` `MAGIC_LINK_REDIRECT_URL` fatal; a set `DEMO_LOGIN_PASSWORD`, a `*` or `http://` CORS origin and an `http://` alert or coach URL are **warnings**. Why: `main` auto-deploys to Render, each of these is already blocked at request time (tested), and a new boot refusal on a dashboard value nobody can see from the repo could take the API down. To follow the plan literally, confirm none of these is set in the Render dashboard and say so; they become fatal in one small change. | Deviation from plan (owner's call) | owner | P2.9 or P8 |
 | F91 | **FIXED in P2.9.** ~~`POST /api/v1/events` (public) mishandled names every object inherits.~~ `recordProductEvent` looked the event up on a plain object literal, so inherited names were "found". Proven on the old code: `toString`, `valueOf` and `__proto__` answered 200 and became their own series in `/metrics` (outside the allowlist); `constructor` or `hasOwnProperty` with a label answered **500** (`.includes` called on a function), and each 500 also pages the alert webhook. The P2.4 fuzz missed it: random strings never hit those exact names. Now only the allowlist's own keys count (`Object.hasOwn`). Swept the API for the same pattern: the only other keyed object literal (`guideOverrides[slug]` in the catalog) is keyed by the catalog's own static slugs, not request data. | Medium (an anonymous 500 and metric pollution on a public route) | me | P2.9 |
@@ -2716,4 +2716,32 @@ passed 3 runs of 2 000 cases each (10 × CI).
 groups that did not stop on a failure, so it amended the P3.2 commit even though this
 test had failed. Nothing was pushed. From now on the commit runs only if every gate
 exits 0.
+
+### F88 reopened by CI, fixed in code — 2026-10-01
+
+CI 36828125002 on `f75bdf3` failed the F88 timing test on GitHub's Linux runner. The
+medians there were: live 83.5 µs, revoked 82.0, expired 75.3, **foreign signing key
+46.7**. On this Windows machine all four had been 28–29 µs, which is why the local
+measurement missed it. On Linux, a forged token answered about 35 µs faster than a genuine
+one, which tells a caller whether a token was ever really issued. That is exactly the leak
+the plan's "same code path for unknown vs revoked" forbids. The test did its job; my
+earlier "the code meets the intent" was true only for this machine.
+
+**The cause, in the code:** a bad signature returned straight after the RSA verify. A
+genuine token went on to decode the payload, check the claims, hash `sub` and look up the
+revocation map. No Linux was available here (no WSL, no Docker) to time which step costs
+the 35 µs, so the fix removes the difference rather than tuning one step.
+
+**The fix:** `verifyAccessToken` now does the same remaining work for every well-formed
+token (the decode, the claims, the SHA-256 and the revocation lookup) and decides only at
+the end.
+
+**A deterministic test** pins the "same code path": it counts SHA-256 calls (the
+revocation lookup) per kind of token, with `node:crypto` wrapped. Live, revoked, expired,
+foreign key, wrong audience and wrong issuer each do exactly 1. Bite-checked: with the
+early return restored, the foreign-key token does 0. The CI timing test stays as a second
+check.
+
+**Not yet proven:** that the Linux runner's medians now agree within 25 %. The next CI run
+is that measurement.
 

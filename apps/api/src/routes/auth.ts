@@ -710,28 +710,25 @@ export function verifyAccessToken(token: string): VerifiedAccessToken | null {
     const verifier = createVerify("RSA-SHA256");
     verifier.update(`${encodedHeader}.${encodedPayload}`);
     verifier.end();
-    if (!verifier.verify(keyPair.publicKey, Buffer.from(encodedSignature, "base64url"))) {
-      return null;
-    }
+    const signatureValid = verifier.verify(keyPair.publicKey, Buffer.from(encodedSignature, "base64url"));
+    // F88: once the signature is checked, every token does the SAME remaining
+    // work (decode, claims, the revocation lookup) and is judged only at the
+    // end. Returning early on a bad signature made a forged token answer ~35 µs
+    // faster than a genuine one on the Linux CI runner (46.7 vs 82.0 µs median),
+    // which told a caller whether a token was ever really issued.
     const payload = decodeJwtPart<JwtPayload>(encodedPayload);
     const nowSeconds = Math.floor(Date.now() / 1000);
-    if (!payload.sub || !payload.exp || payload.exp <= nowSeconds) {
-      return null;
-    }
-    if (payload.iss !== issuer) {
-      return null;
-    }
     const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
-    if (!audiences.includes(audience)) {
-      return null;
-    }
+    const claimsValid = Boolean(payload.sub) && Boolean(payload.exp) && (payload.exp ?? 0) > nowSeconds &&
+      payload.iss === issuer && audiences.includes(audience);
     // Issued at or before its account was deleted: revoked (F76). A token with
     // no iat is treated as issued at 0, so it fails closed.
-    const revokedAt = accountRevokedAtSeconds.get(revocationKey(payload.sub));
-    if (revokedAt !== undefined && (payload.iat ?? 0) <= revokedAt) {
+    const revokedAt = accountRevokedAtSeconds.get(revocationKey(String(payload.sub ?? "")));
+    const revoked = revokedAt !== undefined && (payload.iat ?? 0) <= revokedAt;
+    if (!signatureValid || !claimsValid || revoked) {
       return null;
     }
-    return { sub: payload.sub, email: payload.email ?? null };
+    return { sub: payload.sub!, email: payload.email ?? null };
   } catch {
     return null;
   }
