@@ -3714,3 +3714,25 @@ day is unchanged, and renewal dates are day-level everywhere. The test asserts t
 
 Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1856 at
 100 / 99.68 / 100 / 100 · jest 311 / 311, 0 act() warnings, the new floors held.
+
+### P3.8d-1 went red on CI: my gate failed, I misread it and committed anyway — 2026-10-01
+
+- **What happened:** CI 36867624513 (`e40877c`) failed jest's coverage floor. The new
+  annotation (`9d2600e`) read: `"./app/" coverage threshold for statements (44.81%) not
+  met: 44.8%`.
+- **Cause 1, the floor:** `app/` is 790/1763 statements, 44.8099 %. My measuring script
+  printed that rounded to 4 places ("44.8100"), and I set the floor to 44.81. Jest
+  TRUNCATES to 2 places (44.80), as it did once before (38.43 in P3.8a). The floor is now
+  44.8. Coverage is deterministic: three local runs all gave 790/1763, and a run forced to
+  UTC changed nothing.
+- **Cause 2, my process:** the local gate run before that commit FAILED correctly. Its
+  log holds the same "not met" line, and re-running `gates.sh` against that state exits 1.
+  But I read its filtered output, saw the failure tail's "Tests: 311 passed", took it for
+  a pass, and committed. The missing "ALL GATES PASSED" line was the signal.
+- **The fix to the process:** from here on, the commit is chained on the gate script's
+  exit code (`gates.sh && git commit`), so a failed gate cannot be followed by a commit.
+  Recorded as a standing rule in my notes.
+- **Also kept:** CI's jest step now posts its floor lines as an annotation, because the
+  github-actions reporter annotates failing tests, not thresholds. That is how this was
+  read without a login.
+

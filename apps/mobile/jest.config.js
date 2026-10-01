@@ -68,7 +68,7 @@ module.exports = {
     // only ever go up, to 100 % lines. Started at the measured baseline:
     // app/ 117/1515 lines, src/components/ 118/307, components/ 0/20.
     // P3.8d-1 measured app/ at 670/1527 lines, 790/1763 statements.
-    "./app/": { lines: 43.87, statements: 44.81 },
+    "./app/": { lines: 43.87, statements: 44.8 },
     // Finished screens are held file by file. Exact paths, since "(tabs)" in a
     // glob is pattern syntax.
     "./app/(tabs)/dashboard.tsx": { lines: 100, statements: 100 },
