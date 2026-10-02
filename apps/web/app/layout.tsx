@@ -1,16 +1,13 @@
 import { SITE_URL, siteUrl } from "@/lib/site";
 import { THEME_SCRIPT } from "@/lib/theme";
 import type { Metadata } from "next";
-import { Space_Grotesk, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
+import { fontClassNames } from "./fonts";
 import { MotionProvider } from "@/components/site/MotionProvider";
 import { JsonLd } from "@/components/site/JsonLd";
 import "./globals.css";
 
-// The Honest Ledger type trio. next/font downloads at build time and serves
-// the woff2 from /_next/static — self-hosted, so font-src 'self' holds.
-const display = Space_Grotesk({ subsets: ["latin"], weight: ["500", "600", "700"], variable: "--font-display", display: "swap" });
-const body = Hanken_Grotesk({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-body", display: "swap" });
-const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-mono", display: "swap" });
+// The Honest Ledger type trio (./fonts.ts): self-hosted files, served from
+// /_next/static, so font-src 'self' holds and the build needs no network (F103).
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -38,7 +35,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html lang="en" className={fontClassNames} suppressHydrationWarning>
       <body>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <a href="#main" className="skip-to-content">

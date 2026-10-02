@@ -82,7 +82,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] FX.1 F21: strict UTC day parsing for CSV and receipt dates; UTC next-renewal arithmetic; F16 and F112 rows closed
   - [x] FX.2 F147's cause: history counts each subscription up to its cancellation date (already recorded on every cancel path); F163 found
   - [x] FX.3 F162: the sheet is its own window, so screen readers can't reach behind it (verified on the emulator with TalkBack)
-  - [ ] FX.4 F103: the website's three fonts self-hosted, so the build needs no network
+  - [x] FX.4 F103: the website's three fonts self-hosted (the same 13 files); the site builds with the network blocked
   - [ ] FX.5 F94 and F106: one bounded reproduction attempt each
   - [ ] FX.6 F163: a paused subscription's past months in the spend history
   - [ ] then the owner-only file (everything that needs the owner, nothing else)
@@ -198,7 +198,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F95 | **FIXED 2026-10-01** (found while fixing F18). ~~Amounts written `CA$` were detected as Australian dollars.~~ The currency detector's AUD rule `/A\$/` matched inside `CA$`, and its CAD rule `/C\$/` did not match `CA$` at all, so `CA$12.00` (the way the app itself writes CAD) read as AUD, in email receipts and CSV imports alike. `CA$` now counts as CAD and is subtracted from the `A$` count (no regex lookbehind, for Hermes). Bite-checked: the old rules fail 3 tests. | Medium (currency honesty) | me | open-items pass |
 | F96 | **OPEN: owner decision.** The paywall sells a Family plan ("up to 5 members, $6.99/mo"), but household sharing with up to 5 members is free to everyone: `app/family.tsx` checks no plan, and the server's 5-member cap applies regardless of plan. So the Family plan gives nothing beyond Pro while its label implies it does. Either gate the Family Vault behind the plan (the server must then check entitlement on create and join), or reword the plan. | Medium (truthfulness of what is sold) | owner | before billing ships |
 | F102 | **FIXED 2026-10-01 (found through F97).** ~~Postgres writes to one row could land out of order.~~ `pg.ts` sent every query straight to a 5-connection pool, and on a real server each connection finishes in its own time. So a fire-and-forget upsert issued just before an account deletion could land AFTER the delete. The API answered "deleted" while the row (a Plaid bank token, an entitlement, a household) was back in Postgres, and the next boot loaded it again: F75's promise broken. Likewise two quick upserts of one key could leave the OLDER value. PGlite runs one connection in order, which is why only CI's server showed it. Now operations on one row run in the order they were issued, and a delete-by-field (account deletion's sync purge) or a namespace clear first waits for every write already in flight in that namespace. Bite-checked on PGlite, no timing involved: the old `pg.ts` fails 2 tests (the deleted user's Plaid row survives; the stale `{v:1}` beats `{v:2}`), and removing the namespace wait fails a third. | High (deleted data resurrected) | me | P3.5 (found in CI) |
-| F103 | **OPEN (mine), likely cause found 2026-10-01, fix scheduled for P4.** It recurred on CI 36857434988 (`9a2f1a8`), and the new annotation showed the build failing in `next/font/google`: the font files that its generated CSS (`hanken_grotesk_….module.css`) references were "module not found". `apps/web/app/layout.tsx` loads Space Grotesk, Hanken Grotesk and JetBrains Mono through `next/font/google`, which downloads them from Google Fonts at BUILD time, the build's only network step. So the likely cause is that download failing on the runner (unproven: the annotation held only the last 40 lines, so it now also carries the first error lines). The fix is to self-host the fonts so the build is offline. Measured first: the site serves 13 variable `woff2` files (179 KB) split by character range, and the TTFs the mobile packages already have are about 5x heavier, so the right files are the current `woff2`s with their exact `unicode-range`s (read from the build's CSS). That changes how the site loads fonts and needs a visual check, so it goes in P4. Earlier text: **OPEN (mine): one CI-only web build failure, no detail yet.** CI 36845816550 (`44791e7`) failed "Build web" with only "exit code 1". The same build passes here, and that commit changed nothing under `apps/web`. The next run failed earlier (F97), so the build step has not run since. The step now posts its last 40 log lines as an annotation on failure, so a recurrence explains itself. | Low until explained | me | the next occurrence |
+| F103 | **FIXED in FX.4: the three fonts are self-hosted, and the site builds with all network blocked.** Earlier: **OPEN (mine), likely cause found 2026-10-01, fix scheduled for P4.** It recurred on CI 36857434988 (`9a2f1a8`), and the new annotation showed the build failing in `next/font/google`: the font files that its generated CSS (`hanken_grotesk_….module.css`) references were "module not found". `apps/web/app/layout.tsx` loads Space Grotesk, Hanken Grotesk and JetBrains Mono through `next/font/google`, which downloads them from Google Fonts at BUILD time, the build's only network step. So the likely cause is that download failing on the runner (unproven: the annotation held only the last 40 lines, so it now also carries the first error lines). The fix is to self-host the fonts so the build is offline. Measured first: the site serves 13 variable `woff2` files (179 KB) split by character range, and the TTFs the mobile packages already have are about 5x heavier, so the right files are the current `woff2`s with their exact `unicode-range`s (read from the build's CSS). That changes how the site loads fonts and needs a visual check, so it goes in P4. Earlier text: **OPEN (mine): one CI-only web build failure, no detail yet.** CI 36845816550 (`44791e7`) failed "Build web" with only "exit code 1". The same build passes here, and that commit changed nothing under `apps/web`. The next run failed earlier (F97), so the build step has not run since. The step now posts its last 40 log lines as an annotation on failure, so a recurrence explains itself. | Low until explained | me | the next occurrence |
 | F107 | **FIXED in P3.8b (found by its own test).** ~~Reduce-motion users still saw the first animation of a component.~~ `useReducedMotion` started at "motion on" and learned the OS setting asynchronously, so every animated component's FIRST effect ran as if motion were allowed. A `Stamp` mounted under reduce-motion still sprang in from 1.7x and fired its haptic, and the spring kept going after the setting arrived. Now the last answer known in the app run is kept, so every component mounting after the first read starts from it. The launch splash makes that first read, long before any stamp appears. The splash itself still starts before the answer, but its effect re-runs and jumps to the static frame. Bite-checked: removing the cache fails 2 tests. | Medium (accessibility: motion for users who turned it off) | me | P3.8b |
 | F108 | **FIXED in P3.8c.** ~~The dashboard showed a "Ways to save" heading over an empty section.~~ The section appeared whenever the insights engine returned anything, but the only insight the seed data produces is the spend summary, which the dashboard deliberately does not preview. Seen on the emulator too (the heading straight above the buttons). Now it appears only with a saving to show or an insight to preview. | Low | me | P3.8c |
 | F109 | **FIXED in P3.8c.** ~~Screen readers heard a subscription row without its price or date.~~ On the Subscriptions tab each row's trailing column (price, next date, "PAUSED", "!", the Verified stamp) is a custom node, and ListRow's derived name covers only the title and subtitle. VoiceOver/TalkBack read "Netflix, ENTERTAINMENT" while sighted users saw "$15.49, OCT 2". The row's name now follows what is shown. | Medium (accessibility) | me | P3.8c |
@@ -4382,3 +4382,58 @@ accessibility tree. Hiding only the screen body could not have covered the heade
 
 **Bite check: 1, caught.** The sheet back in the screen tree (no Modal) fails the
 new test. jest: 557 passed.
+
+### FX.4 — the website's fonts self-hosted; the build needs no network (F103) — 2026-10-02
+
+**Measured first, from a build with `next/font/google`:**
+- 13 `woff2` files, 179,424 bytes. Each family is one variable font split by
+  character range: Space Grotesk 3 (Latin, Latin-ext, Vietnamese), Hanken Grotesk 4
+  (adding Cyrillic-ext), JetBrains Mono 6 (adding Cyrillic and Greek).
+- The generated CSS had 52 `@font-face` rules (the same file repeated per weight), a
+  size-adjusted Arial fallback per family, the three Latin files preloaded, and three
+  CSS variables. The site's CSS reads only the variables, never a family name.
+- All three families are SIL Open Font License 1.1 (read from the licence files
+  shipped with `@expo-google-fonts`), which allows bundling with the licence.
+
+**The change:**
+- The same 13 files, copied byte for byte from that build, in
+  `apps/web/app/fonts/<family>/<range>.woff2`, each folder with its `OFL.txt`.
+- `apps/web/app/fonts.ts`: `next/font/local`, one call per range (it takes one
+  `unicode-range` per call), the ranges copied from the generated CSS. The Latin call
+  of each family sets the variable, is preloaded and generates the fallback; the
+  other ranges join the family and load only when a page uses them.
+
+**A mistake of mine, caught by comparing builds:** my first version declared the real
+family names ("Space Grotesk") on every call. The files and ranges matched, but
+Turbopack names the CSS variable's family after the const ("display"), so the
+variable pointed at a family with no fonts and the site would have rendered in the
+fallback. The webpack path takes the family from the first `@font-face` instead (read
+in `postcss-next-font.js`); Turbopack's code is compiled Rust, so its behaviour was
+read off the build output. Fixed: the Latin call declares no family (so it is named
+`spaceGrotesk` and so on), and the other ranges declare that name.
+
+**Proof, from builds:**
+- **Same fonts:** a script parsed both builds' CSS. The same 13 (file bytes, code
+  points) pairs, one family each; every weight served before (Space Grotesk 500-700,
+  the others 400-700) is covered; every face belongs to the family its variable names.
+- **One difference, stated:** the fallback's metrics, shown only until the web font
+  loads, are computed by Next from the font file instead of Google's table (Space
+  Grotesk `size-adjust` 110.84 % against 109.69 %; the others within 3.1 points).
+- **Offline:** with `HTTPS_PROXY` and `HTTP_PROXY` pointed at a dead local port (Next's
+  Google font fetch honours them, `get-proxy-agent.js`), the new build passes. The old
+  layout, restored for the test, fails under the same block ("an issue establishing a
+  connection while requesting https://fonts.googleapis.com/css2?family=Hanken+Grotesk…").
+- **In the browser** (`next dev`): headings in `spaceGrotesk`, body in `hankenGrotesk`,
+  labels in `jetbrainsMono`, all three `document.fonts.check` true; only the three
+  Latin files requested, all from `/_next/static/media`; 0 requests to Google; asking
+  for "₹" loaded exactly Hanken Grotesk's Latin-ext file. No console errors.
+
+**Guard test** (`apps/web/app/fonts.test.ts`, 4 tests): no `next/font/google` import
+anywhere in the site; 13 files, each a real woff2 (`wOF2` magic); a licence in each
+folder; each family's Latin call sets the variable and declares no family, and every
+other range declares the family's name. **Bite check: 3, all caught:** a Google
+import back in the layout; a range under the real family name; the Latin call
+overriding its family.
+
+Also: running `next dev` rewrote the generated `next-env.d.ts` to point at
+`.next/dev`; restored, not committed.
