@@ -54,7 +54,17 @@ describe("parseEmailBody — billing cycle", () => {
 describe("parseEmailBody — dates", () => {
   it("skips a date-shaped string that does not parse and uses the next one", () => {
     const p = parseEmailBody("Ref 13/45/2026. Charged on 09/15/2026. $15.49 per month", "netflix.com")!;
-    expect(p.lastCharged.slice(0, 10)).toBe(new Date(Date.parse("09/15/2026")).toISOString().slice(0, 10));
+    expect(p.lastCharged).toBe("2026-09-15T00:00:00.000Z");
+  });
+
+  it("F21: an impossible date is skipped, not shifted (Date.parse made 'February 31, 2026' 2 March)", () => {
+    const p = parseEmailBody("Billed February 31, 2026. Paid 02/30/2026. Receipt 2026-02-28. $15.49 per month", "netflix.com")!;
+    expect(p.lastCharged).toBe("2026-02-28T00:00:00.000Z");
+  });
+
+  it("F21: ISO and day-first receipt dates are read too", () => {
+    expect(parseEmailBody("Charged 2026-09-15. $15.49 per month", "netflix.com")!.lastCharged).toBe("2026-09-15T00:00:00.000Z");
+    expect(parseEmailBody("Charged on 15 Sep 2026. $15.49 per month", "netflix.com")!.lastCharged).toBe("2026-09-15T00:00:00.000Z");
   });
 
   it("with no usable date, the charge date is 'now' and confidence drops below high", () => {

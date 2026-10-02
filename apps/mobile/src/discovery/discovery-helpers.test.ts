@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { applyFreeCap, calculateNextRenewal, confidenceRank, currencyEvidence, detectCurrency, inferRecurringCycle, isWithin, slugify, summarizeFoundMoney, titleCase, toCurrencyCode } from "./discovery-helpers";
+import { parseDay } from "../utils/day-text";
 
 describe("inferRecurringCycle", () => {
   it("infers monthly / weekly / annual from the median gap", () => {
@@ -18,39 +19,58 @@ describe("inferRecurringCycle", () => {
   });
 });
 
-describe("calculateNextRenewal", () => {
+describe("calculateNextRenewal (UTC days, F21)", () => {
+  const utc = (y: number, m: number, d: number) => new Date(Date.UTC(y, m - 1, d));
+  const day = (date: Date) => date.toISOString().slice(0, 10);
+
   it("adds one month for monthly cycles", () => {
-    const next = calculateNextRenewal(new Date(2026, 0, 15), "monthly");
-    expect(next.getFullYear()).toBe(2026);
-    expect(next.getMonth()).toBe(1);
-    expect(next.getDate()).toBe(15);
+    expect(day(calculateNextRenewal(utc(2026, 1, 15), "monthly"))).toBe("2026-02-15");
   });
 
-  it("clamps Jan 31 to Feb 28 instead of overflowing into March", () => {
-    const next = calculateNextRenewal(new Date(2026, 0, 31), "monthly");
-    expect(next.getFullYear()).toBe(2026);
-    expect(next.getMonth()).toBe(1);
-    expect(next.getDate()).toBe(28);
+  it("clamps Jan 31 to Feb 28 instead of overflowing into March, on any device time zone", () => {
+    expect(day(calculateNextRenewal(utc(2026, 1, 31), "monthly"))).toBe("2026-02-28");
   });
 
   it("clamps Jan 31 to Feb 29 in leap years", () => {
-    const next = calculateNextRenewal(new Date(2028, 0, 31), "monthly");
-    expect(next.getFullYear()).toBe(2028);
-    expect(next.getMonth()).toBe(1);
-    expect(next.getDate()).toBe(29);
+    expect(day(calculateNextRenewal(utc(2028, 1, 31), "monthly"))).toBe("2028-02-29");
   });
 
   it("clamps annual renewals from Feb 29 to Feb 28", () => {
-    const next = calculateNextRenewal(new Date(2028, 1, 29), "annual");
-    expect(next.getFullYear()).toBe(2029);
-    expect(next.getMonth()).toBe(1);
-    expect(next.getDate()).toBe(28);
+    expect(day(calculateNextRenewal(utc(2028, 2, 29), "annual"))).toBe("2029-02-28");
+  });
+
+  it("adds three months for quarterly cycles", () => {
+    expect(day(calculateNextRenewal(utc(2026, 11, 30), "quarterly"))).toBe("2027-02-28");
   });
 
   it("adds seven days for weekly cycles", () => {
-    const next = calculateNextRenewal(new Date(2026, 0, 28), "weekly");
-    expect(next.getMonth()).toBe(1);
-    expect(next.getDate()).toBe(4);
+    expect(day(calculateNextRenewal(utc(2026, 1, 28), "weekly"))).toBe("2026-02-04");
+  });
+
+  it("keeps the time of day of a non-midnight input (the 'now' fallback)", () => {
+    expect(calculateNextRenewal(new Date("2026-01-15T10:30:00.000Z"), "monthly").toISOString()).toBe("2026-02-15T10:30:00.000Z");
+  });
+});
+
+describe("calculateNextRenewal and parseDay on a US device (UTC-5), where local arithmetic went wrong (F21)", () => {
+  // Node re-reads TZ when process.env.TZ is assigned (checked: the same instant
+  // reports day 30 in New York and 31 in Kolkata). Restored after the block;
+  // vitest runs each file in its own context.
+  const original = process.env.TZ;
+  beforeAll(() => { process.env.TZ = "America/New_York"; });
+  afterAll(() => { if (original === undefined) delete process.env.TZ; else process.env.TZ = original; });
+
+  it("the device really is UTC-5 here", () => {
+    expect(new Date("2026-01-31T00:00:00.000Z").getTimezoneOffset()).toBe(300);
+  });
+
+  it("Jan 31 still clamps to Feb 28 (local getters read that instant as Jan 30 and gave 1 March)", () => {
+    expect(calculateNextRenewal(new Date("2026-01-31T00:00:00.000Z"), "monthly").toISOString()).toBe("2026-02-28T00:00:00.000Z");
+  });
+
+  it("a US-format charge date is the same UTC day as on any other device", () => {
+    expect(parseDay("01/31/2026")?.toISOString()).toBe("2026-01-31T00:00:00.000Z");
+    expect(parseDay("Jan 31, 2026")?.toISOString()).toBe("2026-01-31T00:00:00.000Z");
   });
 });
 

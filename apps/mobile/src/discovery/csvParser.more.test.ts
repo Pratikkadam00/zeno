@@ -82,6 +82,12 @@ describe("parseCSV — row rejection", () => {
     expect(only("not-a-date,NETFLIX,-15.49", "13/45/2026,NETFLIX,-15.49", ",NETFLIX,-15.49")).toEqual([]);
   });
 
+  it("F21: an impossible date is skipped, not kept as a different day; US dates are UTC days", () => {
+    expect(only("02/30/2026,NETFLIX,-15.49", "2026-02-30,NETFLIX,-15.49")).toEqual([]);
+    const r = parse(csv(header, "01/05/2026,NETFLIX,-15.49", "02/04/2026,NETFLIX,-15.49"));
+    expect(r.subscriptions[0]?.lastCharged).toBe("2026-02-04T00:00:00.000Z");
+  });
+
   it("credits (positive amounts), zero and unparseable amounts are never charges", () => {
     expect(only(...monthly("PAYROLL", "2500.00"), ...monthly("ZERO", "0.00"), ...monthly("JUNK", "abc"))).toEqual([]);
   });

@@ -2,6 +2,7 @@ import { searchServices } from "@zeno/service-catalog";
 import { parseAmountMinor, parseCsvRows } from "@zeno/shared";
 import type { CurrencyCode } from "@zeno/shared";
 import { calculateNextRenewal, confidenceRank, currencyEvidence, isWithin, slugify, titleCase } from "./discovery-helpers";
+import { parseDay } from "../utils/day-text";
 import type { ParsedSubscription } from "./emailScanner";
 
 export interface CSVParseResult {
@@ -243,12 +244,10 @@ function cleanDescription(description: string): string {
   return titleCase(cleaned);
 }
 
+// F21: a strict UTC day. `Date.parse` kept "02/30/2026" as 2 March and read
+// "01/05/2026" as local midnight, a day early once stored as UTC on a UTC+ device.
 function parseDate(value: string | undefined): Date | null {
-  if (!value) {
-    return null;
-  }
-  const parsed = Date.parse(value.trim());
-  return Number.isNaN(parsed) ? null : new Date(parsed);
+  return value ? parseDay(value) : null;
 }
 
 function parseMoney(value: string | undefined): number | null {

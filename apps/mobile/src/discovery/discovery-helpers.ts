@@ -53,19 +53,22 @@ export function detectCurrency(body: string): CurrencyCode {
   return currencyEvidence(body) ?? "USD";
 }
 
+// UTC arithmetic (F21): charge dates are UTC days. With local getters a US
+// device (UTC-5) turned Jan 31 00:00Z into "Mar 1" (measured), because that
+// instant is Jan 30 local and the clamp then never applied.
 export function calculateNextRenewal(lastCharged: Date, cycle: DiscoveryBillingCycle): Date {
   const next = new Date(lastCharged);
   if (cycle === "weekly") {
-    next.setDate(next.getDate() + 7);
+    next.setUTCDate(next.getUTCDate() + 7);
     return next;
   }
 
   const months = cycle === "annual" ? 12 : cycle === "quarterly" ? 3 : 1;
-  const day = next.getDate();
-  next.setDate(1);
-  next.setMonth(next.getMonth() + months);
-  const daysInTargetMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
-  next.setDate(Math.min(day, daysInTargetMonth));
+  const day = next.getUTCDate();
+  next.setUTCDate(1);
+  next.setUTCMonth(next.getUTCMonth() + months);
+  const daysInTargetMonth = new Date(Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + 1, 0)).getUTCDate();
+  next.setUTCDate(Math.min(day, daysInTargetMonth));
   return next;
 }
 

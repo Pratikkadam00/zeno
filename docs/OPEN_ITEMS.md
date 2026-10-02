@@ -3,7 +3,7 @@
 **One place for everything not yet solved.** Each item says who acts, exactly what to
 do, and where the full evidence lives (finding numbers point into
 `docs/HARDENING_LOG.md`). When an item is done it is removed from here and its log
-entry marked fixed. Last updated 2026-10-02, after the P3 gate (P3 complete).
+entry marked fixed. Last updated 2026-10-02, after FX.1.
 
 ---
 
@@ -55,13 +55,12 @@ real sample, or a product decision.
 
 | # | Item | When |
 |---|---|---|
-| — | **P4:** website component tests, Playwright, CSP, DAST (P3 is done) | next, in order |
+| — | **FX.2-FX.5** (the fix pass), then **P4** | next, in order |
 | F162 | While Settings' bottom sheet is open, the controls behind it stay reachable by a screen reader | P5 |
 | F106 | Once, right after the first unlock on a fresh install, screenshots of the unlocked app came back black (the block itself was already off); not reproduced in 2 tries | P5 |
 | F103 | The **web build fails on CI now and then**: it downloads the site's three Google fonts at build time, and that download sometimes fails on the runner (likely cause; the next occurrence's report will confirm it). Fix: serve the same font files from the repo, so the build needs no network | P4 (website), or sooner if you want it |
 | F94 | A translucent Settings sheet, seen once on device and not reproduced in 5 attempts | P3.8 / P5 |
 | F147 | The spend history (Year in Review, the recap, the dashboard and Insights charts) counts **only subscriptions tracked today**; a cancelled one counts $0 even for months it was paid. Fix: record a cancellation date on every cancel path and count each subscription up to it | P6 | (Seen again in the P3 gate: a reported cancel drops this month's already-paid charge from "Charged so far".)
-| F21 | `Date.parse` silently shifts impossible dates ("02/30" becomes 2 March) | P6 |
 | — | R8 warns about RevenueCat's Amazon Appstore SDK ("may be assumed not reachable" in later R8 versions). Not used for Google Play; re-check on each RevenueCat upgrade | each RevenueCat upgrade |
 | — | Sentry and RevenueCat code paths haven't run under R8 (no keys yet). Re-run the device smoke when the keys exist, and in the Sentry UI check one JS error and one native crash for scrubbed content (P3.3: a native crash skips `beforeSend`; only its breadcrumbs are scrubbed, by `beforeBreadcrumb`) | after the keys above |
 | — | Size the webhook's 30/min limit, and an edge rate limiter (the app's is per instance) | P8 |
@@ -83,6 +82,7 @@ real sample, or a product decision.
 | F126 | Found in P3.8e-1: Settings showed **"Version 1.0.0"**; the app is 0.1.0 | Shows the real version. |
 | F125 | Found in P3.8e-1: Settings and Profile showed an **internal account id where your email belongs** (or a made-up "you@example.com") | Your email is shown now. |
 | F124 | Found in P3.8e-1: Settings' **"Push notifications" switch did nothing** | It's now "Renewal reminders" (as designed) and really turns every reminder off and on. |
+| F21 | `Date.parse` kept impossible dates as a different day, and read US and month-name dates as local time (a day early for UTC+ users) | One strict UTC parser for every CSV and receipt date. |
 | F159 | Found in the P3 gate: **the app lock could be bypassed**: a menu, editor or alert left open when the app locked stayed on top and kept working (Pause ran on a locked app) | Modals now hide while locked and the lock is the topmost window; verified on the emulator. |
 | F157 | Found in the P3 gate: the **headline totals counted cancelled and paused plans** ($25.49 over lines that added to $15.49) | One rule for every total; the numbers agree on the device. |
 | F160 | Found in the P3 gate: **a paused subscription could never be resumed** | "Resume subscription" in its menu. |

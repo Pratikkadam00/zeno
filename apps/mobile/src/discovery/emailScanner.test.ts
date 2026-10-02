@@ -30,11 +30,10 @@ describe("parseEmailBody", () => {
     expect(result!.billingCycle).toBe("monthly");
     expect(result!.serviceId).toBe("netflix");
     expect(result!.confidence).toBe("high"); // catalog match + a detected date
-    // extractDate's regex only matches non-ISO "Month DD, YYYY" text, which
-    // Date.parse builds as LOCAL midnight — read it back with local accessors
-    // (not a UTC string slice) so this isn't runner-timezone-dependent.
-    const lastCharged = new Date(result!.lastCharged);
-    expect([lastCharged.getFullYear(), lastCharged.getMonth(), lastCharged.getDate()]).toEqual([2026, 0, 15]);
+    // F21: a UTC day, the same on every device (it used to be local midnight,
+    // 14 Jan 18:30Z on a UTC+5:30 phone).
+    expect(result!.lastCharged).toBe("2026-01-15T00:00:00.000Z");
+    expect(result!.nextRenewal).toBe("2026-02-15T00:00:00.000Z");
   });
 
   it("detects EUR and GBP currency markers", () => {

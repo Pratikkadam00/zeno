@@ -6,6 +6,7 @@ import { discovery as googleDiscovery } from "expo-auth-session/providers/google
 import { timedFetch } from "../api/http";
 import { getGmailAccountToken, listGmailAddresses, removeGmailAccount, saveGmailAccount } from "../security/secure-store";
 import { calculateNextRenewal, confidenceRank, detectCurrency, inferRecurringCycle, isWithin, slugify, titleCase } from "./discovery-helpers";
+import { parseDay } from "../utils/day-text";
 
 export type BilledThrough = "app_store" | "play_store";
 
@@ -699,18 +700,23 @@ function detectBillingCycle(body: string, amount: number, service?: Service): Pa
   return "unknown";
 }
 
+// The first date-shaped text that names a REAL day (F21: `Date.parse` accepted
+// "February 31, 2026" as 2 March, and read every form as local time). ISO and
+// day-first forms ("15 Jan 2026") are receipts too, not only the US forms.
 function extractDate(body: string): Date | null {
   const patterns = [
+    /\b(\d{4}-\d{2}-\d{2})\b/g,
     /\b(\d{1,2}\/\d{1,2}\/\d{4})\b/g,
     /\b([A-Z][a-z]+ \d{1,2},? \d{4})\b/g,
-    /\b((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w* \d{1,2},? \d{4})\b/gi
+    /\b((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w* \d{1,2},? \d{4})\b/gi,
+    /\b(\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w* \d{4})\b/gi
   ];
 
   for (const pattern of patterns) {
     for (const match of body.matchAll(pattern)) {
-      const parsed = Date.parse(match[1]);
-      if (!Number.isNaN(parsed)) {
-        return new Date(parsed);
+      const parsed = parseDay(match[1]!);
+      if (parsed) {
+        return parsed;
       }
     }
   }
