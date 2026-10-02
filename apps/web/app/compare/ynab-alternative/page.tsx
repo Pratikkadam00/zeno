@@ -51,7 +51,7 @@ export default function YnabComparePage() {
         that&rsquo;s a one-time payment, not a cheaper recurring one.
       </p>
 
-      <p style={{ fontSize: "0.85rem", opacity: 0.7 }}>
+      <p style={{ fontSize: "0.85rem", color: "var(--ink-2)" }}>
         Competitor pricing verified from YNAB&rsquo;s public pricing page in July 2026. Prices can change — check their
         site for the current figure.
       </p>

@@ -29,7 +29,9 @@
     "smoke": "node scripts/smoke-api.mjs"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@eslint/js": "^9.39.4",
+    "@playwright/test": "^1.63.0",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^24.10.1",
     "@vitest/coverage-v8": "^4.0.15",

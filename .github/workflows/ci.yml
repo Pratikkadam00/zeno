@@ -105,6 +105,24 @@ jobs:
             exit 1
           fi
 
+      # The website in a real browser (P4.2): every route on desktop and phone,
+      # light and dark: 200, the security headers, no console error, nothing
+      # fetched from another host, axe clean at WCAG 2.2 AA. Runs against
+      # `next start` over the build above. Uses the runner's installed Google
+      # Chrome (channel "chrome"), so no browser is downloaded.
+      - name: Website end-to-end (Playwright, installed Chrome)
+        working-directory: apps/web
+        run: npx playwright test
+
+      - name: Upload Playwright traces on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-traces
+          path: apps/web/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
       # Software bill of materials (CycloneDX 1.5) for everything the lockfile
       # installs on this runner. The FULL tree on purpose: `npm sbom --omit dev`
       # was verified to DROP shipped packages (expo, react-native) in this

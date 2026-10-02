@@ -22,15 +22,18 @@
   --baseline: rgba(20, 22, 31, 0.065);  /* ruled-paper baselines */
   --ink: #14161f;
   --ink-2: #5a6072;
-  --ink-3: #808698;
+  /* F177: was #808698, 3.44:1 on paper (WCAG AA needs 4.5:1 for this small text). */
+  --ink-3: #6b7184;
   --ink-panel: #10131f;
   --rule: #e5e3d9;
   --rule-strong: #c9c7ba;
   --green: #00c26e;
   --green-text: #057a46;
-  --stamp-verified: #0b8a54;
+  /* F177: was #0b8a54, 4.39:1 on white for the hero's small totals label. */
+  --stamp-verified: #0a824f;
   --stamp-alert: #c63b49;
-  --warn: #a36a0b;
+  /* F177: was #a36a0b, 4.31:1 on paper (the guides' "Difficulty: medium" badge). */
+  --warn: #9c650b;
   --info: #2f6fdb;
 
   /* Radii — ledger geometry, nothing bubbly */
@@ -88,7 +91,8 @@
   --baseline: rgba(242, 241, 234, 0.05);
   --ink: #f2f1ea;                       /* warm paper-white text */
   --ink-2: #9ba0af;
-  --ink-3: #6c7180;
+  /* F177: was #6c7180, 3.67:1 on the lit paper. */
+  --ink-3: #7c8191;
   --ink-panel: #171b2a;
   --rule: #262a38;
   --rule-strong: #3a3f50;

@@ -51,7 +51,7 @@ export default function MonarchComparePage() {
         simple monthly cap, that broader machinery is a lot of surface area (and cost) for the job.
       </p>
 
-      <p style={{ fontSize: "0.85rem", opacity: 0.7 }}>
+      <p style={{ fontSize: "0.85rem", color: "var(--ink-2)" }}>
         Competitor pricing verified from Monarch&rsquo;s public pricing page in July 2026. Prices can change — check their
         site for the current figure.
       </p>

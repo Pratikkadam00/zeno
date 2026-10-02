@@ -51,6 +51,10 @@ export default defineConfig({
         // The website tests' browser stand-ins (vitest.web.config.ts): test
         // support, not shipped code, like apps/mobile/src/test-support above.
         "apps/web/test-support/**",
+        // The Playwright suite and its config (P4.2): tests run by Playwright
+        // in a browser, not code vitest executes.
+        "apps/web/e2e/**",
+        "apps/web/playwright.config.ts",
         // React Native providers/components that vitest's node environment cannot
         // render. Measured by the jest project instead, with per-file floors
         // (apps/mobile/jest.config.js collectCoverageFrom / coverageThreshold) —

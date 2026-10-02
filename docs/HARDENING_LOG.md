@@ -91,8 +91,11 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [ ] P4.1 component and page tests (vitest + jsdom + Testing Library), split into steps; each adds a floor
     - [x] P4.1a the test setup, and the shared components (`components/ui/**` was dead code, removed); **fixes F165, F167, F168, F169**; F166 found (green: CI 37032423384, CodeQL 37032423356 on `62faef2`)
     - [x] P4.1b every page renders: metadata, canonical, JSON-LD, breadcrumbs, internal links, the sitemap, the 509 cancel guides; **fixes F170** (green: CI 37035441547, CodeQL 37035441551 on `b4b0b3d`)
-    - [x] P4.1c the truthfulness rail as a test (banned phrases never rendered, required ones are), and every factual claim on the site checked against the app's code; **fixes F166, F171-F176**; D13 and three account checks to the owner
+    - [x] P4.1c the truthfulness rail as a test (banned phrases never rendered, required ones are), and every factual claim on the site checked against the app's code; **fixes F166, F171-F176**; D13 and three account checks to the owner (green: CI 37040621945, CodeQL 37040621963 on `d624f74`)
   - [ ] P4.2 Playwright on every route: the homepage book, theme, waitlist, cancel hub and guide, compare, legal, 404; security headers, zero console errors, zero outside requests, axe clean
+    - [x] P4.2a every route, desktop and phone, light and dark: 200, the security headers, no console error, nothing from another host, axe clean (WCAG 2.2 AA); in CI; **fixes F177**, F178 logged
+    - [ ] P4.2b the behaviours: the homepage book, no-JS, reduced motion, theme persistence, the waitlist end to end, the hub and guides, the book-mode nav links
+    - [ ] P4.2c Lighthouse budgets (LCP, CLS, INP)
   - [ ] P4.3 CSP: no `'unsafe-inline'` scripts (hashes for the fixed inline scripts) or a written, measured reason; the other headers verified
   - [ ] P4.4 build-output secret scan: no non-public env value in `.next`
   - [ ] P4.5 DAST: OWASP ZAP baseline against `next start` and the API, nightly; no medium+ alerts
@@ -277,6 +280,8 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F174 | **FIXED in P4.1c.** ~~The cookie policy described essential cookies "to keep the site secure, to remember your cookie preference, and to support the waitlist form", "consent controls", and a waitlist that breaks without storage; none exists.~~ The site sets no cookie; the one stored item is `zeno-theme` (local storage, written only when the theme button is pressed). The policy now says that. A test checks the site's code for cookies and storage keys against it. | Low–Medium (legal accuracy) | me | P4.1c |
 | F175 | **FIXED in P4.1c.** The privacy policy, against the code: ~~"we do not run … product analytics"~~: the app sends anonymous counts of four events (`PRODUCT_EVENT_LABELS`), now listed; ~~"AI coaching provider — Groq"~~: Anthropic (Claude) is the default provider and Groq the fallback (`coach.ts`, `render.yaml`), now both named; ~~"metadata such as … the referring page"~~: the waitlist records the address and the time only; ~~"expire within about 15 minutes"~~: 10 minutes. Each pinned to its code by a test. | Medium (legal accuracy) | me | P4.1c |
 | F176 | **FIXED in P4.1c.** Three overstatements: ~~"every reminder carries the exact amount"~~ (it is the tracked price; the Terms call amounts estimates) → "the amount due"; ~~"protected by a biometric app lock"~~ (the lock is off until turned on) → "you can lock the app with a PIN (plus biometrics…)"; ~~"Cancel anytime — in one tap"~~ (Zeno's own plans are cancelled in the store account) → "from your App Store or Google Play account — no call, no form". | Low (truthfulness) | me | P4.1c |
+| F177 | **FIXED in P4.2a.** ~~Text on every page failed WCAG AA contrast (1.4.3, 4.5:1 for normal text):~~ measured by axe in Chrome and by hand from the tokens: the light theme's `--ink-3` `#808698` was 3.44:1 on paper (footer headings, table headers, eyebrows, tags, the copyright line, the guides' "Related"); the dark theme's `--ink-3` `#6c7180` 3.67:1 on lit paper; `--warn` `#a36a0b` 4.31:1 (the guides' "Difficulty: medium" on most guides); `--stamp-verified` `#0b8a54` 4.39:1 on white (the hero's totals label); the compare pages' pricing footnote dimmed by `opacity: 0.7`. Each token moved, same hue, by the smallest step to at least 4.6:1 on every background it sits on (`#6b7184`, `#7c8191`, `#9c650b`, `#0a824f`); the footnote uses `--ink-2`. The earlier design note ("`textTertiary` is 3.45:1 on paper") was this. | Medium (accessibility, every page) | me | P4.2a |
+| F178 | **OPEN (mine), P5.** The mobile app's theme (`apps/mobile/src/theme/zeno.ts`) uses the same verified green `#0B8A54` (4.17:1 on its paper, noted in P1) and a tertiary text near the website's old `--ink-3`. Fix with the website's values and verify on the device with the P5 accessibility audit (on-screen contrast must be measured there, not assumed). | Medium (accessibility) | me | P5 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **CLOSED in the P3 gate (2026-10-02): reachable, not a bug.** TalkBack, driven by touches from the emulator's own touchscreen, put its focus on each nested button's exact bounds, separately from its parent: the calendar's "Cancel Figma", the menu's Edit/Pause/Delete, the login's Terms and Privacy links. Original note: on the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -4746,3 +4751,40 @@ lifetime, events, storage, verification check and waitlist record each changed o
 code side.
 
 Web run: 177 tests.
+
+### P4.2a — the website in a real browser: every route, both themes, desktop and phone; F177 fixed — 2026-10-02
+
+**Setup.** Playwright 1.63.0 with `@axe-core/playwright` 4.13.0 (root dev
+dependencies; the audit gate passes). The tests drive the **installed Google Chrome**
+(`channel: "chrome"`, Chrome 154 here; GitHub's ubuntu-24.04 image ships Chrome), so no
+browser is downloaded. They run against `next start` over the production build, so the
+headers, CSP and prerendered HTML are what visitors get. Sign-ups go to a temporary
+file, never the repo. CI runs it after "Build web" and uploads traces on failure.
+
+**Per route, on desktop (1440×900, which turns on book mode) and a phone (Pixel 7),
+in the light and the dark theme:** 200; the six security headers exactly
+(`next.config.ts`'s production CSP, HSTS, nosniff, DENY, referrer and permissions
+policies); no console error and no page error; **no request to any other host**
+(blocked and recorded); **axe finds nothing** at WCAG 2.0/2.1 A and AA and 2.2 AA, measured
+after every finite animation has finished (otherwise axe measures a colour half-way
+through a fade: the first run reported the hero's sample rows that way). The route
+list is read from the server's own sitemap.xml, and the hand list is checked against
+it. Five guides cover the template (each difficulty, with and without a cancellation
+link, one of the 470 general ones); all 509 are fetched for 200 and the CSP. An unknown
+path is a 404 with the same headers and accessible; `/analytics` is a 404 in
+production.
+
+**Found and fixed: F177** (contrast on every page, both themes; above). The first run
+failed 43 page checks, all on contrast; after the four token changes and the footnote,
+98 pass.
+
+**Bite check: 4, caught 4** (each with a rebuild): the old grey back; X-Frame-Options
+dropped from `next.config.ts`; an image from another host on a page; a `console.error`
+in the nav.
+
+**Logged: F178** (the app's matching colours, for P5's on-device audit).
+
+**Next in P4.2:** the behaviours (P4.2b): the homepage book (pager, keys, wheel, edge
+drag, touch), the no-JS homepage (F169 in a real browser), reduced motion, the theme
+persisting, the waitlist end to end (validation, the rate limit, a repeat sign-up),
+the hub's search and the guides, and the book-mode nav links checked for real.

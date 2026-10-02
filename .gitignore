@@ -5,6 +5,8 @@ dist/
 build/
 coverage/
 coverage-web/
+test-results/
+playwright-report/
 .turbo/
 .DS_Store
 *.log

@@ -3,7 +3,7 @@
 **One place for everything not yet solved.** Each item says who acts, exactly what to
 do, and where the full evidence lives (finding numbers point into
 `docs/HARDENING_LOG.md`). When an item is done it is removed from here and its log
-entry marked fixed. Last updated 2026-10-02, after P4.1c; the owner items moved to OWNER_ACTIONS.md.
+entry marked fixed. Last updated 2026-10-02, after P4.2a; the owner items moved to OWNER_ACTIONS.md.
 
 ---
 
@@ -19,7 +19,8 @@ Nothing that needs you is kept here, so there is one list to work from.
 
 | # | Item | When |
 |---|---|---|
-| — | **P4:** website tests done (P4.1a-c); next Playwright, then CSP, DAST | next, in order |
+| — | **P4:** website tests done (P4.1a-c), every route in a real browser done (P4.2a); next the behaviours (P4.2b), Lighthouse, CSP, DAST | next, in order |
+| F178 | The mobile app uses the same low-contrast green and grey the website just fixed (F177); fix and measure on the device | P5 |
 | — | R8 warns about RevenueCat's Amazon Appstore SDK ("may be assumed not reachable" in later R8 versions). Not used for Google Play; re-check on each RevenueCat upgrade | each RevenueCat upgrade |
 | — | Sentry and RevenueCat code paths haven't run under R8 (no keys yet). Re-run the device smoke when the keys exist, and in the Sentry UI check one JS error and one native crash for scrubbed content (P3.3: a native crash skips `beforeSend`; only its breadcrumbs are scrubbed, by `beforeBreadcrumb`) | after the keys above |
 | — | Size the webhook's 30/min limit, and an edge rate limiter (the app's is per instance) | P8 |
@@ -41,6 +42,7 @@ Nothing that needs you is kept here, so there is one list to work from.
 | F126 | Found in P3.8e-1: Settings showed **"Version 1.0.0"**; the app is 0.1.0 | Shows the real version. |
 | F125 | Found in P3.8e-1: Settings and Profile showed an **internal account id where your email belongs** (or a made-up "you@example.com") | Your email is shown now. |
 | F124 | Found in P3.8e-1: Settings' **"Push notifications" switch did nothing** | It's now "Renewal reminders" (as designed) and really turns every reminder off and on. |
+| F177 | **Text on every page was too faint** for the accessibility standard (WCAG AA): small grey labels, the "medium" difficulty badge, a green label, in both themes | Each colour darkened (or lightened in dark mode) by the smallest step that passes; the design is unchanged otherwise. |
 | F176 | Three small overstatements ("the exact amount", "protected by a biometric app lock", "cancel in one tap") | Stated exactly. |
 | F175 | The privacy policy said **no product analytics** (the app sends anonymous counts of four events), named only **Groq** (Claude is the default), claimed to record the **referring page**, and gave the wrong link lifetime | Each now matches the code, and a test keeps them matched. |
 | F174 | The cookie policy described **cookies and consent controls that don't exist** | It says what's true: no cookies; one stored item, your theme choice. |
