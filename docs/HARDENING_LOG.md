@@ -4547,3 +4547,23 @@ FX.6's gate run (the full coverage run, the only legitimate ratchet).
 found and fixed; F94 and F106 closed as not reproduced; F16 and F112 rows closed. What
 remains open needs the owner (decisions, account actions, tests only the owner can
 run); it goes into its own file next.
+
+### The owner-only file — 2026-10-02
+
+`docs/OWNER_ACTIONS.md` holds only what needs the owner: 13 account actions, 12
+decisions (D1-D12) and 6 tests only the owner can run. `OPEN_ITEMS.md` section 1 now
+points to it.
+
+Each decision carries one recommendation under the owner's rule (good for the user and
+the business, tilted to the business where there's slack), with the evidence linked:
+YNAB's and Monarch's own pages on household sharing; Apple's App Review Guidelines
+2.3.1(a) and 3.1.2(c); Google Play's photo and video permissions policy; the FTC's 2023
+privacy report; Google's scaled-content spam policy; GDPR Article 20; OWASP ASVS 3.3.1;
+Android's pinning and in-app update docs; Apple's opt-in "Erase Data".
+
+Three sentences of mine were checked before committing:
+- **The certificate:** read live (`CN=onrender.com`, Google Trust Services, 21 Sep to
+  20 Dec 2026).
+- **Monarch's sharing:** quoted from the Experian page.
+- **An emulator image size I had not measured:** removed.
+
