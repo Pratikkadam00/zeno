@@ -74,9 +74,12 @@ export function Footer() {
           {cols.map((c) => (
             <div key={c.h} className={styles.footerCol}>
               <h4>{c.h}</h4>
+              {/* Homepage sections are plain links to "/#…" (F168: they were
+                  "#…", which on any other page pointed at nothing). On the
+                  homepage itself "/#how" is still an in-page jump, no reload. */}
               {c.links.map(([label, href]) =>
                 href.startsWith("/#") ? (
-                  <a key={label} href={href.slice(1)}>
+                  <a key={label} href={href}>
                     {label}
                   </a>
                 ) : (

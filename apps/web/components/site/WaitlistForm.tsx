@@ -56,7 +56,12 @@ export function WaitlistForm({ compact = false }: { compact?: boolean }) {
         value={email}
         onChange={(e) => {
           setEmail(e.target.value);
-          if (state === "error") setState("idle");
+          // Editing clears the error: the field and its message reset together
+          // (F167: the message used to stay while aria-invalid went false).
+          if (state === "error") {
+            setState("idle");
+            setError(null);
+          }
         }}
         aria-label="Email address"
         aria-invalid={state === "error"}

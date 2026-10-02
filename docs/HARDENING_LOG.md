@@ -88,6 +88,15 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] FX.7 F164: Insights' monthly chart read by a screen reader, each month with its amount (verified with TalkBack)
   - [ ] then the owner-only file (everything that needs the owner, nothing else)
 - [ ] **P4 — Website component tests, Playwright, CSP, DAST**
+  - [ ] P4.1 component and page tests (vitest + jsdom + Testing Library), split into steps; each adds a floor
+    - [x] P4.1a the test setup, and the shared components (`components/ui/**` was dead code, removed); **fixes F165, F167, F168, F169**; F166 found
+    - [ ] P4.1b every page renders: metadata, canonical, JSON-LD, breadcrumbs, the 509 cancel guides
+    - [ ] P4.1c the truthfulness rail as a test (banned phrases never rendered, required ones are), and every factual claim on the site checked against the app's code
+  - [ ] P4.2 Playwright on every route: the homepage book, theme, waitlist, cancel hub and guide, compare, legal, 404; security headers, zero console errors, zero outside requests, axe clean
+  - [ ] P4.3 CSP: no `'unsafe-inline'` scripts (hashes for the fixed inline scripts) or a written, measured reason; the other headers verified
+  - [ ] P4.4 build-output secret scan: no non-public env value in `.next`
+  - [ ] P4.5 DAST: OWASP ZAP baseline against `next start` and the API, nightly; no medium+ alerts
+  - [ ] P4 gate: Playwright green in CI; CSP without `'unsafe-inline'` scripts (or a written reason); axe clean on every route
 - [ ] **P5 — Mobile end-to-end (Maestro on the emulator)** (watch for F94 and F106, closed as not reproduced in FX.5)
 - [ ] **P6 — Mutation + property-based testing**
 - [ ] **P7 — Security verification v2 with evidence**
@@ -256,6 +265,11 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F162 | **FIXED in FX.3.** ~~While Settings' bottom sheet (Home currency) is open, the Settings controls behind it stay in the accessibility tree (`uiautomator dump --compressed`), so a screen reader can move behind the sheet.~~ The sheet is now its own window (AppModal). On the emulator the tree with it open holds only the sheet, and a TalkBack touch where "Go Pro" sits behind it focuses the backdrop. | Low (accessibility) | me | FX.3 |
 | F163 | **FIXED in FX.6.** ~~A paused subscription counts $0 in the spend history (Year in Review, the recap, the Insights chart) for every month, including months it was paid before the pause.~~ Pausing now records a period (`pausedPeriods`, stored in a new column by migration v2) and resuming closes it; history skips only the charges inside a pause. Seen on the emulator: a pause on the old app collapsed October's paid charge; a pause on the new app keeps it, across restarts. A pause recorded before this change has no date, and none is invented. | Low (history understates) | me | FX.6 |
 | F164 | **FIXED in FX.7.** ~~Insights' 6-month chart gives a screen reader the month names but not the amounts: each bar is an unlabelled view, so the history is visual only.~~ Each month is now one accessible element, "October 2026, $15.49, this month". On the emulator TalkBack focuses each month's column. | Low (accessibility) | me | FX.7 |
+| F165 | **FIXED in P4.1a.** ~~`JsonLd` wrote `JSON.stringify(data)` straight into a `<script>`, and JSON leaves `<` alone, so a value holding `</script>` would close the tag and the rest would be read as HTML.~~ Values are our own catalog and copy, never a visitor's, so nothing exploited it; but 509 catalog entries feed the cancel guides' JSON-LD. Now `<` is written `\u003c`, the escape Next's own JSON-LD guide gives (`node_modules/next/dist/docs/01-app/02-guides/json-ld.md`). | Low (defence in depth) | me | P4.1a |
+| F166 | **OPEN (mine), P4.1c.** The website says "in the app, a cancellation is only marked verified after your next receipt or statement shows no charge" (hero note; similar in the FAQ and The Method). The app's `runCancellationVerification` (`apps/mobile/src/data/subscription-store.tsx`) marks a pending cancellation **cancelled once its verify-by date passes with no charge recorded since the request**, whether or not any receipt or statement was scanned or imported after it. So "no charge recorded" is presented as "a statement showed no charge". | Medium (truthfulness) | me | P4.1c |
+| F167 | **FIXED in P4.1a.** ~~After a waitlist error, typing again set `aria-invalid` back to false but left the error message on screen (and the field still described by it).~~ Editing now clears both together. | Low (accessibility) | me | P4.1a |
+| F168 | **FIXED in P4.1a.** ~~The footer's homepage links ("How it works", "Pricing", "FAQ", "Join the waitlist") were written `#how`, `#pricing`…, relative to the current page, so on every other page (the 509 cancel guides, compare, features, legal) they pointed at sections that don't exist there and did nothing.~~ They are `/#how` etc. now; on the homepage that is still an in-page jump. Since the website port (`53f521e`). | Low–Medium (navigation) | me | P4.1a |
+| F169 | **FIXED in P4.1a.** ~~Without JavaScript the homepage below the hero was invisible.~~ The motion primitives are server-rendered at their animation start (inline `opacity:0`, offsets), which only Motion's in-view trigger lifts; the hero was built for no-JS (its entrance is gated on `html.js`), the rest wasn't. Measured: the server HTML of every primitive carried the start state. Now each such element has `zn-reveal`, and `html:not(.js) .zn-reveal` (globals.css) shows it finished; `html.js` is set by the inline theme script before first paint, so scripts-on is unchanged. Proven in Chromium on the primitives' real server HTML (no `html.js`: opacity 1, no transform; with it: the start state kept), and in the built homepage 84 of 86 start-state elements carry the class (the other two are the margin index's marker and the 5 % "zeno" watermark, both decorative and meant to start hidden). The full no-JS page check is P4.2's. | Medium (content invisible without JS) | me | P4.1a |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **CLOSED in the P3 gate (2026-10-02): reachable, not a bug.** TalkBack, driven by touches from the emulator's own touchscreen, put its focus on each nested button's exact bounds, separately from its parent: the calendar's "Cancel Figma", the menu's Edit/Pause/Delete, the login's Terms and Privacy links. Original note: on the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -4567,3 +4581,57 @@ Three sentences of mine were checked before committing:
 - **Monarch's sharing:** quoted from the Experian page.
 - **An emulator image size I had not measured:** removed.
 
+### P4.1a — the website's component tests; F165, F167, F168, F169 fixed, F166 found — 2026-10-02
+
+**The setup.** The website had no rendered tests at all: `apps/web/app/**` and
+`components/**` were excluded from coverage ("exercised by the web build"). Now:
+
+- `vitest.web.config.ts`: its own run (`npm run test:web`, `test:web:coverage`), React
+  Testing Library 16.3.3 in jsdom 20 (already in the tree via jest-expo; now declared),
+  Node by default and jsdom per file (`// @vitest-environment jsdom`), so the API route
+  and fonts tests keep running in Node. Its own coverage floor, starting at the measured
+  level and ratcheting (autoUpdate). It is separate because `vitest.config.ts`'s floor is
+  global at 100 % lines and could take a web file only once that file was complete
+  (vitest applies the global floor to every file, glob floors included: "Global threshold
+  is for all files", its coverage source).
+- `vitest.shared.ts`: the `@zeno/*` aliases, and the website's `@/` imports resolved only
+  for importers inside `apps/web` (apps/mobile's tsconfig maps `@/` to its own `src/`).
+- `apps/web/test-support/`: controllable `matchMedia` (live lists, so Motion's cached
+  reduced-motion setting follows), `IntersectionObserver` (nothing in view until a test
+  says so), `Element.animate`, element geometry; the teardown restores every mock (a
+  leftover `requestAnimationFrame` spy outlived its fake clock and swallowed the next
+  test's frames, found while writing these).
+- CI: a new step "Website component tests + coverage floor". The gate script runs it too.
+
+**Removed, not tested: dead code.** `components/ui/*` (5 shadcn files), `lib/utils.ts`
+and its test, `components.json`, and their four dependencies (`@base-ui/react`,
+`class-variance-authority`, `clsx`, `tailwind-merge`) were imported by nothing; also the
+unused primitives `Reveal`, `RuleWipe`, `StampIn`, `CountUp`, `Magnetic` and ledger marks
+`SectionHead`, `Stamp`, `RuledStep` (a comment said the cancel guides used them; none
+did). Checked by search, then by a production build (all routes built).
+
+**Tests (124, 15 files):** every shared component: the waitlist form (request, each
+error, the busy state), the nav (links, the analytics flag, the theme toggle with storage
+refused, the mobile menu's six ways to close and its scroll lock), the footer, the
+content shell, the comparison table (real table semantics), the ledger marks, every
+motion primitive (in view, reduced motion, the counters' failsafes), the homepage
+sections (the FAQ's disclosure semantics, the pricing rows), the hero's sample ledger
+(each switch, the announced totals, the cancel flow line by line, the delayed
+"verified", restore, timers cleared on leaving), the pen chrome, and the ledger book
+(document mode for narrow, reduced-motion and incapable browsers; book mode's pages,
+pager, keys, wheel, touch, edge drag, flick, the running chip, a turn cancelled on
+leaving). `components/site` is at 100 % lines and functions except `faq-data.ts`, whose
+claims are P4.1c's. **Bite check: 9, caught 9** (the four fixes; Escape in the nav; the
+hero's delay before "verified"; the book's in-turn guard, first missed by a test that
+pressed Next twice, now End mid-turn; the wheel turning mid-page; the tally ignoring
+cancellations).
+
+**Fixed:** F165 (JSON-LD escape), F167 (the waitlist error left behind), F168 (the
+footer's links on every page but the homepage), F169 (no-JS homepage invisible below the
+hero). **Found, for P4.1c:** F166 (the site's "verified" claim is stronger than the app's
+check). **To check in P4.2, not a finding yet:** in book mode the nav's "/#pricing"
+style links may not turn the book (the target sits in a hidden sheet and nothing listens
+for the hash); it needs a real browser to say.
+
+**The production build** passes, and its homepage HTML carries the fixes (the `/#`
+links, `zn-reveal` on 84 of 86 start-state elements as above, the no-JS rule in the CSS).

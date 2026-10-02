@@ -1,13 +1,9 @@
 import { defineConfig } from "vitest/config";
-import { fileURLToPath } from "node:url";
+import { sharedResolve, webAtAlias } from "./vitest.shared";
 
 export default defineConfig({
-  resolve: {
-    alias: {
-      "@zeno/shared": fileURLToPath(new URL("./packages/shared/src/index.ts", import.meta.url)),
-      "@zeno/service-catalog": fileURLToPath(new URL("./packages/service-catalog/src/index.ts", import.meta.url))
-    }
-  },
+  plugins: [webAtAlias],
+  resolve: sharedResolve,
   test: {
     include: [
       "apps/**/*.test.ts",
@@ -19,7 +15,15 @@ export default defineConfig({
     // RN component tests (`*.rntest.tsx`) belong to the isolated jest project in
     // apps/mobile — react-native can't be parsed in this node environment. The
     // include globs above don't match that extension; this makes it explicit.
-    exclude: ["**/node_modules/**", "**/dist/**", "**/*.rntest.tsx"],
+    exclude: [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/*.rntest.tsx",
+      // The website's pages and components (P4.1) run in their own config,
+      // vitest.web.config.ts, with their own coverage floor: `npm run test:web`.
+      "apps/web/app/**",
+      "apps/web/components/**"
+    ],
     environment: "node",
     coverage: {
       provider: "v8",
@@ -44,6 +48,9 @@ export default defineConfig({
         "apps/mobile/src/test-support/**",
         "apps/web/app/**",
         "apps/web/components/**",
+        // The website tests' browser stand-ins (vitest.web.config.ts): test
+        // support, not shipped code, like apps/mobile/src/test-support above.
+        "apps/web/test-support/**",
         // React Native providers/components that vitest's node environment cannot
         // render. Measured by the jest project instead, with per-file floors
         // (apps/mobile/jest.config.js collectCoverageFrom / coverageThreshold) —

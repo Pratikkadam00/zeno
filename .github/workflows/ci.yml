@@ -83,6 +83,12 @@ jobs:
       - name: Coverage floor
         run: npm run test:coverage
 
+      # The website's pages and components (P4.1): React Testing Library in
+      # jsdom, with their own ratcheting floor in vitest.web.config.ts (the logic
+      # floor above is global at 100 % lines, so it cannot take them file by file).
+      - name: Website component tests + coverage floor
+        run: npm run test:web:coverage
+
       # Catch build-time breakage (server components, route types, bad imports)
       # that typecheck + unit tests miss. Next build is the web app's real gate.
       # On failure the log's last 40 lines become an annotation, readable through

@@ -207,6 +207,17 @@ a {
   left: 12px;
 }
 
+/* No-JS fallback (F169). The motion primitives (components/site/primitives.tsx)
+   are server-rendered at their START state, an inline opacity:0 / offset that
+   only Motion's in-view trigger lifts. Without JavaScript nothing lifts it, so
+   everything below the hero stayed invisible. html.js is set by the inline
+   theme script before first paint (lib/theme.ts), so this rule applies only
+   when scripts never ran. !important is the only way past an inline style. */
+html:not(.js) .zn-reveal {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
 /* ============================================================
    Ledger motion — "everything settles like paper."
    Rows print in, rules wipe, bars rise, one stamp thunks.

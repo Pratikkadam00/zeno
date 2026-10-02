@@ -1,6 +1,5 @@
 // Zeno — server-safe ledger marks. NO "use client": these render as static
-// markup, so the 509 SSG cancel guides and every utility page can use them
-// without shipping a byte of client JS.
+// markup, without shipping a byte of client JS.
 import type { CSSProperties, ReactNode } from "react";
 
 /* ① The Ledger Line — label ……… mono value. The signature row. */
@@ -38,22 +37,6 @@ export function LedgerLine({
       <span className="money" style={{ flex: "none", fontSize: size + 1, fontWeight: 700, color: valueColor ?? "var(--ink)" }}>
         {value}
       </span>
-    </div>
-  );
-}
-
-/* ③ Section head — caps-mono kicker with a trailing hairline. */
-export function SectionHead({ children, right, style }: { children: ReactNode; right?: ReactNode; style?: CSSProperties }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, ...style }}>
-      <span
-        className="money"
-        style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ink-3)", whiteSpace: "nowrap" }}
-      >
-        {children}
-      </span>
-      <span aria-hidden="true" style={{ flex: 1, borderBottom: "1px solid var(--rule)" }} />
-      {right}
     </div>
   );
 }
@@ -98,65 +81,5 @@ export function TickTag({
       <span aria-hidden="true" style={{ width: 11, height: 3, background: hollow ? "transparent" : c, border: hollow ? `1px solid ${c}` : "none", flex: "none" }} />
       {children}
     </span>
-  );
-}
-
-/* ② The Zeno Stamp — double-ruled, rotated, EARNED verified moments only.
-   The homepage uses it exactly once (the verify beat). */
-export function Stamp({
-  tone = "verified",
-  sub,
-  angle = -5,
-  children,
-  className,
-  style
-}: {
-  tone?: "verified" | "alert" | "neutral";
-  sub?: ReactNode;
-  angle?: number;
-  children: ReactNode;
-  className?: string;
-  style?: CSSProperties;
-}) {
-  const color = tone === "alert" ? "var(--stamp-alert)" : tone === "neutral" ? "var(--ink-3)" : "var(--stamp-verified)";
-  return (
-    <span
-      className={`money ${className ?? ""}`}
-      style={
-        {
-          display: "inline-flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 4,
-          padding: "10px 18px",
-          border: `2.5px solid ${color}`,
-          outline: `1px solid ${color}`,
-          outlineOffset: 3,
-          borderRadius: 7,
-          color,
-          transform: `rotate(${angle}deg)`,
-          opacity: 0.95,
-          fontWeight: 700,
-          letterSpacing: "0.14em",
-          textTransform: "uppercase",
-          whiteSpace: "nowrap",
-          "--stamp-angle": `${angle}deg`,
-          ...style
-        } as CSSProperties
-      }
-    >
-      <span style={{ fontSize: 14, lineHeight: 1 }}>{children}</span>
-      {sub ? <span style={{ fontSize: 9, letterSpacing: "0.2em", opacity: 0.75 }}>{sub}</span> : null}
-    </span>
-  );
-}
-
-/* Numbered ruled row — guide steps, method beats. */
-export function RuledStep({ n, children, style }: { n: number; children: ReactNode; style?: CSSProperties }) {
-  return (
-    <div style={{ display: "flex", gap: 14, alignItems: "baseline", padding: "13px 0", borderBottom: "1px solid var(--rule)", ...style }}>
-      <span className="money" style={{ fontSize: 12, fontWeight: 700, color: "var(--ink-3)", flex: "none" }}>{String(n).padStart(2, "0")}</span>
-      <span style={{ fontSize: 15, lineHeight: 1.55, color: "var(--ink)" }}>{children}</span>
-    </div>
   );
 }

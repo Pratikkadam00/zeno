@@ -7,8 +7,13 @@ export function JsonLd({ data }: { data: Record<string, unknown> | Record<string
   return (
     <script
       type="application/ld+json"
-      // Schema is author-controlled (no user input), so this is safe.
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+      // JSON.stringify leaves "<" alone, so a value holding "</script>" would end
+      // the tag early and the rest would be read as HTML (F165). The JSON escape
+      // < is the same character to a JSON parser and inert to the HTML
+      // parser; it is the escape Next's own JSON-LD guide gives. Values come
+      // from our catalog and copy, never from a visitor, but 509 catalog
+      // entries are too many to trust by eye.
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }}
     />
   );
 }

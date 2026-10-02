@@ -4,17 +4,18 @@
 // print in, rules wipe, headlines print word by word, digits roll like a
 // counter wheel, money tallies. Transform/opacity only; in-view triggers
 // fire once; reduced motion collapses everything to static.
-//
-// Back-compat: Reveal / CountUp / Magnetic / StaggerGroup / staggerChild are
-// kept as working exports so files not rewritten in this pass keep compiling.
-// Magnetic no longer moves (cursor-magnetism retired — paper doesn't chase
-// hands); it renders children unchanged.
 
 import { Fragment, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { m, useInView, useReducedMotion, type MotionStyle, type Variants } from "motion/react";
 
 const EASE = [0.22, 0.8, 0.26, 1] as const;
 const EASE_CSS = "cubic-bezier(0.22, 0.8, 0.26, 1)";
+
+// Every element below that is server-rendered at an animation START state
+// (opacity 0, offset, unscaled) carries this class; globals.css shows it
+// finished when no script ever ran (F169).
+const REVEAL = "zn-reveal";
+const withReveal = (className: string | undefined) => (className ? `${className} ${REVEAL}` : REVEAL);
 
 /* PrintIn — a row/section printing onto the page. */
 export function PrintIn({
@@ -33,7 +34,7 @@ export function PrintIn({
   const reduce = useReducedMotion();
   return (
     <m.div
-      className={className}
+      className={withReveal(className)}
       {...(style ? { style: style as MotionStyle } : {})}
       initial={{ opacity: 0, y: reduce ? 0 : y }}
       whileInView={{ opacity: 1, y: 0 }}
@@ -42,31 +43,6 @@ export function PrintIn({
     >
       {children}
     </m.div>
-  );
-}
-
-/* Back-compat alias (old API: <Reveal delay className>). */
-export function Reveal({ children, delay = 0, className, style }: { children: ReactNode; delay?: number; className?: string | undefined; style?: CSSProperties | undefined }) {
-  return (
-    <PrintIn delay={delay} className={className} style={style}>
-      {children}
-    </PrintIn>
-  );
-}
-
-/* RuleWipe — a hairline (or bar) ruling itself in, left → right. */
-export function RuleWipe({ delay = 0, className, style }: { delay?: number; className?: string | undefined; style?: CSSProperties | undefined }) {
-  const reduce = useReducedMotion();
-  return (
-    <m.div
-      aria-hidden="true"
-      className={className}
-      style={{ transformOrigin: "left center", ...style } as MotionStyle}
-      initial={{ scaleX: reduce ? 1 : 0 }}
-      whileInView={{ scaleX: 1 }}
-      viewport={{ once: true, margin: "-48px" }}
-      transition={{ duration: 0.5, delay, ease: EASE }}
-    />
   );
 }
 
@@ -81,7 +57,7 @@ export function PenHead({ children, center = false, style }: { children: ReactNo
   return (
     <div ref={ref} style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: center ? "center" : undefined, ...style }}>
       <b
-        className="money"
+        className={withReveal("money")}
         style={{
           fontSize: 11,
           fontWeight: 700,
@@ -98,6 +74,7 @@ export function PenHead({ children, center = false, style }: { children: ReactNo
       {!center ? (
         <i
           aria-hidden="true"
+          className={REVEAL}
           style={{
             flex: 1,
             borderBottom: "1px solid var(--rule-strong)",
@@ -153,6 +130,7 @@ export function WordsIn({
               <Fragment key={wi}>
                 {wi > 0 ? " " : null}
                 <span
+                  className={REVEAL}
                   style={{
                     display: "inline-block",
                     opacity: inView ? 1 : 0,
@@ -185,6 +163,7 @@ export function MaskLines({ lines, delay = 0, className, style }: { lines: React
       {lines.map((line, i) => (
         <span key={i} style={{ display: "block", overflow: "hidden", paddingBottom: "0.06em", marginBottom: "-0.06em" }}>
           <span
+            className={REVEAL}
             style={{
               display: "block",
               transform: on ? "none" : "translateY(114%)",
@@ -206,6 +185,7 @@ export function DrawBar({ color = "var(--stamp-alert)", top = 2, bottom = 2, del
   return (
     <m.span
       aria-hidden="true"
+      className={REVEAL}
       style={{ position: "absolute", left: 0, top, bottom, width: 3, background: color, transformOrigin: "top center", ...style } as MotionStyle}
       initial={{ scaleY: reduce ? 1 : 0 }}
       whileInView={{ scaleY: 1 }}
@@ -241,6 +221,7 @@ export function PenLedgerLine({
   return (
     <div ref={ref} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "8px 0" }}>
       <span
+        className={REVEAL}
         style={{
           flex: "none",
           fontSize: 15,
@@ -259,6 +240,7 @@ export function PenLedgerLine({
       </span>
       <span
         aria-hidden="true"
+        className={REVEAL}
         style={{
           flex: 1,
           borderBottom: "2px dotted var(--rule-strong)",
@@ -269,7 +251,7 @@ export function PenLedgerLine({
         }}
       />
       <span
-        className="money"
+        className={withReveal("money")}
         style={{ flex: "none", fontSize: 16, fontWeight: 700, color: valueColor ?? "var(--ink)", opacity: on ? 1 : 0, transition: t(0.5, 0.26, "opacity") }}
       >
         {value}
@@ -337,25 +319,6 @@ export function Odometer({ value, className, style }: { value: number | string; 
   );
 }
 
-/* StampIn — spring thunk for an earned verified moment. (The homepage's
-   verified beat now lives INSIDE the hero ledger's cancel flow; this stays
-   for utility pages and future earned moments.) */
-export function StampIn({ children, delay = 0, className }: { children: ReactNode; delay?: number; className?: string | undefined }) {
-  const reduce = useReducedMotion();
-  return (
-    <m.div
-      className={className}
-      style={{ display: "inline-flex" }}
-      initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 1.7 }}
-      whileInView={reduce ? { opacity: 1 } : { opacity: 1, scale: 1 }}
-      viewport={{ once: true, margin: "-64px" }}
-      transition={reduce ? { duration: 0.2, delay } : { type: "spring", stiffness: 420, damping: 16, delay }}
-    >
-      {children}
-    </m.div>
-  );
-}
-
 /* Tally — adding-machine count-up in tabular mono. SSR/no-JS renders the
    REAL value (never a zero); in view, the count runs 0 → value. rAF with a
    timeout failsafe so suspended rAF can never strand the number. */
@@ -408,16 +371,6 @@ export function Tally({
   );
 }
 
-/* Back-compat alias (old API: <CountUp to prefix suffix>). */
-export function CountUp({ to, prefix = "", suffix = "" }: { to: number; prefix?: string; suffix?: string }) {
-  return <Tally to={to} prefix={prefix} suffix={suffix} />;
-}
-
-/* Magnetic — retired interaction, preserved API. Paper doesn't chase hands. */
-export function Magnetic({ children }: { children: ReactNode; strength?: number }) {
-  return <>{children}</>;
-}
-
 /* Stagger group — rows print in sequence (45ms family stagger, like the app). */
 export function StaggerGroup({ children, className, style }: { children: ReactNode; className?: string | undefined; style?: CSSProperties | undefined }) {
   return (
@@ -433,6 +386,9 @@ export function StaggerGroup({ children, className, style }: { children: ReactNo
     </m.div>
   );
 }
+
+/** The class a staggerChild element needs for the no-JS fallback. */
+export const REVEAL_CLASS = REVEAL;
 
 export const staggerChild: Variants = {
   hidden: { opacity: 0, y: 12 },

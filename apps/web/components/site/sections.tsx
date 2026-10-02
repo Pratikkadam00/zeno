@@ -20,7 +20,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, m, useReducedMotion } from "motion/react";
-import { DrawBar, MaskLines, Odometer, PenHead, PenLedgerLine, PrintIn, StaggerGroup, Tally, WordsIn, staggerChild } from "./primitives";
+import { DrawBar, MaskLines, Odometer, PenHead, PenLedgerLine, PrintIn, REVEAL_CLASS, StaggerGroup, Tally, WordsIn, staggerChild } from "./primitives";
 import { LedgerLine, TickTag } from "./ledger";
 import { WaitlistForm } from "./WaitlistForm";
 import styles from "../../app/home.module.css";
@@ -113,7 +113,7 @@ export function Method() {
         <WordsIn className={styles.h2} text="An audit, not an app tour." />
         <StaggerGroup className={styles.methodGrid}>
           {METHOD.map((s, i) => (
-            <m.div key={s.t} className={styles.methodRule} variants={staggerChild}>
+            <m.div key={s.t} className={`${styles.methodRule} ${REVEAL_CLASS}`} variants={staggerChild}>
               <span className={styles.methodNum}>{String(i + 1).padStart(2, "0")}</span>
               <h3 className={styles.methodTitle}>{s.t}</h3>
               <p className={styles.methodBody}>{s.b}</p>

@@ -4,6 +4,7 @@ node_modules/
 dist/
 build/
 coverage/
+coverage-web/
 .turbo/
 .DS_Store
 *.log
