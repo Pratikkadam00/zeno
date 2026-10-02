@@ -25,8 +25,12 @@ export default defineConfig({
     trace: "retain-on-failure"
   },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"], channel: "chrome", viewport: { width: 1440, height: 900 } } },
-    { name: "mobile", use: { ...devices["Pixel 7"], channel: "chrome" } }
+    { name: "desktop", testIgnore: /web-vitals/, use: { ...devices["Desktop Chrome"], channel: "chrome", viewport: { width: 1440, height: 900 } } },
+    { name: "mobile", testIgnore: /web-vitals/, use: { ...devices["Pixel 7"], channel: "chrome" } },
+    // Timing budgets (P4.2c) on the phone profile, after the others and one
+    // test at a time: a throttled measurement taken while other tests compete
+    // for the CPU measures the machine, not the page.
+    { name: "vitals", testMatch: /web-vitals/, dependencies: ["desktop", "mobile"], fullyParallel: false, use: { ...devices["Pixel 7"], channel: "chrome" } }
   ],
   webServer: {
     command: `npx next start -p ${PORT} -H 127.0.0.1`,

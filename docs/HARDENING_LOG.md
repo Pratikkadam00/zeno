@@ -92,10 +92,10 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
     - [x] P4.1a the test setup, and the shared components (`components/ui/**` was dead code, removed); **fixes F165, F167, F168, F169**; F166 found (green: CI 37032423384, CodeQL 37032423356 on `62faef2`)
     - [x] P4.1b every page renders: metadata, canonical, JSON-LD, breadcrumbs, internal links, the sitemap, the 509 cancel guides; **fixes F170** (green: CI 37035441547, CodeQL 37035441551 on `b4b0b3d`)
     - [x] P4.1c the truthfulness rail as a test (banned phrases never rendered, required ones are), and every factual claim on the site checked against the app's code; **fixes F166, F171-F176**; D13 and three account checks to the owner (green: CI 37040621945, CodeQL 37040621963 on `d624f74`)
-  - [ ] P4.2 Playwright on every route: the homepage book, theme, waitlist, cancel hub and guide, compare, legal, 404; security headers, zero console errors, zero outside requests, axe clean
+  - [x] P4.2 Playwright on every route: the homepage book, theme, waitlist, cancel hub and guide, compare, legal, 404; security headers, zero console errors, zero outside requests, axe clean
     - [x] P4.2a every route, desktop and phone, light and dark: 200, the security headers, no console error, nothing from another host, axe clean (WCAG 2.2 AA); in CI; **fixes F177**, F178 logged (green: CI 37042604157, CodeQL 37042604027 on `1903ee3`; the Playwright step ran 2 min on the runner's Chrome)
-    - [x] P4.2b the behaviours: the homepage book, no-JS, reduced motion, theme persistence, the waitlist end to end, the hub and guides, the book-mode nav links; **fixes F179**
-    - [ ] P4.2c Lighthouse budgets (LCP, CLS, INP)
+    - [x] P4.2b the behaviours: the homepage book, no-JS, reduced motion, theme persistence, the waitlist end to end, the hub and guides, the book-mode nav links; **fixes F179** (green: CI 37043864957, CodeQL 37043865051 on `e0e6b31`)
+    - [x] P4.2c Core Web Vitals budgets (LCP, CLS, INP) under Lighthouse's mobile throttling, measured in Chrome; **fixes F180**
   - [ ] P4.3 CSP: no `'unsafe-inline'` scripts (hashes for the fixed inline scripts) or a written, measured reason; the other headers verified
   - [ ] P4.4 build-output secret scan: no non-public env value in `.next`
   - [ ] P4.5 DAST: OWASP ZAP baseline against `next start` and the API, nightly; no medium+ alerts
@@ -283,6 +283,8 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F177 | **FIXED in P4.2a.** ~~Text on every page failed WCAG AA contrast (1.4.3, 4.5:1 for normal text):~~ measured by axe in Chrome and by hand from the tokens: the light theme's `--ink-3` `#808698` was 3.44:1 on paper (footer headings, table headers, eyebrows, tags, the copyright line, the guides' "Related"); the dark theme's `--ink-3` `#6c7180` 3.67:1 on lit paper; `--warn` `#a36a0b` 4.31:1 (the guides' "Difficulty: medium" on most guides); `--stamp-verified` `#0b8a54` 4.39:1 on white (the hero's totals label); the compare pages' pricing footnote dimmed by `opacity: 0.7`. Each token moved, same hue, by the smallest step to at least 4.6:1 on every background it sits on (`#6b7184`, `#7c8191`, `#9c650b`, `#0a824f`); the footnote uses `--ink-2`. The earlier design note ("`textTertiary` is 3.45:1 on paper") was this. | Medium (accessibility, every page) | me | P4.2a |
 | F178 | **OPEN (mine), P5.** The mobile app's theme (`apps/mobile/src/theme/zeno.ts`) uses the same verified green `#0B8A54` (4.17:1 on its paper, noted in P1) and a tertiary text near the website's old `--ink-3`. Fix with the website's values and verify on the device with the P5 accessibility audit (on-screen contrast must be measured there, not assumed). | Medium (accessibility) | me | P5 |
 | F179 | **FIXED in P4.2b.** ~~On a wide screen with a mouse (the homepage's book mode), the nav's "How it works", "Pricing", "FAQ" and "Join waitlist", and the footer's section links, did nothing: the book stayed on its page.~~ Every section sits in a hidden sheet and the page doesn't scroll, and Next's Link moves to "/#pricing" with `pushState`, which fires no `hashchange`; nothing listened in any case. Suspected in P4.1a, measured in Chrome in P4.2b (the pager stayed on COVER after clicking Pricing). The book now catches same-page section-link clicks (capture phase, before Next's handler) and turns to that sheet; a modified click or a new-tab link is left alone. | Medium (navigation on desktop) | me | P4.2b |
+| F180 | **FIXED in P4.2c.** ~~Under Lighthouse's mobile throttling the homepage's first paint (and LCP, the nav's "zeno") came at ~2.9 s, over the 2.5 s "good" line; every other page measured 2.0-2.3 s.~~ Cause, measured step by step: not the scripts (2.65-2.87 s with JavaScript off), not the markup (every script async), but the **first layout**: one 1,120 ms layout (4x CPU) covering the whole long page while the web fonts were still loading; layout with the fallback fonts costs ~2.5x layout with the web fonts (1,070 ms vs 410 ms), and a relayout once loaded costs 7 ms. Fixed with `content-visibility: auto` on the homepage sections below the hero, so the first layout covers what is on screen: homepage LCP 2.42-2.45 s standalone, 1.89-1.93 s in later full-suite runs (lab timings move ~0.5 s with the machine's state), CLS 0.000-0.008. Side effect, accepted: without JavaScript, sections fade in briefly as they come into view (their styles resolve then); the no-JS test checks each section's settled state on screen. | Medium (performance on phones) | me | P4.2c |
+| F181 | **FIXED (found during P4.2c's gate run).** ~~The mobile Calendar's "N RENEWALS" line counted each renewal by its LOCAL day while the month total beside it (`getMonthlyTotal`) uses its UTC day; renewal dates are UTC days (§10). At a month boundary west of UTC, a renewal dated the 1st (midnight UTC, the evening before in New York) was in this month's count but not its total.~~ The count is now `getMonthRenewalCount` in `calendarUtils`, the same renewals on the same UTC day as the total; the screen's private local-day helper is gone. Tested in New York, Kolkata and UTC (the New York case fails with the old local-day count). | Low (a count disagreeing with its own total) | me | P4.2c |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **CLOSED in the P3 gate (2026-10-02): reachable, not a bug.** TalkBack, driven by touches from the emulator's own touchscreen, put its focus on each nested button's exact bounds, separately from its parent: the calendar's "Cancel Figma", the menu's Edit/Pause/Delete, the login's Terms and Privacy links. Original note: on the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -4828,3 +4830,82 @@ turns the book; a modified click, an unknown section, another page and a new-tab
 are left alone).
 
 The local gate script now runs the web build and the browser suite too.
+
+### P4.2c — Core Web Vitals budgets in Chrome; F180 fixed — 2026-10-03
+
+**No new dependency.** Lighthouse 13.5.0 alone is 19 MB unpacked before its own
+dependencies. The same three metrics come from the browser APIs Google's
+`web-vitals` library reads: `largest-contentful-paint`, `layout-shift` (session windows:
+a gap over 1 s or a window over 5 s starts a new one; CLS is the worst window) and event
+timing (INP = the slowest interaction, its definition below 50 interactions). They are
+measured in the existing Playwright suite (`e2e/web-vitals.spec.ts`).
+
+**Conditions: Lighthouse's own mobile throttling.** 150 ms latency, 1.6 Mbps down /
+750 Kbps up, 4x CPU ([lighthouse/docs/throttling.md](https://github.com/GoogleChrome/lighthouse/blob/main/docs/throttling.md));
+applied through DevTools, Lighthouse multiplies latency by 3.75 and throughput by 0.9
+([lighthouse#7330](https://github.com/GoogleChrome/lighthouse/issues/7330)), and those
+adjusted values are used. **Budgets: Google's "good" thresholds**: LCP <= 2.5 s, CLS
+<= 0.1, INP <= 200 ms. Pages: the homepage, the hub, a guide, a comparison, the privacy
+policy; each loaded cold, scrolled through (for shifts below the fold), then used (theme
+toggle, an FAQ answer, a hero switch, the hub's search).
+
+**Its own project.** Timing measured while other tests compete for the CPU measures the
+machine (three budget failures that way). The "vitals" project runs after the desktop
+and phone projects, one test at a time.
+
+**Found: F180** (the homepage's first paint, ~2.9 s), fixed (above).
+
+**A wrong lead, withdrawn.** An A/B suggested `text-wrap: pretty` cost ~0.8 s; a rebuild
+without it measured no difference. The A/B had served its rewritten CSS through
+Playwright's request interception, and **a response fulfilled that way bypasses the
+network throttling**, so the CSS simply arrived early. The change was reverted. Later
+experiments that needed interception (a section removed from the HTML) read CPU layout
+time from the trace, which interception doesn't skew, not paint times.
+
+**Measured now (three full runs):** LCP 1.69-1.93 s on every page, CLS 0.000-0.008, INP
+24-56 ms; all 130 tests pass each run. **Bite check: 3, caught 3, each by its own
+metric:** a 300 px block pushed in after load (CLS 0.358); the theme button blocking
+for 300 ms (INP 344 ms); a script holding the first paint (LCP 3.65 s). (A first CLS
+bite fired before the first paint, where shifts don't count by definition; redone after
+`load`.)
+
+**Caveat:** lab timings depend on the machine; CI's runner will give its own numbers.
+They are read from the GitHub run, not assumed.
+
+**P4.2 is complete.**
+
+### F181 and three date-fragile tests — found by the gate run after local midnight — 2026-10-03
+
+**What happened.** P4.2c's gate run failed three Calendar screen tests at 00:06 IST, a
+few minutes after the date rolled over. Nothing in the mobile app had changed.
+
+**The tests were wrong, not the screen.** Their date helper keyed a renewal by its
+LOCAL day, while the app keys renewals by their UTC day everywhere (§10). Between local
+midnight and 05:30 in India the two differ. The seed's "in 1 day" renewal (09:00 UTC
+tomorrow) then lands on the local today, and a renewal four days out sits on a
+different day for the test than for the app. Fixed: the tests key renewals by UTC day,
+and the "no day panel on load" test now computes from the seed whether a renewal falls
+on the user's today, instead of assuming none does.
+
+**A first diagnosis, withdrawn.** I first read it as an app bug: the dots and the tap
+disagreeing on a renewal's day. Wrong: the dots come from `getMarkedDates`, which uses
+the same UTC day as the tap; the screen's local-day helper (`toDateKey`) fed only the
+month's count. A screen test written for the wrong diagnosis passed with or without the
+change, which is how it was caught. Separately, **jest ignores a runtime `TZ` change**
+(measured: the hour stayed at the host's), so a timezone can't be switched inside a
+jest test; that test was removed rather than kept as false assurance.
+
+**The real defect, F181:** the month's count, by local day, disagreeing with the month's
+total, by UTC day, at a month boundary (above). Fixed in `calendarUtils`, where vitest
+can pin a timezone. **Bite check: 1, caught 1** (a local-day count fails the New York
+case).
+
+**Checked far from UTC:** every vitest suite (logic and website) and all 560 jest tests
+pass at UTC-10 (Honolulu), UTC-7 (Los Angeles, the Calendar screen) and UTC+14
+(Kiritimati). **CI now does the same:** a new step runs the logic suite at UTC-10 and
+UTC+14 and the mobile screen tests at UTC+14, because the runner's own clock is UTC, where
+a local/UTC mix-up can't show.
+
+**Observation for P5 (not a finding):** the Calendar opens on the user's LOCAL today,
+while the app's countdowns ("renews in N days") count from the UTC day. Which "today"
+the whole app should use is a product-wide question for P5's timezone pass.

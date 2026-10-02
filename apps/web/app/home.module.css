@@ -17,6 +17,14 @@
 .section {
   padding: 104px 0;
   position: relative;
+  /* P4.2c: a section off screen is not laid out until it nears the viewport.
+     The homepage's first layout ran over the whole page while the web fonts
+     were still loading (fallback-font layout costs ~2.5x), and held its first
+     paint to ~2.9 s under Lighthouse's mobile throttling; with this, ~2.4 s.
+     The content stays in the accessibility tree and find-in-page. 900px is a
+     placeholder height; "auto" keeps the real one once rendered. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
 }
 .h2 {
   font-family: var(--font-display), sans-serif;

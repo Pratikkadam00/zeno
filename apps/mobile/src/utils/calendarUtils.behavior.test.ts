@@ -1,6 +1,6 @@
 import type { BillingCycle, FxContext, Subscription, SubscriptionCategory } from "@zeno/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getMarkedDates, getMonthlyTotal, getProjectedAnnual, getSubscriptionsForDate, getWeeklyGroups } from "./calendarUtils";
+import { getMarkedDates, getMonthRenewalCount, getMonthlyTotal, getProjectedAnnual, getSubscriptionsForDate, getWeeklyGroups } from "./calendarUtils";
 import { getDaysRemaining } from "./subscription-ui";
 
 // Node re-reads process.env.TZ on assignment; deleting it does NOT restore the
@@ -260,5 +260,26 @@ describe("getProjectedAnnual", () => {
     const monthly = [sub({ id: "m", nextRenewalDate: "2026-06-30T09:00:00.000Z", price: { amountMinor: 1000, currency: "USD" } })];
     expect(inTimeZone("Asia/Kolkata", () => getProjectedAnnual(monthly))).toBe(80);
     expect(inTimeZone("America/Los_Angeles", () => getProjectedAnnual(monthly))).toBe(80);
+  });
+});
+
+describe("getMonthRenewalCount (F181)", () => {
+  // A renewal dated 1 November is 31 October, 20:00 in New York, and 1 November,
+  // 05:30 in Kolkata. Its month is its UTC day's: November, everywhere.
+  const list = [
+    sub({ id: "first-of-november", nextRenewalDate: "2026-11-01T00:00:00.000Z", price: { amountMinor: 1000, currency: "USD" } }),
+    sub({ id: "mid-october", nextRenewalDate: "2026-10-15T00:00:00.000Z", price: { amountMinor: 500, currency: "USD" } })
+  ];
+
+  it.each(["America/New_York", "Asia/Kolkata", "UTC"])("in %s: each month counts exactly the renewals its total sums", (tz) => {
+    inTimeZone(tz, () => {
+      expect([getMonthRenewalCount(list, 2026, 10), getMonthlyTotal(list, 2026, 10)]).toEqual([1, 5]);
+      expect([getMonthRenewalCount(list, 2026, 11), getMonthlyTotal(list, 2026, 11)]).toEqual([1, 10]);
+    });
+  });
+
+  it("only active subscriptions with a renewal date count", () => {
+    const more = [...list, sub({ id: "paused", nextRenewalDate: "2026-10-20T00:00:00.000Z", status: "paused" }), sub({ id: "no-date", nextRenewalDate: undefined }), sub({ id: "bad-date", nextRenewalDate: "not a date" })];
+    expect(getMonthRenewalCount(more, 2026, 10)).toBe(1);
   });
 });

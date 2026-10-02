@@ -62,6 +62,17 @@ jobs:
       - name: Test
         run: npm test
 
+      # Dates are UTC days (ENGINEERING_STANDARDS §10), and this runner's clock
+      # is UTC, where a local/UTC mix-up can't show (F181 surfaced only on a
+      # UTC+5:30 machine after midnight). Run the suites again far from UTC on
+      # both sides.
+      - name: Tests far from UTC (UTC-10 and UTC+14)
+        shell: bash
+        run: |
+          TZ=Pacific/Honolulu npm test
+          TZ=Pacific/Kiritimati npm test
+          TZ=Pacific/Kiritimati npm run test:rn
+
       # RN component tests live in an isolated jest project (apps/mobile,
       # `*.rntest.tsx`) because react-native can't load under vitest's node
       # environment. `npm test` does not reach them; this step does.

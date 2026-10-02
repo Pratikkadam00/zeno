@@ -20,8 +20,14 @@ jest.mock("expo-router", () => jest.requireActual("../test-support/screen-fakes"
 
 const DAY = 86_400_000;
 const iso = (days: number) => new Date(Date.now() + days * DAY).toISOString();
+// A renewal's calendar day is its UTC day (renewal dates are UTC days, §10; F181).
 const dateKey = (value: string) => {
   const d = new Date(value);
+  return `${d.getUTCFullYear()}-${`${d.getUTCMonth() + 1}`.padStart(2, "0")}-${`${d.getUTCDate()}`.padStart(2, "0")}`;
+};
+// The user's own day, which the calendar opens on.
+const localToday = () => {
+  const d = new Date();
   return `${d.getFullYear()}-${`${d.getMonth() + 1}`.padStart(2, "0")}-${`${d.getDate()}`.padStart(2, "0")}`;
 };
 const sub = (over: Partial<Subscription>): Subscription => ({
@@ -65,9 +71,13 @@ describe("Calendar tab, seed data", () => {
     }
   });
 
-  it("today has no renewals in the seed, so no day panel; tapping a renewal day opens it", async () => {
+  it("the panel opens on load only if a seed renewal falls on the user's today; tapping a renewal day opens it", async () => {
     await renderScreen(<CalendarScreen />);
-    expect(screen.queryByRole("button", { name: "Close day panel" })).toBeNull();
+    // The seed's renewals are 1-14 UTC days ahead, so whether one lands on the
+    // user's local today depends on the hour and timezone (e.g. 00:00-05:30 in
+    // India, where the UTC date is still yesterday). Expect what is true now.
+    const renewsToday = seedSubscriptions.some((s) => dateKey(s.nextRenewalDate!) === localToday());
+    expect(screen.queryByRole("button", { name: "Close day panel" }) !== null).toBe(renewsToday);
     const netflix = seedSubscriptions.find((s) => s.id === "sub_netflix")!;
     await pressDay(dateKey(netflix.nextRenewalDate!));
     expect(screen.getByText("Total for this day")).toBeTruthy();

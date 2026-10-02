@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Calendar, type DateData } from "react-native-calendars";
-import { getMarkedDates, getProjectedAnnual, getSubscriptionsForDate, getWeeklyGroups, getMonthlyTotal } from "../../src/utils/calendarUtils";
+import { getMarkedDates, getMonthRenewalCount, getProjectedAnnual, getSubscriptionsForDate, getWeeklyGroups, getMonthlyTotal } from "../../src/utils/calendarUtils";
 import { formatMoney } from "../../src/utils/format";
 import { formatShortDate, getDaysRemaining, getUrgencyBadge } from "../../src/utils/subscription-ui";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
@@ -18,24 +18,10 @@ import { spacing } from "../../src/theme/spacing";
 // ─── Helpers (logic unchanged) ────────────────────────────────────────────────
 
 
-function toDateKey(dateValue: string | undefined): string | null {
-  if (!dateValue) return null;
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return null;
-  const y = date.getFullYear();
-  const m = `${date.getMonth() + 1}`.padStart(2, "0");
-  const d = `${date.getDate()}`.padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-function getThisMonthKey(date: Date): string {
-  return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, "0")}`;
-}
-
-// F111: the key is a LOCAL calendar day ("2026-10-02", built from local
-// getters in toDateKey). `new Date(key)` reads a date-only string as UTC
-// midnight, which is the previous evening anywhere west of UTC: a tap on 2
-// October showed "Thursday, October 1" in New York. Build the local date.
+// F111: the key is a calendar day label ("2026-10-02"). `new Date(key)` reads a
+// date-only string as UTC midnight, which is the previous evening anywhere
+// west of UTC: a tap on 2 October showed "Thursday, October 1" in New York.
+// Build a local date from the label's parts, so it formats as that same day.
 function formatDateHeader(dateKey: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
   if (!match) return dateKey;
@@ -223,7 +209,6 @@ export default function CalendarScreen() {
     return amountMinor === null ? total : total + amountMinor / 100;
   }, 0), [fx]);
   const now = new Date();
-  const thisMonthKey = getThisMonthKey(now);
 
   const [selectedDate, setSelectedDate] = useState(() => {
     const y = now.getFullYear();
@@ -263,13 +248,8 @@ export default function CalendarScreen() {
     return d !== null && d <= 3;
   });
 
-  const thisMonthTotalCount = useMemo(() =>
-    activeSubscriptions.filter((s) => {
-      const key = toDateKey(s.nextRenewalDate);
-      return key !== null && key.startsWith(thisMonthKey);
-    }).length,
-    [activeSubscriptions, thisMonthKey]
-  );
+  // The same renewals, by the same UTC day, as the month total beside it (F181).
+  const thisMonthTotalCount = useMemo(() => getMonthRenewalCount(activeSubscriptions, nowYear, nowMonth), [activeSubscriptions, nowYear, nowMonth]);
 
   const markedDates = useMemo(() => {
     const base = getMarkedDates(activeSubscriptions);

@@ -137,6 +137,21 @@ export function getMonthlyTotal(subscriptions: Subscription[], year: number, mon
     }, 0);
 }
 
+/**
+ * How many renewals fall in a month: the same renewals, on the same UTC day,
+ * that getMonthlyTotal sums. F181: the Calendar's "N RENEWALS" beside the
+ * month's total counted by LOCAL day, so at a month boundary west of UTC a
+ * renewal dated the 1st was in this month's count but not its total.
+ */
+export function getMonthRenewalCount(subscriptions: Subscription[], year: number, month: number): number {
+  return activeWithRenewal(subscriptions).filter((subscription) => {
+    const key = normalizeDate(subscription.nextRenewalDate);
+    if (!key) return false;
+    const [dateYear, dateMonth] = key.split("-").map((value) => Number(value));
+    return dateYear === year && dateMonth === month;
+  }).length;
+}
+
 export function getWeeklyGroups(subscriptions: Subscription[]): {
   thisWeek: Subscription[];
   nextWeek: Subscription[];

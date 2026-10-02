@@ -88,11 +88,24 @@ test.describe("without JavaScript", () => {
   test("F169: every section is there and fully visible, nothing stuck at its animation start", async ({ page }) => {
     await page.goto("/");
     for (const id of ["ledger", "case", "how", "refusal", "pricing", "faq", "waitlist"]) await expect(page.locator(`#${id}`)).toBeVisible();
-    const hidden = await page.evaluate(() =>
-      [...document.querySelectorAll(".zn-reveal")]
-        .filter((el) => getComputedStyle(el).opacity !== "1" || getComputedStyle(el).transform !== "none")
-        .map((el) => el.outerHTML.slice(0, 80))
-    );
+    // Sections below the fold are laid out only near the viewport
+    // (content-visibility: auto, P4.2c), and skipped again once scrolled past,
+    // so the no-JS rule arrives as a short fade as each section comes into
+    // view. Check each section's settled state while it is on screen.
+    const hidden: string[] = [];
+    for (const id of ["ledger", "case", "how", "refusal", "pricing", "faq", "waitlist"]) {
+      await page.locator(`#${id}`).scrollIntoViewIfNeeded();
+      await page.waitForTimeout(1200);
+      hidden.push(
+        ...(await page.evaluate(
+          (sel) =>
+            [...document.querySelectorAll(`${sel} .zn-reveal`)]
+              .filter((el) => getComputedStyle(el).opacity !== "1" || getComputedStyle(el).transform !== "none")
+              .map((el) => `${sel}: ${el.outerHTML.slice(0, 60)}`),
+          `#${id}`
+        ))
+      );
+    }
     expect(hidden).toEqual([]);
     await expect(page.getByText("Priced like we mean it.")).toBeVisible();
     await expect(page.locator("#waitlist").getByRole("button", { name: /Join the waitlist/ })).toBeVisible();
