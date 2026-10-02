@@ -75,8 +75,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
     - [x] P3.8f the rest (budget, recap, family, coach, wrapped, widgets, spend-twin, open-banking, backend, business, partners, public-api) and the root layout
       - [x] P3.8f-1 budget, budget recap, coach; **fixes F139, F141, F142, F143, F144, F145**; F140 to the owner (green: CI 36891888873, CodeQL 36891888831 on `d1bfa19`)
       - [x] P3.8f-2 family, wrapped, the preview screens, open-banking (rendered with the API faked; no Plaid call); **fixes F146-F153** (green: CI 36894599444, CodeQL 36894599463 on `396a5cc`)
-      - [x] P3.8f-3 the root layout; **fixes F154**; every `app/` line covered
-  - [ ] P3.9 static scan of the release APK (MobSF, else apkleaks + manifest review)
+      - [x] P3.8f-3 the root layout; **fixes F154**; every `app/` line covered (green: CI 36897664162, CodeQL 36897664295 on `5e4e85f`)
+  - [x] P3.9 static scan of the release APK (manifest, permissions, signing, secrets; MobSF/apkleaks unavailable, see the entry); **fixes F155**
   - [ ] P3 gate: hardened release APK verified on the emulator (every flow in `DEVICE_TEST_FINDINGS.md`); jest floor in CI; MASVS checklist with evidence per control
 - [ ] **P4 — Website component tests, Playwright, CSP, DAST**
 - [ ] **P5 — Mobile end-to-end (Maestro on the emulator)**
@@ -237,6 +237,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F152 | **FIXED in P3.8f-2.** ~~Widgets promised "we'll let you know when it ships".~~ Nothing in the app would. The promise is gone; the "not available yet" stays. | Low | me | P3.8f-2 |
 | F153 | **FIXED in P3.8f-2.** ~~"Notify me when it's ready" on Business, Partners and Public API was a fake waitlist.~~ The button only flipped the screen's own state and then said "You're on the list ✓ We'll let you know the moment this ships". Nothing was recorded anywhere. P3.8b's test checked that behaviour and I didn't see it was false then. The button and the promise are gone, and `ui.tsx`'s `PrimaryButton`, its only user, with them. | Medium (a control that lies) | me | P3.8f-2 |
 | F154 | **FIXED in P3.8f-3.** ~~Opening the app from a sign-in link could leave you signed out.~~ At launch the root layout starts `hydrate()` (read the keychain) and, for a sign-in link, `verifyMagicLink()` together. When the verification finished first, `hydrate()`'s keychain read, begun before the new session was saved, came back "no session" and set the user signed out. The session sat in the keychain, but the screen showed sign-in until the next launch. The same overwrite applied to any sign-in or "continue without an account" made during launch, and a stale read of an OLDER account's session would have put that account back over the new one. Reproduced with a controlled keychain fake (the probe ended "authenticated", then "anonymous"). `hydrate()` now notes the count of sign-ins and local-only choices when it starts, and stands down after each read if one happened meanwhile. | Medium (a sign-in that silently didn't stick) | me | P3.8f-3 |
+| F155 | **FIXED in P3.9.** ~~The release APK asked for "draw over other apps" (`SYSTEM_ALERT_WINDOW`) and shared-storage write (`WRITE_EXTERNAL_STORAGE`, up to Android 12) without using either.~~ Both come from Expo's prebuild template, which adds them under "OPTIONAL PERMISSIONS, REMOVE WHATEVER YOU DO NOT NEED" (`@expo/config-plugins` `withAndroidBaseMods.js`); `expo-file-system`'s plugin adds the write one again. In the release dex the only overlay code is React Native's dev-support overlay (`com/facebook/react/devsupport`, off when `ReactBuildConfig.DEBUG` is false), and nothing references shared-storage writes; the CSV export goes through the share sheet as text. Both are now in `android.blockedPermissions`. | Low (unused permissions on the store listing) | me | P3.9 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **TO CHECK ON THE DEVICE (not a confirmed bug).** On the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -4068,3 +4069,85 @@ those tests:
 
 Gates after the final code edit: typecheck 0 · lint 0 errors, 0 warnings · vitest 1920 at
 100 / 99.69 / 100 / 100 · jest 547 / 547, 0 act() warnings, the new floors held.
+
+### P3.9 — static scan of the release APK — 2026-10-02
+
+**What was scanned:**
+- A release APK built from a CLEAN prebuild (`expo prebuild --clean`). `android/` is
+  gitignored, so EAS builds from a clean prebuild, and that is what ships.
+- An incremental prebuild of the old `android/` folder gave a different manifest:
+  `READ_EXTERNAL_STORAGE` with no SDK cap. The clean one matches what shipped before.
+- The build is single-ABI x86_64, 64,082,913 bytes, R8-minified, Hermes bytecode.
+- It differs from a store build in four things, all expected:
+  - It is signed with the local debug keystore (`CN=Android Debug`).
+  - Its API URL is the local fallback (`http://127.0.0.1:8787/api/v1`).
+  - It has no Sentry DSN and no RevenueCat keys.
+  - The store builds get those from the EAS profiles. `app.config.test.ts` already
+    requires https in every store-bound profile.
+- MobSF needs Docker, which isn't installed. apkleaks needs a jadx download. Instead,
+  with no download:
+  - `aapt2` (manifest, permissions, badging);
+  - `apksigner`;
+  - `dexdump`;
+  - gitleaks 8.30.1 over the extracted APK, and over the printable strings (6+ chars) of
+    all 1,009 binary files (dex, Hermes bundle, `.so`), because gitleaks skips binaries;
+  - a literal search across every file.
+
+**Found and fixed:** F155 (see its row). Before: the old release APK's
+`aapt2 dump permissions` listed both. After: neither is listed. On emulator-5554 the
+new APK installed and launched cold (`TotalTime: 1538`). Onboarding rendered, the
+crash buffer was empty, and `dumpsys package` shows neither permission.
+
+**Manifest review (`aapt2 dump xmltree`):**
+- Not debuggable (no `application-debuggable` in badging), `allowBackup=false`,
+  `usesCleartextTraffic=false`, target SDK 36.
+- **Exported components, each with a reason:**
+  - `MainActivity` (the launcher and the `zeno://` links);
+  - `FirebaseInstanceIdReceiver` (guarded by `c2dm.permission.SEND`, a signature
+    permission);
+  - Amazon IAP's `ResponseReceiver` (guarded by `com.amazon.inapp.purchasing.Permission.NOTIFY`);
+  - `ProfileInstallReceiver` (guarded by `DUMP`).
+  - Every provider has `exported=false`.
+- **The rest of the permissions, by source** (from Gradle's
+  `manifest-merger-blame-release-report.txt`):
+  - **Zeno's own manifest:** `INTERNET`, `POST_NOTIFICATIONS`, `USE_BIOMETRIC`,
+    `USE_FINGERPRINT` (minSdk 24), `VIBRATE`.
+  - **`expo.modules.screencapture` 56.0.5** (still F104, the owner's):
+    `READ_EXTERNAL_STORAGE` (<=32), `READ_MEDIA_IMAGES` (<=33), `DETECT_SCREEN_CAPTURE`.
+  - **`expo.modules.notifications` 56.0.17:** `RECEIVE_BOOT_COMPLETED`.
+  - **`firebase-messaging` 25.0.1:** `WAKE_LOCK`, `c2dm.permission.RECEIVE`.
+  - **`billingclient` 8.3.0:** `BILLING`.
+  - **`installreferrer` 2.2:** `BIND_GET_INSTALL_REFERRER_SERVICE`.
+  - **`me.leolin:ShortcutBadger` 1.1.22:** the 16 launcher-badge permissions (Samsung,
+    HTC, Sony, Apex, Solid, Huawei, OPPO, everything.me, `READ_APP_BADGE`).
+  - **`sentry_react-native`:** `ACCESS_NETWORK_STATE`.
+  - **`androidx.core` 1.18.0:** its own `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`.
+
+**Secrets and literals:**
+- **The dev demo account** (`demo@zeno.local`, its password, "Developer login"): **0
+  files.** The `__DEV__` branch is stripped from the release bundle.
+- `sk_live`, `sk_test`, `BEGIN PRIVATE KEY`, `BEGIN RSA`, `PLAID_SECRET`,
+  `service_role`, `JWT_SECRET`, `RESEND_API_KEY`: 0 files.
+- **gitleaks: 3 hits, all false positives:**
+  - Sentry's published `sentry-android-replay` Maven verification token
+    (`META-INF/.../verification.properties`);
+  - OpenSSL's `"%s Private-Key:"` and `"Private-Key: (%d bit, %d primes)"` format strings
+    in `libcrypto.so` and `libQuickCrypto.so`.
+- **A Sentry DSN in the bundle (`o447951…`) is not Zeno's.** `@sentry/browser`'s
+  `diagnoseSdkConnectivity` posts `{}` to it, and its source comment says the key is
+  disabled. Zeno never calls that function.
+- `127.0.0.1:8787` is the documented API fallback (`src/api/config.ts`, `app.config.ts`).
+  `localhost:8081` is Metro, `localhost:8969` is Sentry Spotlight, and `10.0.2.2` is
+  React Native's dev support: all dev-only library strings.
+- **Plaid:** the client paths (`/plaid/link-token`, `/plaid/sandbox/public-token`, …) are
+  in the bundle, as expected. Their screen is `__DEV__`-gated (F151), and the code stays
+  by the owner's instruction. Nothing was called. The API refuses sandbox minting unless
+  `PLAID_ENV` is sandbox (`apps/api/src/app.ts`, read only).
+- **548 distinct URL hosts in the bundle:** the 509-service catalogue's cancel pages,
+  plus library documentation hosts.
+
+**Bite check: 1, caught.** The new `app.config.test.ts` case failed on the old config
+("expected [] to deeply equal [ …(2) ]").
+
+**For the P3 gate:** the store build (EAS) is the one to verify on a device. Confirm on
+it that the API URL is https and that the permission list matches the one above.

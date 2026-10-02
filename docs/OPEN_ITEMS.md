@@ -3,7 +3,7 @@
 **One place for everything not yet solved.** Each item says who acts, exactly what to
 do, and where the full evidence lives (finding numbers point into
 `docs/HARDENING_LOG.md`). When an item is done it is removed from here and its log
-entry marked fixed. Last updated 2026-10-01, after P3.8f-3 (P3.8 complete).
+entry marked fixed. Last updated 2026-10-02, after P3.9.
 
 ---
 
@@ -53,7 +53,7 @@ real sample, or a product decision.
 
 | # | Item | When |
 |---|---|---|
-| — | P3.9: a static scan of the release APK (P3.8, tests for every screen, is done) (incl. why the APK declares `SYSTEM_ALERT_WINDOW` and `WRITE_EXTERNAL_STORAGE`) | P3, next, in order |
+| — | The P3 gate: the hardened release APK on the emulator (every flow), the MASVS checklist (P3.9, the APK scan, is done) | P3, next, in order |
 | F106 | Once, right after the first unlock on a fresh install, screenshots of the unlocked app came back black (the block itself was already off); not reproduced in 2 tries | P5 |
 | F103 | The **web build fails on CI now and then**: it downloads the site's three Google fonts at build time, and that download sometimes fails on the runner (likely cause; the next occurrence's report will confirm it). Fix: serve the same font files from the repo, so the build needs no network | P4 (website), or sooner if you want it |
 | F16 | SQLCipher encryption of the local database is configured but never proven on a device (check the file header or `PRAGMA cipher_version`; the release build isn't debuggable, so it needs a rooted emulator image or a debug check) | P3 gate |
@@ -82,6 +82,7 @@ real sample, or a product decision.
 | F126 | Found in P3.8e-1: Settings showed **"Version 1.0.0"**; the app is 0.1.0 | Shows the real version. |
 | F125 | Found in P3.8e-1: Settings and Profile showed an **internal account id where your email belongs** (or a made-up "you@example.com") | Your email is shown now. |
 | F124 | Found in P3.8e-1: Settings' **"Push notifications" switch did nothing** | It's now "Renewal reminders" (as designed) and really turns every reminder off and on. |
+| F155 | Found in P3.9: **the app asked for "draw over other apps" and shared-storage write** without using either (Expo's template adds them) | Both removed from the APK. |
 | F154 | Found in P3.8f-3: **opening the app from a sign-in link could leave you signed out** (the session saved, the screen on sign-in) | The sign-in now always sticks. |
 | F153 | Found in P3.8f-2: **"Notify me when it's ready" was a fake waitlist** ("You're on the list ✓"); nothing was recorded | Removed. |
 | F151 | Found in P3.8f-2: two **developer screens (sandbox bank, server status) could be opened in the released app** by a link | Development builds only. |

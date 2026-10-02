@@ -55,6 +55,14 @@ const config: ExpoConfig = {
       "USE_BIOMETRIC",
       "USE_FINGERPRINT",
       "POST_NOTIFICATIONS"
+    ],
+    // P3.9 (F155): Expo's prebuild template adds both under "OPTIONAL
+    // PERMISSIONS, REMOVE WHATEVER YOU DO NOT NEED". In the release APK the
+    // only overlay code is React Native's dev-support overlay (off in release),
+    // and nothing writes to shared storage (exports go through the share sheet).
+    blockedPermissions: [
+      "android.permission.SYSTEM_ALERT_WINDOW",
+      "android.permission.WRITE_EXTERNAL_STORAGE"
     ]
     // P3.7 (F104): expo-screen-capture's manifest adds READ_EXTERNAL_STORAGE
     // (API <= 32), READ_MEDIA_IMAGES (33) and DETECT_SCREEN_CAPTURE (34+) for

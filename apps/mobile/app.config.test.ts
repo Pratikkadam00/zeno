@@ -156,6 +156,13 @@ describe("P3.7 (F104): expo-screen-capture's permissions", () => {
   });
 });
 
+describe("P3.9 (F155): the prebuild template's unused permissions", () => {
+  it("SYSTEM_ALERT_WINDOW and WRITE_EXTERNAL_STORAGE are blocked: the template adds them as optional, and no release code uses them", async () => {
+    const config = await load();
+    expect([...(config.android?.blockedPermissions ?? [])].sort()).toEqual(["android.permission.SYSTEM_ALERT_WINDOW", "android.permission.WRITE_EXTERNAL_STORAGE"]);
+  });
+});
+
 describe("P3.1 release hardening (F92, F93)", () => {
   it("Android Auto Backup is off, R8 minify and resource shrinking are on, and release traffic is TLS only", async () => {
     const config = await load();
