@@ -3,7 +3,7 @@
 **One place for everything not yet solved.** Each item says who acts, exactly what to
 do, and where the full evidence lives (finding numbers point into
 `docs/HARDENING_LOG.md`). When an item is done it is removed from here and its log
-entry marked fixed. Last updated 2026-10-02, after FX.4.
+entry marked fixed. Last updated 2026-10-02, after FX.5.
 
 ---
 
@@ -55,10 +55,8 @@ real sample, or a product decision.
 
 | # | Item | When |
 |---|---|---|
-| — | **FX.5-FX.6** (the fix pass), then **P4** | next, in order |
+| — | **FX.6** (the fix pass), then **P4** | next, in order |
 | F163 | A **paused** subscription counts $0 in the spend history, even for months paid before the pause (needs the pause intervals) | FX.6 |
-| F106 | Once, right after the first unlock on a fresh install, screenshots of the unlocked app came back black (the block itself was already off); not reproduced in 2 tries | P5 |
-| F94 | A translucent Settings sheet, seen once on device and not reproduced in 5 attempts | P3.8 / P5 |
 | — | R8 warns about RevenueCat's Amazon Appstore SDK ("may be assumed not reachable" in later R8 versions). Not used for Google Play; re-check on each RevenueCat upgrade | each RevenueCat upgrade |
 | — | Sentry and RevenueCat code paths haven't run under R8 (no keys yet). Re-run the device smoke when the keys exist, and in the Sentry UI check one JS error and one native crash for scrubbed content (P3.3: a native crash skips `beforeSend`; only its breadcrumbs are scrubbed, by `beforeBreadcrumb`) | after the keys above |
 | — | Size the webhook's 30/min limit, and an edge rate limiter (the app's is per instance) | P8 |
@@ -80,6 +78,7 @@ real sample, or a product decision.
 | F126 | Found in P3.8e-1: Settings showed **"Version 1.0.0"**; the app is 0.1.0 | Shows the real version. |
 | F125 | Found in P3.8e-1: Settings and Profile showed an **internal account id where your email belongs** (or a made-up "you@example.com") | Your email is shown now. |
 | F124 | Found in P3.8e-1: Settings' **"Push notifications" switch did nothing** | It's now "Renewal reminders" (as designed) and really turns every reminder off and on. |
+| F94, F106 | A see-through Settings sheet, and black screenshots after a first unlock, each seen once | **Not reproduced** in FX.5's measured attempts (closed, not claimed fixed); P5 keeps watching. |
 | F103 | The **website build failed on CI now and then**, downloading its fonts from Google | The fonts are in the repo; the site builds with the network blocked. |
 | F162 | With Settings' sheet open, a **screen reader could move to the controls behind it** | The sheet is its own window; checked with TalkBack. |
 | F147 | The spend history counted a **cancelled subscription as $0**, even for the months it was paid | It counts each one up to the day it was cancelled. |
