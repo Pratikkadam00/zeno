@@ -22,11 +22,11 @@ export const FAQS = [
   },
   {
     q: "Can Zeno cancel subscriptions for me?",
-    a: "Zeno takes you straight to each service&rsquo;s real cancellation flow with step-by-step guidance and warnings about known dark patterns — then checks your next receipt or statement before marking it cancelled. No silent failures, and you stay in control of the final confirmation."
+    a: "Zeno opens a step-by-step cancellation guide for the service, with warnings about known dark patterns. Then it waits for the renewal date before marking it cancelled — and if a receipt or statement you scan or import shows the charge again, it flags it instead. You stay in control of the final confirmation."
   },
   {
     q: "Is my data private?",
-    a: "Your subscription data is encrypted on your device and protected by a biometric app lock. Discovery runs locally, nothing is sold, and there are no data brokers involved."
+    a: "Your subscription data is encrypted on your device, and you can lock the app with a PIN (plus biometrics where your phone has them). Discovery runs locally, nothing is sold, and there are no data brokers involved."
   },
   {
     q: "What will it cost?",

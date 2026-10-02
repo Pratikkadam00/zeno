@@ -38,7 +38,7 @@ export default function PrivacyPage() {
     <>
       <p className={styles.eyebrow}>Legal</p>
       <h1 className={styles.title}>Privacy Policy</h1>
-      <p className={styles.updated}>Last updated: June 13, 2026</p>
+      <p className={styles.updated}>Last updated: October 2, 2026</p>
       <hr className={styles.rule} />
 
       <p className={styles.lede}>
@@ -82,9 +82,8 @@ export default function PrivacyPage() {
       <h2 id="data-we-collect">2. Data we collect</h2>
       <h3>Waitlist data</h3>
       <p>
-        When you join the waitlist, we collect your <strong>email address</strong> and basic
-        technical metadata about the request (such as the date you signed up and the referring
-        page). That is all we need to email you about availability.
+        When you join the waitlist, we record your <strong>email address</strong> and the date and
+        time you signed up. That is all we need to email you about availability.
       </p>
       <h3>In-app subscription data</h3>
       <p>
@@ -112,7 +111,11 @@ export default function PrivacyPage() {
         — for example which screens load slowly or where the app crashes. These are configured to
         avoid identifying you personally and never include your subscription contents.{" "}
         <strong>Crash reporting is currently inert</strong> and only activates if we enable it with
-        a monitoring provider (see Section 6). We do not run website or product analytics today.
+        a monitoring provider (see Section 6). We do not run website analytics. The app sends
+        anonymous counts of a few product events — an import finishing (CSV or email), a share card
+        being made, the free plan&rsquo;s limit being reached, and which plan a purchase was — with
+        no account, device identifier, or subscription content attached, so we can tell whether
+        those features work.
       </p>
       <h3>What we do not collect</h3>
       <ul>
@@ -185,7 +188,8 @@ export default function PrivacyPage() {
         <li><strong>Hosting &amp; infrastructure</strong> — <strong>Render</strong>, to run the website and API;</li>
         <li><strong>App stores &amp; billing</strong> — <strong>Apple App Store</strong> and <strong>Google Play</strong> for distribution, and <strong>RevenueCat</strong> to manage paid-plan entitlements;</li>
         <li>
-          <strong>AI coaching provider</strong> — <strong>Groq</strong>. Only if you turn on the
+          <strong>AI coaching provider</strong> — <strong>Anthropic</strong> (Claude) or{" "}
+          <strong>Groq</strong>, whichever we have configured. Only if you turn on the
           optional AI spend coach and grant consent, a summary of your subscriptions (service
           names, amounts, categories, and the in-app insights — but not your name, email, bank
           data, or any subscription discovered from your email) is sent to generate suggestions and
@@ -222,7 +226,7 @@ export default function PrivacyPage() {
         On the server side, we retain your <strong>account record</strong> (such as your store
         account identifier, plan status, and any household membership) until you delete your
         account, after which it is erased. <strong>Sign-in (magic-link) tokens</strong> are
-        short-lived and expire within about 15 minutes. Operational <strong>server logs</strong>{" "}
+        short-lived and expire after 10 minutes. Operational <strong>server logs</strong>{" "}
         are retained for up to 30 days and then deleted.
       </p>
 

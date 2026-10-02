@@ -44,7 +44,7 @@ export default function Dashboard() {
             <span className={styles.eyebrow}><span className={styles.eyebrowDot} />Growth analytics</span>
             <h1 className={styles.title}>Revenue &amp; <span className={styles.titleGrad}>growth.</span></h1>
             <p className={styles.lead}>
-              <span className={styles.live}><span className={styles.liveDot} />Live</span>
+              <span className={styles.live}><span className={styles.liveDot} />Sample data</span>
               {"  ·  "}as of {AS_OF_LABEL}
             </p>
           </div>

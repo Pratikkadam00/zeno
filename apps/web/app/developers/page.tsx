@@ -29,9 +29,9 @@ export default function DevelopersPage() {
 
   return (
     <ContentShell
-      eyebrow="Developers"
+      eyebrow="Developers · Planned · not available today"
       title="Public API"
-      lead="The power-user API uses scoped keys, masked previews, and explicit read/write scopes. Your raw financial data stays on your device — it isn't exposed through this API."
+      lead="A public API is planned, not available today. As designed, it uses scoped keys, masked previews, and explicit read/write scopes, and your raw financial data stays on your device — it would not be exposed through the API. The key below is an example."
     >
       <ul className={styles.list}>
         <li>

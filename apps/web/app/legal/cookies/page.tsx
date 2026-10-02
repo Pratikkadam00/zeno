@@ -33,18 +33,18 @@ export default function CookiesPage() {
     <>
       <p className={styles.eyebrow}>Legal</p>
       <h1 className={styles.title}>Cookie Policy</h1>
-      <p className={styles.updated}>Last updated: June 13, 2026</p>
+      <p className={styles.updated}>Last updated: October 2, 2026</p>
       <hr className={styles.rule} />
 
       <p className={styles.lede}>
-        The Zeno marketing site is deliberately minimal. We use only the storage we need to make
-        the site work. We do not run analytics, and we do not use cookies to track you across the
-        web or to serve ads.
+        The Zeno marketing site is deliberately minimal. It sets no cookies. The only thing it
+        stores in your browser is your light/dark theme choice, and only after you choose one. We do
+        not run analytics, and we do not track you across the web or serve ads.
       </p>
 
       <div className={styles.note}>
         <strong>Pre-launch notice.</strong> While Zeno is in pre-launch, this site mainly exists to
-        explain the product and collect waitlist sign-ups, so our use of cookies is light. This
+        explain the product and collect waitlist sign-ups, so it needs no cookies. This
         policy will be reviewed and finalized before the app launches.
       </div>
 
@@ -78,10 +78,11 @@ export default function CookiesPage() {
 
       <h2 id="essential">3. Essential cookies</h2>
       <p>
-        We use a small amount of essential storage to make the site work — for example to keep the
-        site secure, to remember your cookie preference, and to support the waitlist form so your
-        sign-up submits correctly. These are necessary for the site to function and cannot be
-        switched off through our consent controls. They do not track you for advertising.
+        The site sets <strong>no cookies</strong>, essential or otherwise, so there is nothing to
+        consent to. It keeps one item in your browser&rsquo;s local storage:{" "}
+        <code>zeno-theme</code>, your light/dark choice, written only when you press the theme
+        button and read back when you return so the page doesn&rsquo;t flash the other theme. It
+        never leaves your browser. The waitlist form needs no storage at all.
       </p>
 
       <h2 id="analytics">4. Analytics</h2>
@@ -109,8 +110,8 @@ export default function CookiesPage() {
         <li>use private/incognito browsing to limit what is stored between sessions.</li>
       </ul>
       <p>
-        Blocking essential storage may stop parts of the site, such as the waitlist form, from
-        working correctly.
+        Blocking storage only means the site forgets your theme choice; everything else,
+        including the waitlist form, works the same.
       </p>
 
       <h2 id="app">7. The Zeno app</h2>

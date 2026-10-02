@@ -21,13 +21,13 @@ export default function BusinessFeaturePage() {
 
   return (
     <ContentShell
-      eyebrow="Business Tier"
+      eyebrow="Business Tier · Planned · not available today"
       title="Subscription tracking for teams"
-      lead="Track company subscriptions, finance seats, renewal load, and team spending without turning Zeno into a bank-data warehouse."
+      lead="A plan we are considering, not one you can use today: company subscriptions, finance seats, renewal load, and team spending, without turning Zeno into a bank-data warehouse. The figures below are an example workspace."
     >
       <ul className={styles.list}>
         <li>
-          <span>Workspace</span>
+          <span>Example workspace</span>
           <span className={styles.tag}>{summary.workspaceName}</span>
         </li>
         <li>

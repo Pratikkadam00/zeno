@@ -64,8 +64,8 @@ describe("Hero, cancelling a sample row (reduced motion: no flow, totals jump)",
     advance(4199);
     expect(within(ledger()).queryByText(/^VERIFIED CANCELLED/)).toBeNull();
     advance(1);
-    expect(within(ledger()).getByText("VERIFIED CANCELLED — STATEMENT SHOWED NO CHARGE")).toBeTruthy();
-    expect(announced()).toBe(`${netflix.n} verified cancelled — the charge stopped.`);
+    expect(within(ledger()).getByText("VERIFIED CANCELLED — NO NEW CHARGE AT RENEWAL")).toBeTruthy();
+    expect(announced()).toBe(`${netflix.n} verified cancelled — no new charge at renewal.`);
     window.removeEventListener(LEDGER_EVENT, onLedger);
   });
 
@@ -128,7 +128,7 @@ describe("Hero, cancelling with motion: the inline cancel flow", () => {
     expect(ledger().querySelector(".aLog")).toBeNull();
     expect((sw(adobe.n) as HTMLButtonElement).disabled).toBe(false);
     advance(4200);
-    expect(within(ledger()).getByText("VERIFIED CANCELLED — STATEMENT SHOWED NO CHARGE")).toBeTruthy();
+    expect(within(ledger()).getByText("VERIFIED CANCELLED — NO NEW CHARGE AT RENEWAL")).toBeTruthy();
     // The tweened total has landed exactly.
     expect(total()).toBe(`$${money(SAMPLE_BASE - adobe.amt)}`);
     expect(yearly()).toBe(`+$${money(adobe.amt * 12)}`);

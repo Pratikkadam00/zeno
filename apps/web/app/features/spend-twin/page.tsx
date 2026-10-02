@@ -21,7 +21,7 @@ export default function SpendTwinFeaturePage() {
     <ContentShell
       eyebrow="Spend Twin"
       title="What your subscriptions really cost"
-      lead={`${summarizeSpendTwin(28400)} It turns abstract subscription totals into tradeoffs people understand quickly.`}
+      lead={`For example: ${summarizeSpendTwin(28400)} It turns abstract subscription totals into tradeoffs people understand quickly.`}
     >
       <p>
         In the mobile app this stays local-first and uses the encrypted subscription ledger as its

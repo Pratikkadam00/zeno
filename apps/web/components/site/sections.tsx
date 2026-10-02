@@ -50,7 +50,7 @@ export function TheCase({ stats }: { stats: CaseStats }) {
             <div className={styles.exhibitVal}>
               <Odometer value={stats.total} />
             </div>
-            <p className={styles.exhibitBody}>Services indexed in Zeno&rsquo;s cancellation catalog — each with real, step-by-step cancellation instructions.</p>
+            <p className={styles.exhibitBody}>Services indexed in Zeno&rsquo;s cancellation catalog — each with a cancellation guide to follow.</p>
             <cite className={styles.exhibitCite}>ZENO CANCELLATION CATALOG · JULY 2026</cite>
           </PrintIn>
           <PrintIn delay={0.12}>
@@ -97,11 +97,11 @@ const METHOD = [
   },
   {
     t: "Warn — before it charges",
-    b: "Seven days out, three days out, and the morning of. Every reminder carries the exact amount about to leave your account, with quiet hours respected."
+    b: "Seven days out, three days out, and the morning of. Every reminder carries the amount due, with quiet hours respected."
   },
   {
     t: "Cancel — and verify",
-    b: "One tap opens the service's real cancellation steps, dark-pattern traps flagged. Then Zeno checks your next receipt or statement — nothing is called cancelled until the charge actually stops."
+    b: "One tap opens the service's cancellation guide, dark-pattern traps flagged. Then Zeno keeps watching: nothing is marked cancelled until the renewal date passes with no new charge in your receipts or statements, and a charge that shows up anyway gets flagged."
   }
 ];
 
@@ -303,8 +303,8 @@ export function Pricing() {
         </div>
         <PrintIn delay={0.1}>
           <p className={styles.priceFootnote}>
-            Founding-waitlist members get Pro free for 3 months at launch. Cancel anytime — in one tap, obviously. Prices in USD, billed via the App Store /
-            Google Play.
+            Founding-waitlist members get Pro free for 3 months at launch. Cancel anytime from your App Store or Google Play account — no call, no form.
+            Prices in USD, billed via the App Store / Google Play.
           </p>
         </PrintIn>
       </div>

@@ -22,7 +22,7 @@ export default function MonarchComparePage() {
     <ContentShell
       eyebrow="Monarch alternative"
       title="A Monarch alternative with no bank sync to break"
-      lead="Monarch Money's budgeting and net-worth tracking depend on real-time bank account connections staying up. Zeno takes a narrower, more reliable job: subscription tracking and a monthly budget, built from statement imports and manual entry — so there's no live sync connection that can drop, need re-authentication, or leave gaps in your history."
+      lead="Monarch Money's budgeting and net-worth tracking are built around live bank account connections (it also supports manual accounts and CSV uploads). Zeno takes a narrower, more reliable job: subscription tracking and a monthly budget, built from statement imports and manual entry — so there's no live sync connection that can drop, need re-authentication, or leave gaps in your history."
     >
       <JsonLd
         data={{
@@ -39,14 +39,14 @@ export default function MonarchComparePage() {
         competitorName="Monarch Money"
         rows={[
           { feature: "Starting annual price", zeno: "$29.99/yr (or a one-time $79.99, ever)", competitor: "~$99/yr (Monarch's own pricing page)" },
-          { feature: "Live bank connection required", zeno: "No", competitor: "Yes — core to how it tracks net worth and spend" },
+          { feature: "Built around live bank connections", zeno: "No — imports and manual entry", competitor: "Yes — manual accounts are supported, but automatic tracking runs on linked accounts" },
           { feature: "One-time purchase option", zeno: "Yes", competitor: "Subscription-only" },
           { feature: "What happens if a bank connection breaks", zeno: "Nothing to break — re-import a statement anytime", competitor: "Requires re-linking; can gap your data until fixed" }
         ]}
       />
 
       <p>
-        Monarch is built for a broader job — net worth, investments, full cash-flow budgeting — which is exactly why it needs
+        Monarch is built for a broader job — net worth, investments, full cash-flow budgeting — which is exactly why it leans on
         continuous bank connectivity. If what you actually want is to stop paying for subscriptions you forgot about and keep a
         simple monthly cap, that broader machinery is a lot of surface area (and cost) for the job.
       </p>

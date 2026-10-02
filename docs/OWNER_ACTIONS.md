@@ -29,6 +29,10 @@ Finding numbers (F…) point to rows in `docs/HARDENING_LOG.md` for the full det
 | F134 | Set up the **Pro free trial**: an App Store introductory offer (free, 1 week to match "7-day"), and on Google Play a **new-customer-acquisition** offer (not "developer determined", which Play shows even to people who already had a trial) | App Store Connect; Play Console | The paywall offers a trial only when the store does. |
 | F101 | Send the real **store listing links** (App Store id, Play package page) once published | — | "Rate Zeno" opens Apple's store front on every platform, Android included. |
 | F19 | Send one **real Wells Fargo CSV export** (redact it) | — | The detector assumes a header row WF may not have; if wrong, the first transaction is silently dropped. |
+| — | Confirm **where the website is hosted** and that the privacy policy names that host (it says Render runs "the website and API"; `render.yaml` deploys only the API) | your hosting account | The policy must name every processor (P4.1c). |
+| — | Confirm **which AI coach provider** is set on Render (`COACH_PROVIDER`, or whichever of `ANTHROPIC_API_KEY` / `GROQ_API_KEY` exists) | Render → API → Environment | The policy now names both; if only one is ever used, I narrow it to that one. |
+| — | Confirm **Render's log retention** on your plan is 30 days or less | Render → Logs / plan | The privacy policy says server logs are kept "up to 30 days". |
+| — | Before launch: have the **privacy policy, cookie policy and terms** reviewed by a lawyer | — | They say they are pre-launch drafts. P4.1c made every factual statement in them match the code; legal sufficiency is a lawyer's call. |
 | — | Before shipping iOS: file the annual **encryption self-classification** report (BIS / NSA) | export compliance | The app declares non-exempt encryption (SQLCipher) under the mass-market exemption, which requires it. |
 
 ---
@@ -76,7 +80,10 @@ the number and "yes", or the option you prefer.
 
 ### D4 · F45 and F114 — absolute privacy wording
 - **Today:** the paywall says "…and we never see your bank" (Settings and Profile say
-  similar), and the Gmail card says "nothing leaves your phone".
+  similar), and the Gmail card says "nothing leaves your phone". The **website** has the
+  same kind of line (found in P4.1c): "Bank login: NEVER" (homepage), "Sees your bank
+  credentials: Never" (two compare pages), "We never ask for bank credentials" (FAQ).
+  The same choice applies to all of them.
 - **Recommendation: switch to the exact, still-strong versions now:** "…and no bank
   login required", and "Scanned on your device — your emails never reach Zeno's
   servers" (verified true in the code).
@@ -87,16 +94,21 @@ the number and "yes", or the option you prefer.
   anonymous import event).
 - **Then I:** change the strings and their tests.
 
-### D5 · F25 — 305 of 509 catalog entries are unresearched
+### D5 · F25 and F171 — most cancel guides are general steps, not researched ones
+- **Measured (P4.1c):** of the 509 catalog services, **39** have cancellation steps
+  written for that service; **470** show the same five general steps ("Go to X and sign
+  in", "Open Account, Profile, or Settings", …). F25 counted 305 with a guessed cancel
+  link (`<website>/account`) and a default "medium" difficulty. The site no longer claims
+  every guide is researched (F171), but the 470 pages still exist and are indexed.
 - **Recommendation: in the app, label them "general steps, not yet verified" and link
   the service's homepage instead of a guessed cancel URL; on the website, `noindex`
-  those 305 pages until curated.**
+  the general-step pages until each is written.**
 - **Why:** Google's spam policy targets "many pages … generated for the primary purpose
   of manipulating search rankings and not helping users" (scaled content abuse)
-  ([Google](https://developers.google.com/search/docs/essentials/spam-policies)). Thin
-  guessed pages can drag down the 204 real guides. Honest labels also protect trust.
-- **Then I:** add the label and homepage link, and the `noindex`; the curated 204 are
-  unchanged.
+  ([Google](https://developers.google.com/search/docs/essentials/spam-policies)). 470
+  near-identical pages can drag down the 39 real guides. Honest labels also protect trust.
+- **Then I:** add the label and homepage link, and the `noindex` (computed from the
+  catalog, so a page indexes itself the day its steps are written).
 
 ### D6 · F127 — what "Export my data" covers
 - **Recommendation: add budgets and price history to the export.**
@@ -163,6 +175,26 @@ the number and "yes", or the option you prefer.
   Integrity later if abuse appears.
 - **The PIN for erase/export (AUTH-3): no.** With the app lock on, opening the app
   already takes the PIN.
+
+### D13 · the founding-member promise: "3 months of Pro free at launch"
+- **Today:** the homepage (pricing footnote, FAQ, closing section) promises founding
+  waitlist members 3 months of Pro free at launch. Nothing in the app or the waitlist
+  can deliver it yet; it is a promise to every person who signs up.
+- **Recommendation: keep it, and honour it with each store's own codes.** Apple's
+  subscription **offer codes** give a free period on an auto-renewable subscription
+  (one-time-use codes, created in batches of 500 to 25,000, each valid up to six months)
+  ([Apple](https://developer.apple.com/help/app-store-connect/manage-subscriptions/set-up-subscription-offer-codes/)).
+  Google Play **promo codes** give a subscription a free trial of 3 to 90 days (up to
+  10,000 one-time codes per quarter per product)
+  ([Google](https://support.google.com/googleplay/android-developer/answer/6321495?hl=en)).
+  At launch, email each waitlist address one code. Let the subscription renew at the
+  standard price afterwards (the store default), and say so in that email.
+- **Why:** it is the reason people join, it costs nothing until they'd otherwise pay,
+  and an unkept promise to a list of early adopters is the worst kind of first
+  impression (and an FTC "deceptive" risk). The alternative, removing the line now, is
+  honest too, but loses the waitlist's main hook.
+- **Then I:** nothing until launch; at launch, the email and the code handling, and the
+  site's wording if you choose to drop it instead.
 
 ---
 

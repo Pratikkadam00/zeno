@@ -23,7 +23,7 @@ export default function FamilyVaultFeaturePage() {
     <ContentShell
       eyebrow="Family Vault"
       title="Shared household subscriptions"
-      lead="Family Vault is the shared view for household subscriptions, ownership, and renewal accountability — so no one pays twice for the same streaming plan."
+      lead="Family Vault is the shared view for household subscriptions, ownership, and renewal accountability — so no one pays twice for the same streaming plan. The members below are an example household."
     >
       <ul className={styles.list}>
         {summary.members.map((member) => (

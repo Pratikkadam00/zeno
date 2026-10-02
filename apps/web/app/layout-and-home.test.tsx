@@ -105,7 +105,8 @@ describe("the analytics page", () => {
     expect(other.getAttribute("aria-selected")).toBe("true");
     expect(tabs.filter((t) => t.getAttribute("aria-selected") === "true")).toHaveLength(1);
     expect(screen.getByRole("main").textContent).not.toBe(before);
-    expect(screen.getByText(/^Sample data/)).toBeTruthy();
+    // Labelled sample data at the top (where "Live" used to be) and at the foot.
+    expect(screen.getAllByText(/^Sample data/)).toHaveLength(2);
   });
 
   it("hovering a chart shows the point under the pointer, leaving hides it (the pointer is clamped to the chart)", () => {

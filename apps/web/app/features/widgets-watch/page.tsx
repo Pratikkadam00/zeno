@@ -26,13 +26,13 @@ export default function WidgetsWatchFeaturePage() {
 
   return (
     <ContentShell
-      eyebrow="Widgets + Watch"
+      eyebrow="Widgets + Watch · Planned · not available today"
       title="Renewals at a glance"
-      lead="Zeno widgets use a compact local snapshot for next renewal, monthly spend, and Apple Watch complication text."
+      lead="Home-screen widgets and an Apple Watch complication are planned, not available today. They would read a compact snapshot made on the phone: the next renewal, monthly spend, and a short complication line."
     >
       <ul className={styles.list}>
         <li>
-          <span>Snapshot generated locally</span>
+          <span>Example snapshot, generated</span>
           <span className={styles.tag}>{generatedAt} UTC</span>
         </li>
         <li>
@@ -40,7 +40,7 @@ export default function WidgetsWatchFeaturePage() {
           <span className={styles.tag}>{snapshot.watchComplicationText}</span>
         </li>
       </ul>
-      <p>The server does not need raw financial records to render widget data.</p>
+      <p>The snapshot would be made on the phone, so the server would not need your subscription records to draw a widget.</p>
 
       <div className={styles.backRow}>
         <Link href="/">← Back to Zeno</Link>

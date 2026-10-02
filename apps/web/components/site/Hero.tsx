@@ -178,7 +178,7 @@ export function Hero() {
       name,
       () => {
         setPhase((p) => (p[name] ? { ...p, [name]: "verified" } : p));
-        say(`${name} verified cancelled — the charge stopped.`);
+        say(`${name} verified cancelled — no new charge at renewal.`);
       },
       4200
     );
@@ -262,7 +262,7 @@ export function Hero() {
             </h1>
             <p className={`${styles.heroSub} ${styles.heroPrint}`} style={dvar(0.34)}>
               Zeno is the honest way to take back your subscriptions — discovery from receipts and statements you control, a warning before every renewal,
-              and cancellations that aren&rsquo;t called done until the charge actually stops.
+              and cancellations that aren&rsquo;t marked done until the renewal date passes with no new charge.
             </p>
             <div className={`${styles.heroFormWrap} ${styles.heroPrint}`} style={dvar(0.46)}>
               <WaitlistForm />
@@ -301,7 +301,7 @@ export function Hero() {
                         {off ? (
                           <span className={styles.auditVerified}>
                             {ph === "verified"
-                              ? "VERIFIED CANCELLED — STATEMENT SHOWED NO CHARGE"
+                              ? "VERIFIED CANCELLED — NO NEW CHARGE AT RENEWAL"
                               : ph === "running"
                                 ? "RUNNING THE CANCEL FLOW…"
                                 : "CANCELLED — VERIFYING NEXT STATEMENT"}
@@ -343,8 +343,8 @@ export function Hero() {
               </div>
             </div>
             <p className={`${styles.auditNote} ${styles.heroPrint}`} style={dvar(1)}>
-              SAMPLE LEDGER — FLIP A SWITCH OFF TO WALK THE REAL CANCEL FLOW, TRAPS INCLUDED. IN THE APP, A CANCELLATION IS ONLY MARKED VERIFIED AFTER YOUR
-              NEXT RECEIPT OR STATEMENT SHOWS NO CHARGE.
+              SAMPLE LEDGER — FLIP A SWITCH OFF TO WALK A CANCEL FLOW, TRAPS INCLUDED. IN THE APP, A CANCELLATION IS MARKED VERIFIED ONLY ONCE ITS
+              RENEWAL DATE PASSES WITH NO NEW CHARGE IN THE RECEIPTS OR STATEMENTS YOU SCAN OR IMPORT.
             </p>
           </div>
         </div>

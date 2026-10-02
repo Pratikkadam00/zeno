@@ -21,9 +21,9 @@ export default function PartnersPage() {
 
   return (
     <ContentShell
-      eyebrow="Integrations"
+      eyebrow="Integrations · Planned · not available today"
       title="Partner Integrations"
-      lead="Partner manifests define scope, review status, and whether user-approved financial export is required."
+      lead="Integrations we are planning or building, none available today and none a partnership: each name is a service Zeno may connect to. A manifest defines its scope and whether a user-approved financial export is required."
     >
       <ul className={styles.list}>
         {integrations.map((integration) => (
