@@ -141,11 +141,17 @@ test("the sample analytics page is a 404 in production (its flag is off)", async
 });
 
 test("all 509 guides answer 200 with the security headers", async ({ request }) => {
+  // 509 fetches: batched 25 at a time, with its own time budget.
+  test.setTimeout(120_000);
+  const guides = routes.filter((r) => r.startsWith("/cancel/"));
   const bad: string[] = [];
-  for (const path of routes.filter((r) => r.startsWith("/cancel/"))) {
-    const res = await request.get(path);
-    const h = res.headers();
-    if (res.status() !== 200 || h["content-security-policy"] !== EXPECTED_HEADERS["content-security-policy"]) bad.push(`${path} ${res.status()}`);
+  for (let i = 0; i < guides.length; i += 25) {
+    await Promise.all(
+      guides.slice(i, i + 25).map(async (path) => {
+        const res = await request.get(path);
+        if (res.status() !== 200 || res.headers()["content-security-policy"] !== EXPECTED_HEADERS["content-security-policy"]) bad.push(`${path} ${res.status()}`);
+      })
+    );
   }
   expect(bad).toEqual([]);
 });

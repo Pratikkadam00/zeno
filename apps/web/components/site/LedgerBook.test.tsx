@@ -227,6 +227,43 @@ describe("LedgerBook, book mode", () => {
     expect(current()).toBe("THE CASE");
   });
 
+  it("F179: a link to a section on this page turns the book there (the nav's, the footer's); other links are left alone", () => {
+    fakeClock();
+    openBook();
+    const link = (href: string, attrs: Record<string, string> = {}) => {
+      const a = document.createElement("a");
+      a.href = href;
+      for (const [k, v] of Object.entries(attrs)) a.setAttribute(k, v);
+      a.textContent = href;
+      document.body.appendChild(a);
+      return a;
+    };
+    const click = (a: HTMLElement, init: MouseEventInit = {}) => {
+      const e = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0, ...init });
+      act(() => void a.dispatchEvent(e));
+      return e;
+    };
+    // Left alone: a modified click, a section the book doesn't have, another page, a new tab.
+    for (const [a, init] of [
+      [link("/#pricing"), { ctrlKey: true }],
+      [link("/#nowhere"), {}],
+      [link("/cancel#pricing"), {}],
+      [link("/#pricing", { target: "_blank" }), {}]
+    ] as const) {
+      expect(click(a, init).defaultPrevented).toBe(false);
+    }
+    step(TURN);
+    expect(current()).toBe("COVER");
+    const e = click(link("/#pricing"));
+    expect(e.defaultPrevented).toBe(true);
+    step(TURN);
+    expect(current()).toBe("THE BILL");
+    click(link("#how"));
+    step(TURN);
+    expect(current()).toBe("THE METHOD");
+    for (const a of document.querySelectorAll("body > a")) a.remove();
+  });
+
   it("the running total chip appears from page 2 and carries the hero's cancellations", () => {
     fakeClock();
     openBook();

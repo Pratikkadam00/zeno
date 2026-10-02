@@ -93,8 +93,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
     - [x] P4.1b every page renders: metadata, canonical, JSON-LD, breadcrumbs, internal links, the sitemap, the 509 cancel guides; **fixes F170** (green: CI 37035441547, CodeQL 37035441551 on `b4b0b3d`)
     - [x] P4.1c the truthfulness rail as a test (banned phrases never rendered, required ones are), and every factual claim on the site checked against the app's code; **fixes F166, F171-F176**; D13 and three account checks to the owner (green: CI 37040621945, CodeQL 37040621963 on `d624f74`)
   - [ ] P4.2 Playwright on every route: the homepage book, theme, waitlist, cancel hub and guide, compare, legal, 404; security headers, zero console errors, zero outside requests, axe clean
-    - [x] P4.2a every route, desktop and phone, light and dark: 200, the security headers, no console error, nothing from another host, axe clean (WCAG 2.2 AA); in CI; **fixes F177**, F178 logged
-    - [ ] P4.2b the behaviours: the homepage book, no-JS, reduced motion, theme persistence, the waitlist end to end, the hub and guides, the book-mode nav links
+    - [x] P4.2a every route, desktop and phone, light and dark: 200, the security headers, no console error, nothing from another host, axe clean (WCAG 2.2 AA); in CI; **fixes F177**, F178 logged (green: CI 37042604157, CodeQL 37042604027 on `1903ee3`; the Playwright step ran 2 min on the runner's Chrome)
+    - [x] P4.2b the behaviours: the homepage book, no-JS, reduced motion, theme persistence, the waitlist end to end, the hub and guides, the book-mode nav links; **fixes F179**
     - [ ] P4.2c Lighthouse budgets (LCP, CLS, INP)
   - [ ] P4.3 CSP: no `'unsafe-inline'` scripts (hashes for the fixed inline scripts) or a written, measured reason; the other headers verified
   - [ ] P4.4 build-output secret scan: no non-public env value in `.next`
@@ -282,6 +282,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F176 | **FIXED in P4.1c.** Three overstatements: ~~"every reminder carries the exact amount"~~ (it is the tracked price; the Terms call amounts estimates) → "the amount due"; ~~"protected by a biometric app lock"~~ (the lock is off until turned on) → "you can lock the app with a PIN (plus biometrics…)"; ~~"Cancel anytime — in one tap"~~ (Zeno's own plans are cancelled in the store account) → "from your App Store or Google Play account — no call, no form". | Low (truthfulness) | me | P4.1c |
 | F177 | **FIXED in P4.2a.** ~~Text on every page failed WCAG AA contrast (1.4.3, 4.5:1 for normal text):~~ measured by axe in Chrome and by hand from the tokens: the light theme's `--ink-3` `#808698` was 3.44:1 on paper (footer headings, table headers, eyebrows, tags, the copyright line, the guides' "Related"); the dark theme's `--ink-3` `#6c7180` 3.67:1 on lit paper; `--warn` `#a36a0b` 4.31:1 (the guides' "Difficulty: medium" on most guides); `--stamp-verified` `#0b8a54` 4.39:1 on white (the hero's totals label); the compare pages' pricing footnote dimmed by `opacity: 0.7`. Each token moved, same hue, by the smallest step to at least 4.6:1 on every background it sits on (`#6b7184`, `#7c8191`, `#9c650b`, `#0a824f`); the footnote uses `--ink-2`. The earlier design note ("`textTertiary` is 3.45:1 on paper") was this. | Medium (accessibility, every page) | me | P4.2a |
 | F178 | **OPEN (mine), P5.** The mobile app's theme (`apps/mobile/src/theme/zeno.ts`) uses the same verified green `#0B8A54` (4.17:1 on its paper, noted in P1) and a tertiary text near the website's old `--ink-3`. Fix with the website's values and verify on the device with the P5 accessibility audit (on-screen contrast must be measured there, not assumed). | Medium (accessibility) | me | P5 |
+| F179 | **FIXED in P4.2b.** ~~On a wide screen with a mouse (the homepage's book mode), the nav's "How it works", "Pricing", "FAQ" and "Join waitlist", and the footer's section links, did nothing: the book stayed on its page.~~ Every section sits in a hidden sheet and the page doesn't scroll, and Next's Link moves to "/#pricing" with `pushState`, which fires no `hashchange`; nothing listened in any case. Suspected in P4.1a, measured in Chrome in P4.2b (the pager stayed on COVER after clicking Pricing). The book now catches same-page section-link clicks (capture phase, before Next's handler) and turns to that sheet; a modified click or a new-tab link is left alone. | Medium (navigation on desktop) | me | P4.2b |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **CLOSED in the P3 gate (2026-10-02): reachable, not a bug.** TalkBack, driven by touches from the emulator's own touchscreen, put its focus on each nested button's exact bounds, separately from its parent: the calendar's "Cancel Figma", the menu's Edit/Pause/Delete, the login's Terms and Privacy links. Original note: on the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -4788,3 +4789,42 @@ in the nav.
 drag, touch), the no-JS homepage (F169 in a real browser), reduced motion, the theme
 persisting, the waitlist end to end (validation, the rate limit, a repeat sign-up),
 the hub's search and the guides, and the book-mode nav links checked for real.
+
+### P4.2b — the website's behaviours in Chrome; F179 fixed — 2026-10-02
+
+**The homepage (`e2e/homepage.spec.ts`).** Book mode on a wide screen: it turns on
+after load (one labelled region, the pager, the cover); the pager and the keys (Next,
+End, Home, ←, →) turn pages and the address follows; an address with a section opens the
+book there; **dragging the page's right edge turns it** (a real mouse drag); **the nav's
+section links turn the book** (F179, failed before the fix). Document mode: on a phone,
+no pager, the menu's Pricing link brings the pricing into view and closes the menu;
+with reduced motion on a wide screen, the document and no running tally. **Without
+JavaScript (F169 in a real browser):** every section present, and every `zn-reveal`
+element at full opacity with no transform. The theme: paper by default; the toggle
+switches to dark; after a reload it is dark from the first paint.
+
+**The waitlist and the guides (`e2e/waitlist-and-guides.spec.ts`).** The form: an address
+in, the receipt line out; a non-address refused with nothing sent. The API on the real
+server: 200, 422 (a bad address, an array), 400 (a body that isn't JSON, sent as raw
+bytes), 413 (oversized); **a repeat sign-up gets byte-for-byte the same answer** (no way
+to test whether an address is on the list); **five sign-ups a minute per client, the
+sixth a 429**, another client unaffected (each test uses a random client address under
+the one trusted proxy hop). The hub: 509 links, search narrows ("netfl" → Netflix), an
+empty result says so; hub → guide → its steps, its cancellation link (`_blank`,
+`noopener noreferrer`) → back; F168 in a browser: a guide's footer Pricing link reaches
+the homepage's pricing (scrolled into view on a phone, the book's pricing sheet on a
+wide screen).
+
+**The full suite:** 125 pass, 7 skipped by design (viewport-specific tests), in about a
+minute; the all-guides fetch is batched with its own two-minute budget (one-at-a-time
+fetches passed alone but ran past the default 30 s inside the full parallel suite). P4.2a
+ran on GitHub: CI's "Website end-to-end (Playwright, installed Chrome)" step passed in
+2 minutes on the runner's own Chrome.
+
+**Bite check: 4, caught 4** (each with a rebuild): the book's link handler removed
+(F179); the no-JS rule removed (F169, both viewports); the rate limit raised to 50; the
+theme no longer restored on load. Also a unit test for the handler (a section link
+turns the book; a modified click, an unknown section, another page and a new-tab link
+are left alone).
+
+The local gate script now runs the web build and the browser suite too.

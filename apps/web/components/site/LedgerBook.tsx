@@ -220,6 +220,30 @@ export function LedgerBook({ sheets, footer }: { sheets: Sheet[]; footer: ReactN
     return () => window.removeEventListener("keydown", onKey);
   }, [book, cur, next, prev, go, N]);
 
+  // ── Section links turn the book (F179). In book mode every section sits in a
+  //    hidden sheet and the page doesn't scroll, so a link to "/#pricing" (the
+  //    nav's, the footer's, the chip's) did nothing: Next's Link updates the
+  //    address with pushState, which fires no hashchange, and nothing listened
+  //    anyway. Caught at the document in the capture phase, before Next's own
+  //    handler; a modified click (new tab, new window) is left alone. ──
+  useEffect(() => {
+    if (!book) return;
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = (e.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a || (a.target && a.target !== "_self")) return;
+      const url = new URL(a.href, window.location.href);
+      if (url.origin !== window.location.origin || url.pathname !== window.location.pathname || !url.hash) return;
+      const ix = sheets.findIndex((s) => s.id === url.hash.slice(1));
+      if (ix < 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      go(ix);
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, [book, sheets, go]);
+
   // ── Focus follows the turn: after a commit, move focus to the new sheet so a
   //    keyboard/screen-reader user's place isn't orphaned to <body>. Skips the
   //    initial mount so the cover isn't force-focused on load. ──
