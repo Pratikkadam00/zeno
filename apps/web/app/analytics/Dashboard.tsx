@@ -34,7 +34,8 @@ export default function Dashboard() {
   const activeNow = data.activeUsers[data.activeUsers.length - 1]?.value ?? 0;
 
   return (
-    <main className={styles.shell}>
+    // id="main": the root layout's "Skip to content" target (F170).
+    <main id="main" className={styles.shell}>
       <div className={styles.glow} aria-hidden />
       <div className={styles.inner}>
         {/* Header */}

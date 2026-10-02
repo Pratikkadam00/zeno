@@ -3,7 +3,7 @@
 **One place for everything not yet solved.** Each item says who acts, exactly what to
 do, and where the full evidence lives (finding numbers point into
 `docs/HARDENING_LOG.md`). When an item is done it is removed from here and its log
-entry marked fixed. Last updated 2026-10-02, after P4.1a; the owner items moved to OWNER_ACTIONS.md.
+entry marked fixed. Last updated 2026-10-02, after P4.1b; the owner items moved to OWNER_ACTIONS.md.
 
 ---
 
@@ -19,7 +19,7 @@ Nothing that needs you is kept here, so there is one list to work from.
 
 | # | Item | When |
 |---|---|---|
-| — | **P4:** website component tests (P4.1a done), Playwright, CSP, DAST | next, in order |
+| — | **P4:** website tests (P4.1a, P4.1b done; P4.1c truthfulness next), Playwright, CSP, DAST | next, in order |
 | F166 | The website says a cancellation is "only marked verified after your next receipt or statement shows no charge"; the app marks it once the renewal date passes with **no charge recorded**, scanned or not. The wording or the check has to change | P4.1c |
 | — | R8 warns about RevenueCat's Amazon Appstore SDK ("may be assumed not reachable" in later R8 versions). Not used for Google Play; re-check on each RevenueCat upgrade | each RevenueCat upgrade |
 | — | Sentry and RevenueCat code paths haven't run under R8 (no keys yet). Re-run the device smoke when the keys exist, and in the Sentry UI check one JS error and one native crash for scrubbed content (P3.3: a native crash skips `beforeSend`; only its breadcrumbs are scrubbed, by `beforeBreadcrumb`) | after the keys above |
@@ -42,6 +42,7 @@ Nothing that needs you is kept here, so there is one list to work from.
 | F126 | Found in P3.8e-1: Settings showed **"Version 1.0.0"**; the app is 0.1.0 | Shows the real version. |
 | F125 | Found in P3.8e-1: Settings and Profile showed an **internal account id where your email belongs** (or a made-up "you@example.com") | Your email is shown now. |
 | F124 | Found in P3.8e-1: Settings' **"Push notifications" switch did nothing** | It's now "Renewal reminders" (as designed) and really turns every reminder off and on. |
+| F170 | "Skip to content" **went nowhere on the legal pages** (and the sample analytics page) | It jumps past the navigation there too. |
 | F169 | Without JavaScript, the **homepage below the hero was invisible** (every section started at opacity 0 and only scripts revealed it) | Shown finished when scripts never ran; unchanged with them. |
 | F168 | The footer's "How it works", "Pricing", "FAQ" and "Join the waitlist" **did nothing on every page but the homepage** | They link to the homepage's sections from anywhere. |
 | F167 | After a waitlist error, typing again left the **error message on screen** | It clears as you type. |

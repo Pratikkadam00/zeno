@@ -162,3 +162,45 @@ describe("waitlist POST", () => {
     expect(limited.status).toBe(429); // 6th hit — limited, despite yet another fresh IP
   });
 });
+
+describe("waitlist POST without a webhook: the NDJSON file", () => {
+  const originalFile = process.env.WAITLIST_FILE;
+  afterEach(() => {
+    if (originalFile === undefined) delete process.env.WAITLIST_FILE;
+    else process.env.WAITLIST_FILE = originalFile;
+  });
+
+  it("appends one JSON line per signup (normalised address, ISO time), creating the folder", async () => {
+    const { mkdtemp, readFile } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    delete process.env.WAITLIST_WEBHOOK_URL;
+    const dir = await mkdtemp(join(tmpdir(), "zeno-waitlist-"));
+    process.env.WAITLIST_FILE = join(dir, "nested", "waitlist.ndjson");
+    expect((await POST(post("First@Example.com", "10.0.9.1"))).status).toBe(200);
+    expect((await POST(post("second@example.com", "10.0.9.2"))).status).toBe(200);
+    const lines = (await readFile(process.env.WAITLIST_FILE, "utf8")).trim().split("\n").map((l) => JSON.parse(l) as { email: string; at: string });
+    expect(lines.map((l) => l.email)).toEqual(["first@example.com", "second@example.com"]);
+    for (const l of lines) expect(new Date(l.at).toISOString()).toBe(l.at);
+  });
+
+  it("a file it can't write: 502, and the log names a masked address, never the real one", async () => {
+    const { mkdtemp, writeFile } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    delete process.env.WAITLIST_WEBHOOK_URL;
+    const dir = await mkdtemp(join(tmpdir(), "zeno-waitlist-"));
+    const blocker = join(dir, "a-file");
+    await writeFile(blocker, "");
+    // A path "under" a regular file can't be created on any OS.
+    process.env.WAITLIST_FILE = join(blocker, "waitlist.ndjson");
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const response = await POST(post("secret.person@example.com", "10.0.9.3"));
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({ ok: false, error: "Could not save your signup. Please try again." });
+    const logged = String(warn.mock.calls[0]![0]);
+    expect(JSON.parse(logged)).toMatchObject({ event: "waitlist.signup.unpersisted", email: "se***@example.com" });
+    expect(logged).not.toContain("secret.person");
+    warn.mockRestore();
+  });
+});

@@ -29,14 +29,22 @@ export default defineConfig({
       reportsDirectory: "coverage-web",
       all: true,
       include: ["apps/web/app/**/*.{ts,tsx}", "apps/web/components/**/*.{ts,tsx}"],
-      exclude: ["**/*.test.*", "**/*.d.ts", "**/.next/**"],
+      exclude: [
+        "**/*.test.*",
+        "**/*.d.ts",
+        "**/.next/**",
+        // next/font/local calls are compiled away by Next's own build; outside it
+        // the module can't run. app/fonts.test.ts checks its source and files, and
+        // CI's web build proves it compiles.
+        "apps/web/app/fonts.ts"
+      ],
       // COVERAGE RATCHET: floors = the measured level; autoUpdate raises them in
       // this file on every full run that beats them, so they never fall.
       thresholds: {
-        statements: 72.83,
-        branches: 73.65,
-        functions: 68,
-        lines: 73.06,
+        statements: 97.69,
+        branches: 87.54,
+        functions: 99.38,
+        lines: 99.9,
         autoUpdate: true
       }
     }

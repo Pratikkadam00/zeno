@@ -89,8 +89,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [ ] then the owner-only file (everything that needs the owner, nothing else)
 - [ ] **P4 — Website component tests, Playwright, CSP, DAST**
   - [ ] P4.1 component and page tests (vitest + jsdom + Testing Library), split into steps; each adds a floor
-    - [x] P4.1a the test setup, and the shared components (`components/ui/**` was dead code, removed); **fixes F165, F167, F168, F169**; F166 found
-    - [ ] P4.1b every page renders: metadata, canonical, JSON-LD, breadcrumbs, the 509 cancel guides
+    - [x] P4.1a the test setup, and the shared components (`components/ui/**` was dead code, removed); **fixes F165, F167, F168, F169**; F166 found (green: CI 37032423384, CodeQL 37032423356 on `62faef2`)
+    - [x] P4.1b every page renders: metadata, canonical, JSON-LD, breadcrumbs, internal links, the sitemap, the 509 cancel guides; **fixes F170**
     - [ ] P4.1c the truthfulness rail as a test (banned phrases never rendered, required ones are), and every factual claim on the site checked against the app's code
   - [ ] P4.2 Playwright on every route: the homepage book, theme, waitlist, cancel hub and guide, compare, legal, 404; security headers, zero console errors, zero outside requests, axe clean
   - [ ] P4.3 CSP: no `'unsafe-inline'` scripts (hashes for the fixed inline scripts) or a written, measured reason; the other headers verified
@@ -270,6 +270,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F167 | **FIXED in P4.1a.** ~~After a waitlist error, typing again set `aria-invalid` back to false but left the error message on screen (and the field still described by it).~~ Editing now clears both together. | Low (accessibility) | me | P4.1a |
 | F168 | **FIXED in P4.1a.** ~~The footer's homepage links ("How it works", "Pricing", "FAQ", "Join the waitlist") were written `#how`, `#pricing`…, relative to the current page, so on every other page (the 509 cancel guides, compare, features, legal) they pointed at sections that don't exist there and did nothing.~~ They are `/#how` etc. now; on the homepage that is still an in-page jump. Since the website port (`53f521e`). | Low–Medium (navigation) | me | P4.1a |
 | F169 | **FIXED in P4.1a.** ~~Without JavaScript the homepage below the hero was invisible.~~ The motion primitives are server-rendered at their animation start (inline `opacity:0`, offsets), which only Motion's in-view trigger lifts; the hero was built for no-JS (its entrance is gated on `html.js`), the rest wasn't. Measured: the server HTML of every primitive carried the start state. Now each such element has `zn-reveal`, and `html:not(.js) .zn-reveal` (globals.css) shows it finished; `html.js` is set by the inline theme script before first paint, so scripts-on is unchanged. Proven in Chromium on the primitives' real server HTML (no `html.js`: opacity 1, no transform; with it: the start state kept), and in the built homepage 84 of 86 start-state elements carry the class (the other two are the margin index's marker and the 5 % "zeno" watermark, both decorative and meant to start hidden). The full no-JS page check is P4.2's. | Medium (content invisible without JS) | me | P4.1a |
+| F170 | **FIXED in P4.1b.** ~~On the three legal pages and the analytics page, the root layout's "Skip to content" link (`href="#main"`) had no target: their `<main>` had no `id="main"` (the legal layout and the dashboard render their own `<main>`), so a keyboard user couldn't skip the navigation there.~~ Both now carry the id; a test over every page requires exactly one `main#main`. | Low (accessibility) | me | P4.1b |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **CLOSED in the P3 gate (2026-10-02): reachable, not a bug.** TalkBack, driven by touches from the emulator's own touchscreen, put its focus on each nested button's exact bounds, separately from its parent: the calendar's "Cancel Figma", the menu's Edit/Pause/Delete, the login's Terms and Privacy links. Original note: on the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -4638,3 +4639,57 @@ for the hash); it needs a real browser to say.
 
 **The production build** passes, and its homepage HTML carries the fixes (the `/#`
 links, `zn-reveal` on 84 of 86 start-state elements as above, the no-JS rule in the CSS).
+
+### P4.1b — every page rendered and checked; the 509 cancel guides; F170 fixed — 2026-10-02
+
+**How pages are found.** `apps/web/test-support/pages.tsx` walks `apps/web/app/` for
+`page.tsx` files, so a page added later is tested without anyone listing it (the list
+is also pinned, 19 routes with the guides as one, so a page that disappears fails
+too). Each is rendered as the server renders it: the async page awaited, inside its
+layouts, to static HTML; its metadata merged over its layouts' (root included, nearest
+wins, as Next does).
+
+**Every page (`app/pages.test.tsx`):** a title and a description of its own (none
+shared); indexable pages: canonical = the page's own path and a social-card title; the
+analytics page says noindex; exactly one `h1`; exactly one `main#main` (the skip link's
+target); every JSON-LD block parses, and every breadcrumb trail runs 1..n from Home to
+this page; **every internal link resolves** to a page or a file in `public/` (none dead
+today); every new-tab link has `rel="noopener noreferrer"`; **the sitemap lists exactly
+the indexable pages** (all 509 guides, no noindex page, no duplicates); robots.txt
+points at it.
+
+**The 509 cancel guides (`app/cancel/guides.test.tsx`), every one rendered:** a guide
+per catalog service, each slug once; each title, description, canonical and article
+card; the catalog's steps printed in order, the difficulty stated; no repeated step in
+any guide (steps are React keys); HowTo data matching the steps; the Home > guides >
+service breadcrumb; the cancellation link, where the catalog has one, is https and
+opens safely; related guides are up to six others of the same category, never itself;
+an unknown slug is a 404 with a "not found" title. The hub: every guide linked in the
+server HTML, grouped, largest group first, counts adding up to 509; search narrows by
+name (any case, trimmed), an empty result says so.
+
+**Also:** the root layout (lang, the theme script first, "Skip to content" first and
+to `#main`, Organization and WebSite data, metadata base and card); the homepage (FAQPage
+data equal to the visible FAQ with entities decoded, The Case's figures from the
+catalog, the sections in reading order, the back-office teaser only with its flag); the
+analytics page (404 unless flagged; range tabs switch the figures; chart hover clamps to
+the chart); the waitlist route's file path (one JSON line per signup, folder created; an
+unwritable file is a 502 and the log carries only a masked address).
+
+`app/fonts.ts` is excluded from this floor with the reason written in the config:
+`next/font/local` is compiled away by Next and can't run outside it (`fonts.test.ts`
+checks its source and files; CI's web build compiles it).
+
+**Numbers:** 155 tests in the web run; lines 99.9 %, statements 97.69 %, branches
+87.54 %, functions 99.38 % over `apps/web/app` and `components` (the floor ratchets to
+these). **Bite check: 9, caught 9**: the legal `<main>` without its id (F170); a dead
+footer link; a copied canonical; a page dropped from the sitemap; a breadcrumb ending
+elsewhere; a guide's steps reversed; the guide link's `rel` removed; the hub's search
+untrimmed; the waitlist log unmasked. The production build passes and the built legal
+pages carry `main#main`.
+
+**For P4.1c (truthfulness), noted while reading the pages, not judged yet:** the
+analytics dashboard's pulsing "Live" badge over sample figures (its only "Sample data"
+label is the footer); Partners lists named brands with statuses ("dev adapter"); the
+Developers page offers a "Public API"; the family page shows named demo members; the
+hub says "509+" for exactly 509.

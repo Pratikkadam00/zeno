@@ -7,7 +7,8 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
   return (
     <div className={styles.shell}>
       <Nav showAnalytics={isPublicAnalyticsEnabled()} />
-      <main className={styles.main}>
+      {/* id="main": the root layout's "Skip to content" target (F170). */}
+      <main id="main" className={styles.main}>
         <article className={styles.article}>{children}</article>
       </main>
       <Footer />
