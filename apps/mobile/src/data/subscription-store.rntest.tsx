@@ -290,6 +290,8 @@ describe("mutations", () => {
     act(() => result.current.pauseSubscription("a"));
     act(() => result.current.markCancelled("a"));
     expect(status()).toBe("cancelled");
+    // F147: a cancel records when, so history counts the plan up to that day.
+    expect(result.current.subscriptions.find((s) => s.id === "a")!.cancellationRequestedAt).toEqual(expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/));
     act(() => result.current.markVerifiedCancelled("a"));
     expect(status()).toBe("cancelled");
     act(() => result.current.markStillCharging("a"));

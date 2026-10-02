@@ -49,10 +49,10 @@ const press = async (name: string) => {
 const lastShare = () => (share.mock.calls.at(-1)![0] as { message: string }).message;
 
 describe("year in review", () => {
-  it("F147: what the tracked subscriptions came to, called 'committed', never 'spent'; every control is named", async () => {
+  it("F147: what the subscriptions came to (each cancelled one until it was cancelled), called 'committed', never 'spent'; every control is named", async () => {
     const r = await open();
     expect(screen.getByText("$520.00 committed")).toBeTruthy();
-    expect(screen.getByText(/^on the 2 subscriptions you track now, since you started tracking in /)).toBeTruthy();
+    expect(screen.getByText(/^on your subscriptions since you started tracking in .*, each cancelled one until you cancelled it\.$/)).toBeTruthy();
     expect(screen.queryByText(/You spent/)).toBeNull();
     expect(screen.getByText("$600.00")).toBeTruthy(); // on pace: (40 + 120/12) x 12
     expect(screen.getByText("Gym")).toBeTruthy();
@@ -65,12 +65,12 @@ describe("year in review", () => {
   it("F147: every share says 'committed' / 'came to', never 'spent'", async () => {
     await open();
     await press("Share my Wrapped");
-    expect(lastShare()).toMatch(/^My subscriptions, wrapped:\n· \$520\.00 committed on the subscriptions I track since I started tracking in /);
+    expect(lastShare()).toMatch(/^My subscriptions, wrapped:\n· \$520\.00 committed on my subscriptions since I started tracking in /);
     expect(lastShare()).toContain("· Priciest: Gym ($40.00/mo)");
     expect(lastShare()).toContain("· Most spent on: Health");
     expect(lastShare()).toContain("· Cancelled 1 I didn't need");
     await press("Share total spend");
-    expect(lastShare()).toMatch(/^The subscriptions I track came to \$520\.00 since I started tracking in .* — and I'm on pace for \$600\.00 next year\./);
+    expect(lastShare()).toMatch(/^My subscriptions came to \$520\.00 since I started tracking in .* — and I'm on pace for \$600\.00 next year\./);
     for (const name of ["Share priciest subscription", "Share top category", "Share busiest month"]) await press(name);
     expect(api.recordFunnelEvent.mock.calls.map((c) => c[1])).toEqual(["wrapped_summary", "wrapped_total", "wrapped_most_expensive", "wrapped_top_category", "wrapped_busiest_month"]);
     expect(share.mock.calls.map((c) => (c[0] as { message: string }).message).join("\n")).not.toMatch(/\bspent \$/);
@@ -78,9 +78,9 @@ describe("year in review", () => {
 
   it("a full year of tracking says 'over the last 12 months'", async () => {
     await open([sub({ id: "gym", name: "Gym", createdAt: "2024-01-01T00:00:00.000Z", price: { amountMinor: 4000, currency: "USD" } })]);
-    expect(screen.getByText("on the 1 subscription you track now, over the last 12 months.")).toBeTruthy();
+    expect(screen.getByText("on your subscriptions over the last 12 months, each cancelled one until you cancelled it.")).toBeTruthy();
     await press("Share my Wrapped");
-    expect(lastShare()).toContain("committed on the subscriptions I track over the last 12 months");
+    expect(lastShare()).toContain("committed on my subscriptions over the last 12 months");
   });
 
   it("nothing tracked: nothing to rank, no busiest month, and no per-stat shares", async () => {

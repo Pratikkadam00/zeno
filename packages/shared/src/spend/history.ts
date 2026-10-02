@@ -40,17 +40,46 @@ export function buildMonthlySpendHistory(subscriptions: Subscription[], months =
   return points;
 }
 
-function anchorMonth(subscription: Subscription): number {
-  // The renewal date carries the anniversary month. Fall back to createdAt when
-  // it is absent OR unparseable: an unparseable (or empty) date gave a NaN
-  // month, so the charge matched no month and silently vanished from history.
+function anchorDate(subscription: Subscription): Date {
+  // The renewal date carries the anniversary (month, and day of month). Fall
+  // back to createdAt when it is absent OR unparseable: an unparseable (or
+  // empty) date gave a NaN month, so the charge matched no month and silently
+  // vanished from history.
   const renewal = subscription.nextRenewalDate ? Date.parse(subscription.nextRenewalDate) : Number.NaN;
   const ref = Number.isNaN(renewal) ? Date.parse(subscription.createdAt) : renewal;
-  return new Date(ref).getUTCMonth();
+  return new Date(ref);
+}
+
+// The day this subscription charges in a given month: its anniversary day, or
+// the month's last day when the month is shorter (the 31st in February is the 28th).
+function chargeDayIn(subscription: Subscription, year: number, month: number): number {
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  return Date.UTC(year, month, Math.min(anchorDate(subscription).getUTCDate(), lastDay));
+}
+
+/**
+ * When billing stopped (F147). `undefined`: still billing. `null`: counts
+ * nothing. Otherwise the instant billing ended; a charge dated before it was
+ * paid and counts.
+ * - active, and "attention" (charged again after cancelling): still billing.
+ * - pending (a reported cancel) and cancelled: billing ended when the user
+ *   reported cancelling, `cancellationRequestedAt`. Every cancel path in the app
+ *   records it (requestCancellation; verification and "charged again" keep it).
+ * - anything else (paused, trial, unknown), and a cancel with no readable date:
+ *   nothing. No date is invented. (A paused plan's past months are F163.)
+ */
+function billingEndsAt(subscription: Subscription): number | null | undefined {
+  if (subscription.status === "active" || subscription.status === "attention") return undefined;
+  if (subscription.status === "pending" || subscription.status === "cancelled") {
+    const ended = subscription.cancellationRequestedAt ? Date.parse(subscription.cancellationRequestedAt) : Number.NaN;
+    return Number.isNaN(ended) ? null : ended;
+  }
+  return null;
 }
 
 function chargeInMonth(subscription: Subscription, year: number, month: number, fx?: FxContext): number {
-  if (subscription.status !== "active") return 0;
+  const endsAt = billingEndsAt(subscription);
+  if (endsAt === null) return 0;
   if (subscription.billingCycle === "trial" || subscription.billingCycle === "unknown") return 0;
 
   const created = new Date(subscription.createdAt);
@@ -63,19 +92,29 @@ function chargeInMonth(subscription: Subscription, year: number, month: number, 
     if (!fx) return amountMinor;
     return convertMinor(amountMinor, subscription.price.currency, fx.homeCurrency, fx.rates) ?? 0;
   };
+  // A cycle charge in this month counts only if it fell before billing ended.
+  const charged = (amountMinor: number): number =>
+    endsAt === undefined || chargeDayIn(subscription, year, month) < endsAt ? convert(amountMinor) : 0;
 
   const price = subscription.price.amountMinor;
+  const anchorMonth = anchorDate(subscription).getUTCMonth();
   switch (subscription.billingCycle) {
     case "monthly":
-      return convert(price);
-    case "weekly":
+      return charged(price);
+    case "weekly": {
       // month-equivalent of weekly charges; monthlyAmount already normalizes
-      // the cycle, fx-conversion (if any) is applied on top of that.
-      return fx ? (convertMinor(monthlyAmount(subscription), subscription.price.currency, fx.homeCurrency, fx.rates) ?? 0) : monthlyAmount(subscription);
+      // the cycle, fx-conversion (if any) is applied on top of that. In the
+      // month billing ended, only the share of the month before the end counts.
+      const full = fx ? (convertMinor(monthlyAmount(subscription), subscription.price.currency, fx.homeCurrency, fx.rates) ?? 0) : monthlyAmount(subscription);
+      if (endsAt === undefined) return full;
+      const monthEnd = Date.UTC(year, month + 1, 1);
+      const share = Math.min(1, Math.max(0, (endsAt - monthStamp) / (monthEnd - monthStamp)));
+      return Math.round(full * share);
+    }
     case "quarterly":
-      return (((month - anchorMonth(subscription)) % 3) + 3) % 3 === 0 ? convert(price) : 0;
+      return (((month - anchorMonth) % 3) + 3) % 3 === 0 ? charged(price) : 0;
     case "annual":
-      return month === anchorMonth(subscription) ? convert(price) : 0;
+      return month === anchorMonth ? charged(price) : 0;
     default:
       return 0;
   }

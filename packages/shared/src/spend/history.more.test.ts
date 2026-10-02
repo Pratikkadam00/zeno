@@ -85,6 +85,58 @@ describe("buildMonthlySpendHistory — cycles", () => {
   });
 });
 
+describe("buildMonthlySpendHistory — a cancelled plan counts until it was cancelled (F147)", () => {
+  // Jan..Jun 2026; the monthly plan renews on the 10th.
+  const plan = (over: Partial<Subscription>) => sub({ id: "p", nextRenewalDate: "2026-04-10T00:00:00.000Z", ...over });
+
+  it("cancelled on 5 April: January to March were paid, April's charge (the 10th) never happened", () => {
+    const points = buildMonthlySpendHistory([plan({ status: "cancelled", cancellationRequestedAt: "2026-04-05T09:00:00.000Z" })], 6, NOW);
+    expect(amounts(points)).toEqual([1000, 1000, 1000, 0, 0, 0]);
+  });
+
+  it("cancelled on 12 April, after April's charge: April counts too", () => {
+    const points = buildMonthlySpendHistory([plan({ status: "cancelled", cancellationRequestedAt: "2026-04-12T09:00:00.000Z" })], 6, NOW);
+    expect(amounts(points)).toEqual([1000, 1000, 1000, 1000, 0, 0]);
+  });
+
+  it("a reported cancel awaiting verification (pending) counts the same way", () => {
+    const points = buildMonthlySpendHistory([plan({ status: "pending", cancellationRequestedAt: "2026-04-05T09:00:00.000Z" })], 6, NOW);
+    expect(amounts(points)).toEqual([1000, 1000, 1000, 0, 0, 0]);
+  });
+
+  it("charged again after cancelling (attention): still billing, every month counts", () => {
+    const points = buildMonthlySpendHistory([plan({ status: "attention", cancellationRequestedAt: "2026-04-05T09:00:00.000Z" })], 6, NOW);
+    expect(amounts(points)).toEqual([1000, 1000, 1000, 1000, 1000, 1000]);
+  });
+
+  it("an annual plan cancelled before its renewal day is not charged that year; after it, it is", () => {
+    const annual = (cancelled: string) => sub({ id: "a", billingCycle: "annual", price: { amountMinor: 12000, currency: "USD" }, nextRenewalDate: "2026-03-20T00:00:00.000Z", status: "cancelled", cancellationRequestedAt: cancelled });
+    expect(amounts(buildMonthlySpendHistory([annual("2026-03-15T00:00:00.000Z")], 6, NOW))).toEqual([0, 0, 0, 0, 0, 0]);
+    expect(amounts(buildMonthlySpendHistory([annual("2026-03-25T00:00:00.000Z")], 6, NOW))).toEqual([0, 0, 12000, 0, 0, 0]);
+  });
+
+  it("a weekly plan counts the share of its cancellation month that came before the cancel", () => {
+    // monthlyAmount of $10/week = round(1000 * 52 / 12) = 4333; cancelled at the
+    // start of 16 April, so 15 of April's 30 days were billed: round(2166.5) = 2167.
+    const weekly = sub({ id: "w", billingCycle: "weekly", status: "cancelled", cancellationRequestedAt: "2026-04-16T00:00:00.000Z" });
+    expect(amounts(buildMonthlySpendHistory([weekly], 6, NOW))).toEqual([4333, 4333, 4333, 2167, 0, 0]);
+  });
+
+  it("a renewal day past the end of a short month charges on its last day (the 31st in February is the 28th)", () => {
+    const late = plan({ nextRenewalDate: "2026-01-31T00:00:00.000Z", status: "cancelled", cancellationRequestedAt: "2026-02-28T12:00:00.000Z" });
+    expect(amounts(buildMonthlySpendHistory([late], 6, NOW))).toEqual([1000, 1000, 0, 0, 0, 0]);
+  });
+
+  it("no invented date: a cancelled plan without one, or with an unreadable one, counts nothing; so does a paused plan", () => {
+    const points = buildMonthlySpendHistory([
+      plan({ id: "no-date", status: "cancelled" }),
+      plan({ id: "bad-date", status: "cancelled", cancellationRequestedAt: "not a date" }),
+      plan({ id: "paused", status: "paused" })
+    ], 6, NOW);
+    expect(amounts(points)).toEqual([0, 0, 0, 0, 0, 0]);
+  });
+});
+
 describe("buildMonthlySpendHistory — fx", () => {
   it("converts every cycle into the home currency", () => {
     const points = buildMonthlySpendHistory([

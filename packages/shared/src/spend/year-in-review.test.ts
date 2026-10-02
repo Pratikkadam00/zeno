@@ -34,6 +34,19 @@ describe("buildYearInReview", () => {
     expect(r.busiestMonth).not.toBeNull();
   });
 
+  it("F147: the total includes a cancelled plan's months up to its cancellation, not $0", () => {
+    // Window Jul 2025..Jun 2026. Netflix (anchored on createdAt, the 1st) is
+    // charged all 12 months: 12 x 1500. "Old" renews on the 10th and was
+    // cancelled on 5 April 2026: Jul 2025..Mar 2026 were paid, 9 x 1000.
+    const r = buildYearInReview([
+      sub({ id: "a", name: "Netflix", price: { amountMinor: 1500, currency: "USD" } }),
+      sub({ id: "c", name: "Old", status: "cancelled", nextRenewalDate: "2026-04-10T00:00:00.000Z", cancellationRequestedAt: "2026-04-05T09:00:00.000Z" })
+    ], NOW);
+    expect(r.totalSpentMinor).toBe(12 * 1500 + 9 * 1000);
+    expect(r.cancelledCount).toBe(1);
+    expect(r.activeCount).toBe(1);
+  });
+
   it("handles an empty list", () => {
     const r = buildYearInReview([], NOW);
     expect(r.activeCount).toBe(0);

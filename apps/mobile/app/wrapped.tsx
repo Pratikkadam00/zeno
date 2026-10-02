@@ -47,9 +47,9 @@ export default function WrappedScreen() {
 
   // Truthful period phrasing: the total only covers spend since the user began
   // tracking each sub, so a new user must not see "over the last 12 months".
-  // F147: and it is what the subscriptions tracked NOW add up to (one cancelled
-  // since counts $0 even for months it was paid), so it is "committed", as the
-  // design calls it, never "spent".
+  // F147: it counts each subscription, a cancelled one too, up to the day it
+  // was cancelled. It is still an estimate from renewals (no bank data), so it
+  // is "committed", as the design calls it, never "spent".
   const coveragePhrase = review.coversFullTrailingYear || !review.coverageStartLabel
     ? "over the last 12 months"
     : `since I started tracking in ${review.coverageStartLabel}`;
@@ -57,7 +57,7 @@ export default function WrappedScreen() {
   const shareSummary = async () => {
     const lines = [
       "My subscriptions, wrapped:",
-      `· ${money(review.totalSpentMinor)} committed on the subscriptions I track ${coveragePhrase}`,
+      `· ${money(review.totalSpentMinor)} committed on my subscriptions ${coveragePhrase}`,
       review.mostExpensive ? `· Priciest: ${review.mostExpensive.name} (${money(review.mostExpensive.monthlyMinor)}/mo)` : null,
       review.topCategory ? `· Most spent on: ${labelCategory(review.topCategory.category)}` : null,
       review.cancelledCount > 0 ? `· Cancelled ${review.cancelledCount} I didn't need` : null,
@@ -72,7 +72,7 @@ export default function WrappedScreen() {
   const shareTotal = () => {
     recordFunnelEvent("share_card_generated", "wrapped_total");
     return shareText(
-      `The subscriptions I track came to ${money(review.totalSpentMinor)} ${coveragePhrase} — and I'm on pace for ${money(review.projectedAnnualMinor)} next year.`
+      `My subscriptions came to ${money(review.totalSpentMinor)} ${coveragePhrase} — and I'm on pace for ${money(review.projectedAnnualMinor)} next year.`
     );
   };
   // Each takes its stat from the card that shows it (a card, and its share
@@ -103,8 +103,8 @@ export default function WrappedScreen() {
             </Text>
             <Text style={{ color: theme.mutedText, marginTop: 6, fontSize: 15 }}>
               {review.coversFullTrailingYear || !review.coverageStartLabel
-                ? `on the ${review.activeCount} subscription${review.activeCount === 1 ? "" : "s"} you track now, over the last 12 months.`
-                : `on the ${review.activeCount} subscription${review.activeCount === 1 ? "" : "s"} you track now, since you started tracking in ${review.coverageStartLabel}.`}
+                ? "on your subscriptions over the last 12 months, each cancelled one until you cancelled it."
+                : `on your subscriptions since you started tracking in ${review.coverageStartLabel}, each cancelled one until you cancelled it.`}
             </Text>
           </View>
           <ShareIconButton label="Share total spend" onPress={shareTotal} theme={theme} />

@@ -497,10 +497,14 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         }));
       },
       markCancelled(id) {
+        const now = new Date().toISOString();
         applyChange(id, (subscription) => ({
           ...subscription,
           status: "cancelled",
-          updatedAt: new Date().toISOString(),
+          // F147: history counts a cancelled plan up to this date. Keep an
+          // earlier reported date (the cancel already happened then).
+          cancellationRequestedAt: subscription.cancellationRequestedAt ?? now,
+          updatedAt: now,
           version: subscription.version + 1
         }));
       },

@@ -80,10 +80,12 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P3 gate: hardened release APK verified on the emulator (every flow in `DEVICE_TEST_FINDINGS.md`); jest floor in CI; MASVS checklist with evidence per control (`docs/MASVS_CHECKLIST.md`); **fixes F156-F160**, closes F16 and F112
 - [~] **FX — fix pass before P4** (2026-10-02; the owner asked for every open item of mine to be fixed before P4; owner-only items go to their own file at the end)
   - [x] FX.1 F21: strict UTC day parsing for CSV and receipt dates; UTC next-renewal arithmetic; F16 and F112 rows closed
-  - [ ] FX.2 F147's cause: a cancellation date on every cancel path; history counts each subscription up to it
+  - [x] FX.2 F147's cause: history counts each subscription up to its cancellation date (already recorded on every cancel path); F163 found
   - [ ] FX.3 F162: the Settings sheet hides what's behind it from screen readers (verified on the emulator)
   - [ ] FX.4 F103: the website's three fonts self-hosted, so the build needs no network
-  - [ ] FX.5 F94 and F106: one bounded reproduction attempt each; then the owner-only file
+  - [ ] FX.5 F94 and F106: one bounded reproduction attempt each
+  - [ ] FX.6 F163: a paused subscription's past months in the spend history
+  - [ ] then the owner-only file (everything that needs the owner, nothing else)
 - [ ] **P4 — Website component tests, Playwright, CSP, DAST**
 - [ ] **P5 — Mobile end-to-end (Maestro on the emulator)**
 - [ ] **P6 — Mutation + property-based testing**
@@ -235,7 +237,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F144 | **FIXED in P3.8f-1.** ~~The budget's setup cap started at $5, not the suggested cap.~~ It was seeded once on the first render, before the subscriptions load, when the forecast is $0 (the same pattern as F118). "Use suggested · $155" was shown beside a $5 cap, and "Start tracking" saved $5. The cap now follows the suggestion until the user changes it. | Medium | me | P3.8f-1 |
 | F145 | **FIXED in P3.8f-1.** ~~The coach said cancelling its picks would "get under" the budget when they didn't.~~ It took the cheapest subscriptions until their savings covered the overage, but when every subscription together saved less, it still ended "…and get under." It says that only when the cuts cover the overage; otherwise "That alone won't get you under this month." | Medium (advice about money that was false) | me | P3.8f-1 |
 | F146 | **FIXED in P3.8f-2 (the feature itself is the owner's call).** ~~The budget recap said "Budget adherence rolls into your Year in Review", with a Pro badge.~~ Year in Review (`app/wrapped.tsx`) reads no budget and checks no plan, so both halves were false. The row is gone. The design says "Every closed month is stamped into your Year in Review", a feature that doesn't exist; whether to build it is in OPEN_ITEMS. | Low (truthfulness) | me + owner | P3.8f-2 |
-| F147 | **FIXED in P3.8f-2 (the wording); the cause is scheduled.** ~~Year in Review said "You spent $X" and shared "I spent $X".~~ The figure is `buildYearInReview`'s history: what the subscriptions tracked TODAY add up to over the window, each assumed charged every cycle since it was added. A subscription since cancelled counts $0, even for months it was paid, so the more you cancel the lower "spent" reads. The design calls it "TOTAL COMMITTED … across N tracked subscriptions". The screen and every share now say "committed on the N subscriptions you track now", and the busiest month says "due", not "charged". Counting cancelled subscriptions up to their cancellation needs a cancellation date on every cancel path, and it changes the dashboard's and Insights' charts too: in OPEN_ITEMS (mine). | Medium (truthfulness of money, shared publicly) | me | P3.8f-2; cause P6 |
+| F147 | **FIXED in P3.8f-2 (the wording) and FX.2 (the cause): a cancelled subscription now counts up to the day it was cancelled.** ~~Year in Review said "You spent $X" and shared "I spent $X".~~ The figure is `buildYearInReview`'s history: what the subscriptions tracked TODAY add up to over the window, each assumed charged every cycle since it was added. A subscription since cancelled counts $0, even for months it was paid, so the more you cancel the lower "spent" reads. The design calls it "TOTAL COMMITTED … across N tracked subscriptions". The screen and every share now say "committed on the N subscriptions you track now", and the busiest month says "due", not "charged". Counting cancelled subscriptions up to their cancellation needs a cancellation date on every cancel path, and it changes the dashboard's and Insights' charts too: in OPEN_ITEMS (mine). | Medium (truthfulness of money, shared publicly) | me | P3.8f-2; cause P6 |
 | F148 | **FIXED in P3.8f-2.** ~~Other family members saw this member's account id as their name.~~ The name sent was `accountId.split("@")[0]`, but the account id is an internal `acct_…` id (F125) with no "@", so the household saw "acct_9f2c…". It is now the local part of the signed-in email, or "Member". (The server takes the member itself from the sign-in token, as before.) | Low (privacy, truthfulness) | me | P3.8f-2 |
 | F149 | **FIXED in P3.8f-2.** ~~Joining a household accepted a 4-7 character code.~~ The check was `length < 4` while the message says "Enter the 8-character code", and the server's codes are always 8 (`CODE_LENGTH`, `api/src/family.ts`). It now requires 8. | Low | me | P3.8f-2 |
 | F150 | **FIXED in P3.8f-2.** ~~"Leave household" could leave you in the household.~~ It cleared the household on the phone at once and told the server fire-and-forget. If that call failed, the member stayed in the household on the server, with their monthly total still shown to the others, while the app said they had left. It now leaves only when the server confirms, and otherwise says "you're still in this household". | Medium (privacy) | me | P3.8f-2 |
@@ -251,6 +253,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F160 | **FIXED in the P3 gate.** ~~Pausing a subscription was one-way.~~ The menu always offered "Pause subscription", even on a paused plan, the paused bar was not a button, and the store had no resume at all. A paused plan's menu (Android and iOS) now offers "Resume subscription", and the store has `resumeSubscription`. Verified on the device: Figma resumed and its Cancel button came back. | Medium (a dead end) | me | P3 gate |
 | F161 | **OPEN, owner decision.** The widget snapshot (`zeno.widget.snapshot.v1`: the next renewal's name and amount, the monthly total) is written in plaintext to AsyncStorage, though no widget ships in this build. It is app-private (root was needed to read it), not backed up (F92), and erased with the device's data (F27). | Low | owner | — |
 | F162 | **OPEN.** While Settings' bottom sheet (Home currency) is open, the Settings controls behind it stay in the accessibility tree (`uiautomator dump --compressed`), so a screen reader can move behind the sheet. | Low (accessibility) | me | P5 |
+| F163 | **OPEN (mine), FX.6.** A paused subscription counts $0 in the spend history (Year in Review, the recap, the Insights chart) for every month, including months it was paid before the pause. Found while fixing F147: unlike a cancel, a pause records no date, and it can be undone, so counting it right needs the pause intervals, not one date. | Low (history understates) | me | FX.6 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **CLOSED in the P3 gate (2026-10-02): reachable, not a bug.** TalkBack, driven by touches from the emulator's own touchscreen, put its focus on each nested button's exact bounds, separately from its parent: the calendar's "Cancel Figma", the menu's Edit/Pause/Delete, the login's Terms and Privacy links. Original note: on the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -4301,3 +4304,43 @@ machine local and UTC agree; the parser without the real-day check: 9; the parse
 building local dates: 27).
 
 **Also:** the F16 and F112 rows, closed by the P3 gate, now say so.
+
+### FX.2 — a cancelled subscription counts until it was cancelled (F147) — 2026-10-02
+
+**Read first:**
+- `buildMonthlySpendHistory` (`packages/shared/src/spend/history.ts`) feeds Year in
+  Review, the budget recap and the Insights chart. Its `chargeInMonth` returned 0 for
+  any status but `active`, in every month: a cancelled, reported-cancelled or
+  still-charging plan vanished from the past.
+- **The date was already recorded on every real cancel path.** The app's only cancel
+  action is `requestCancellation` (the cancel guide, both buttons). It sets
+  `cancellationRequestedAt`, and verification, "Confirm it stopped" and "I was charged
+  again" keep it (they spread the row). It is a stored column since CHANGE 4, so no
+  schema change was needed. `markCancelled` set no date; it has no caller outside tests.
+
+**The change:**
+- **`history.ts`:** `billingEndsAt` gives each row its end. Active and `attention`
+  (charged after cancelling) are still billing. `pending` and `cancelled` end at
+  `cancellationRequestedAt`. Anything else (paused, trial, unknown), and a cancel
+  with no readable date, counts nothing: no date is invented.
+- **Day-precise:** a monthly, quarterly or annual charge counts only when its day
+  (the anniversary day, or the month's last day in a shorter month) falls before the
+  end. A weekly plan's month-equivalent is prorated in its last month.
+- **`markCancelled`** records the date, keeping an earlier one.
+- **Year in Review's wording:** "on the N subscriptions you track now" is no longer
+  true. It now reads "on your subscriptions over the last 12 months, each cancelled
+  one until you cancelled it", and the shares say "my subscriptions". Still
+  "committed", not "spent": it remains an estimate from renewals.
+
+**Tests:** 8 new history cases (cancelled before or after that month's charge;
+pending; attention; annual either side of its renewal; weekly proration, 2167 of
+4333; the 31st in February; no date, an unreadable date, or a pause counting
+nothing), a Year in Review total of 12 x 1500 + 9 x 1000, the store recording the
+date, and the new wording. Shared: 223 passed; the two jest suites: 42 passed.
+
+**Bite check: 6, all caught:** the original rule back (8 fail); the date ignored (6);
+`attention` not billing (1); weekly not prorated (1); no short-month clamp (1);
+`markCancelled` without a date (1).
+
+**Found, not fixed here:** F163, a paused plan's past months (see its row). It is
+FX.6.
