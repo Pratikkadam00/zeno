@@ -11,6 +11,7 @@ import { fakeNotificationsModule, fakeStorage, renderScreen, resetFakes, routePa
  * and the estimated charge history (F116), yearly figures (F117) and date
  * validation (F115).
  */
+jest.mock("../security/lock-store", () => jest.requireActual("../test-support/screen-fakes").fakeLockStoreModule);
 jest.mock("../storage/database", () => jest.requireActual("../test-support/screen-fakes").fakeDatabaseModule);
 jest.mock("../storage/subscription-repository", () => jest.requireActual("../test-support/screen-fakes").fakeRepositoryModule);
 jest.mock("../fx/rates", () => jest.requireActual("../test-support/screen-fakes").fakeFxModule);
@@ -167,6 +168,32 @@ describe("detail, the menu", () => {
     expect(stored("sub_x")?.status).toBe("paused");
     expect(screen.getByText("Subscription Paused")).toBeTruthy();
     sheet.mockRestore();
+  });
+
+  it("P3 gate (F160): a paused plan offers Resume, not Pause again (iOS); resuming makes it active", async () => {
+    await open("sub_x", [sub({ status: "paused" })]);
+    const sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions").mockImplementation((o, cb) => {
+      expect(o.options).toEqual(["Edit", "Resume subscription", "Delete", "Cancel"]);
+      cb(1);
+    });
+    await press("More options");
+    sheet.mockRestore();
+    expect(stored("sub_x")?.status).toBe("active");
+    expect(screen.queryByText("Subscription Paused")).toBeNull();
+  });
+
+  it("P3 gate (F160): Android's menu also offers Resume for a paused plan", async () => {
+    const os = jest.replaceProperty(Platform, "OS", "android");
+    try {
+      await open("sub_x", [sub({ status: "paused" })]);
+      await press("More options");
+      expect(screen.queryByRole("button", { name: "Pause subscription" })).toBeNull();
+      // The item itself, drawn last (it sits inside the "Close menu" backdrop).
+      await act(async () => { fireEvent.press(screen.getAllByRole("button", { name: "Resume subscription" }).at(-1)!); });
+      expect(stored("sub_x")?.status).toBe("active");
+    } finally {
+      os.restore();
+    }
   });
 
   it("Delete asks first; confirming removes it, cancels its reminders, and returns to the ledger", async () => {

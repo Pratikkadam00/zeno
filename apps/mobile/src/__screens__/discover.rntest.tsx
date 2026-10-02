@@ -13,6 +13,7 @@ import { fakeNotificationsModule, fakeStorage, renderScreen, resetFakes, routerM
  * boundaries are faked (the inbox scan, Google's auth hook, the file picker);
  * the CSV parser, the free-plan cap and the found-money summary are real.
  */
+jest.mock("../security/lock-store", () => jest.requireActual("../test-support/screen-fakes").fakeLockStoreModule);
 jest.mock("../storage/database", () => jest.requireActual("../test-support/screen-fakes").fakeDatabaseModule);
 jest.mock("../storage/subscription-repository", () => jest.requireActual("../test-support/screen-fakes").fakeRepositoryModule);
 jest.mock("../fx/rates", () => jest.requireActual("../test-support/screen-fakes").fakeFxModule);

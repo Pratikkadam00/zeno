@@ -1,9 +1,10 @@
 import { findServiceBySlug } from "@zeno/service-catalog";
 import type { BillingCycle, Subscription } from "@zeno/shared";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { ActionSheetIOS, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { ActionSheetIOS, Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useMemo, useState } from "react";
+import { AppModal } from "../../src/security/AppModal";
 import { useSubscriptionStore, type SubscriptionNotificationSettings } from "../../src/data/subscription-store";
 import { cancelNotificationsForSubscription, scheduleRenewalNotificationsWithPreferences } from "../../src/notifications/notificationService";
 import { currencySymbol, formatMoney } from "../../src/utils/format";
@@ -103,6 +104,7 @@ export default function SubscriptionDetailScreen() {
     updateSubscription,
     deleteSubscription,
     pauseSubscription,
+    resumeSubscription,
     markVerifiedCancelled,
     markStillCharging
   } = useSubscriptionStore();
@@ -183,17 +185,22 @@ export default function SubscriptionDetailScreen() {
     setIsEditing(true);
   }
 
+  // F160: a paused plan's menu offers Resume (the pause used to be one-way).
+  const paused = sub.status === "paused";
+  const pauseLabel = paused ? "Resume subscription" : "Pause subscription";
+  const togglePause = () => (paused ? resumeSubscription(sub.id) : pauseSubscription(sub.id));
+
   function openMenu() {
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ["Edit", "Pause subscription", "Delete", "Cancel"],
+          options: ["Edit", pauseLabel, "Delete", "Cancel"],
           cancelButtonIndex: 3,
           destructiveButtonIndex: 2
         },
         (index) => {
           if (index === 0) startEditing();
-          else if (index === 1) { pauseSubscription(sub.id); }
+          else if (index === 1) { togglePause(); }
           else if (index === 2) handleDelete();
         }
       );
@@ -590,15 +597,15 @@ export default function SubscriptionDetailScreen() {
       </SafeAreaView>
 
       {/* Android action menu */}
-      <Modal transparent visible={menuVisible} animationType="fade" onRequestClose={() => setMenuVisible(false)}>
+      <AppModal transparent visible={menuVisible} animationType="fade" onRequestClose={() => setMenuVisible(false)}>
         <Pressable accessibilityRole="button" accessibilityLabel="Close menu" style={styles.menuBackdrop} onPress={() => setMenuVisible(false)}>
           <View style={styles.menuCard}>
             <Pressable accessibilityRole="button" style={styles.menuItem} onPress={() => { setMenuVisible(false); startEditing(); }}>
               <Text style={styles.menuItemText}>Edit</Text>
             </Pressable>
             <View style={styles.menuSep} />
-            <Pressable accessibilityRole="button" style={styles.menuItem} onPress={() => { pauseSubscription(sub.id); setMenuVisible(false); }}>
-              <Text style={styles.menuItemText}>Pause subscription</Text>
+            <Pressable accessibilityRole="button" style={styles.menuItem} onPress={() => { togglePause(); setMenuVisible(false); }}>
+              <Text style={styles.menuItemText}>{pauseLabel}</Text>
             </Pressable>
             <View style={styles.menuSep} />
             <Pressable accessibilityRole="button" style={styles.menuItem} onPress={handleDelete}>
@@ -606,10 +613,10 @@ export default function SubscriptionDetailScreen() {
             </Pressable>
           </View>
         </Pressable>
-      </Modal>
+      </AppModal>
 
       {/* Notes modal */}
-      <Modal transparent visible={notesModalVisible} animationType="slide" onRequestClose={() => setNotesModal(false)}>
+      <AppModal transparent visible={notesModalVisible} animationType="slide" onRequestClose={() => setNotesModal(false)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.notesModalCard}>
             <Text style={styles.notesModalTitle}>Edit note</Text>
@@ -633,7 +640,7 @@ export default function SubscriptionDetailScreen() {
             </View>
           </View>
         </View>
-      </Modal>
+      </AppModal>
     </>
   );
 }

@@ -82,6 +82,12 @@ export const fakeExpoRouterModule = {
 
 /** Reset every fake. `seeded: false` = first launch (the store writes the seed);
  *  `rows` = what the database already holds (implies seeded). */
+/** The lock store as screens see it: loaded and unlocked, so AppModal (F159)
+ *  shows what a screen opens. Its logic, and locking, have their own suites. */
+export const fakeLockStoreModule = {
+  useLockStore: (jest.requireActual("zustand") as typeof import("zustand")).create<{ ready: boolean; locked: boolean }>(() => ({ ready: true, locked: false }))
+};
+
 export function resetFakes({ rows }: { rows?: Subscription[] } = {}): void {
   fakeStorage.meta.clear();
   fakeStorage.rows.clear();
@@ -94,4 +100,5 @@ export function resetFakes({ rows }: { rows?: Subscription[] } = {}): void {
     for (const fn of Object.values(mod)) (fn as jest.Mock).mockClear?.();
   }
   routeParams.current = {};
+  fakeLockStoreModule.useLockStore.setState({ ready: true, locked: false });
 }

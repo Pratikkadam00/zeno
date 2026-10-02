@@ -12,6 +12,7 @@ import SubscriptionCancelScreen from "../../app/subscription/cancel/[id]";
  * repeated parameter that arrives as an array, a lookalike).
  */
 let mockParams: Record<string, unknown> = {};
+jest.mock("../security/lock-store", () => jest.requireActual("../test-support/screen-fakes").fakeLockStoreModule);
 jest.mock("expo-router", () => ({
   router: { back: jest.fn(), push: jest.fn(), replace: jest.fn() },
   Stack: { Screen: () => null },

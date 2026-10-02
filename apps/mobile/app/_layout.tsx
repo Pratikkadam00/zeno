@@ -3,7 +3,7 @@ import { router, Stack, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AppState, Text, View, type AppStateStatus } from "react-native";
+import { AppState, Modal, Text, View, type AppStateStatus } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppErrorBoundary } from "../src/components/AppErrorBoundary";
 import { SplashSequence } from "../src/components/SplashSequence";
@@ -318,7 +318,12 @@ function RootStack() {
           <Stack.Screen name="wrapped" options={{ title: "Year in Review" }} />
           {/* D3: Business / Public API / Partners are removed from consumer nav (kept
               as files for a future B2B tier). Backend / Open-Banking are dev-only and
-              no longer linked from any consumer surface. */}
+              no longer linked from any consumer surface. They stay reachable by
+              deep link, so each still names its header (F156: without an entry
+              the header showed the raw route name, "public-api"). */}
+          <Stack.Screen name="business" options={{ title: "Business" }} />
+          <Stack.Screen name="partners" options={{ title: "Partners" }} />
+          <Stack.Screen name="public-api" options={{ title: "Public API" }} />
           <Stack.Screen name="backend" options={{ title: "Backend" }} />
           <Stack.Screen name="settings" options={{ title: "Settings" }} />
           <Stack.Screen name="profile" options={{ title: "Profile" }} />
@@ -332,7 +337,17 @@ function RootStack() {
           <Stack.Screen name="subscription/cancel/[id]" options={{ title: "Cancel Subscription" }} />
         </Stack>
       </HiddenWhileLocked>
-      {covered ? <LockOverlay /> : null}
+      {/* F159: the cover is its own window. A plain View sat on top of the
+          activity only, so a Modal (the subscription menu, the notes and
+          Discover editors) or an Alert left open when the app locked stayed
+          above it and kept working: Pause ran on a locked app (seen on the
+          emulator). A Modal opened last is the topmost window and takes every
+          touch; Back can't dismiss it. */}
+      {covered ? (
+        <Modal visible transparent={false} animationType="none" statusBarTranslucent navigationBarTranslucent onRequestClose={() => {}}>
+          <LockOverlay />
+        </Modal>
+      ) : null}
     </>
   );
 }

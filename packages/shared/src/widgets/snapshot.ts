@@ -107,9 +107,11 @@ function soonestRenewal(active: Subscription[]): { subscription: Subscription; d
 }
 
 function daysUntil(dueMs: number, now: Date): number {
-  // Floor so a renewal less than 24h away reads as 0 ("today") rather than
-  // rounding up to a full day and hiding the imminent charge.
-  return Math.max(0, Math.floor((dueMs - now.getTime()) / 86_400_000));
+  // Calendar days (UTC, as trial-guardian counts them): a renewal later today
+  // reads 0 ("today"), one dated tomorrow reads 1 even when it is under 24h
+  // away. F158: flooring elapsed hours called tomorrow's renewal "today".
+  const day = (ms: number) => Math.floor(ms / 86_400_000);
+  return Math.max(0, day(dueMs) - day(now.getTime()));
 }
 
 function complicationDueLabel(days: number): string {

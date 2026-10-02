@@ -68,8 +68,19 @@ export function convertMinor(amountMinor: number, from: CurrencyCode, to: Curren
   return Math.round((amountMinor / fromRate) * toRate);
 }
 
+/**
+ * Whether a subscription is still billing, so counts toward spend totals:
+ * active, or a trial that converts. Cancelled, paused, a reported cancel
+ * awaiting verification ("pending"), unknown and attention do not. One rule for
+ * every total (F157: the dashboard headline once added cancelled and paused
+ * plans, so it disagreed with the lines and the Insights total beneath it).
+ */
+export function countsTowardSpend(subscription: Subscription): boolean {
+  return subscription.status === "active" || subscription.status === "trial";
+}
+
 export function createSpendSummary(subscriptions: Subscription[], now = new Date(), fx?: FxContext): SpendSummary {
-  const active = subscriptions.filter((subscription) => subscription.status === "active");
+  const active = subscriptions.filter(countsTowardSpend);
   const categoryMap = new Map<SubscriptionCategory, { monthlyMinor: number; count: number; ids: string[] }>();
   let totalMonthlyMinor = 0;
   let excludedCurrencyCount = 0;

@@ -3,7 +3,7 @@
 **One place for everything not yet solved.** Each item says who acts, exactly what to
 do, and where the full evidence lives (finding numbers point into
 `docs/HARDENING_LOG.md`). When an item is done it is removed from here and its log
-entry marked fixed. Last updated 2026-10-02, after P3.9.
+entry marked fixed. Last updated 2026-10-02, after the P3 gate (P3 complete).
 
 ---
 
@@ -28,6 +28,8 @@ real sample, or a product decision.
 | F138 | **Sample data** for new users | (a) none in release builds, as now: a new ledger starts empty, as onboarding says; or (b) an opt-in "Try it with sample data" on the empty ledger, clearly labelled, no reminders, removable in one tap | Until P3.8e-2, every new user's ledger started with 5 subscriptions that weren't theirs ($107.46/mo), with real reminders for them, and 5 of the 10 free slots used. Development builds still get the samples. |
 | F127 | What **"Export my data"** covers | (a) keep the export to subscriptions and their notes, as the row now says; or (b) I add budgets and price history to the file, as the design's "EVERYTHING, AS CSV" promises | Until P3.8e-1 the row said "everything" and the file lacked even the notes. Notes are in now, and the row says what the file holds. |
 | F25 | How to present **305 of 509 catalog entries** that hold unresearched data (a guessed cancel link, "difficulty: medium", generic steps) | e.g. an "unverified" label and the homepage instead of a guessed link, or `noindex` on the website until curated | They are shown as fact in the app and on 305 public cancel-guide pages. |
+| F161 | The **widget snapshot** (next renewal's name and amount, the monthly total) is written in plaintext to app-private storage, though no widget ships yet | (a) stop writing it until a widget ships, then move it to an encrypted shared store; or (b) keep it (app-private, not backed up, erased with the data) | Data minimisation (MASVS-PRIVACY-1); read off the emulator with root in the P3 gate. |
+| — | The **MASVS controls marked "decision"** in `docs/MASVS_CHECKLIST.md`: certificate pinning (NETWORK-2), forced updates (CODE-2), the minimum Android version, 24 today (CODE-1), root/tamper/debugger detection (RESILIENCE-1 to 4), and the PIN for erase/export (AUTH-3) | each row there has the options | They are product and operations trade-offs, not defects. |
 
 ### Actions in your accounts
 
@@ -53,13 +55,12 @@ real sample, or a product decision.
 
 | # | Item | When |
 |---|---|---|
-| — | The P3 gate: the hardened release APK on the emulator (every flow), the MASVS checklist (P3.9, the APK scan, is done) | P3, next, in order |
+| — | **P4:** website component tests, Playwright, CSP, DAST (P3 is done) | next, in order |
+| F162 | While Settings' bottom sheet is open, the controls behind it stay reachable by a screen reader | P5 |
 | F106 | Once, right after the first unlock on a fresh install, screenshots of the unlocked app came back black (the block itself was already off); not reproduced in 2 tries | P5 |
 | F103 | The **web build fails on CI now and then**: it downloads the site's three Google fonts at build time, and that download sometimes fails on the runner (likely cause; the next occurrence's report will confirm it). Fix: serve the same font files from the repo, so the build needs no network | P4 (website), or sooner if you want it |
-| F16 | SQLCipher encryption of the local database is configured but never proven on a device (check the file header or `PRAGMA cipher_version`; the release build isn't debuggable, so it needs a rooted emulator image or a debug check) | P3 gate |
-| F112 | On the calendar's day panel the "Cancel" link sits inside the row's button; check on the device whether screen-reader users can reach it | P3 gate |
 | F94 | A translucent Settings sheet, seen once on device and not reproduced in 5 attempts | P3.8 / P5 |
-| F147 | The spend history (Year in Review, the recap, the dashboard and Insights charts) counts **only subscriptions tracked today**; a cancelled one counts $0 even for months it was paid. Fix: record a cancellation date on every cancel path and count each subscription up to it | P6 |
+| F147 | The spend history (Year in Review, the recap, the dashboard and Insights charts) counts **only subscriptions tracked today**; a cancelled one counts $0 even for months it was paid. Fix: record a cancellation date on every cancel path and count each subscription up to it | P6 | (Seen again in the P3 gate: a reported cancel drops this month's already-paid charge from "Charged so far".)
 | F21 | `Date.parse` silently shifts impossible dates ("02/30" becomes 2 March) | P6 |
 | — | R8 warns about RevenueCat's Amazon Appstore SDK ("may be assumed not reachable" in later R8 versions). Not used for Google Play; re-check on each RevenueCat upgrade | each RevenueCat upgrade |
 | — | Sentry and RevenueCat code paths haven't run under R8 (no keys yet). Re-run the device smoke when the keys exist, and in the Sentry UI check one JS error and one native crash for scrubbed content (P3.3: a native crash skips `beforeSend`; only its breadcrumbs are scrubbed, by `beforeBreadcrumb`) | after the keys above |
@@ -82,6 +83,13 @@ real sample, or a product decision.
 | F126 | Found in P3.8e-1: Settings showed **"Version 1.0.0"**; the app is 0.1.0 | Shows the real version. |
 | F125 | Found in P3.8e-1: Settings and Profile showed an **internal account id where your email belongs** (or a made-up "you@example.com") | Your email is shown now. |
 | F124 | Found in P3.8e-1: Settings' **"Push notifications" switch did nothing** | It's now "Renewal reminders" (as designed) and really turns every reminder off and on. |
+| F159 | Found in the P3 gate: **the app lock could be bypassed**: a menu, editor or alert left open when the app locked stayed on top and kept working (Pause ran on a locked app) | Modals now hide while locked and the lock is the topmost window; verified on the emulator. |
+| F157 | Found in the P3 gate: the **headline totals counted cancelled and paused plans** ($25.49 over lines that added to $15.49) | One rule for every total; the numbers agree on the device. |
+| F160 | Found in the P3 gate: **a paused subscription could never be resumed** | "Resume subscription" in its menu. |
+| F156 | Found in the P3 gate: three preview screens showed their **raw route name as the title** ("public-api") | Proper titles; a test covers every route. |
+| F158 | Found in the P3 gate: the widget data said **"today" for a renewal tomorrow** | Counts calendar days. |
+| F16 | SQLCipher never proven on a device | Proven in the P3 gate: the database file is encrypted on disk. |
+| F112 | Whether screen readers reach buttons nested in other buttons | Checked with TalkBack in the P3 gate: they do. |
 | F155 | Found in P3.9: **the app asked for "draw over other apps" and shared-storage write** without using either (Expo's template adds them) | Both removed from the APK. |
 | F154 | Found in P3.8f-3: **opening the app from a sign-in link could leave you signed out** (the session saved, the screen on sign-in) | The sign-in now always sticks. |
 | F153 | Found in P3.8f-2: **"Notify me when it's ready" was a fake waitlist** ("You're on the list ✓"); nothing was recorded | Removed. |

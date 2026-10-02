@@ -57,6 +57,7 @@ export default defineConfig({
         "apps/mobile/src/discovery/connected-inboxes.ts",
         "apps/mobile/src/security/screen-capture.ts",
         "apps/mobile/src/security/HiddenWhileLocked.tsx",
+        "apps/mobile/src/security/AppModal.tsx",
         // Next.js build output (generated route-type validators). Not our code;
         // counting it made the scope depend on whether `next dev` had run.
         "**/.next/**",

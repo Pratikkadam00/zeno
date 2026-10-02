@@ -34,7 +34,19 @@ module.exports = defineConfig([
       "@typescript-eslint/no-unused-vars": [
         "warn",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_", ignoreRestSiblings: true }
+      ],
+      // F159: a react-native Modal is its own window and stays above the app
+      // lock. Every modal goes through AppModal, which hides while locked.
+      "no-restricted-imports": [
+        "error",
+        { paths: [{ name: "react-native", importNames: ["Modal"], message: "Use AppModal (src/security/AppModal.tsx): a raw Modal stays usable over the app lock (F159)." }] }
       ]
     }
+  },
+  {
+    // Allowed a raw Modal: AppModal itself, the lock cover, and tests (which
+    // find a Modal by its type to read what it shows).
+    files: ["src/security/AppModal.tsx", "app/_layout.tsx", "**/*.rntest.tsx"],
+    rules: { "no-restricted-imports": "off" }
   }
 ]);

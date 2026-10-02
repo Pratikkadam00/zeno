@@ -344,3 +344,32 @@ resume edge. Arguably correct (any pause is potential exposure); logged.
   (moderate) = two warning bars + one rule-strong.
 - **Calendar `testID="calendar"`**: the month header's resource-ids no longer
   read `undefined.header.*` for automation.
+
+
+---
+
+# Tenth pass — 2026-10-02, the P3 gate (hardened release APK, clean prebuild)
+
+Every flow above was re-run on the release APK. The details are in the HARDENING_LOG
+entry "P3 gate"; this is the summary.
+
+- **Flows:** onboarding, login gate, Add (arithmetic exact), the Settings sheet, Cancel
+  (pending stamp), the 27 routes, dark mode, reduced motion, and the full app lock
+  (lockout, persistence, refusal).
+- **Fixed from this pass:**
+  - **F159:** the lock bypass through open modals and alerts;
+  - **F157:** the totals included cancelled and paused plans;
+  - **F160:** no resume after a pause;
+  - **F156:** raw headers;
+  - **F158:** the widget's "today".
+  Each was re-verified on a rebuilt APK.
+- **Settled:** F16 (the database is encrypted on disk, proven with root). F112
+  (TalkBack reaches each nested button by touch).
+- **Method notes that held:**
+  - TalkBack ignores `adb shell input`. Drive it with the emulator console's
+    `event send` on the virtio touchscreen, scaled to 0-32767.
+  - Read TalkBack's focus box by its colour: (98,193,64) on light, (48,142,8) on dark.
+  - Read FLAG_SECURE from `dumpsys window windows`, the app window's `fl=` line (it is
+    not on the window's first line).
+  - Keep Security out of the middle of a deep-link sweep: it stays mounted under later
+    screens and blacks out their captures.

@@ -52,7 +52,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P2.8 the RevenueCat webhook: replay, duplicates, out-of-order retries, auth, malformed bodies, durability; **fixes F85** (the payload was trusted and arrival order mattered), **F86** (the secret compare leaked its length), **F87** (a lookup in flight re-cached an older answer, or re-created a deleted user's billing row) (green: CI 36775230680, CodeQL 36775230616 on `d0cfc0c`)
   - [x] P2.9 the plan gaps found by checking P2 against `PRODUCTION_HARDENING_PLAN.md` line by line: **F88** (no same-code-path / timing test for unknown vs revoked tokens, plan P2.2) and **F89** (the fuzz never generates schema-valid input to check the expected status, plan P2.4); closing F89 found and **fixed F91** (`/events` counted inherited names like `toString`, and `constructor` with a label was a 500) (green: CI 36823714811, CodeQL 36823714765 on `7a9ea77`)
   - [x] P2 gate (passed again on `7a9ea77` after P2.9; first pass on `d0cfc0c`): route-inventory test green (40 routes); real-PG suite green locally (PGlite, 13 tests) and in CI (a Postgres 18 server, proven by the server-mode test) on `d0cfc0c`; nightly fuzz configuration green locally (first scheduled run pending)
-- [~] **P3 — Mobile hardening (MASVS) + tests for all 29 screens** (inline, one item at a time, in the plan's order)
+- [x] **P3 — Mobile hardening (MASVS) + tests for all 29 screens** (gate passed 2026-10-02; evidence in the "P3 gate" entry) (inline, one item at a time, in the plan's order)
   - [x] P3.1 build hardening in `app.config.ts`: no Auto Backup, no cleartext, R8 minify + resource shrink with keep rules; then prebuild, release APK, verify by bytes, full on-device smoke; **F92** (Auto Backup on), **F93** (release not shrunk or obfuscated) (green: CI 36826726239, CodeQL 36826726322 on `aea3587`)
   - [x] P3.2 release console stripping (keep `error`/`warn`); `captureError` never carries tokens or emails (green: CI 36828700036, CodeQL 36828699880 on `87ac086`, which contains P3.2's `68c9fcf`; again on `47211fe`)
   - [x] P3.3 Sentry `beforeSend` scrub (emails, tokens, auth headers, amounts); `sendDefaultPii` false, asserted (green: CI 36834676134, CodeQL 36834676176 on `a74417c`; its own push `3553165` went red on two older intermittent API tests, see "CI on `3553165`")
@@ -76,8 +76,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
       - [x] P3.8f-1 budget, budget recap, coach; **fixes F139, F141, F142, F143, F144, F145**; F140 to the owner (green: CI 36891888873, CodeQL 36891888831 on `d1bfa19`)
       - [x] P3.8f-2 family, wrapped, the preview screens, open-banking (rendered with the API faked; no Plaid call); **fixes F146-F153** (green: CI 36894599444, CodeQL 36894599463 on `396a5cc`)
       - [x] P3.8f-3 the root layout; **fixes F154**; every `app/` line covered (green: CI 36897664162, CodeQL 36897664295 on `5e4e85f`)
-  - [x] P3.9 static scan of the release APK (manifest, permissions, signing, secrets; MobSF/apkleaks unavailable, see the entry); **fixes F155**
-  - [ ] P3 gate: hardened release APK verified on the emulator (every flow in `DEVICE_TEST_FINDINGS.md`); jest floor in CI; MASVS checklist with evidence per control
+  - [x] P3.9 static scan of the release APK (manifest, permissions, signing, secrets; MobSF/apkleaks unavailable, see the entry); **fixes F155** (green: CI 36967460539, CodeQL 36967460518 on `6d8a9cb`; P3.9's own push `58d2fb9` went red on a new `node-forge` advisory, accepted with expiry in `6d8a9cb`)
+  - [x] P3 gate: hardened release APK verified on the emulator (every flow in `DEVICE_TEST_FINDINGS.md`); jest floor in CI; MASVS checklist with evidence per control (`docs/MASVS_CHECKLIST.md`); **fixes F156-F160**, closes F16 and F112
 - [ ] **P4 — Website component tests, Playwright, CSP, DAST**
 - [ ] **P5 — Mobile end-to-end (Maestro on the emulator)**
 - [ ] **P6 — Mutation + property-based testing**
@@ -238,6 +238,13 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F153 | **FIXED in P3.8f-2.** ~~"Notify me when it's ready" on Business, Partners and Public API was a fake waitlist.~~ The button only flipped the screen's own state and then said "You're on the list ✓ We'll let you know the moment this ships". Nothing was recorded anywhere. P3.8b's test checked that behaviour and I didn't see it was false then. The button and the promise are gone, and `ui.tsx`'s `PrimaryButton`, its only user, with them. | Medium (a control that lies) | me | P3.8f-2 |
 | F154 | **FIXED in P3.8f-3.** ~~Opening the app from a sign-in link could leave you signed out.~~ At launch the root layout starts `hydrate()` (read the keychain) and, for a sign-in link, `verifyMagicLink()` together. When the verification finished first, `hydrate()`'s keychain read, begun before the new session was saved, came back "no session" and set the user signed out. The session sat in the keychain, but the screen showed sign-in until the next launch. The same overwrite applied to any sign-in or "continue without an account" made during launch, and a stale read of an OLDER account's session would have put that account back over the new one. Reproduced with a controlled keychain fake (the probe ended "authenticated", then "anonymous"). `hydrate()` now notes the count of sign-ins and local-only choices when it starts, and stands down after each read if one happened meanwhile. | Medium (a sign-in that silently didn't stick) | me | P3.8f-3 |
 | F155 | **FIXED in P3.9.** ~~The release APK asked for "draw over other apps" (`SYSTEM_ALERT_WINDOW`) and shared-storage write (`WRITE_EXTERNAL_STORAGE`, up to Android 12) without using either.~~ Both come from Expo's prebuild template, which adds them under "OPTIONAL PERMISSIONS, REMOVE WHATEVER YOU DO NOT NEED" (`@expo/config-plugins` `withAndroidBaseMods.js`); `expo-file-system`'s plugin adds the write one again. In the release dex the only overlay code is React Native's dev-support overlay (`com/facebook/react/devsupport`, off when `ReactBuildConfig.DEBUG` is false), and nothing references shared-storage writes; the CSV export goes through the share sheet as text. Both are now in `android.blockedPermissions`. | Low (unused permissions on the store listing) | me | P3.9 |
+| F156 | **FIXED in the P3 gate.** ~~Business, Partners and Public API showed their raw route name as the header title ("public-api").~~ They were off the consumer navigation but still reachable by deep link, and the root layout declared no screen for them. Each now has its title. A new test checks every route file under `app/` against the layout's declarations, so a route added without a header fails. | Low (visible polish) | me | P3 gate |
+| F157 | **FIXED in the P3 gate.** ~~The dashboard's "Committed this month", the Insights chart total and the Spend Coach total added up every subscription, cancelled, paused and reported-cancelled included.~~ Seen on the emulator: after a reported cancel, the dashboard said $25.49 committed over "Charged so far $15.49 · Still to renew $0.00", and Insights said $25.49 above "Total monthly $15.49". The store summed `monthlyAmount` over all rows, while the spend summary counted only `active`. Now there is one rule, `countsTowardSpend` (active or trial, as the budget forecast, the insights engine and the Subscriptions tab already counted), and the headline total IS the spend summary's. | Medium (a wrong headline number) | me | P3 gate |
+| F158 | **FIXED in the P3 gate.** ~~The widget snapshot called a renewal dated tomorrow "today" when it was under 24 hours away~~ ("Figma today" for an Oct 3 renewal, generated at 11:06 on Oct 2; read from the emulator's storage). It floored elapsed hours. It now counts calendar days (UTC, as `trial-guardian` does). No widget ships yet, so no user saw it. | Low (latent) | me | P3 gate |
+| F159 | **FIXED in the P3 gate.** ~~The app lock could be bypassed by a menu, editor or alert left open when the app locked.~~ A React Native `Modal` is its own window, above the lock cover (a plain View), and React Native raises open modals again on resume. Seen on the emulator: with the subscription menu open, Home, then back, the locked app still showed the menu, and **Pause ran on the locked app**. Delete would have worked the same way. Two parts: (1) `AppModal` hides every modal while the lock covers the app (an eslint rule now forbids a raw `Modal`); (2) the lock cover is itself a Modal, the topmost window, so a native `Alert` left open sits under it. Re-run on the device: the locked tree held only the lock, a tap where Pause was did nothing, and a Delete alert left open was under the lock and still there after unlocking. | **High** (the lock is the app's main local protection) | me | P3 gate |
+| F160 | **FIXED in the P3 gate.** ~~Pausing a subscription was one-way.~~ The menu always offered "Pause subscription", even on a paused plan, the paused bar was not a button, and the store had no resume at all. A paused plan's menu (Android and iOS) now offers "Resume subscription", and the store has `resumeSubscription`. Verified on the device: Figma resumed and its Cancel button came back. | Medium (a dead end) | me | P3 gate |
+| F161 | **OPEN, owner decision.** The widget snapshot (`zeno.widget.snapshot.v1`: the next renewal's name and amount, the monthly total) is written in plaintext to AsyncStorage, though no widget ships in this build. It is app-private (root was needed to read it), not backed up (F92), and erased with the device's data (F27). | Low | owner | — |
+| F162 | **OPEN.** While Settings' bottom sheet (Home currency) is open, the Settings controls behind it stay in the accessibility tree (`uiautomator dump --compressed`), so a screen reader can move behind the sheet. | Low (accessibility) | me | P5 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **TO CHECK ON THE DEVICE (not a confirmed bug).** On the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -4161,3 +4168,88 @@ gate flags it again then.
 
 **For the P3 gate:** the store build (EAS) is the one to verify on a device. Confirm on
 it that the API URL is https and that the permission list matches the one above.
+
+### P3 gate — the hardened app on the emulator, the MASVS checklist; P3 complete — 2026-10-02
+
+**The four parts:**
+1. **The hardened release APK, driven on the emulator.** A clean prebuild of HEAD, then
+   single-ABI x86_64 release builds, on emulator-5554 (API 36).
+2. **The jest floor in CI:** the "RN component tests + coverage floor (jest)" step passed
+   in run 36967460539 on `6d8a9cb` (read from GitHub's jobs API).
+3. **The MASVS checklist:** `docs/MASVS_CHECKLIST.md`. Every control of MASVS v2.1.0
+   (copied from `OWASP/masvs`) has a status and evidence.
+4. **Items deferred to the gate:** F16, F112 and the login consent links are all settled
+   on the device.
+
+**Every flow in `DEVICE_TEST_FINDINGS.md`, re-run on the device:**
+- **Onboarding:** three beats, every control labelled, "No bank login required" shown.
+  The ledger starts empty (F138).
+- **Login:** unchecked, both methods are disabled. Checked, Google is enabled, and the
+  email link once an address is typed. No Apple button on Android (F132).
+- **Add:** search, prefill (Netflix $15.49), save; then Spotify. The dashboard went
+  $15.49 → $25.49 and 1/10 → 2/10 FREE.
+- **Settings → Home currency sheet:** the current value is marked, and the currency
+  footnote is shown.
+- **Cancel:** guide, then Spotify's page in Chrome, then "Did you cancel it?", then
+  PENDING "Reported Oct 2", then Done.
+- **The 27 routes, by deep link:** each one renders with the app in focus, no
+  unlabelled control, and an empty crash buffer. The one crash in the buffer was the
+  emulator's own Bluetooth service.
+- **Dark mode on 8 screens:** mean brightness 16 to 32 of 255.
+- **Reduced motion:** the dashboard at 3 s and 13 s is pixel-identical below the
+  status bar.
+- **The lock, all of it:**
+  - it engages on return from the background;
+  - the window is SECURE and its screenshots are black;
+  - the accessibility tree holds only the lock;
+  - wrong PINs count down from 9;
+  - the 10th wrong PIN gives "Try again in 15 minutes";
+  - the lockout survives a force-stop;
+  - the correct PIN is refused during the lockout.
+
+**Found on the device and fixed (see their rows):**
+- **F159 (high):** the lock could be bypassed through an open menu, editor or alert.
+- **F157:** headline totals included cancelled and paused plans.
+- **F160:** a pause could never be undone.
+- **F156:** raw route names as headers.
+- **F158:** the widget's "today" for tomorrow.
+
+**Found and left open:** F161 (owner), F162 (P5).
+
+**Settled:**
+- **F16, closed:** with root, the app's data directory was pulled. `zeno.db` begins with
+  random bytes, not `SQLite format 3\0`. "Netflix", "Spotify" and "15.49" are in none
+  of its 31 files, the WAL included. The one plaintext name was the widget snapshot
+  (F161).
+- **F112, closed, reachable:** TalkBack was driven with touches from the emulator's own
+  touchscreen. `adb input` touches are ignored by touch exploration, so the console's
+  `event send` was used, scaled to its 0-32767 axes. TalkBack's focus landed on the
+  inner element's exact bounds, separately from its parent:
+  - the calendar's "Cancel Figma" (856,1664-992,1714), apart from the row;
+  - the menu's Edit, Pause and Delete;
+  - the login's checkbox, "Terms" and "Privacy Policy".
+  Swipe-through navigation was not checked: console touches are too slow to make a
+  swipe. Discover's nested checkbox needs an import to show, and was not driven.
+- **Not reproduced today:** F106 (black screenshots after the first unlock; every
+  unlocked capture today was normal) and F94 (the translucent sheet). Both stay at P5.
+
+**Mistakes of mine, caught:**
+- **A wrong control:** I first re-ran F159's check on Figma, which my own earlier
+  bypass test had already paused, so "nothing changed" proved nothing. It was redone
+  on an active plan.
+- **Two broken readings:** my first secure-flag check grepped the wrong line and
+  reported "False" while the window was SECURE. My TalkBack colour filter missed the
+  dark-theme focus colour. Both were corrected against the screenshots before any
+  conclusion.
+
+**Bite checks:**
+- F156: 1.
+- F157: 2 (store and shared).
+- F158: 1.
+- F159: 3 — the layout's Modal test, `AppModal` without the lock condition (2 of 4
+  fail), and the eslint rule on a raw `Modal`.
+- F160: 3.
+All caught.
+
+Emulator settings restored afterwards: TalkBack off and its notification grant revoked,
+animation scales at 1, adb unrooted, the emulator killed.

@@ -24,6 +24,28 @@ describe("widget snapshot", () => {
     expect(snapshot.watchComplicationText).toBe("Adobe 3d");
   });
 
+  it("P3 gate (F158): a renewal dated tomorrow reads 1d, not today, even when it is under 24 hours away", () => {
+    const subscriptions: Subscription[] = [{
+      id: "sub_tomorrow",
+      createdAt: "2026-10-02T05:36:00.000Z",
+      updatedAt: "2026-10-02T05:36:00.000Z",
+      version: 1,
+      name: "Figma",
+      category: "productivity",
+      price: { amountMinor: 1500, currency: "USD" },
+      billingCycle: "monthly",
+      // Seen on the emulator: generated 05:36 on Oct 2, the renewal on Oct 3.
+      nextRenewalDate: "2026-10-03T05:00:00.000Z",
+      status: "active",
+      ownerProfileId: "profile_local",
+      source: "manual"
+    }];
+
+    const snapshot = createWidgetSnapshot(subscriptions, new Date("2026-10-02T05:36:21.736Z"));
+    expect(snapshot.nextRenewal?.daysUntil).toBe(1);
+    expect(snapshot.watchComplicationText).toBe("Figma 1d");
+  });
+
   it("treats a renewal less than a day away as today", () => {
     const subscriptions: Subscription[] = [{
       id: "sub_soon",

@@ -1,5 +1,5 @@
 import { searchServices } from "@zeno/service-catalog";
-import { buildYearInReview, createAnalyticsSnapshot, createBusinessSummary, createFamilyVaultSummary, createSpendSummary, createSpendTwin, createWidgetSnapshot, demoBusinessWorkspace, demoFamilyMembers, detectPriceHikes, getEndingTrials, monthlyAmountIn, partnerIntegrationManifests, type AnalyticsSnapshot, type BillingCycle, type BusinessSubscriptionSummary, type CurrencyCode, type EndingTrial, type ExchangeRates, type FamilyVaultSummary, type FxContext, type PartnerIntegrationManifest, type PriceHike, type PriceHistoryEntry, type SpendSummary, type SpendTwinComparison, type Subscription, type SubscriptionCategory, type SubscriptionStatus, type WidgetSnapshot, type YearInReview } from "@zeno/shared";
+import { buildYearInReview, createAnalyticsSnapshot, createBusinessSummary, createFamilyVaultSummary, createSpendSummary, createSpendTwin, createWidgetSnapshot, demoBusinessWorkspace, demoFamilyMembers, detectPriceHikes, getEndingTrials, partnerIntegrationManifests, type AnalyticsSnapshot, type BillingCycle, type BusinessSubscriptionSummary, type CurrencyCode, type EndingTrial, type ExchangeRates, type FamilyVaultSummary, type FxContext, type PartnerIntegrationManifest, type PriceHike, type PriceHistoryEntry, type SpendSummary, type SpendTwinComparison, type Subscription, type SubscriptionCategory, type SubscriptionStatus, type WidgetSnapshot, type YearInReview } from "@zeno/shared";
 import * as Crypto from "expo-crypto";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform } from "react-native";
@@ -72,6 +72,8 @@ type SubscriptionStore = {
   updateSubscription: (id: string, changes: UpdateSubscriptionInput) => void;
   deleteSubscription: (id: string) => void;
   pauseSubscription: (id: string) => void;
+  /** F160: undo a pause; the plan is billing (active) again. */
+  resumeSubscription: (id: string) => void;
   markCancelled: (id: string) => void;
   // Cancellation verification lifecycle (CHANGE 4).
   requestCancellation: (id: string) => void;
@@ -369,10 +371,11 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
     // the raw state by id, so persistence is unaffected. fx is always defined
     // (F64): an amount with no usable rate is skipped here, never added as raw
     // minor units of another currency.
-    const totalMonthlyMinor = displaySubscriptions.reduce((sum, subscription) => {
-      const amount = monthlyAmountIn(subscription, fx.homeCurrency, fx.rates);
-      return amount === null ? sum : sum + amount;
-    }, 0);
+    // F157: the headline total IS the spend summary's, so it counts only plans
+    // still billing (countsTowardSpend). Summing every row added cancelled and
+    // paused plans to "Committed this month".
+    const spendSummary = createSpendSummary(displaySubscriptions, new Date(), fx);
+    const totalMonthlyMinor = spendSummary.totalMonthlyMinor;
 
     return {
       subscriptions: displaySubscriptions,
@@ -386,7 +389,7 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
       ratesLastFetchedAt,
       fx,
       totalMonthlyMinor,
-      spendSummary: createSpendSummary(displaySubscriptions, new Date(), fx),
+      spendSummary,
       spendTwin: createSpendTwin(totalMonthlyMinor, homeCurrency, exchangeRates),
       familyVault: createFamilyVaultSummary(demoFamilyMembers, displaySubscriptions, homeCurrency, exchangeRates),
       analytics: createAnalyticsSnapshot(displaySubscriptions, new Date(), fx),
@@ -481,6 +484,14 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         applyChange(id, (subscription) => ({
           ...subscription,
           status: "paused",
+          updatedAt: new Date().toISOString(),
+          version: subscription.version + 1
+        }));
+      },
+      resumeSubscription(id) {
+        applyChange(id, (subscription) => ({
+          ...subscription,
+          status: "active",
           updatedAt: new Date().toISOString(),
           version: subscription.version + 1
         }));

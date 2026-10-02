@@ -39,6 +39,14 @@ describe("createSpendSummary — totals", () => {
   });
 });
 
+describe("createSpendSummary — which statuses count (P3 gate, F157)", () => {
+  it("active and trial count; cancelled, paused, pending (a reported cancel), unknown and attention do not", () => {
+    const statuses = ["active", "trial", "cancelled", "paused", "pending", "unknown", "attention"] as const;
+    const summary = createSpendSummary(statuses.map((status, i) => sub({ id: status, status, category: "health", price: usd(10 ** i) })), NOW);
+    expect(summary.totalMonthlyMinor).toBe(1 + 10);
+  });
+});
+
 describe("category benchmark insight — currency honesty", () => {
   it("keeps the USD wording and figures for an all-USD portfolio without fx", () => {
     const [insight] = ofKind(createSpendSummary([sub({ id: "a", category: "ai_tools", price: usd(5000) })], NOW).insights, "category_over_budget");

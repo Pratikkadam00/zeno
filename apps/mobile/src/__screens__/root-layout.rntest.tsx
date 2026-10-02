@@ -1,6 +1,6 @@
 import type { Subscription } from "@zeno/shared";
-import { act, fireEvent, render, screen } from "@testing-library/react-native";
-import { AppState, type AppStateStatus } from "react-native";
+import { act, fireEvent, render, screen, within } from "@testing-library/react-native";
+import { AppState, Modal, type AppStateStatus } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import RootLayout from "../../app/_layout";
 import { fakeNotificationsModule, fakeStorage, resetFakes } from "../test-support/screen-fakes";
@@ -22,8 +22,13 @@ jest.mock("expo-router", () => {
   const fakes = jest.requireActual("../test-support/screen-fakes");
   const segments: { current: string[] } = { current: [] };
   function Stack({ children }: { children: unknown }) { return <View testID="stack">{children as never}</View>; }
-  Stack.Screen = function StackScreen() { return null; };
-  return { router: fakes.routerMock, Stack, useSegments: () => segments.current, segments };
+  // Records what the layout declares for each route (its header title).
+  const declared = new Map<string, { title?: string; headerShown?: boolean }>();
+  Stack.Screen = function StackScreen({ name, options }: { name: string; options?: { title?: string; headerShown?: boolean } }) {
+    declared.set(name, options ?? {});
+    return null;
+  };
+  return { router: fakes.routerMock, Stack, useSegments: () => segments.current, segments, declared };
 });
 jest.mock("expo-linking", () => {
   const listeners: ((e: { url: string }) => void)[] = [];
@@ -85,7 +90,7 @@ jest.mock("../security/lock-store", () => {
 });
 
 /* eslint-disable @typescript-eslint/no-require-imports */
-const routerModule = require("expo-router") as { router: Record<string, jest.Mock>; segments: { current: string[] } };
+const routerModule = require("expo-router") as { router: Record<string, jest.Mock>; segments: { current: string[] }; declared: Map<string, { title?: string; headerShown?: boolean }> };
 const linking = require("expo-linking") as { initial: { url: string | null }; listeners: ((e: { url: string }) => void)[]; getInitialURL: jest.Mock };
 const splash = require("expo-splash-screen") as { hideAsync: jest.Mock };
 const fonts = require("../theme/fonts") as { useZenoFonts: jest.Mock };
@@ -191,6 +196,31 @@ describe("root layout, start-up", () => {
     r.unmount();
     expect(handlers.cleanupNotificationHandlers).toHaveBeenCalledTimes(1);
     expect(removeAppState).toHaveBeenCalled();
+  });
+});
+
+describe("root layout, screen headers", () => {
+  // Every route file outside the tab group, as expo-router names it.
+  function routeFiles(dir: string, prefix = ""): string[] {
+    const { readdirSync, statSync } = jest.requireActual("node:fs") as typeof import("node:fs");
+    const { join } = jest.requireActual("node:path") as typeof import("node:path");
+    return readdirSync(dir).flatMap((entry) => {
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) return entry === "(tabs)" ? ["(tabs)"] : routeFiles(full, `${prefix}${entry}/`);
+      if (!entry.endsWith(".tsx") || entry.startsWith("_") || entry.includes(".rntest.")) return [];
+      return [`${prefix}${entry.replace(/\.tsx$/, "")}`];
+    });
+  }
+
+  it("P3 gate (F156): every route declares its header (a title, or no header), so none shows its raw route name", async () => {
+    await mount();
+    const { join } = jest.requireActual("node:path") as typeof import("node:path");
+    const routes = routeFiles(join(__dirname, "..", "..", "app")).sort();
+    const missing = routes.filter((route) => {
+      const options = routerModule.declared.get(route);
+      return !options || !(options.headerShown === false || (options.title ?? "").length > 0);
+    });
+    expect(missing).toEqual([]);
   });
 });
 
@@ -302,6 +332,20 @@ describe("root layout, the app lock", () => {
     await act(async () => { useLockStore.setState({ locked: false }); });
     expect(screen.queryByText("LOCK OVERLAY")).toBeNull();
     expect(appHidden()).toBe(false);
+  });
+
+  it("P3 gate (F159): the cover is its own window (a Modal opened last), so a menu, sheet or alert left open sits under it, not over it", async () => {
+    useLockStore.setState({ locked: true });
+    await mount();
+    const cover = screen.UNSAFE_getByType(Modal);
+    expect(cover.props.visible).toBe(true);
+    expect(cover.props.transparent).toBe(false);
+    expect(within(cover).getByText("LOCK OVERLAY")).toBeTruthy();
+    // Android Back while locked does nothing (it can't dismiss the cover).
+    expect(() => cover.props.onRequestClose()).not.toThrow();
+    expect(within(cover).getByText("LOCK OVERLAY")).toBeTruthy();
+    await act(async () => { useLockStore.setState({ locked: false }); });
+    expect(screen.UNSAFE_queryAllByType(Modal)).toHaveLength(0);
   });
 
   it("signed out: no cover, no lock loaded, no push registration", async () => {

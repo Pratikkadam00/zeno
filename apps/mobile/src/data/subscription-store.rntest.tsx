@@ -284,6 +284,10 @@ describe("mutations", () => {
     const status = () => result.current.subscriptions.find((s) => s.id === "a")!.status;
     act(() => result.current.pauseSubscription("a"));
     expect(status()).toBe("paused");
+    // F160: a pause can be undone.
+    act(() => result.current.resumeSubscription("a"));
+    expect(status()).toBe("active");
+    act(() => result.current.pauseSubscription("a"));
     act(() => result.current.markCancelled("a"));
     expect(status()).toBe("cancelled");
     act(() => result.current.markVerifiedCancelled("a"));
@@ -492,6 +496,19 @@ describe("derived values", () => {
     const unknownRate = sub({ id: "d", price: { amountMinor: 999, currency: "INR" } });
     const skipping = await mounted([a, unknownRate], { "fx.rates.v1": JSON.stringify({ rates: { USD: 1 }, fetchedAt: "2026-09-30T00:00:00.000Z" }) });
     expect(skipping.result.current.totalMonthlyMinor).toBe(1000);
+  });
+
+  it("P3 gate (F157): the headline total counts what the spend summary counts; a cancelled, paused or reported-cancelled plan adds nothing", async () => {
+    const rows = [
+      sub({ id: "on", price: { amountMinor: 1549, currency: "USD" } }),
+      sub({ id: "trial", status: "trial", price: { amountMinor: 500, currency: "USD" } }),
+      sub({ id: "reported", status: "pending", price: { amountMinor: 1000, currency: "USD" } }),
+      sub({ id: "gone", status: "cancelled", price: { amountMinor: 2000, currency: "USD" } }),
+      sub({ id: "held", status: "paused", price: { amountMinor: 4000, currency: "USD" } })
+    ];
+    const { result } = await mounted(rows);
+    expect(result.current.totalMonthlyMinor).toBe(1549 + 500);
+    expect(result.current.totalMonthlyMinor).toBe(result.current.spendSummary.totalMonthlyMinor);
   });
 
   it("F64: before any rate table exists, other currencies are excluded and counted, never added raw", async () => {

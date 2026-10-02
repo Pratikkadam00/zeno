@@ -5,8 +5,9 @@ import * as Google from "expo-auth-session/providers/google";
 import * as DocumentPicker from "expo-document-picker";
 import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, ToastAndroid, View } from "react-native";
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, ToastAndroid, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AppModal } from "../../src/security/AppModal";
 import { useAuthStore } from "../../src/auth/authStore";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
 import { parseCSV } from "../../src/discovery/csvParser";
@@ -698,7 +699,7 @@ function EditSubscriptionModal({ candidate, onClose, onSave }: {
   const dateValid = isIsoDay(dateText);
 
   return (
-    <Modal visible={Boolean(candidate)} transparent animationType="slide" onRequestClose={onClose}>
+    <AppModal visible={Boolean(candidate)} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalBackdrop}>
         <View style={styles.modalCard}>
           <Text style={styles.modalTitle}>Edit details</Text>
@@ -755,7 +756,7 @@ function EditSubscriptionModal({ candidate, onClose, onSave }: {
           </View>
         </View>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 
