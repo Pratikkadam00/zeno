@@ -4610,7 +4610,7 @@ unused primitives `Reveal`, `RuleWipe`, `StampIn`, `CountUp`, `Magnetic` and led
 `SectionHead`, `Stamp`, `RuledStep` (a comment said the cancel guides used them; none
 did). Checked by search, then by a production build (all routes built).
 
-**Tests (124, 15 files):** every shared component: the waitlist form (request, each
+**Tests (122, in 12 new files; the run has 14 with the route and fonts tests):** every shared component: the waitlist form (request, each
 error, the busy state), the nav (links, the analytics flag, the theme toggle with storage
 refused, the mobile menu's six ways to close and its scroll lock), the footer, the
 content shell, the comparison table (real table semantics), the ledger marks, every
@@ -4632,6 +4632,9 @@ hero). **Found, for P4.1c:** F166 (the site's "verified" claim is stronger than 
 check). **To check in P4.2, not a finding yet:** in book mode the nav's "/#pricing"
 style links may not turn the book (the target sits in a hidden sheet and nothing listens
 for the hash); it needs a real browser to say.
+
+**The floor** this run starts at: 72.83 % statements, 73.65 % branches, 68 % functions,
+73.06 % lines over `apps/web/app/**` and `components/**` (the pages are P4.1b's).
 
 **The production build** passes, and its homepage HTML carries the fixes (the `/#`
 links, `zn-reveal` on 84 of 86 start-state elements as above, the no-JS rule in the CSS).
