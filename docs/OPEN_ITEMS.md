@@ -3,7 +3,7 @@
 **One place for everything not yet solved.** Each item says who acts, exactly what to
 do, and where the full evidence lives (finding numbers point into
 `docs/HARDENING_LOG.md`). When an item is done it is removed from here and its log
-entry marked fixed. Last updated 2026-10-02, after FX.2.
+entry marked fixed. Last updated 2026-10-02, after FX.3.
 
 ---
 
@@ -55,9 +55,8 @@ real sample, or a product decision.
 
 | # | Item | When |
 |---|---|---|
-| — | **FX.3-FX.6** (the fix pass), then **P4** | next, in order |
+| — | **FX.4-FX.6** (the fix pass), then **P4** | next, in order |
 | F163 | A **paused** subscription counts $0 in the spend history, even for months paid before the pause (needs the pause intervals) | FX.6 |
-| F162 | While Settings' bottom sheet is open, the controls behind it stay reachable by a screen reader | P5 |
 | F106 | Once, right after the first unlock on a fresh install, screenshots of the unlocked app came back black (the block itself was already off); not reproduced in 2 tries | P5 |
 | F103 | The **web build fails on CI now and then**: it downloads the site's three Google fonts at build time, and that download sometimes fails on the runner (likely cause; the next occurrence's report will confirm it). Fix: serve the same font files from the repo, so the build needs no network | P4 (website), or sooner if you want it |
 | F94 | A translucent Settings sheet, seen once on device and not reproduced in 5 attempts | P3.8 / P5 |
@@ -82,6 +81,7 @@ real sample, or a product decision.
 | F126 | Found in P3.8e-1: Settings showed **"Version 1.0.0"**; the app is 0.1.0 | Shows the real version. |
 | F125 | Found in P3.8e-1: Settings and Profile showed an **internal account id where your email belongs** (or a made-up "you@example.com") | Your email is shown now. |
 | F124 | Found in P3.8e-1: Settings' **"Push notifications" switch did nothing** | It's now "Renewal reminders" (as designed) and really turns every reminder off and on. |
+| F162 | With Settings' sheet open, a **screen reader could move to the controls behind it** | The sheet is its own window; checked with TalkBack. |
 | F147 | The spend history counted a **cancelled subscription as $0**, even for the months it was paid | It counts each one up to the day it was cancelled. |
 | F21 | `Date.parse` kept impossible dates as a different day, and read US and month-name dates as local time (a day early for UTC+ users) | One strict UTC parser for every CSV and receipt date. |
 | F159 | Found in the P3 gate: **the app lock could be bypassed**: a menu, editor or alert left open when the app locked stayed on top and kept working (Pause ran on a locked app) | Modals now hide while locked and the lock is the topmost window; verified on the emulator. |

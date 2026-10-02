@@ -5,6 +5,20 @@
 // Reanimated works here via the worklets jest resolver (see jest.config.js),
 // which loads the non-native implementation — so no reanimated mock is needed.
 
+// Gesture Handler's own jest setup (its native module's install can't run here).
+// LedgerSheet wraps its Modal content in GestureHandlerRootView (F162).
+require("react-native-gesture-handler/jestSetup");
+
+// react-native-quick-crypto is a native (JSI) module and can't load off-device.
+// The app uses three of its exports (src/security/app-lock.ts), each a drop-in
+// for Node's own: the same stand-in app-lock.test.ts and lock-store.test.ts use
+// under vitest. Needed here since every modal (AppModal, F159/F162) reads the
+// lock store, which imports app-lock.
+jest.mock("react-native-quick-crypto", () => {
+  const nodeCrypto = jest.requireActual("crypto");
+  return { pbkdf2Sync: nodeCrypto.pbkdf2Sync, timingSafeEqual: nodeCrypto.timingSafeEqual, Buffer: jest.requireActual("buffer").Buffer };
+});
+
 // AsyncStorage is a native module; the package ships an in-memory jest mock.
 // ZenoThemeProvider reads the persisted theme/scheme through it on mount.
 jest.mock("@react-native-async-storage/async-storage", () =>

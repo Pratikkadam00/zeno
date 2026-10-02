@@ -26,7 +26,8 @@ jest.mock("../auth/authStore", () => {
 });
 jest.mock("../security/lock-store", () => {
   const { create } = jest.requireActual("zustand");
-  return { useLockStore: create(() => ({ enabled: false, disable: jest.fn(async () => {}) })) };
+  // ready and unlocked, as on a real device by the time Settings can open (AppModal reads both).
+  return { useLockStore: create(() => ({ ready: true, locked: false, enabled: false, disable: jest.fn(async () => {}) })) };
 });
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { useAuthStore } = require("../auth/authStore") as { useAuthStore: { setState: (s: object) => void; getState: () => { logout: jest.Mock } } };

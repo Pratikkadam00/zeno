@@ -81,7 +81,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
 - [~] **FX — fix pass before P4** (2026-10-02; the owner asked for every open item of mine to be fixed before P4; owner-only items go to their own file at the end)
   - [x] FX.1 F21: strict UTC day parsing for CSV and receipt dates; UTC next-renewal arithmetic; F16 and F112 rows closed
   - [x] FX.2 F147's cause: history counts each subscription up to its cancellation date (already recorded on every cancel path); F163 found
-  - [ ] FX.3 F162: the Settings sheet hides what's behind it from screen readers (verified on the emulator)
+  - [x] FX.3 F162: the sheet is its own window, so screen readers can't reach behind it (verified on the emulator with TalkBack)
   - [ ] FX.4 F103: the website's three fonts self-hosted, so the build needs no network
   - [ ] FX.5 F94 and F106: one bounded reproduction attempt each
   - [ ] FX.6 F163: a paused subscription's past months in the spend history
@@ -252,7 +252,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F159 | **FIXED in the P3 gate.** ~~The app lock could be bypassed by a menu, editor or alert left open when the app locked.~~ A React Native `Modal` is its own window, above the lock cover (a plain View), and React Native raises open modals again on resume. Seen on the emulator: with the subscription menu open, Home, then back, the locked app still showed the menu, and **Pause ran on the locked app**. Delete would have worked the same way. Two parts: (1) `AppModal` hides every modal while the lock covers the app (an eslint rule now forbids a raw `Modal`); (2) the lock cover is itself a Modal, the topmost window, so a native `Alert` left open sits under it. Re-run on the device: the locked tree held only the lock, a tap where Pause was did nothing, and a Delete alert left open was under the lock and still there after unlocking. | **High** (the lock is the app's main local protection) | me | P3 gate |
 | F160 | **FIXED in the P3 gate.** ~~Pausing a subscription was one-way.~~ The menu always offered "Pause subscription", even on a paused plan, the paused bar was not a button, and the store had no resume at all. A paused plan's menu (Android and iOS) now offers "Resume subscription", and the store has `resumeSubscription`. Verified on the device: Figma resumed and its Cancel button came back. | Medium (a dead end) | me | P3 gate |
 | F161 | **OPEN, owner decision.** The widget snapshot (`zeno.widget.snapshot.v1`: the next renewal's name and amount, the monthly total) is written in plaintext to AsyncStorage, though no widget ships in this build. It is app-private (root was needed to read it), not backed up (F92), and erased with the device's data (F27). | Low | owner | — |
-| F162 | **OPEN.** While Settings' bottom sheet (Home currency) is open, the Settings controls behind it stay in the accessibility tree (`uiautomator dump --compressed`), so a screen reader can move behind the sheet. | Low (accessibility) | me | P5 |
+| F162 | **FIXED in FX.3.** ~~While Settings' bottom sheet (Home currency) is open, the Settings controls behind it stay in the accessibility tree (`uiautomator dump --compressed`), so a screen reader can move behind the sheet.~~ The sheet is now its own window (AppModal). On the emulator the tree with it open holds only the sheet, and a TalkBack touch where "Go Pro" sits behind it focuses the backdrop. | Low (accessibility) | me | FX.3 |
 | F163 | **OPEN (mine), FX.6.** A paused subscription counts $0 in the spend history (Year in Review, the recap, the Insights chart) for every month, including months it was paid before the pause. Found while fixing F147: unlike a cancel, a pause records no date, and it can be undone, so counting it right needs the pause intervals, not one date. | Low (history understates) | me | FX.6 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **CLOSED in the P3 gate (2026-10-02): reachable, not a bug.** TalkBack, driven by touches from the emulator's own touchscreen, put its focus on each nested button's exact bounds, separately from its parent: the calendar's "Cancel Figma", the menu's Edit/Pause/Delete, the login's Terms and Privacy links. Original note: on the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
@@ -4344,3 +4344,41 @@ date, and the new wording. Shared: 223 passed; the two jest suites: 42 passed.
 
 **Found, not fixed here:** F163, a paused plan's past months (see its row). It is
 FX.6.
+
+### FX.3 — the Settings sheet is its own window (F162) — 2026-10-02
+
+**Read first:** `LedgerSheet` (`src/components/zeno/LedgerSheet.tsx`, Settings' Home
+currency and quiet-hours pickers, and `ConfirmSheet`) drew `@gorhom/bottom-sheet`
+inside the screen's own tree. So with it open, the Settings rows behind it, and the
+native header's "Navigate up" (outside the screen tree entirely), stayed in the
+accessibility tree. Hiding only the screen body could not have covered the header.
+
+**The change:**
+- The sheet renders in `AppModal` (F159's wrapper), so it is its own window. That
+  also means it hides while the app is locked, and Android Back closes it.
+- Its content is wrapped in `GestureHandlerRootView`, as Gesture Handler's own docs
+  require for gestures inside a Modal on Android ("you need to wrap Modal's content
+  with `GestureHandlerRootView`", `getting-started.mdx`, read from the repository).
+- **jest:** the setup now loads Gesture Handler's official `jestSetup`, and maps
+  `react-native-quick-crypto` to Node's `pbkdf2Sync`/`timingSafeEqual`/`Buffer`, the
+  stand-in the vitest suites for app-lock and lock-store already use. Every screen
+  imports the components index, which now reaches the lock store through
+  `AppModal`. The Settings test's lock fixture gained `ready: true`, as on a device
+  by the time Settings can open.
+
+**On the emulator (release APK, fresh install):**
+- With the sheet open, `uiautomator dump --compressed` holds only the sheet:
+  backdrop, title, six currencies, footnote, Close. Before, it also held "Navigate
+  up" and every Settings row (P3 gate). Two app windows: the activity and the sheet.
+- Every path works: picking EUR saves it and closes the sheet; Android Back closes
+  it and stays on Settings; a backdrop tap, a swipe down and Close each close it.
+  Crash buffer empty.
+- **TalkBack:** a touch where "Go Pro" sits behind the sheet put the focus frame
+  around the whole-screen backdrop, not on Go Pro. A touch on GBP focused GBP's
+  exact bounds.
+- The sheet drew opaque, with the tear edge (F94's translucency did not appear).
+- Settings restored afterwards: TalkBack off, its notification grant revoked, the
+  emulator killed.
+
+**Bite check: 1, caught.** The sheet back in the screen tree (no Modal) fails the
+new test. jest: 557 passed.

@@ -1,5 +1,5 @@
-import { act, fireEvent, render, screen } from "@testing-library/react-native";
-import { AccessibilityInfo, Text } from "react-native";
+import { act, fireEvent, render, screen, within } from "@testing-library/react-native";
+import { AccessibilityInfo, Modal, Text } from "react-native";
 import { ZenoThemeProvider } from "../theme/theme-provider";
 import { haptics } from "../theme/haptics";
 import { AppErrorBoundary } from "./AppErrorBoundary";
@@ -17,6 +17,8 @@ import { ScanLine, SkeletonRow, Stamp } from "./zeno/Ledger";
 // The library's own mock exports `default` without __esModule, so a default import
 // would receive the whole object; mark it as an ES module.
 jest.mock("@gorhom/bottom-sheet", () => ({ __esModule: true, ...jest.requireActual("@gorhom/bottom-sheet/mock") }));
+// The sheet opens in an AppModal (F162), which reads the lock store: loaded and unlocked here.
+jest.mock("../security/lock-store", () => jest.requireActual("../test-support/screen-fakes").fakeLockStoreModule);
 const mockCapture = jest.fn();
 jest.mock("../monitoring/report", () => ({ captureError: (...args: unknown[]) => mockCapture(...args) }));
 
@@ -61,6 +63,18 @@ describe("LedgerSheet", () => {
     fireEvent.press(screen.getByText("Close"));
     expect(onClose).toHaveBeenCalledTimes(1);
     tick.mockRestore();
+  });
+
+  it("F162: the sheet is its own window (a Modal), so nothing behind it reaches a screen reader; Android Back closes it", async () => {
+    const onClose = jest.fn();
+    await shown(<LedgerSheet open title="Home currency" options={options} onPick={jest.fn()} onClose={onClose} />);
+    const modal = screen.UNSAFE_getByType(Modal);
+    expect(modal.props.visible).toBe(true);
+    expect(modal.props.transparent).toBe(true);
+    expect(within(modal).getByText("Home currency")).toBeTruthy();
+    expect(within(modal).getByRole("button", { name: "Monthly" })).toBeTruthy();
+    modal.props.onRequestClose();
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it("the backdrop closes the sheet when tapped", async () => {

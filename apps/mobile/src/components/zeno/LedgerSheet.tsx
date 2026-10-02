@@ -1,12 +1,14 @@
 import BottomSheet, { BottomSheetBackdrop, BottomSheetView, type BottomSheetBackdropProps } from "@gorhom/bottom-sheet";
 import { useCallback, useEffect, useRef, type ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Check } from "lucide-react-native";
 import { useZenoTokens } from "../../theme/useZenoTokens";
 import { springs } from "../../theme/motion";
 import { haptics } from "../../theme/haptics";
 import { Button } from "./Button";
 import { TearEdge } from "./Ledger";
+import { AppModal } from "../../security/AppModal";
 
 /**
  * LedgerSheet — the designed replacement for system Alert pickers.
@@ -59,7 +61,15 @@ export function LedgerSheet({ open, title, options, onPick, onClose, destructive
     return null;
   }
 
+  // F162: the sheet is its own window. Drawn inside the screen, it left every
+  // control behind it (and the header's "Navigate up") in the accessibility
+  // tree, so a screen reader could move behind the open sheet (seen with
+  // uiautomator on the emulator). AppModal also hides it while the app is
+  // locked (F159), and Android Back closes it. Gestures inside a Modal need
+  // their own GestureHandlerRootView on Android (Gesture Handler's docs).
   return (
+    <AppModal visible transparent animationType="none" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <BottomSheet
       ref={ref}
       index={0}
@@ -137,6 +147,8 @@ export function LedgerSheet({ open, title, options, onPick, onClose, destructive
         </View>
       </BottomSheetView>
     </BottomSheet>
+    </GestureHandlerRootView>
+    </AppModal>
   );
 }
 
