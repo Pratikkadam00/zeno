@@ -49,7 +49,8 @@ export async function writeAppMeta(db: ZenoDatabase, key: string, value: string)
 // FULLY IDEMPOTENT (CREATE TABLE IF NOT EXISTS + table_info-checked column adds),
 // so existing installs (user_version 0) re-run it once harmlessly, then advance.
 const MIGRATIONS: { version: number; up: (db: ZenoDatabase) => Promise<void> }[] = [
-  { version: 1, up: migrationV1 }
+  { version: 1, up: migrationV1 },
+  { version: 2, up: migrationV2 }
 ];
 
 export async function runMigrations(db: ZenoDatabase): Promise<void> {
@@ -64,6 +65,15 @@ export async function runMigrations(db: ZenoDatabase): Promise<void> {
       // trusted constant from MIGRATIONS, never user input.
       await db.execAsync(`PRAGMA user_version = ${migration.version}`);
     }
+  }
+}
+
+// v2 (F163): when billing was paused and resumed, as JSON. Idempotent like v1's
+// column adds, so two opens racing it don't crash.
+async function migrationV2(db: ZenoDatabase): Promise<void> {
+  const columns = await db.getAllAsync<{ name: string }>("PRAGMA table_info(subscriptions)");
+  if (!columns.some((column) => column.name === "paused_periods")) {
+    try { await db.execAsync("ALTER TABLE subscriptions ADD COLUMN paused_periods TEXT"); } catch { /* added concurrently */ }
   }
 }
 

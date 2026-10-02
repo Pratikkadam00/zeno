@@ -279,6 +279,36 @@ describe("mutations", () => {
     expect(repo.softDeleteSubscription).toHaveBeenCalledWith(mockDb, "a");
   });
 
+  it("F163: a pause opens a period, a second pause adds none, a resume closes it, and the next pause opens another", async () => {
+    const { result } = await mounted([sub({ id: "a" })]);
+    const periods = () => result.current.subscriptions.find((s) => s.id === "a")!.pausedPeriods;
+    act(() => result.current.pauseSubscription("a"));
+    expect(periods()).toEqual([{ from: expect.any(String) }]);
+    const first = periods()![0]!.from;
+    act(() => result.current.pauseSubscription("a"));
+    expect(periods()).toEqual([{ from: first }]);
+    act(() => result.current.resumeSubscription("a"));
+    expect(periods()).toEqual([{ from: first, to: expect.any(String) }]);
+    expect(Date.parse(periods()![0]!.to!)).toBeGreaterThanOrEqual(Date.parse(first));
+    act(() => result.current.pauseSubscription("a"));
+    expect(periods()).toHaveLength(2);
+    expect(periods()![1]!.to).toBeUndefined();
+    expect(mockRows.get("a")?.pausedPeriods).toHaveLength(2);
+    // The second resume closes only the open period; the first stays as it was.
+    const firstClosed = periods()![0];
+    act(() => result.current.resumeSubscription("a"));
+    expect(periods()![0]).toBe(firstClosed);
+    expect(periods()![1]!.to).toEqual(expect.any(String));
+  });
+
+  it("F163: resuming a plan with no recorded pause records none", async () => {
+    const { result } = await mounted([sub({ id: "a", status: "paused" })]);
+    act(() => result.current.resumeSubscription("a"));
+    const row = result.current.subscriptions.find((s) => s.id === "a")!;
+    expect(row.status).toBe("active");
+    expect(row.pausedPeriods).toBeUndefined();
+  });
+
   it("status transitions: pause, cancel, verified-cancelled, still-charging", async () => {
     const { result } = await mounted([sub({ id: "a" })]);
     const status = () => result.current.subscriptions.find((s) => s.id === "a")!.status;

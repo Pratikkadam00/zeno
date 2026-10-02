@@ -65,8 +65,10 @@ function chargeDayIn(subscription: Subscription, year: number, month: number): n
  * - pending (a reported cancel) and cancelled: billing ended when the user
  *   reported cancelling, `cancellationRequestedAt`. Every cancel path in the app
  *   records it (requestCancellation; verification and "charged again" keep it).
- * - anything else (paused, trial, unknown), and a cancel with no readable date:
- *   nothing. No date is invented. (A paused plan's past months are F163.)
+ * - paused: billing ended when the current pause began (F163), the open
+ *   period in `pausedPeriods`.
+ * - anything else (trial, unknown), and a cancel or pause with no readable
+ *   date: nothing. No date is invented.
  */
 function billingEndsAt(subscription: Subscription): number | null | undefined {
   if (subscription.status === "active" || subscription.status === "attention") return undefined;
@@ -74,7 +76,25 @@ function billingEndsAt(subscription: Subscription): number | null | undefined {
     const ended = subscription.cancellationRequestedAt ? Date.parse(subscription.cancellationRequestedAt) : Number.NaN;
     return Number.isNaN(ended) ? null : ended;
   }
+  if (subscription.status === "paused") {
+    const open = subscription.pausedPeriods?.find((period) => period.to === undefined);
+    const paused = open ? Date.parse(open.from) : Number.NaN;
+    return Number.isNaN(paused) ? null : paused;
+  }
   return null;
+}
+
+/**
+ * The pauses as [start, end) instants (F163); an open one runs on. A period
+ * whose start can't be read is ignored: no date is invented.
+ */
+function pauseSpans(subscription: Subscription): [number, number][] {
+  return (subscription.pausedPeriods ?? []).flatMap((period): [number, number][] => {
+    const from = Date.parse(period.from);
+    if (Number.isNaN(from)) return [];
+    const to = period.to === undefined ? Number.NaN : Date.parse(period.to);
+    return [[from, Number.isNaN(to) ? Number.POSITIVE_INFINITY : to]];
+  });
 }
 
 function chargeInMonth(subscription: Subscription, year: number, month: number, fx?: FxContext): number {
@@ -92,9 +112,14 @@ function chargeInMonth(subscription: Subscription, year: number, month: number, 
     if (!fx) return amountMinor;
     return convertMinor(amountMinor, subscription.price.currency, fx.homeCurrency, fx.rates) ?? 0;
   };
-  // A cycle charge in this month counts only if it fell before billing ended.
-  const charged = (amountMinor: number): number =>
-    endsAt === undefined || chargeDayIn(subscription, year, month) < endsAt ? convert(amountMinor) : 0;
+  // A cycle charge in this month counts only if it fell before billing ended
+  // and outside every pause.
+  const pauses = pauseSpans(subscription);
+  const charged = (amountMinor: number): number => {
+    const day = chargeDayIn(subscription, year, month);
+    const billed = (endsAt === undefined || day < endsAt) && !pauses.some(([from, to]) => day >= from && day < to);
+    return billed ? convert(amountMinor) : 0;
+  };
 
   const price = subscription.price.amountMinor;
   const anchorMonth = anchorDate(subscription).getUTCMonth();
@@ -103,12 +128,15 @@ function chargeInMonth(subscription: Subscription, year: number, month: number, 
       return charged(price);
     case "weekly": {
       // month-equivalent of weekly charges; monthlyAmount already normalizes
-      // the cycle, fx-conversion (if any) is applied on top of that. In the
-      // month billing ended, only the share of the month before the end counts.
+      // the cycle, fx-conversion (if any) is applied on top of that. Only the
+      // share of the month that was billed counts: before billing ended, and
+      // outside every pause.
       const full = fx ? (convertMinor(monthlyAmount(subscription), subscription.price.currency, fx.homeCurrency, fx.rates) ?? 0) : monthlyAmount(subscription);
-      if (endsAt === undefined) return full;
+      if (endsAt === undefined && pauses.length === 0) return full;
       const monthEnd = Date.UTC(year, month + 1, 1);
-      const share = Math.min(1, Math.max(0, (endsAt - monthStamp) / (monthEnd - monthStamp)));
+      const billedEnd = endsAt === undefined ? monthEnd : Math.min(monthEnd, Math.max(monthStamp, endsAt));
+      const pausedWithin = pauses.reduce((sum, [from, to]) => sum + Math.max(0, Math.min(to, billedEnd) - Math.max(from, monthStamp)), 0);
+      const share = Math.max(0, billedEnd - monthStamp - pausedWithin) / (monthEnd - monthStamp);
       return Math.round(full * share);
     }
     case "quarterly":

@@ -1,4 +1,4 @@
-import type { Subscription } from "@zeno/shared";
+import type { PausedPeriod, Subscription } from "@zeno/shared";
 import type { ZenoDatabase } from "./database";
 
 type SubscriptionRow = {
@@ -18,6 +18,7 @@ type SubscriptionRow = {
   muted_until: string | null;
   cancellation_requested_at: string | null;
   cancellation_verify_by: string | null;
+  paused_periods: string | null;
   source: Subscription["source"];
   created_at: string;
   updated_at: string;
@@ -36,9 +37,9 @@ export async function upsertSubscription(db: ZenoDatabase, subscription: Subscri
     `INSERT INTO subscriptions (
       id, service_slug, name, category, amount_minor, currency, billing_cycle, next_renewal_date,
       last_charged_date, status, owner_profile_id, value_rating, notes, muted_until,
-      cancellation_requested_at, cancellation_verify_by, source,
+      cancellation_requested_at, cancellation_verify_by, paused_periods, source,
       created_at, updated_at, deleted_at, device_id, version
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       service_slug = excluded.service_slug,
       name = excluded.name,
@@ -55,6 +56,7 @@ export async function upsertSubscription(db: ZenoDatabase, subscription: Subscri
       muted_until = excluded.muted_until,
       cancellation_requested_at = excluded.cancellation_requested_at,
       cancellation_verify_by = excluded.cancellation_verify_by,
+      paused_periods = excluded.paused_periods,
       source = excluded.source,
       updated_at = excluded.updated_at,
       deleted_at = excluded.deleted_at,
@@ -75,6 +77,7 @@ export async function upsertSubscription(db: ZenoDatabase, subscription: Subscri
     subscription.mutedUntil ?? null,
     subscription.cancellationRequestedAt ?? null,
     subscription.cancellationVerifyBy ?? null,
+    subscription.pausedPeriods ? JSON.stringify(subscription.pausedPeriods) : null,
     subscription.source,
     subscription.createdAt,
     subscription.updatedAt,
@@ -125,6 +128,28 @@ function mapRow(row: SubscriptionRow): Subscription {
     mutedUntil: row.muted_until ?? undefined,
     cancellationRequestedAt: row.cancellation_requested_at ?? undefined,
     cancellationVerifyBy: row.cancellation_verify_by ?? undefined,
+    pausedPeriods: parsePausedPeriods(row.paused_periods),
     source: row.source
   };
+}
+
+// F163: rows are validated on read. Anything but a list of { from, to? }
+// strings reads as no periods: the history then counts nothing it can't date.
+function parsePausedPeriods(text: string | null): PausedPeriod[] | undefined {
+  if (!text) return undefined;
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+  if (!Array.isArray(value) || value.length === 0) return undefined;
+  const periods: PausedPeriod[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") return undefined;
+    const { from, to } = item as { from?: unknown; to?: unknown };
+    if (typeof from !== "string" || (to !== undefined && typeof to !== "string")) return undefined;
+    periods.push(to === undefined ? { from } : { from, to });
+  }
+  return periods;
 }

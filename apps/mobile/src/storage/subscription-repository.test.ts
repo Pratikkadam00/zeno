@@ -50,10 +50,19 @@ describe("subscription repository (real SQLite)", () => {
       mutedUntil: "2026-03-01",
       cancellationRequestedAt: "2026-01-15T00:00:00.000Z",
       cancellationVerifyBy: "2026-02-15",
+      pausedPeriods: [{ from: "2026-01-02T00:00:00.000Z", to: "2026-01-20T00:00:00.000Z" }, { from: "2026-03-01T00:00:00.000Z" }],
       deviceId: "device-1"
     });
     await repo.upsertSubscription(db(), s);
     expect(await repo.listSubscriptions(db())).toEqual([s]);
+  });
+
+  it("F163: a stored paused_periods that isn't a list of periods reads back as none, never a crash or an invented date", async () => {
+    await repo.upsertSubscription(db(), sub());
+    for (const bad of ["not json", "{}", "[1]", '[{"to":"2026-01-01"}]', '[{"from":5}]', '[{"from":"2026-01-01","to":7}]']) {
+      await d.runAsync("UPDATE subscriptions SET paused_periods = ? WHERE id = 's1'", bad);
+      expect((await repo.listSubscriptions(db()))[0]!.pausedPeriods, bad).toBeUndefined();
+    }
   });
 
   it("an upsert updates the row but NEVER rewrites created_at or device_id", async () => {

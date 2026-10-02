@@ -84,7 +84,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] FX.3 F162: the sheet is its own window, so screen readers can't reach behind it (verified on the emulator with TalkBack)
   - [x] FX.4 F103: the website's three fonts self-hosted (the same 13 files); the site builds with the network blocked
   - [x] FX.5 F94 and F106: three measured attempts each, neither reproduced; closed as not reproduced (not claimed fixed), P5 keeps watching
-  - [ ] FX.6 F163: a paused subscription's past months in the spend history
+  - [x] FX.6 F163: pause periods recorded (migration v2); history skips only the months inside a pause; verified as a real upgrade on the emulator; F164 found
+  - [ ] FX.7 F164: Insights' monthly chart readable by a screen reader (each month with its amount)
   - [ ] then the owner-only file (everything that needs the owner, nothing else)
 - [ ] **P4 — Website component tests, Playwright, CSP, DAST**
 - [ ] **P5 — Mobile end-to-end (Maestro on the emulator)** (watch for F94 and F106, closed as not reproduced in FX.5)
@@ -253,7 +254,8 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F160 | **FIXED in the P3 gate.** ~~Pausing a subscription was one-way.~~ The menu always offered "Pause subscription", even on a paused plan, the paused bar was not a button, and the store had no resume at all. A paused plan's menu (Android and iOS) now offers "Resume subscription", and the store has `resumeSubscription`. Verified on the device: Figma resumed and its Cancel button came back. | Medium (a dead end) | me | P3 gate |
 | F161 | **OPEN, owner decision.** The widget snapshot (`zeno.widget.snapshot.v1`: the next renewal's name and amount, the monthly total) is written in plaintext to AsyncStorage, though no widget ships in this build. It is app-private (root was needed to read it), not backed up (F92), and erased with the device's data (F27). | Low | owner | — |
 | F162 | **FIXED in FX.3.** ~~While Settings' bottom sheet (Home currency) is open, the Settings controls behind it stay in the accessibility tree (`uiautomator dump --compressed`), so a screen reader can move behind the sheet.~~ The sheet is now its own window (AppModal). On the emulator the tree with it open holds only the sheet, and a TalkBack touch where "Go Pro" sits behind it focuses the backdrop. | Low (accessibility) | me | FX.3 |
-| F163 | **OPEN (mine), FX.6.** A paused subscription counts $0 in the spend history (Year in Review, the recap, the Insights chart) for every month, including months it was paid before the pause. Found while fixing F147: unlike a cancel, a pause records no date, and it can be undone, so counting it right needs the pause intervals, not one date. | Low (history understates) | me | FX.6 |
+| F163 | **FIXED in FX.6.** ~~A paused subscription counts $0 in the spend history (Year in Review, the recap, the Insights chart) for every month, including months it was paid before the pause.~~ Pausing now records a period (`pausedPeriods`, stored in a new column by migration v2) and resuming closes it; history skips only the charges inside a pause. Seen on the emulator: a pause on the old app collapsed October's paid charge; a pause on the new app keeps it, across restarts. A pause recorded before this change has no date, and none is invented. | Low (history understates) | me | FX.6 |
+| F164 | **OPEN (mine), FX.7.** Insights' 6-month chart gives a screen reader the month names but not the amounts: each bar is an unlabelled view (seen in the emulator's view dump during FX.6), so the history is visual only. | Low (accessibility) | me | FX.7 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **CLOSED in the P3 gate (2026-10-02): reachable, not a bug.** TalkBack, driven by touches from the emulator's own touchscreen, put its focus on each nested button's exact bounds, separately from its parent: the calendar's "Cancel Figma", the menu's Edit/Pause/Delete, the login's Terms and Privacy links. Original note: on the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -4467,3 +4469,50 @@ the P3 gate. P5's end-to-end runs keep watching for both.
 
 The crash buffer again held only the emulator's Bluetooth service ("Hardware Error
 Event", `com.google.android.bluetooth`), as in the P3 gate. Emulator killed after.
+
+### FX.6 — a pause skips only its own months (F163) — 2026-10-02
+
+**Read first:** history (FX.2's `billingEndsAt`) counted a paused plan as nothing in
+every month: a pause, unlike a cancel, recorded no date, and it can be undone, so one
+date isn't enough. The shared `subscriptionSchema` is used nowhere and the mobile app
+does not sync subscriptions, so the change stays in the shared type, the phone's
+SQLite store, the store's two actions and the history builder.
+
+**The change:**
+- **`Subscription.pausedPeriods`:** `[{ from, to? }]`, oldest first; while paused, the
+  last one is open.
+- **Store:** `pauseSubscription` opens a period (never a second one while one is
+  open); `resumeSubscription` closes it. A plan paused before this change has none,
+  and resuming invents none.
+- **History:** a cycle charge counts only outside every pause (and before a cancel);
+  a still-paused plan counts up to its pause; a weekly plan's month-equivalent counts
+  the share of the month outside pauses. A paused plan with no readable start counts
+  nothing.
+- **Storage:** migration v2 adds `paused_periods TEXT` (JSON), idempotent like v1's
+  column adds. Rows are validated on read: anything but a list of `{ from, to? }`
+  strings reads as no periods.
+
+**Tests:** 6 history cases (still paused; paused and resumed; two pauses; weekly; a
+cancel after a pause; no readable start), 2 store cases, a repository round trip and
+6 malformed stored values, a real-SQLite upgrade from a version-1 database keeping
+its row, and the existing migration tests moved to version 2. Shared 230, storage 20,
+jest 559, all vitest 1988.
+
+**Bite check: 9, all caught:** pauses ignored (3 fail); a paused plan counting
+nothing again (1); weekly ignoring pauses (1); no period recorded (1); a new period
+on every pause (1); resume leaving it open (1); periods not written (1); no
+validation on read (1); no migration v2 (15).
+
+**On the emulator (the real upgrade, on an encrypted database):** the old APK, a
+Netflix added and paused (no period); the new APK installed over it. The app boots,
+the paused row survived the migration, and resume, pause and restart all work. The
+Insights chart's bars (read from the full view dump; a bar is the view above its
+month label) were the readout, since October's charge (the 1st) predates a pause made
+on the 2nd:
+- paused on the new app: October full (210 px), and still full after two restarts, so
+  the period persisted in the SQLCipher database;
+- control, paused on the old app: October a stub (10 px), F163 itself; still a stub
+  after the upgrade, since no date is invented.
+No crash from the app (the buffer held only the emulator's Bluetooth service).
+
+**Found:** F164, the chart's amounts aren't available to screen readers. It is FX.7.

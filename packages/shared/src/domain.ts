@@ -61,6 +61,8 @@ export type ServiceRecord = EntityMeta & {
   };
 };
 
+export type PausedPeriod = { from: string; to?: string };
+
 export type Subscription = EntityMeta & {
   serviceId?: string;
   serviceSlug?: string;
@@ -78,6 +80,9 @@ export type Subscription = EntityMeta & {
   // Cancellation verification lifecycle (CHANGE 4).
   cancellationRequestedAt?: string; // when the user self-reported cancelling
   cancellationVerifyBy?: string;    // date Zeno re-checks for a charge (the prior renewal date)
+  // F163: when billing was paused and resumed, oldest first. While paused, the
+  // last period is open (no `to`). The spend history skips charges inside them.
+  pausedPeriods?: PausedPeriod[];
   source: "manual" | "csv" | "email" | "open_banking" | "seed";
 };
 

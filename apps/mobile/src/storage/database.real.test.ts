@@ -35,25 +35,25 @@ afterEach(() => {
 });
 
 describe("runMigrations on a real SQLite file", () => {
-  it("creates the full v1 schema from an empty database and sets user_version = 1", async () => {
+  it("creates the full schema from an empty database and sets user_version = 2", async () => {
     const { runMigrations } = await import("./database");
     const d = openRealSqlite(join(dir, "a.db"));
     env.db = d;
     await runMigrations(asDb(d));
     expect(await tables(d)).toEqual(["app_meta", "audit_events", "import_batches", "notification_preferences", "renewal_events", "subscriptions", "sync_outbox", "user_profile"]);
-    expect(await d.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: 1 });
+    expect(await d.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: 2 });
     expect(await d.getFirstAsync("PRAGMA journal_mode")).toEqual({ journal_mode: "wal" });
-    expect(await columns(d, "subscriptions")).toEqual(expect.arrayContaining(["cancellation_requested_at", "cancellation_verify_by", "deleted_at", "version"]));
+    expect(await columns(d, "subscriptions")).toEqual(expect.arrayContaining(["cancellation_requested_at", "cancellation_verify_by", "paused_periods", "deleted_at", "version"]));
   });
 
-  it("is idempotent: running again on a v1 database changes nothing", async () => {
+  it("is idempotent: running again on a current database changes nothing", async () => {
     const { runMigrations } = await import("./database");
     const d = openRealSqlite(join(dir, "b.db"));
     env.db = d;
     await runMigrations(asDb(d));
     await d.runAsync("INSERT INTO app_meta (key, value) VALUES ('k', 'v')");
     await runMigrations(asDb(d));
-    expect(await d.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: 1 });
+    expect(await d.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: 2 });
     expect(await d.getFirstAsync("SELECT value FROM app_meta WHERE key = 'k'")).toEqual({ value: "v" });
   });
 
@@ -72,7 +72,40 @@ describe("runMigrations on a real SQLite file", () => {
     await runMigrations(asDb(d));
     expect(await columns(d, "subscriptions")).toEqual(expect.arrayContaining(["cancellation_requested_at", "cancellation_verify_by"]));
     expect(await d.getFirstAsync("SELECT name, amount_minor, cancellation_verify_by FROM subscriptions WHERE id = 's1'")).toEqual({ name: "Netflix", amount_minor: 1549, cancellation_verify_by: null });
-    expect(await d.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: 1 });
+    expect(await d.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: 2 });
+  });
+
+  it("F163: upgrades a version-1 install (no paused_periods column), keeping its data", async () => {
+    const { runMigrations } = await import("./database");
+    const d = openRealSqlite(join(dir, "v1.db"));
+    env.db = d;
+    // The version-1 subscriptions table: the cancellation columns, no paused_periods.
+    await d.execAsync(`CREATE TABLE subscriptions (
+      id TEXT PRIMARY KEY NOT NULL, service_slug TEXT, name TEXT NOT NULL, category TEXT NOT NULL,
+      amount_minor INTEGER NOT NULL, currency TEXT NOT NULL, billing_cycle TEXT NOT NULL,
+      next_renewal_date TEXT, last_charged_date TEXT, status TEXT NOT NULL, owner_profile_id TEXT NOT NULL,
+      value_rating TEXT, notes TEXT, muted_until TEXT, cancellation_requested_at TEXT, cancellation_verify_by TEXT,
+      source TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, deleted_at TEXT, device_id TEXT,
+      version INTEGER NOT NULL)`);
+    await d.execAsync(`INSERT INTO subscriptions VALUES ('s1', NULL, 'Netflix', 'entertainment', 1549, 'USD', 'monthly', NULL, NULL, 'paused', 'me', NULL, NULL, NULL, NULL, NULL, 'manual', 't', 't', NULL, NULL, 1)`);
+    await d.execAsync("PRAGMA user_version = 1");
+    await runMigrations(asDb(d));
+    expect(await columns(d, "subscriptions")).toEqual(expect.arrayContaining(["paused_periods"]));
+    expect(await d.getFirstAsync("SELECT name, status, paused_periods FROM subscriptions WHERE id = 's1'")).toEqual({ name: "Netflix", status: "paused", paused_periods: null });
+    expect(await d.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: 2 });
+  });
+
+  it("F163: an upgrade interrupted after adding paused_periods but before saving the version finishes cleanly on the next open", async () => {
+    const { runMigrations } = await import("./database");
+    const d = openRealSqlite(join(dir, "interrupted.db"));
+    env.db = d;
+    await runMigrations(asDb(d)); // the column exists
+    await d.execAsync("PRAGMA user_version = 1"); // ...but the version was never saved
+    await d.runAsync("INSERT INTO app_meta (key, value) VALUES ('k', 'v')");
+    await expect(runMigrations(asDb(d))).resolves.toBeUndefined();
+    expect(await d.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: 2 });
+    expect((await columns(d, "subscriptions")).filter((c) => c === "paused_periods")).toHaveLength(1);
+    expect(await d.getFirstAsync("SELECT value FROM app_meta WHERE key = 'k'")).toEqual({ value: "v" });
   });
 
   it("two opens racing the same column add do not crash (the ALTER that loses is caught)", async () => {
@@ -86,7 +119,7 @@ describe("runMigrations on a real SQLite file", () => {
     d.getAllAsync = (async (sql: string, ...v: unknown[]) =>
       sql.startsWith("PRAGMA table_info(subscriptions)") ? [{ name: "id" }] : realGetAll(sql, ...v)) as typeof d.getAllAsync;
     await expect(runMigrations(asDb(d))).resolves.toBeUndefined();
-    expect(await d.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: 1 });
+    expect(await d.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: 2 });
   });
 
   it("an empty user_version row is treated as version 0", async () => {
@@ -97,7 +130,7 @@ describe("runMigrations on a real SQLite file", () => {
     d.getFirstAsync = (async (sql: string, ...v: unknown[]) => (sql === "PRAGMA user_version" ? null : realGetFirst(sql, ...v))) as typeof d.getFirstAsync;
     await runMigrations(asDb(d));
     d.getFirstAsync = realGetFirst;
-    expect(await d.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: 1 });
+    expect(await d.getFirstAsync("PRAGMA user_version")).toEqual({ user_version: 2 });
   });
 });
 
@@ -134,6 +167,6 @@ describe("openZenoDatabase — the SQLCipher key", () => {
     const db = await openZenoDatabase();
     expect(log[0]).toBe("PRAGMA key = 'k''ey''''with''quotes';");
     expect(log[1]).toBe("PRAGMA journal_mode = WAL;");
-    expect(await (db as unknown as ReturnType<typeof openRealSqlite>).getFirstAsync("PRAGMA user_version")).toEqual({ user_version: 1 });
+    expect(await (db as unknown as ReturnType<typeof openRealSqlite>).getFirstAsync("PRAGMA user_version")).toEqual({ user_version: 2 });
   });
 });

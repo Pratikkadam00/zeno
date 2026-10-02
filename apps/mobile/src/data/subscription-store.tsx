@@ -481,18 +481,32 @@ export function SubscriptionStoreProvider({ children }: { children: ReactNode })
         }
       },
       pauseSubscription(id) {
-        applyChange(id, (subscription) => ({
-          ...subscription,
-          status: "paused",
-          updatedAt: new Date().toISOString(),
-          version: subscription.version + 1
-        }));
+        // F163: open a pause period (one at a time), so the spend history skips
+        // only the charges inside it.
+        const now = new Date().toISOString();
+        applyChange(id, (subscription) => {
+          const periods = subscription.pausedPeriods ?? [];
+          const alreadyOpen = periods.some((period) => period.to === undefined);
+          return {
+            ...subscription,
+            status: "paused",
+            pausedPeriods: alreadyOpen ? periods : [...periods, { from: now }],
+            updatedAt: now,
+            version: subscription.version + 1
+          };
+        });
       },
       resumeSubscription(id) {
+        // F163: close the open pause period. A plan paused before periods were
+        // recorded has none, and none is invented.
+        const now = new Date().toISOString();
         applyChange(id, (subscription) => ({
           ...subscription,
           status: "active",
-          updatedAt: new Date().toISOString(),
+          ...(subscription.pausedPeriods
+            ? { pausedPeriods: subscription.pausedPeriods.map((period) => (period.to === undefined ? { ...period, to: now } : period)) }
+            : {}),
+          updatedAt: now,
           version: subscription.version + 1
         }));
       },

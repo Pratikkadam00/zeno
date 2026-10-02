@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const { openDatabaseAsync, fakeDb } = vi.hoisted(() => {
   const fakeDb = {
     execAsync: vi.fn().mockResolvedValue(undefined),
-    getFirstAsync: vi.fn().mockResolvedValue({ user_version: 1 }),
+    getFirstAsync: vi.fn().mockResolvedValue({ user_version: 2 }),
     runAsync: vi.fn().mockResolvedValue(undefined)
   };
   return { openDatabaseAsync: vi.fn().mockResolvedValue(fakeDb), fakeDb };

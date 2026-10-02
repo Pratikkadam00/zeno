@@ -76,6 +76,9 @@ describe("buildMonthlySpendHistory — cycles", () => {
   it("charges nothing for inactive, unknown-cycle or unrecognised-cycle subscriptions", () => {
     const points = buildMonthlySpendHistory([
       sub({ id: "c", status: "cancelled" }),
+      // F163: a trial or unknown status is not billing either.
+      sub({ id: "t", status: "trial" }),
+      sub({ id: "s", status: "unknown" }),
       sub({ id: "u", billingCycle: "unknown" }),
       // Rows read back from storage are not re-validated; an unexpected cycle
       // string must contribute nothing rather than throw or guess.
@@ -134,6 +137,50 @@ describe("buildMonthlySpendHistory — a cancelled plan counts until it was canc
       plan({ id: "paused", status: "paused" })
     ], 6, NOW);
     expect(amounts(points)).toEqual([0, 0, 0, 0, 0, 0]);
+  });
+});
+
+describe("buildMonthlySpendHistory — a pause stops the charges only while it lasts (F163)", () => {
+  // Jan..Jun 2026; the monthly plan renews on the 10th.
+  const plan = (over: Partial<Subscription>) => sub({ id: "p", nextRenewalDate: "2026-04-10T00:00:00.000Z", ...over });
+
+  it("paused on 5 March and still paused: January and February were paid, nothing after", () => {
+    const points = buildMonthlySpendHistory([plan({ status: "paused", pausedPeriods: [{ from: "2026-03-05T09:00:00.000Z" }] })], 6, NOW);
+    expect(amounts(points)).toEqual([1000, 1000, 0, 0, 0, 0]);
+  });
+
+  it("paused 5 March, resumed 20 April: the two charges inside the pause are skipped, the rest count", () => {
+    const points = buildMonthlySpendHistory([plan({ pausedPeriods: [{ from: "2026-03-05T09:00:00.000Z", to: "2026-04-20T09:00:00.000Z" }] })], 6, NOW);
+    expect(amounts(points)).toEqual([1000, 1000, 0, 0, 1000, 1000]);
+  });
+
+  it("two pauses: each skips only its own charges", () => {
+    const points = buildMonthlySpendHistory([plan({ pausedPeriods: [
+      { from: "2026-01-05T00:00:00.000Z", to: "2026-01-20T00:00:00.000Z" },
+      { from: "2026-05-01T00:00:00.000Z", to: "2026-05-15T00:00:00.000Z" }
+    ] })], 6, NOW);
+    expect(amounts(points)).toEqual([0, 1000, 1000, 1000, 0, 1000]);
+  });
+
+  it("a weekly plan counts the share of each month outside the pause", () => {
+    // Paused from the start of 16 April to the start of 1 May: 15 of April's 30
+    // days were billed, round(4333 / 2) = 2167; May onwards full again.
+    const weekly = sub({ id: "w", billingCycle: "weekly", pausedPeriods: [{ from: "2026-04-16T00:00:00.000Z", to: "2026-05-01T00:00:00.000Z" }] });
+    expect(amounts(buildMonthlySpendHistory([weekly], 6, NOW))).toEqual([4333, 4333, 4333, 2167, 4333, 4333]);
+  });
+
+  it("a cancel after a pause: the pause still skips its months, the cancel ends the rest", () => {
+    const points = buildMonthlySpendHistory([plan({
+      status: "cancelled",
+      cancellationRequestedAt: "2026-05-20T00:00:00.000Z",
+      pausedPeriods: [{ from: "2026-02-01T00:00:00.000Z", to: "2026-03-20T00:00:00.000Z" }]
+    })], 6, NOW);
+    expect(amounts(points)).toEqual([1000, 0, 0, 1000, 1000, 0]);
+  });
+
+  it("no invented date: still paused with no readable start counts nothing; a period with an unreadable start is ignored", () => {
+    expect(amounts(buildMonthlySpendHistory([plan({ status: "paused", pausedPeriods: [{ from: "not a date" }] })], 6, NOW))).toEqual([0, 0, 0, 0, 0, 0]);
+    expect(amounts(buildMonthlySpendHistory([plan({ pausedPeriods: [{ from: "not a date", to: "2026-04-20T00:00:00.000Z" }] })], 6, NOW))).toEqual([1000, 1000, 1000, 1000, 1000, 1000]);
   });
 });
 
