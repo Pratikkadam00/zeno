@@ -53,6 +53,23 @@ describe("Insights tab, seed data", () => {
     expect(unnamedControls(r.toJSON() as never)).toEqual([]);
   });
 
+  it("F164: the 6-month chart reads to a screen reader as six months, each with its amount, the current one marked", async () => {
+    await renderScreen(<AnalyticsScreen />);
+    const columns = screen.getAllByLabelText(/^[A-Z][a-z]+ \d{4}, \$[\d,]+\.\d{2}(, this month)?$/);
+    const labels = columns.map((c) => String(c.props.accessibilityLabel));
+    expect(labels).toHaveLength(6);
+    const now = new Date();
+    const expectedMonths = [5, 4, 3, 2, 1, 0].map((back) =>
+      new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - back, 1)))
+    );
+    expect(labels.map((l) => l.split(", ")[0])).toEqual(expectedMonths);
+    expect(labels.filter((l) => l.endsWith(", this month"))).toHaveLength(1);
+    // The current month's amount is the one printed above its bar.
+    const current = labels[5]!.split(", ")[1]!;
+    expect(screen.getAllByText(current).length).toBeGreaterThan(0);
+    expect(columns.every((c) => c.props.accessible === true)).toBe(true);
+  });
+
   it("every insight can be dismissed; when none are left it says 'All caught up'", async () => {
     await renderScreen(<AnalyticsScreen />);
     const count = generateInsights(seedSubscriptions).length;

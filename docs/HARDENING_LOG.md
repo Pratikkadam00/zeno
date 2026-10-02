@@ -78,14 +78,14 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
       - [x] P3.8f-3 the root layout; **fixes F154**; every `app/` line covered (green: CI 36897664162, CodeQL 36897664295 on `5e4e85f`)
   - [x] P3.9 static scan of the release APK (manifest, permissions, signing, secrets; MobSF/apkleaks unavailable, see the entry); **fixes F155** (green: CI 36967460539, CodeQL 36967460518 on `6d8a9cb`; P3.9's own push `58d2fb9` went red on a new `node-forge` advisory, accepted with expiry in `6d8a9cb`)
   - [x] P3 gate: hardened release APK verified on the emulator (every flow in `DEVICE_TEST_FINDINGS.md`); jest floor in CI; MASVS checklist with evidence per control (`docs/MASVS_CHECKLIST.md`); **fixes F156-F160**, closes F16 and F112
-- [~] **FX — fix pass before P4** (2026-10-02; the owner asked for every open item of mine to be fixed before P4; owner-only items go to their own file at the end)
+- [x] **FX — fix pass before P4** (complete 2026-10-02) (2026-10-02; the owner asked for every open item of mine to be fixed before P4; owner-only items go to their own file at the end)
   - [x] FX.1 F21: strict UTC day parsing for CSV and receipt dates; UTC next-renewal arithmetic; F16 and F112 rows closed
   - [x] FX.2 F147's cause: history counts each subscription up to its cancellation date (already recorded on every cancel path); F163 found
   - [x] FX.3 F162: the sheet is its own window, so screen readers can't reach behind it (verified on the emulator with TalkBack)
   - [x] FX.4 F103: the website's three fonts self-hosted (the same 13 files); the site builds with the network blocked
   - [x] FX.5 F94 and F106: three measured attempts each, neither reproduced; closed as not reproduced (not claimed fixed), P5 keeps watching
   - [x] FX.6 F163: pause periods recorded (migration v2); history skips only the months inside a pause; verified as a real upgrade on the emulator; F164 found
-  - [ ] FX.7 F164: Insights' monthly chart readable by a screen reader (each month with its amount)
+  - [x] FX.7 F164: Insights' monthly chart read by a screen reader, each month with its amount (verified with TalkBack)
   - [ ] then the owner-only file (everything that needs the owner, nothing else)
 - [ ] **P4 — Website component tests, Playwright, CSP, DAST**
 - [ ] **P5 — Mobile end-to-end (Maestro on the emulator)** (watch for F94 and F106, closed as not reproduced in FX.5)
@@ -255,7 +255,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F161 | **OPEN, owner decision.** The widget snapshot (`zeno.widget.snapshot.v1`: the next renewal's name and amount, the monthly total) is written in plaintext to AsyncStorage, though no widget ships in this build. It is app-private (root was needed to read it), not backed up (F92), and erased with the device's data (F27). | Low | owner | — |
 | F162 | **FIXED in FX.3.** ~~While Settings' bottom sheet (Home currency) is open, the Settings controls behind it stay in the accessibility tree (`uiautomator dump --compressed`), so a screen reader can move behind the sheet.~~ The sheet is now its own window (AppModal). On the emulator the tree with it open holds only the sheet, and a TalkBack touch where "Go Pro" sits behind it focuses the backdrop. | Low (accessibility) | me | FX.3 |
 | F163 | **FIXED in FX.6.** ~~A paused subscription counts $0 in the spend history (Year in Review, the recap, the Insights chart) for every month, including months it was paid before the pause.~~ Pausing now records a period (`pausedPeriods`, stored in a new column by migration v2) and resuming closes it; history skips only the charges inside a pause. Seen on the emulator: a pause on the old app collapsed October's paid charge; a pause on the new app keeps it, across restarts. A pause recorded before this change has no date, and none is invented. | Low (history understates) | me | FX.6 |
-| F164 | **OPEN (mine), FX.7.** Insights' 6-month chart gives a screen reader the month names but not the amounts: each bar is an unlabelled view (seen in the emulator's view dump during FX.6), so the history is visual only. | Low (accessibility) | me | FX.7 |
+| F164 | **FIXED in FX.7.** ~~Insights' 6-month chart gives a screen reader the month names but not the amounts: each bar is an unlabelled view, so the history is visual only.~~ Each month is now one accessible element, "October 2026, $15.49, this month". On the emulator TalkBack focuses each month's column. | Low (accessibility) | me | FX.7 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **CLOSED in the P3 gate (2026-10-02): reachable, not a bug.** TalkBack, driven by touches from the emulator's own touchscreen, put its focus on each nested button's exact bounds, separately from its parent: the calendar's "Cancel Figma", the menu's Edit/Pause/Delete, the login's Terms and Privacy links. Original note: on the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -4516,3 +4516,34 @@ on the 2nd:
 No crash from the app (the buffer held only the emulator's Bluetooth service).
 
 **Found:** F164, the chart's amounts aren't available to screen readers. It is FX.7.
+
+### FX.7 — the Insights chart read aloud (F164); the fix pass is complete — 2026-10-02
+
+**The change:** each column of Insights' 6-month chart (`app/(tabs)/analytics.tsx`) is
+one accessible element labelled with the month's full name, its amount, and ", this
+month" for the current one. The full name comes from the history point's UTC year and
+month.
+
+**Tests:** a screen test reads six labels, consecutive months ending with the current
+UTC month, each "Month YYYY, $amount", exactly one "this month", its amount the one
+printed above the bar. Insights suite 12 passed. **Bite check: 2, caught:** the column
+not one element (`accessible` removed); no "this month" marker.
+
+**On the emulator:** the compressed tree lists "May 2026, $0.00" to "October 2026,
+$15.49, this month", and a TalkBack touch on October focused its column's exact
+bounds. TalkBack off and its notification grant revoked afterwards; emulator killed.
+
+**Found along the way, not an app bug:** a reinstall over the booted emulator opened
+on a lock screen that rejected the test PIN. The emulator boots its quick-boot
+snapshot `default_boot`, saved 2026-07-09 ("Loading snapshot 'default_boot'" in its
+log; the app's `zeno.db` dated that day), so app data at boot is July's, PIN included.
+Every device test here starts with `pm clear`, so no earlier result is affected; the
+trap is in my notes.
+
+**Also in this commit:** the vitest branch floor ratcheted from 99.69 to 99.70 by
+FX.6's gate run (the full coverage run, the only legitimate ratchet).
+
+**The FX pass, complete (2026-10-02):** F21, F147, F162, F103 and F163 fixed; F164
+found and fixed; F94 and F106 closed as not reproduced; F16 and F112 rows closed. What
+remains open needs the owner (decisions, account actions, tests only the owner can
+run); it goes into its own file next.

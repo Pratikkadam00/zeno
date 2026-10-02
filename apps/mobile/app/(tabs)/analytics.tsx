@@ -79,8 +79,11 @@ export default function AnalyticsScreen() {
   // subscription cycles — annual charges spike in their anniversary month). ──
   const chartData = useMemo(() => {
     const history = buildMonthlySpendHistory(subscriptions, 6, undefined, fx);
+    // F164: each month's full name, for the screen-reader label.
+    const monthName = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
     return history.map((point, i) => ({
       label: point.label,
+      fullName: monthName.format(new Date(Date.UTC(point.year, point.month, 1))),
       isCurrent: i === history.length - 1,
       amountMinor: point.amountMinor
     }));
@@ -159,7 +162,14 @@ export default function AnalyticsScreen() {
             {chartData.map((entry, i) => {
               const barH = Math.max(4, Math.round((entry.amountMinor / maxBarAmount) * 80));
               return (
-                <View key={i} style={styles.barColumn}>
+                // F164: one element per month for a screen reader, with its
+                // amount (the bars alone were visual only).
+                <View
+                  key={i}
+                  style={styles.barColumn}
+                  accessible
+                  accessibilityLabel={`${entry.fullName}, ${formatMoney(entry.amountMinor, homeCurrency)}${entry.isCurrent ? ", this month" : ""}`}
+                >
                   {entry.isCurrent ? (
                     <Text style={styles.barValueLabel}>{formatMoney(entry.amountMinor, homeCurrency)}</Text>
                   ) : null}
