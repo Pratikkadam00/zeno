@@ -4149,5 +4149,15 @@ crash buffer was empty, and `dumpsys package` shows neither permission.
 **Bite check: 1, caught.** The new `app.config.test.ts` case failed on the old config
 ("expected [] to deeply equal [ …(2) ]").
 
+**CI caught a new advisory on the push:** GHSA-86w9-cpqp-85rv (high), `node-forge` <= 1.4.0. It
+was published 2026-09-03, and 1.4.0 is the latest release, so there is no fix to take. It was
+not caused by this change. `npm ls` shows one path: `expo` → `@expo/cli` →
+(`@expo/code-signing-certificates`). There it signs development manifests with the
+developer's own key, then verifies only that self-made signature, or self-signed
+certificates. The flaw is in verifying someone else's forged signature. The P3.9 scan finds
+no node-forge in the app bundle: the RSA strings there are react-native-quick-crypto's
+constants. It is accepted in `.audit-allowlist.json` with a short expiry (2026-11-30), so the
+gate flags it again then.
+
 **For the P3 gate:** the store build (EAS) is the one to verify on a device. Confirm on
 it that the API URL is https and that the permission list matches the one above.
