@@ -1,0 +1,29 @@
+# Zeno
+
+> Zeno is a subscription tracker and budgeting app for people who refuse to hand a bank login to an app. It finds subscriptions from email receipts you scan or a bank statement CSV you import, warns you 7 days, 3 days and the morning before each renewal, flags free trials before they convert, and gives step-by-step cancellation guides. A cancellation stays pending until the next renewal passes without a charge. Data is stored encrypted on the device; an account is optional. No bank login required.
+
+Pricing (USD, via the App Store and Google Play): Free for up to 10 subscriptions, including reminders, cancellation guides and a monthly budget cap. Pro $3.99/month or $29.99/year adds unlimited subscriptions, category budgets and envelopes. Lifetime $79.99, one payment.
+
+## Money pages
+- [Subscription tracker](https://<domain>/subscription-tracker)
+- [Cancel subscriptions](https://<domain>/cancel-subscriptions)
+- [Free trial reminders](https://<domain>/free-trial-reminders)
+- [Budgeting](https://<domain>/budgeting)
+
+## Comparisons (competitor facts dated on each page)
+- [Subscription tracker without bank login](https://<domain>/compare/no-bank-login)
+- [Budget app that doesn't connect to your bank](https://<domain>/compare/budget-app-no-bank-sync)
+- [Rocket Money alternative](https://<domain>/compare/rocket-money-alternative)
+- [Monarch alternative](https://<domain>/compare/monarch-alternative)
+- [YNAB alternative with a one-time purchase](https://<domain>/compare/ynab-alternative)
+
+## Cancellation guides
+- [All guides, by category](https://<domain>/cancel) (509 services; verified guides are labelled with the date they were checked)
+- [How to cancel Netflix](https://<domain>/cancel/netflix)
+- [How to cancel Spotify](https://<domain>/cancel/spotify)
+- [How to cancel Adobe Creative Cloud](https://<domain>/cancel/adobe-creative-cloud)
+
+## Legal and contact
+- [Privacy policy](https://<domain>/legal/privacy)
+- [Terms](https://<domain>/legal/terms)
+- [Developers](https://<domain>/developers)
