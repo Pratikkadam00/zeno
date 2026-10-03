@@ -10,7 +10,7 @@ import { useSubscriptionStore } from "../../src/data/subscription-store";
 import { generateInsights, getTotalSavingOpportunity } from "../../src/insights/insightsEngine";
 import type { Insight } from "../../src/insights/insightsEngine";
 import { currencySymbol, formatMoney } from "../../src/utils/format";
-import { formatShortDate, getCategoryColor, getDaysRemaining, getUrgencyBadge, withAlpha } from "../../src/utils/subscription-ui";
+import { categoryLabel, formatShortDate, getCategoryColor, getDaysRemaining, getUrgencyBadge, withAlpha } from "../../src/utils/subscription-ui";
 import { LedgerLine, ServiceAvatar } from "../../src/components/zeno";
 import { useZenoTheme } from "../../src/theme/theme-provider";
 import type { ThemeTokens } from "../../src/theme/tokens";
@@ -46,9 +46,6 @@ function insightAccentColor(type: Insight["type"], theme: ThemeTokens): string {
   }
 }
 
-function labelCategory(category: string): string {
-  return category.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
 
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
@@ -259,7 +256,7 @@ export default function AnalyticsScreen() {
                     <View style={{ width: 10, height: 3, backgroundColor: barColor }} />
                     <View style={{ flex: 1 }}>
                       <LedgerLine
-                        label={labelCategory(cat.category)}
+                        label={categoryLabel(cat.category)}
                         sub={`${Math.round(pct)}%`}
                         value={formatMoney(cat.monthlyMinor, homeCurrency)}
                         style={{ paddingTop: 5, paddingBottom: 3 }}

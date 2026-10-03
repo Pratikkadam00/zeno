@@ -301,6 +301,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F195 | **FIXED in P5.** ~~The calendar marked the selected day as having entries whether or not anything renewed then, so TalkBack read today as "You have entries for this day" on an empty day.~~ A day is marked only when it has a renewal ("You have no entries for this day" now, measured on the emulator). | Low (accessibility, a false announcement) | me | P5 |
 | F196 | **FIXED in P5.** ~~"Projected year" was the rest of THIS calendar year: $46.47 for a $15.49 plan in October, beside the detail screen's "Per year at current rate $185.88". The design's figure is the month's run-rate × 12.~~ It's a year at current prices now ($185.88): monthly equivalents × 12 (F66's per-cycle rule kept), a yearly plan or a trial's conversion once, an unknown cycle 0; the same in every timezone. | Medium (a number that disagreed with another screen) | me | P5 |
 | F197 | **FIXED in P5.** ~~The calendar's "This month" counted only renewals still dated in this month on the grid ($0.00 for a plan charged on the 2nd), while the ledger counted that month's charge ($15.49).~~ The design's "This month" is the monthly total of every plan; it is now the ledger headline's own figure (one rule, F157), with no renewal count beside it (the design has none). `getMonthlyTotal` and `getMonthRenewalCount` (F181) are gone with it. Its wording follows whatever D15 decides for the ledger. | Medium (two screens, two numbers for one month) | me | P5 |
+| F198 | **FIXED in P5.** ~~Insights' overview said "streaming leads your category spend" above a breakdown that says "Entertainment 61%": it grouped by the benchmark categories (Netflix's catalogue category), not the user's own. The breakdown also wrote "ai_tools" as "Ai Tools" where every other screen says "AI tools".~~ The overview groups by the user's categories and both use the shared `categoryLabel`. Tests (the old code fails each) and Maestro flow 12. | Low (two names for one category on one screen) | me | P5 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **CLOSED in the P3 gate (2026-10-02): reachable, not a bug.** TalkBack, driven by touches from the emulator's own touchscreen, put its focus on each nested button's exact bounds, separately from its parent: the calendar's "Cancel Figma", the menu's Edit/Pause/Delete, the login's Terms and Privacy links. Original note: on the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -5243,3 +5244,36 @@ analytics off, and runs each flow on its own.
 **Bank login copy:** Settings says "We never ask for your bank login". True of this build:
 the bank-connection screen shows "This screen isn't part of this version of Zeno" in
 release builds (F151). It must change if Plaid ever ships.
+
+### P5 (in progress, part 3) — flows 12-13, the accessibility audit, the nightly job; F198 fixed — 2026-10-03
+
+**CI for part 2:** CI 37127739214 and CodeQL 37127739213 green on `ce2cd44`.
+
+**Flows 12-13** (green on the emulator): 12 Insights with a monthly and a yearly plan (the
+monthly spend $25.49, this month's chart bar $15.49 read as one month, the overview
+naming the user's own category (F198), the breakdown 61 % / 39 %); 13 dark mode, switched
+on, kept across a relaunch, switched back. Maestro can't see colour, so the flow saves
+both ledgers and they were measured: mean luminance 24.4 (dark) and 237.0 (light). A
+first measurement read 71.6 for light: the screenshot had caught the launch splash
+mid-tear (the ledger's text is in the tree under it); the flow now waits for the
+animation to end.
+
+**The accessibility-tree audit** (`.maestro/a11y-audit.sh`, the check in
+`a11y_check.py`): after a realistic set-up (onboarded, one subscription), each of 17
+reachable screens is opened by deep link and dumped as TalkBack sees it (`uiautomator
+dump --compressed`); a clickable node with no text or description, on it or inside it,
+fails. Result: **17 screens, 0 unnamed controls** (twice, the second after a reinstall).
+Bite check on the checker: a hand-made tree with an unnamed button fails, one whose
+button is named by its child passes, and a screen that isn't Zeno fails.
+
+**Two Maestro tooling failures, measured** (about 2 in 15 runs): its on-device server
+died at launch (`DeviceServerDiedException`), with no app crash in the device's crash
+log. `run.sh` retries a flow once in exactly that case, and never when the app crashed.
+(Two "app died" lines once looked like crashes; they were Maestro's own `stopApp`
+force-stops, read from the activity manager's log.)
+
+**The nightly job** (`.github/workflows/mobile-e2e.yml`): `expo prebuild`, the x86_64
+release APK, Maestro 2.11.0 checksum-verified, an API 35 emulator
+(reactivecircus/android-emulator-runner, pinned), then `.maestro/ci.sh`: every flow and
+the audit. Nightly, on demand, and on a push that changes the flows. Its first run is
+the measurement that the flows hold on a different emulator image.

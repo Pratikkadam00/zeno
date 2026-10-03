@@ -166,3 +166,12 @@ describe("Insights tab, empty and other currencies", () => {
     expect(screen.getByText("1 subscription in other currencies not included.")).toBeTruthy();
   });
 });
+
+describe("Insights tab, category names (F198)", () => {
+  it("the breakdown says 'AI tools', as every other screen does (it said 'Ai Tools')", async () => {
+    resetFakes({ rows: [sub({ id: "ai", name: "Claude", category: "ai_tools" })] });
+    await renderScreen(<AnalyticsScreen />);
+    expect(screen.getAllByText("AI tools").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Ai Tools")).toBeNull();
+  });
+});

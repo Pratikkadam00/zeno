@@ -2,6 +2,7 @@ import { getServiceById, getServiceBySlug } from "@zeno/service-catalog";
 import { convertMinor, monthlyAmount, monthlyAmountIn, type FxContext, type Subscription } from "@zeno/shared";
 import { currencySymbol } from "../utils/format";
 import { formatDayLabel } from "../utils/day-label";
+import { categoryLabel } from "../utils/subscription-ui";
 
 export interface Insight {
   id: string;
@@ -326,7 +327,7 @@ export function generateSpendSummary(subscriptions: Subscription[], fx?: FxConte
   const topServiceText = mostExpensive
     ? `${mostExpensive.name} is your biggest at ${formatMoney(monthlyDollars(mostExpensive), mostExpensive.price.currency)}/mo.`
     : "No active subscriptions yet.";
-  const categoryText = topCategory ? `${labelCategory(topCategory.category)} leads your category spend. ` : "";
+  const categoryText = topCategory ? `${categoryLabel(topCategory.category)} leads your category spend. ` : "";
   // Never silently folds excluded-currency subscriptions into the "across N
   // subscriptions" count — surfaces them explicitly instead, in the spirit of
   // coach.ts's createSpendSummary excludedCurrencyCount field (Insight has no
@@ -493,10 +494,13 @@ function benchmarkCategory(subscription: Subscription): BenchmarkCategory {
   return "other";
 }
 
+// F198: the user's own categories, the ones the breakdown beside it shows. The
+// benchmark grouping (entertainment -> "streaming") named a category the user
+// never sees ("streaming leads" above "Entertainment 61%").
 function getTopCategory(subscriptions: Subscription[], fx?: FxContext): { category: string; spend: number } | null {
   const categorySpend = new Map<string, number>();
   for (const subscription of subscriptions) {
-    const category = benchmarkCategory(subscription);
+    const category = subscription.category;
     const amount = monthlyDollarsIn(subscription, fx);
     if (amount === null) {
       continue;

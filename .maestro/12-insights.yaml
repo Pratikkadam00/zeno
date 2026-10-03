@@ -1,0 +1,31 @@
+appId: app.zeno.mobile
+name: Insights - a monthly and a yearly plan; the totals, the chart, the overview and the breakdown agree
+tags: [insights]
+---
+- runFlow: common/fresh-local-start.yaml
+- runFlow: common/add-netflix.yaml
+# A yearly plan as well ($120/yr = $10.00/mo).
+- tapOn: "Add"
+- tapOn: "Search services"
+- inputText: "Lumen Gym"
+- tapOn: "Add Lumen Gym as a custom service"
+- tapOn: "Amount in dollars"
+- eraseText
+- inputText: "120"
+- tapOn: "Bill annual"
+- tapOn: "Save subscription"
+- tapOn: "INSIGHTS"
+- assertVisible: "MONTHLY SPEND"
+- assertVisible: "\\$25\\.49"
+# The chart: this month's real charge (Netflix, charged Oct 2), read as one
+# month with its amount (F164).
+- assertVisible: "October 2026, \\$15\\.49, this month"
+# The overview names the user's own category (F198), and the biggest plan.
+- assertVisible: "You pay \\$25\\.49/mo across 2 subscriptions\\. Netflix is your biggest at \\$15\\.49/mo\\. Entertainment leads your category spend\\..*"
+- scrollUntilVisible:
+    element: "Total monthly"
+    direction: DOWN
+- assertVisible: "Entertainment"
+- assertVisible: "61%"
+- assertVisible: "Other"
+- assertVisible: "39%"

@@ -435,6 +435,17 @@ describe("generateSpendSummary", () => {
     ]);
     expect(summary.message).toBe("You pay $63/mo across 3 subscriptions. Figma is your biggest at $25/mo. AI tools leads your category spend. 0 renewals this week.");
   });
+
+  // F198: the benchmark grouping called Netflix's "entertainment" "streaming",
+  // above a breakdown that says "Entertainment".
+  it("names the user's own category, as the breakdown beside it does", () => {
+    const summary = generateSpendSummary([
+      sub({ id: "n", name: "Netflix", serviceId: "netflix", category: "entertainment", price: { amountMinor: 1549, currency: "USD" } }),
+      sub({ id: "g", name: "Lumen Gym", category: "other", price: { amountMinor: 1000, currency: "USD" } })
+    ]);
+    expect(summary.message).toContain("Entertainment leads your category spend.");
+    expect(summary.message).not.toMatch(/streaming/i);
+  });
 });
 
 describe("detectCancellationReminders", () => {

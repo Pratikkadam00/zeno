@@ -21,11 +21,24 @@ flows=("$@")
 [ ${#flows[@]} -eq 0 ] && flows=("$here"/[0-9][0-9]-*.yaml)
 failed=0
 for flow in "${flows[@]}"; do
-  if "$maestro" --device "$device" test "$flow" > "${TMPDIR:-/tmp}/maestro-$(basename "$flow").log" 2>&1; then
+  log="${TMPDIR:-/tmp}/maestro-$(basename "$flow").log"
+  "$adb" -s "$device" logcat -b crash -c > /dev/null 2>&1
+  "$maestro" --device "$device" test "$flow" > "$log" 2>&1
+  rc=$?
+  # Retry once ONLY when Maestro's own device server died and the app did not
+  # crash (its crash log is empty): a tooling hiccup, measured twice in P5. An
+  # app crash is never retried away.
+  if [ $rc -ne 0 ] && grep -q "DeviceServerDiedException" "$log" && ! "$adb" -s "$device" logcat -d -b crash | grep -q "FATAL EXCEPTION"; then
+    echo "RETRY $(basename "$flow") (Maestro's device server died; no app crash)"
+    "$maestro" --device "$device" test "$flow" > "$log" 2>&1
+    rc=$?
+  fi
+  if [ $rc -eq 0 ]; then
     echo "PASS $(basename "$flow")"
   else
     echo "FAIL $(basename "$flow")"
-    grep -E "FAILED|Assertion is" "${TMPDIR:-/tmp}/maestro-$(basename "$flow").log" | head -3
+    grep -E "FAILED|Assertion is" "$log" | head -3
+    "$adb" -s "$device" logcat -d -b crash | grep -m1 -A2 "FATAL EXCEPTION"
     failed=1
   fi
 done

@@ -1,0 +1,5 @@
+appId: app.zeno.mobile
+name: (setup for the accessibility audit) onboarded, one subscription
+---
+- runFlow: fresh-local-start.yaml
+- runFlow: add-netflix.yaml

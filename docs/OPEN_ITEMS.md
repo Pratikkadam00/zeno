@@ -19,7 +19,7 @@ Nothing that needs you is kept here, so there is one list to work from.
 
 | # | Item | When |
 |---|---|---|
-| — | **P5 in progress:** 11 Maestro flows green on the emulator; next insights, dark mode and the accessibility audit flows, the nightly CI job, F178, F184, F185 and "which today?" | now |
+| — | **P5 in progress:** 13 Maestro flows and the accessibility audit (17 screens) green on the emulator; the nightly CI job's first run pending; then F178, F184, F185 and "which today?" | now |
 | F191 | A rare native crash (1 in ~33) right after "Continue without an account": react-native-screens + Reanimated re-entering a fragment transaction. No released fix; re-test on each screens/reanimated upgrade; the nightly run counts it | each upgrade |
 | — | **Which "today"?** The app counts days from the **UTC** day (countdowns, renewal roll-forward, budget months, spend history, trial guardian, insights), so near midnight a renewal can read "today" or "tomorrow" a day off from the user's own day. Moving to the user's local day is product-wide and touches money maths; places: `subscription-ui.ts` (getDaysRemaining, rollRenewalForward), `calendarUtils.ts` (dayDiffISO), `insightsEngine.ts` (day diffs), `finance/budget.ts` (month bounds), `packages/shared` (spend history, year in review, trial guardian, renewal plan) | P5 (timezone pass) |
 | F184 | The `/analytics` 404 (shown while the sample dashboard is off) ignores the dark theme: its page lacks the theme script | P5 |

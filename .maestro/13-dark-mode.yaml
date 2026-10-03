@@ -1,0 +1,35 @@
+appId: app.zeno.mobile
+name: Dark mode - switched on in Settings, kept across a relaunch, and switched back
+tags: [theme]
+---
+- runFlow: common/fresh-local-start.yaml
+- runFlow: common/add-netflix.yaml
+- tapOn: "Settings"
+- assertVisible:
+    text: "Dark mode"
+    checked: false
+- tapOn: "Dark mode"
+- assertVisible:
+    text: "Dark mode"
+    checked: true
+# Kept across a relaunch, and the ledger renders in it.
+- stopApp
+- launchApp
+- assertVisible:
+    text: "Netflix, .* · ENTERTAINMENT, \\$15\\.49 per mo"
+- waitForAnimationToEnd
+- takeScreenshot: dark-ledger
+- tapOn: "Settings"
+- assertVisible:
+    text: "Dark mode"
+    checked: true
+- tapOn: "Dark mode"
+- assertVisible:
+    text: "Dark mode"
+    checked: false
+- stopApp
+- launchApp
+- assertVisible:
+    text: "Netflix, .* · ENTERTAINMENT, \\$15\\.49 per mo"
+- waitForAnimationToEnd
+- takeScreenshot: light-ledger
