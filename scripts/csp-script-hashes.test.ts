@@ -23,6 +23,13 @@ describe("governedInlineScripts", () => {
     expect(governedInlineScripts(html)).toEqual(["run()"]);
   });
 
+  it("ends a script where HTML does: </script then whitespace, / or >, whatever follows", () => {
+    const html = page(`<script>a()</script\t\n bar><script>b()</SCRIPT ><script>c()</script/><script>d()</script>`);
+    expect(governedInlineScripts(html)).toEqual(["a()", "b()", "c()", "d()"]);
+    // "</scripts>" is not an end tag: the script runs on past it.
+    expect(governedInlineScripts(page(`<script>x = "</scripts>"; y()</script>`))).toEqual([`x = "</scripts>"; y()`]);
+  });
+
   it("reads type case-insensitively, quoted or not", () => {
     expect(governedInlineScripts(page(`<script TYPE=MODULE>m()</script><script type='Application/LD+JSON'>{}</script>`))).toEqual(["m()"]);
   });

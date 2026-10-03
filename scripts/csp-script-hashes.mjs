@@ -35,7 +35,9 @@ const GOVERNED_TYPES = new Set([
   "text/ecmascript"
 ]);
 
-const SCRIPT = /<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi;
+// An end tag is "</script" then whitespace, "/" or ">", and anything up to ">"
+// (HTML's tokenizer; CodeQL js/bad-tag-filter).
+const SCRIPT = /<script\b([^>]*)>([\s\S]*?)<\/script(?=[\s/>])[^>]*>/gi;
 
 /** The text of every inline script the page's script-src governs, in order. Exported for tests. */
 export function governedInlineScripts(html) {
