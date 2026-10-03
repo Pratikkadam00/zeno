@@ -18,6 +18,12 @@
       "package": "node-forge",
       "reason": "RSA PKCS#1 v1.5 verification accepts extra nested DigestAlgorithm elements (a forged signature can pass). Reached only through @expo/cli (the developer CLI) and @expo/code-signing-certificates, which sign development manifests with the developer's own key and verify only that self-made signature or self-signed certificates; no third-party signature is verified. Not in the app bundle (P3.9 scan) and not an API dependency. No patched release exists (<= 1.4.0 affected, 1.4.0 is the latest). Short expiry: re-check for a fix.",
       "expires": "2026-11-30"
+    },
+    {
+      "advisory": "GHSA-vfj7-8cjw-p6xm",
+      "package": "braces",
+      "reason": "Stack exhaustion from deeply nested brace patterns (published 2026-09-18). The only production path is @zeno/mobile -> expo -> @expo/cli -> @expo/metro-file-map -> micromatch -> braces: the developer CLI's file watcher, Node-only (it reads the filesystem), so not in the app bundle; the patterns it expands come from this repository's own config. Every other path is a dev dependency (jest, metro) with the same own-config input. The API (fastify) and the website have no path to braces (npm ls --omit=dev, P4.3). No patched release exists (<= 3.0.3 affected, 3.0.3 is the latest). Short expiry: re-check for a fix.",
+      "expires": "2026-11-30"
     }
   ]
 }
