@@ -285,6 +285,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F179 | **FIXED in P4.2b.** ~~On a wide screen with a mouse (the homepage's book mode), the nav's "How it works", "Pricing", "FAQ" and "Join waitlist", and the footer's section links, did nothing: the book stayed on its page.~~ Every section sits in a hidden sheet and the page doesn't scroll, and Next's Link moves to "/#pricing" with `pushState`, which fires no `hashchange`; nothing listened in any case. Suspected in P4.1a, measured in Chrome in P4.2b (the pager stayed on COVER after clicking Pricing). The book now catches same-page section-link clicks (capture phase, before Next's handler) and turns to that sheet; a modified click or a new-tab link is left alone. | Medium (navigation on desktop) | me | P4.2b |
 | F180 | **FIXED in P4.2c.** ~~Under Lighthouse's mobile throttling the homepage's first paint (and LCP, the nav's "zeno") came at ~2.9 s, over the 2.5 s "good" line; every other page measured 2.0-2.3 s.~~ Cause, measured step by step: not the scripts (2.65-2.87 s with JavaScript off), not the markup (every script async), but the **first layout**: one 1,120 ms layout (4x CPU) covering the whole long page while the web fonts were still loading; layout with the fallback fonts costs ~2.5x layout with the web fonts (1,070 ms vs 410 ms), and a relayout once loaded costs 7 ms. Fixed with `content-visibility: auto` on the homepage sections below the hero, so the first layout covers what is on screen: homepage LCP 2.42-2.45 s standalone, 1.89-1.93 s in later full-suite runs (lab timings move ~0.5 s with the machine's state), CLS 0.000-0.008. Side effect, accepted: without JavaScript, sections fade in briefly as they come into view (their styles resolve then); the no-JS test checks each section's settled state on screen. | Medium (performance on phones) | me | P4.2c |
 | F181 | **FIXED (found during P4.2c's gate run).** ~~The mobile Calendar's "N RENEWALS" line counted each renewal by its LOCAL day while the month total beside it (`getMonthlyTotal`) uses its UTC day; renewal dates are UTC days (§10). At a month boundary west of UTC, a renewal dated the 1st (midnight UTC, the evening before in New York) was in this month's count but not its total.~~ The count is now `getMonthRenewalCount` in `calendarUtils`, the same renewals on the same UTC day as the total; the screen's private local-day helper is gone. Tested in New York, Kolkata and UTC (the New York case fails with the old local-day count). | Low (a count disagreeing with its own total) | me | P4.2c |
+| F182 | **FIXED (found by CI's new far-from-UTC step).** ~~Renewal dates are stored as day labels (midnight UTC of the day, §10), but the mobile app formatted them in the phone's timezone, so every imported renewal (CSV, email receipt) showed **a day early anywhere west of UTC**: all of the Americas ("Oct 6" for a renewal on the 7th).~~ Four formatters (`formatShortDate`, `formatMonthYear`, the insights' dates, the add screen's) now show a label as the day it names (`src/utils/day-label.ts`, `timeZone: "UTC"`), the same day the calendar's dots and the countdowns already use. The add screen stored "now + N days" at the current time of day, a raw instant; it now stores a day label like imports and the edit screen. Tested in six zones (Los Angeles, New York, UTC, Kolkata, Kiritimati, Honolulu); with the old formatting the three western zones fail. | Medium (wrong dates shown in the Americas) | me | P4 (CI) |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **CLOSED in the P3 gate (2026-10-02): reachable, not a bug.** TalkBack, driven by touches from the emulator's own touchscreen, put its focus on each nested button's exact bounds, separately from its parent: the calendar's "Cancel Figma", the menu's Edit/Pause/Delete, the login's Terms and Privacy links. Original note: on the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -4900,12 +4901,42 @@ total, by UTC day, at a month boundary (above). Fixed in `calendarUtils`, where 
 can pin a timezone. **Bite check: 1, caught 1** (a local-day count fails the New York
 case).
 
-**Checked far from UTC:** every vitest suite (logic and website) and all 560 jest tests
-pass at UTC-10 (Honolulu), UTC-7 (Los Angeles, the Calendar screen) and UTC+14
-(Kiritimati). **CI now does the same:** a new step runs the logic suite at UTC-10 and
+**Checked far from UTC: NOT, as first written.** I first wrote that every suite passed
+at UTC-10, UTC-7 and UTC+14. That was false: **Node on Windows ignores an IANA name in the
+`TZ` environment variable** (measured afterwards: every zone gave the host's offset,
+-330), so those runs were all on India time. CI's Linux was the first real far-from-UTC
+run, and it failed at once (F182, below). **CI now does the same:** a new step runs the logic suite at UTC-10 and
 UTC+14 and the mobile screen tests at UTC+14, because the runner's own clock is UTC, where
 a local/UTC mix-up can't show.
 
 **Observation for P5 (not a finding):** the Calendar opens on the user's LOCAL today,
 while the app's countdowns ("renews in N days") count from the UTC day. Which "today"
 the whole app should use is a product-wide question for P5's timezone pass.
+
+### F182 — renewal dates shown a day early west of UTC; the far-from-UTC check made real — 2026-10-03
+
+**Found by CI**, in the step added with F181: at UTC+14 `formatShortDate` turned a June 12
+renewal into "Jun 13". The function formatted the stored day label in the phone's
+timezone; the label is midnight UTC, so west of UTC it read as the day before (F182).
+
+**A false claim, corrected.** My F181 write-up said the suites passed at UTC-10 and
+UTC+14; Node on Windows ignores `TZ=Pacific/...` at startup, so they had run on India
+time (corrected in that entry). What works: setting `process.env.TZ` at runtime inside
+vitest (the F181 New York test proved it) but not inside jest. So `vitest.tz-setup.ts`
+applies `ZENO_TEST_TZ` at runtime, which makes a local far-from-UTC run real on any OS:
+probe offsets -840 at Kiritimati, 600 at Honolulu. CI's Linux honours `TZ` directly.
+
+**The fix, scoped.** The app's convention (§10) is that a renewal date is a day label;
+the edit screen, the reminder scheduler (9 AM local on the label's day) and the
+calendar's dots and countdowns already follow it. Four formatters and the add screen
+didn't; they do now (`src/utils/day-label.ts`). **Not changed here:** "today" is the UTC
+day throughout the app (countdowns, renewal roll-forward, budget months, spend history,
+trial guardian, insights). Whether it should be the user's local day is product-wide and
+touches money calculations; it is listed for P5 with every place it lives.
+
+**Tests:** the new module in six zones (13). The full logic suite passes in three far
+zones for real now (1,985 each, `ZENO_TEST_TZ`), and all 560 jest tests on this machine's
+zone; CI runs jest at UTC+14. **Bite check: 1, caught 1** (local formatting fails Los
+Angeles, New York and Honolulu, and only those).
+
+Also: three unused variables in this phase's test files (lint warnings CI reported) removed.

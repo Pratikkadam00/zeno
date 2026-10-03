@@ -30,7 +30,6 @@ const textOf = (doc: Document) => {
   for (const s of doc.querySelectorAll("script, style")) s.remove();
   return (doc.body.textContent ?? "").replace(/\s+/g, " ");
 };
-const site = () => pages.map((p) => p.text).join(" \n ") + " \n " + FAQS.map((f) => `${f.q} ${f.a}`).join(" \n ");
 const page = (url: string) => pages.find((p) => p.url === url)!;
 
 beforeAll(async () => {

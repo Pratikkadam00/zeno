@@ -12,7 +12,6 @@ import { jsonLd, listPages, parse, renderPage, type PageFile } from "@/test-supp
 vi.mock("./fonts", () => ({ fontClassNames: "fonts" }));
 
 const PAGES = listPages();
-const page = (route: string) => PAGES.find((p) => p.route === route)!;
 const FIRST_SLUG = services[0]!.slug;
 const NOINDEX = new Set(["/analytics"]);
 const urlOf = (p: PageFile) => p.route.replace("[slug]", FIRST_SLUG);

@@ -1,5 +1,6 @@
 import type { BillingCycle } from "@zeno/shared";
 import type { ThemeTokens } from "../theme/tokens";
+import { formatDayLabel } from "./day-label";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -78,7 +79,8 @@ export function formatShortDate(dateValue?: string | null, fallback = "No date")
   if (!dateValue) return fallback;
   const date = new Date(dateValue);
   if (Number.isNaN(date.getTime())) return fallback;
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  // A renewal day label, shown as the day it names (F182).
+  return formatDayLabel(date, { month: "short", day: "numeric" });
 }
 
 /** Alias kept for call sites that used the dashboard naming. */
@@ -89,7 +91,7 @@ export function formatMonthYear(dateValue?: string | null, fallback = "—"): st
   if (!dateValue) return fallback;
   const date = new Date(dateValue);
   if (Number.isNaN(date.getTime())) return fallback;
-  return date.toLocaleDateString(undefined, { month: "short", year: "numeric" });
+  return formatDayLabel(date, { month: "short", year: "numeric" });
 }
 
 /** Convert a #RRGGBB hex color to rgba() with the given alpha. */

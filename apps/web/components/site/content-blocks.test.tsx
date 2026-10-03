@@ -91,7 +91,7 @@ describe("ledger marks", () => {
 
   it("LedgerLine defaults: no sub, regular weight, ink colour", () => {
     const { container } = render(<LedgerLine label="Plan" value="$0" />);
-    const [label, , value] = [...(container.firstElementChild as HTMLElement).children] as HTMLElement[];
+    const [label] = [...(container.firstElementChild as HTMLElement).children] as HTMLElement[];
     expect(label!.children).toHaveLength(0);
     expect(label!.style.fontWeight).toBe("500");
     // jsdom drops var() colours, so the colour is read from the server HTML.

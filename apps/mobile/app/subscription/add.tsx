@@ -26,6 +26,7 @@ import { fonts } from "../../src/theme/zeno";
 import { spacing } from "../../src/theme/spacing";
 import { isAmountText } from "../../src/utils/amount-text";
 import { getAvatarStyle, withAlpha } from "../../src/utils/subscription-ui";
+import { dayLabelInDays, formatDayLabel } from "../../src/utils/day-label";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -51,7 +52,7 @@ function mapCategory(cat?: string): SubscriptionCategory {
 }
 
 function formatDate(date: Date): string {
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return formatDayLabel(date, { month: "short", day: "numeric", year: "numeric" });
 }
 
 const BILLING_CYCLES = ["monthly", "annual", "weekly"] as const;
@@ -104,11 +105,10 @@ export default function AddSubscriptionScreen() {
 
   // Editable next-renewal date (CHANGE 5: no longer locked to +30 days).
   const [renewalDays, setRenewalDays] = useState(30);
-  const renewalDate = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + renewalDays);
-    return d;
-  }, [renewalDays]);
+  // Stored as a day label (midnight UTC of that day), like imports and the
+  // edit screen: it was "now + N days" at the current time of day, a raw
+  // instant whose UTC day could differ from the day shown (F182).
+  const renewalDate = useMemo(() => dayLabelInDays(renewalDays), [renewalDays]);
 
   const matches = useMemo(() => suggestions(query), [query, suggestions]);
   const popularServices = useMemo(() => getPopularServices().slice(0, 8), []);

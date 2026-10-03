@@ -25,6 +25,7 @@ export default defineConfig({
       "apps/web/components/**"
     ],
     environment: "node",
+    setupFiles: ["./vitest.tz-setup.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text-summary", "html"],

@@ -1,6 +1,7 @@
 import { getServiceById, getServiceBySlug } from "@zeno/service-catalog";
 import { convertMinor, monthlyAmount, monthlyAmountIn, type FxContext, type Subscription } from "@zeno/shared";
 import { currencySymbol } from "../utils/format";
+import { formatDayLabel } from "../utils/day-label";
 
 export interface Insight {
   id: string;
@@ -546,8 +547,9 @@ function formatMoney(value: number, currency = "USD"): string {
 }
 
 // Callers pass an already-parsed, valid timestamp, so there is no fallback text.
+// Renewal day labels, shown as the day they name (F182).
 function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return formatDayLabel(timestamp, { month: "short", day: "numeric" });
 }
 
 // Lower-case for mid-sentence use ("on productivity tools"), except the

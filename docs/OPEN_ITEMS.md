@@ -3,7 +3,7 @@
 **One place for everything not yet solved.** Each item says who acts, exactly what to
 do, and where the full evidence lives (finding numbers point into
 `docs/HARDENING_LOG.md`). When an item is done it is removed from here and its log
-entry marked fixed. Last updated 2026-10-03, after P4.2c; the owner items moved to OWNER_ACTIONS.md.
+entry marked fixed. Last updated 2026-10-03, after F182; the owner items moved to OWNER_ACTIONS.md.
 
 ---
 
@@ -20,6 +20,7 @@ Nothing that needs you is kept here, so there is one list to work from.
 | # | Item | When |
 |---|---|---|
 | — | **P4:** website tests done (P4.1a-c), every route, the behaviours and the Core Web Vitals budgets in a real browser done (P4.2); next the CSP (P4.3), then the build-output secret scan and DAST | next, in order |
+| — | **Which "today"?** The app counts days from the **UTC** day (countdowns, renewal roll-forward, budget months, spend history, trial guardian, insights), so near midnight a renewal can read "today" or "tomorrow" a day off from the user's own day. Moving to the user's local day is product-wide and touches money maths; places: `subscription-ui.ts` (getDaysRemaining, rollRenewalForward), `calendarUtils.ts` (dayDiffISO), `insightsEngine.ts` (day diffs), `finance/budget.ts` (month bounds), `packages/shared` (spend history, year in review, trial guardian, renewal plan) | P5 (timezone pass) |
 | F178 | The mobile app uses the same low-contrast green and grey the website just fixed (F177); fix and measure on the device | P5 |
 | — | R8 warns about RevenueCat's Amazon Appstore SDK ("may be assumed not reachable" in later R8 versions). Not used for Google Play; re-check on each RevenueCat upgrade | each RevenueCat upgrade |
 | — | Sentry and RevenueCat code paths haven't run under R8 (no keys yet). Re-run the device smoke when the keys exist, and in the Sentry UI check one JS error and one native crash for scrubbed content (P3.3: a native crash skips `beforeSend`; only its breadcrumbs are scrubbed, by `beforeBreadcrumb`) | after the keys above |
@@ -42,6 +43,7 @@ Nothing that needs you is kept here, so there is one list to work from.
 | F126 | Found in P3.8e-1: Settings showed **"Version 1.0.0"**; the app is 0.1.0 | Shows the real version. |
 | F125 | Found in P3.8e-1: Settings and Profile showed an **internal account id where your email belongs** (or a made-up "you@example.com") | Your email is shown now. |
 | F124 | Found in P3.8e-1: Settings' **"Push notifications" switch did nothing** | It's now "Renewal reminders" (as designed) and really turns every reminder off and on. |
+| F182 | **Imported renewal dates showed a day early** everywhere west of UTC (the Americas) | They show the day they name, in every timezone; tests run in six zones. |
 | F181 | The Calendar's "N RENEWALS" could **disagree with the month's total** beside it at a month's edge (west of UTC) | Both count the same renewals now; the tests also run far from UTC in CI. |
 | F180 | On a slow phone the **homepage took ~2.9 s to show anything** (Google's "good" line is 2.5 s) | ~1.9-2.4 s now: the browser lays out only what's on screen first. |
 | F179 | On a wide screen, the **menu's "Pricing", "FAQ" and other section links did nothing** on the homepage (its page-turning mode) | They turn to that section. |
