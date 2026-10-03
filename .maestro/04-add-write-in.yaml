@@ -1,0 +1,26 @@
+appId: app.zeno.mobile
+name: Write in a service that isn't in the catalogue (yearly, own amount)
+tags: [subscriptions]
+---
+- runFlow: common/fresh-local-start.yaml
+- tapOn: "Add one manually"
+- tapOn: "Search services"
+- inputText: "Lumen Gym"
+- tapOn: "Add Lumen Gym as a custom service"
+- assertVisible: "Change selected service"
+- tapOn: "Amount in dollars"
+- eraseText
+- inputText: "120"
+- tapOn: "Bill annual"
+- assertVisible:
+    text: "Bill annual"
+    selected: true
+# "Add subscription" is also the screen's title; the header's Save is unambiguous.
+- tapOn: "Save subscription"
+# On the ledger at its own price and cycle, filed under Other.
+- assertVisible: "Your ledger"
+- assertVisible:
+    text: "Lumen Gym, .* · OTHER, \\$120\\.00 per yr"
+# A yearly plan charges nothing this month (Charged so far $0.00). The headline
+# shows its monthly equivalent ($10.00): F187, a decision for the owner (D15).
+- assertVisible: "\\$0\\.00"

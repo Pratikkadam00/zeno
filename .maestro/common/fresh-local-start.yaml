@@ -1,0 +1,12 @@
+appId: app.zeno.mobile
+name: (subflow) fresh install, onboarding, continue without an account
+---
+- clearState
+- launchApp
+- assertVisible: "Step 1 of 3"
+- tapOn: "Continue"
+- assertVisible: "Step 2 of 3"
+- tapOn: "Continue"
+- assertVisible: "Step 3 of 3"
+- tapOn: "Continue without an account"
+- assertVisible: "Your ledger"

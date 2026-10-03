@@ -1,0 +1,41 @@
+appId: app.zeno.mobile
+name: App lock - set a PIN, leave the app, it relocks; a wrong PIN is refused, the right one unlocks
+tags: [security]
+---
+- runFlow: common/fresh-local-start.yaml
+- tapOn: "Settings"
+- assertVisible: "Security"
+- tapOn: "Security"
+- waitForAnimationToEnd
+- assertVisible: "App lock"
+- tapOn: "New PIN"
+- inputText: "2580"
+- tapOn: "Confirm PIN"
+- inputText: "2580"
+- tapOn: "Turn on app lock"
+# Back on Settings, the lock reads On.
+- assertVisible: "APP LOCK · PIN \\+ BIOMETRICS"
+- assertVisible: "On"
+# Leave the app (Home), come back: locked.
+- pressKey: Home
+- launchApp:
+    stopApp: false
+- assertVisible: "Zeno is locked"
+- assertVisible: "Enter your PIN to continue."
+# A wrong PIN is refused, and says how many tries are left.
+- tapOn: "Enter PIN"
+- inputText: "1111"
+- assertVisible: "Incorrect PIN\\. \\d+ attempts? left\\."
+- assertVisible: "Zeno is locked"
+# The field clears itself after a wrong PIN; tap the boxes again and retype.
+- tapOn: "Enter PIN"
+- inputText: "2580"
+- assertNotVisible: "Zeno is locked"
+- assertVisible: "Settings"
+# A cold start is locked too.
+- stopApp
+- launchApp
+- assertVisible: "Zeno is locked"
+- tapOn: "Enter PIN"
+- inputText: "2580"
+- assertVisible: "Your ledger"

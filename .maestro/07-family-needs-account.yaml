@@ -1,0 +1,19 @@
+appId: app.zeno.mobile
+name: Family without an account - says a household needs one and offers sign-in (F190)
+tags: [family]
+---
+- runFlow: common/fresh-local-start.yaml
+- tapOn: "Settings"
+- scrollUntilVisible:
+    element: "Family Vault"
+    direction: DOWN
+- tapOn: "Family Vault"
+- assertVisible: "Each member shares only their monthly total — never their individual subscriptions\\."
+# A household is kept on the server: without an account, no Create or Join
+# that could only fail.
+- assertVisible: "Households need an account"
+- assertNotVisible: "Create household"
+- assertNotVisible: "Join household"
+- tapOn: "Sign in"
+- assertVisible: "Know what you pay."
+- assertVisible: "SIGN THE LINE TO CONTINUE"

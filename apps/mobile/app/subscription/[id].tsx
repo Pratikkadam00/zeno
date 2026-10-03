@@ -93,6 +93,18 @@ const billingCycleOptions: BillingCycle[] = ["weekly", "monthly", "quarterly", "
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
+/**
+ * F188: "Verified cancelled — no charge found" only once the date a charge
+ * would have come has passed. Before it, nothing can have been found, and a
+ * self-report is never the end state (UX Architecture, the cancel flow); a
+ * charge can be reported at any time. With no date at all the automatic check
+ * can never run, so it's the user's call.
+ */
+function canConfirmStopped(sub: Subscription): boolean {
+  const checkDate = sub.cancellationVerifyBy ?? sub.nextRenewalDate;
+  return checkDate === undefined || Date.parse(checkDate) <= Date.now();
+}
+
 export default function SubscriptionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { theme } = useZenoTheme();
@@ -395,9 +407,11 @@ export default function SubscriptionDetailScreen() {
                     </View>
                   </View>
                   <View style={styles.verifyActions}>
-                    <Pressable accessibilityRole="button" style={[styles.verifyBtn, { backgroundColor: theme.success }]} onPress={() => markVerifiedCancelled(sub.id)}>
-                      <Text style={[styles.verifyBtnText, { color: theme.onPrimary }]}>Confirm it stopped</Text>
-                    </Pressable>
+                    {canConfirmStopped(sub) ? (
+                      <Pressable accessibilityRole="button" style={[styles.verifyBtn, { backgroundColor: theme.success }]} onPress={() => markVerifiedCancelled(sub.id)}>
+                        <Text style={[styles.verifyBtnText, { color: theme.onPrimary }]}>Confirm it stopped</Text>
+                      </Pressable>
+                    ) : null}
                     <Pressable accessibilityRole="button" style={[styles.verifyBtn, { backgroundColor: theme.dangerSurface }]} onPress={() => markStillCharging(sub.id)}>
                       <Text style={[styles.verifyBtnText, { color: theme.danger }]}>I was charged again</Text>
                     </Pressable>

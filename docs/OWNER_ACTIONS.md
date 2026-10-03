@@ -212,6 +212,19 @@ the number and "yes", or the option you prefer.
 - **Then I:** check the requirements against the live site before you submit; if you
   say no, I drop `preload` from the header.
 
+### D15 · F187 — what the ledger's headline number means
+- **Today:** the headline says "COMMITTED THIS MONTH" but shows the monthly average of
+  every plan (a $120-a-year gym counts $10). The two lines under it are this month's
+  real charges. With only monthly plans they agree; with a yearly plan the card reads
+  "$10.00" over "Charged so far $0.00 · Still to renew $0.00".
+- **Recommendation: keep the number, change the label to "COMMITTED PER MONTH".** The
+  monthly average is the figure people compare month to month and the one the paywall,
+  Insights and the coach already use; a one-line label change makes it true and keeps
+  the design. The alternative, making the headline this month's real total, makes a
+  yearly renewal month spike and every other month look cheaper than it is.
+- **Then I:** change the label (or the number, if you choose that), with a test, and
+  re-run the ledger flows on the emulator.
+
 ---
 
 ## 3. Tests only you can run

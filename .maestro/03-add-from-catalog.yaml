@@ -1,0 +1,28 @@
+appId: app.zeno.mobile
+name: Add a subscription from the catalogue (search, pick, save), and it survives a relaunch
+tags: [subscriptions]
+---
+- runFlow: common/fresh-local-start.yaml
+- tapOn: "Add one manually"
+- assertVisible: "Add subscription"
+- tapOn: "Search services"
+- inputText: "Netflix"
+- tapOn:
+    text: "Netflix, .*"
+# The catalogue entry fills the form.
+- assertVisible: "Change selected service"
+# "Add subscription" is also the screen's title; the header's Save is unambiguous.
+- tapOn: "Save subscription"
+# On the ledger: the entry, its price, and the month's figures.
+- assertVisible: "Your ledger"
+- assertNotVisible: "Nothing on the books yet."
+- assertVisible:
+    text: "Netflix, .* · ENTERTAINMENT, \\$15\\.49 per mo"
+- assertVisible: "COMMITTED THIS MONTH"
+- assertVisible: "1/10 FREE"
+# Stored (in the encrypted database), not just on screen.
+- stopApp
+- launchApp
+- assertVisible:
+    text: "Netflix, .* · ENTERTAINMENT, \\$15\\.49 per mo"
+- assertVisible: "1/10 FREE"

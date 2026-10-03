@@ -246,8 +246,20 @@ describe("detail, the menu", () => {
 });
 
 describe("detail, statuses", () => {
-  it("pending: confirming it stopped marks it verified-cancelled; 'charged again' marks it still charging", async () => {
-    await open("p", [sub({ id: "p", status: "pending", cancellationVerifyBy: iso(5) })]);
+  it("pending, before its check date: no 'Confirm it stopped' (nothing can have been found yet), but a charge can be reported (F188)", async () => {
+    await open("early", [sub({ id: "early", status: "pending", cancellationVerifyBy: iso(5) })]);
+    expect(screen.getByText("Cancellation pending verification")).toBeTruthy();
+    expect(screen.queryByText("Confirm it stopped")).toBeNull();
+    expect(screen.getByText("I was charged again")).toBeTruthy();
+  });
+
+  it("pending with no date to check against: the user can confirm (the automatic check can never run)", async () => {
+    await open("nodate", [sub({ id: "nodate", status: "pending", cancellationVerifyBy: undefined, nextRenewalDate: undefined })]);
+    expect(screen.getByText("Confirm it stopped")).toBeTruthy();
+  });
+
+  it("pending, after its check date: confirming it stopped marks it verified-cancelled; 'charged again' marks it still charging", async () => {
+    await open("p", [sub({ id: "p", status: "pending", cancellationVerifyBy: iso(-1) })]);
     expect(screen.getByText("Cancellation pending verification")).toBeTruthy();
     await press("Confirm it stopped");
     expect(stored("p")?.status).toBe("cancelled");

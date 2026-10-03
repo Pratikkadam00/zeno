@@ -1,0 +1,11 @@
+appId: app.zeno.mobile
+name: (subflow) add Netflix from the catalogue
+---
+- tapOn: "Add one manually"
+- tapOn: "Search services"
+- inputText: "Netflix"
+- tapOn:
+    text: "Netflix, .*"
+- tapOn: "Save subscription"
+- assertVisible:
+    text: "Netflix, .* · ENTERTAINMENT, \\$15\\.49 per mo"

@@ -1,0 +1,44 @@
+appId: app.zeno.mobile
+name: The sign-in gate - nothing signs in until the age and terms box is ticked
+tags: [onboarding, auth]
+---
+- clearState
+- launchApp
+- tapOn: "Continue"
+- tapOn: "Continue"
+- assertVisible: "Step 3 of 3"
+- tapOn: "Sign in"
+- assertVisible: "Know what you pay."
+- assertVisible: "SIGN THE LINE TO CONTINUE"
+# Unticked: every way in is disabled.
+- assertVisible:
+    text: "I am at least 16 years old and agree to the Terms and Privacy Policy"
+    checked: false
+- assertVisible:
+    text: "Continue with Google"
+    enabled: false
+# An address alone isn't enough.
+- tapOn: "Email address"
+- inputText: "maestro@example.com"
+- assertVisible:
+    text: "Send sign-in link"
+    enabled: false
+# Ticked: the ways in open. (Nothing is pressed: this build talks to the live
+# API, and a sign-in link would be a real email.)
+- tapOn: "I am at least 16 years old and agree to the Terms and Privacy Policy"
+- assertVisible:
+    text: "I am at least 16 years old and agree to the Terms and Privacy Policy"
+    checked: true
+- assertVisible:
+    text: "Continue with Google"
+    enabled: true
+- assertVisible:
+    text: "Send sign-in link"
+    enabled: true
+# The developer demo login never ships in a release build.
+- assertNotVisible: "Developer login"
+# Unticking closes them again.
+- tapOn: "I am at least 16 years old and agree to the Terms and Privacy Policy"
+- assertVisible:
+    text: "Continue with Google"
+    enabled: false

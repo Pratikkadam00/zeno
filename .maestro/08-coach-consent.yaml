@@ -1,0 +1,33 @@
+appId: app.zeno.mobile
+name: Coach consent - nothing is sent until Enable; declining keeps insights on-device; enabled without a server says so
+tags: [coach, privacy]
+---
+- runFlow: common/fresh-local-start.yaml
+- runFlow: common/add-netflix.yaml
+# Ledger -> Budget (start tracking) -> Ask the Spend Coach.
+- tapOn: "Set a monthly budget.*"
+- tapOn: "Start tracking this budget"
+- scrollUntilVisible:
+    element: "Ask the Spend Coach.*"
+    direction: DOWN
+- tapOn: "Ask the Spend Coach.*"
+# The agreement, before anything is sent.
+- assertVisible: "AI spend coach"
+- assertVisible: "On-device by default"
+- assertVisible: "AI coaching, only if you ask"
+- assertVisible: "To write personalized savings advice, Zeno sends your subscription names, categories and amounts to our server, which passes them to an AI model\\..*"
+- assertVisible: "Revocable"
+- assertVisible: "General information, not financial advice\\."
+# Not now: the choice is remembered and the insights stay on-device.
+- tapOn: "Not now, keep insights on-device"
+- assertVisible: "AI coaching is off\\..*"
+- assertNotVisible: "Not now, keep insights on-device"
+- assertVisible: "Enable AI coaching"
+# Enable: this build has no reachable server (HTTPS only, none on the test
+# device), and the screen says coaching isn't available rather than pretending.
+- tapOn: "Enable AI coaching"
+- extendedWaitUntil:
+    visible: "Personalized coaching isn't available right now\\. These insights are computed on your device\\."
+    timeout: 20000
+- assertVisible: "On pace — forecast \\$15\\.49 of your \\$20\\.00 budget\\."
+- assertVisible: "RULE-BASED INSIGHTS"

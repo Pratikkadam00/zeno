@@ -3,7 +3,7 @@
 **One place for everything not yet solved.** Each item says who acts, exactly what to
 do, and where the full evidence lives (finding numbers point into
 `docs/HARDENING_LOG.md`). When an item is done it is removed from here and its log
-entry marked fixed. Last updated 2026-10-03, after the P4 gate; the owner items moved to OWNER_ACTIONS.md.
+entry marked fixed. Last updated 2026-10-03, in P5; the owner items moved to OWNER_ACTIONS.md.
 
 ---
 
@@ -19,7 +19,8 @@ Nothing that needs you is kept here, so there is one list to work from.
 
 | # | Item | When |
 |---|---|---|
-| — | **P4 done** (gate passed 2026-10-03). Next: **P5**, mobile end-to-end with Maestro on the emulator, with F178, F184, F185 and "which today?" | next |
+| — | **P5 in progress:** 8 Maestro flows written (7 green); next the remaining flows, the nightly CI job, F178, F184, F185 and "which today?" | now |
+| F191 | A rare native crash (1 in ~33) right after "Continue without an account": react-native-screens + Reanimated re-entering a fragment transaction. No released fix; re-test on each screens/reanimated upgrade; the nightly run counts it | each upgrade |
 | — | **Which "today"?** The app counts days from the **UTC** day (countdowns, renewal roll-forward, budget months, spend history, trial guardian, insights), so near midnight a renewal can read "today" or "tomorrow" a day off from the user's own day. Moving to the user's local day is product-wide and touches money maths; places: `subscription-ui.ts` (getDaysRemaining, rollRenewalForward), `calendarUtils.ts` (dayDiffISO), `insightsEngine.ts` (day diffs), `finance/budget.ts` (month bounds), `packages/shared` (spend history, year in review, trial guardian, renewal plan) | P5 (timezone pass) |
 | F184 | The `/analytics` 404 (shown while the sample dashboard is off) ignores the dark theme: its page lacks the theme script | P5 |
 | F185 | The website has no favicon (browsers show a generic icon); take it from the design system | P5 |
@@ -48,6 +49,9 @@ Nothing that needs you is kept here, so there is one list to work from.
 | F125 | Found in P3.8e-1: Settings and Profile showed an **internal account id where your email belongs** (or a made-up "you@example.com") | Your email is shown now. |
 | F124 | Found in P3.8e-1: Settings' **"Push notifications" switch did nothing** | It's now "Renewal reminders" (as designed) and really turns every reminder off and on. |
 | F186 | Building the website **left a copy of every secret in the build environment on disk** (inside the build tool's cache) | That cache is off; our builds never reused it. CI now builds with a decoy value in every secret and fails if any shows up in the build. |
+| F188 | A cancellation could be marked **"Verified cancelled, no charge found"** a month before the charge it was meant to check | It can be confirmed only after that date; a charge can be reported any time. |
+| F189 | Cancelling a plan **erased the charge it had already made** this month from "Charged so far" | Charges before the cancellation still count; later ones don't. |
+| F190 | Family offered Create and Join to people without an account, which could only fail | It says a household needs an account and offers Sign in. |
 | F183 | Anyone could make the website's server **write files to its disk without limit**, by asking for made-up cancel-guide addresses | Made-up addresses get the ready-made "not found" page; nothing is written. |
 | — | The website allowed **any inline script** to run, so one HTML-injection bug would have been enough for an attack | Each page now allows only its own scripts, by fingerprint; an injected one is blocked (tested in Chrome). |
 | F182 | **Imported renewal dates showed a day early** everywhere west of UTC (the Americas) | They show the day they name, in every timezone; tests run in six zones. |

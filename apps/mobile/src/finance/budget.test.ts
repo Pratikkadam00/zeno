@@ -45,6 +45,40 @@ describe("computeBudgetForecast", () => {
     expect(computeBudgetForecast(subs, now).projectedMinor).toBe(0);
   });
 
+  // F189: cancelling stops future charges, it doesn't undo past ones.
+  it("a plan cancelled this month keeps the charges it made before the cancellation, and none after", () => {
+    const requested = "2026-06-10T09:00:00.000Z";
+    const subs = [
+      // Charged Jun 2 (renews Jul 2), cancelled Jun 10: Jun 2 still happened.
+      sub({ id: "pending", status: "pending", cancellationRequestedAt: requested, nextRenewalDate: "2026-07-02T00:00:00.000Z", price: { amountMinor: 1549, currency: "USD" } }),
+      sub({ id: "verified", status: "cancelled", cancellationRequestedAt: requested, nextRenewalDate: "2026-07-02T00:00:00.000Z", price: { amountMinor: 500, currency: "USD" } }),
+      // Would renew Jun 20, after the cancellation: not charged.
+      sub({ id: "later", status: "pending", cancellationRequestedAt: requested, nextRenewalDate: "2026-06-20T00:00:00.000Z" })
+    ];
+    const forecast = computeBudgetForecast(subs, now);
+    expect(forecast.committedMinor).toBe(1549 + 500);
+    expect(forecast.projectedMinor).toBe(1549 + 500);
+    expect(forecast.remaining).toEqual([]);
+    expect(computeCategoryForecast(subs, now)).toEqual({ other: 1549 + 500 });
+  });
+
+  it("a cancelled plan with no (or an unreadable) cancellation time counts nothing", () => {
+    const subs = [
+      sub({ id: "none", status: "cancelled", nextRenewalDate: "2026-07-02T00:00:00.000Z" }),
+      sub({ id: "bad", status: "pending", cancellationRequestedAt: "not a date", nextRenewalDate: "2026-07-02T00:00:00.000Z" })
+    ];
+    expect(computeBudgetForecast(subs, now).projectedMinor).toBe(0);
+    expect(computeCategoryForecast(subs, now)).toEqual({});
+  });
+
+  it("a paused or still-charging plan counts as before (F157's rule)", () => {
+    const subs = [
+      sub({ id: "p", status: "paused", cancellationRequestedAt: "2026-06-10T09:00:00.000Z", nextRenewalDate: "2026-07-02T00:00:00.000Z" }),
+      sub({ id: "a", status: "attention", cancellationRequestedAt: "2026-06-10T09:00:00.000Z", nextRenewalDate: "2026-07-02T00:00:00.000Z" })
+    ];
+    expect(computeBudgetForecast(subs, now).projectedMinor).toBe(0);
+  });
+
   it("counts an annual subscription only in its renewal month", () => {
     const renewsThisMonth = sub({ id: "ann1", billingCycle: "annual", nextRenewalDate: "2026-06-20T00:00:00.000Z", price: { amountMinor: 12000, currency: "USD" } });
     const renewsOtherMonth = sub({ id: "ann2", billingCycle: "annual", nextRenewalDate: "2026-11-10T00:00:00.000Z", price: { amountMinor: 12000, currency: "USD" } });

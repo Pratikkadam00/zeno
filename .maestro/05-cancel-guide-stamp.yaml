@@ -1,0 +1,38 @@
+appId: app.zeno.mobile
+name: Detail, cancel guide, mark cancelled (the stamp), then verify it stopped
+tags: [subscriptions, cancel]
+---
+- runFlow: common/fresh-local-start.yaml
+- runFlow: common/add-netflix.yaml
+- tapOn:
+    text: "Netflix, .* · ENTERTAINMENT, \\$15\\.49 per mo"
+- assertVisible: "More options"
+# "Cancel Netflix" shows only near a renewal; this one is 30 days out.
+- tapOn: "Cancel Subscription"
+# The guide: what it saves, how hard it is, the steps.
+- assertVisible: "Cancel subscription"
+- assertVisible: "Cancelling saves you"
+- assertVisible: "DIFFICULTY"
+- assertVisible: "HOW TO CANCEL"
+# (Not opened: "Open Netflix cancellation page" leaves the app for the web.)
+- tapOn: "Mark Netflix as cancelled"
+# The stamp: pending, with what will be checked and what it saves.
+- assertVisible:
+    text: "Netflix marked cancelled, pending verification\\. We'll confirm there's no charge around Nov 2\\. If it stops, you keep \\$185\\.88 a year\\."
+- assertVisible: "PENDING"
+- assertVisible: "REPORTED OCT 3"
+# Back on the detail: pending until the renewal date has passed. It can't be
+# confirmed "verified, no charge found" a month early (F188); a charge can be
+# reported at any time.
+- tapOn: "Go back"
+- assertVisible: "Cancellation pending verification"
+- assertVisible: "We'll confirm there's no charge around Nov 2."
+- assertNotVisible: "Confirm it stopped"
+- assertVisible: "I was charged again"
+- assertNotVisible: "Verified cancelled"
+- tapOn: "Go back"
+# The ledger: Netflix no longer counts going forward, but its Oct 2 charge
+# still happened this month (F189: cancelling wiped it from "Charged so far").
+- assertVisible: "Your ledger"
+- assertVisible:
+    text: "Set a monthly budget\\. Forecast \\$15\\.49 this month\\."

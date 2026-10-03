@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { ScrollView, Text, TextInput, View, type StyleProp, type ViewStyle } from "react-native";
 import * as SecureStore from "expo-secure-store";
+import { router } from "expo-router";
 import { Button, CodeBoxes } from "../src/components/zeno";
 import { fonts } from "../src/theme/zeno";
 import { createHousehold, getHousehold, joinHousehold, leaveHousehold, setMemberSpend, type ApiFailureReason, type Household } from "../src/api/client";
@@ -44,6 +45,10 @@ function Surface({ children, style }: { children: ReactNode; style?: StyleProp<V
 export default function FamilyScreen() {
   const { theme } = useZenoTheme();
   const email = useAuthStore((state) => state.email);
+  // F190: a household lives on Zeno's server, so it needs an account. Without
+  // one, Create and Join could only fail ("You're offline", or the server's
+  // 401 read as "Please sign in again" to someone who never signed in).
+  const isLocalOnly = useAuthStore((state) => state.status === "local_only");
   const { totalMonthlyMinor, homeCurrency } = useSubscriptionStore();
 
   // The server takes the member from the sign-in token; this id is ignored.
@@ -149,7 +154,15 @@ export default function FamilyScreen() {
           </Text>
         </View>
 
-        {loading ? (
+        {isLocalOnly ? (
+          <Surface>
+            <Text style={{ color: theme.text, fontSize: 18, fontWeight: "800" }}>Households need an account</Text>
+            <Text style={{ color: theme.mutedText, marginTop: 6, marginBottom: 12 }}>
+              A household is kept on Zeno&apos;s server so its members can see it, so you&apos;ll need to sign in. Everything else works without an account.
+            </Text>
+            <Button variant="primary" size="lg" fullWidth onPress={() => router.push("/login")}>Sign in</Button>
+          </Surface>
+        ) : loading ? (
           <Surface><Text style={{ color: theme.mutedText }}>Loading…</Text></Surface>
         ) : household ? (
           <>

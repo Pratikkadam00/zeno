@@ -76,8 +76,21 @@ function chargeDatesInMonth(sub: Subscription, start: number, end: number): Date
   return out;
 }
 
-function isBillable(sub: Subscription): boolean {
-  return (sub.status === "active" || sub.status === "trial") && sub.price.amountMinor > 0;
+/**
+ * The last moment a subscription's charges count, or null if none do. Active
+ * and trial plans bill throughout. A plan reported cancelled (pending
+ * verification, or verified) stops billing when it was cancelled, not
+ * retroactively: the charges it made earlier this month still happened (F189:
+ * cancelling on the 3rd wiped the 2nd's charge from "Charged so far").
+ */
+function billableUntil(sub: Subscription): number | null {
+  if (sub.price.amountMinor <= 0) return null;
+  if (sub.status === "active" || sub.status === "trial") return Number.POSITIVE_INFINITY;
+  if ((sub.status === "pending" || sub.status === "cancelled") && sub.cancellationRequestedAt) {
+    const at = Date.parse(sub.cancellationRequestedAt);
+    return Number.isNaN(at) ? null : at;
+  }
+  return null;
 }
 
 export function computeBudgetForecast(subscriptions: Subscription[], now: Date = new Date(), fx?: FxContext): BudgetForecast {
@@ -89,8 +102,9 @@ export function computeBudgetForecast(subscriptions: Subscription[], now: Date =
   const remaining: ForecastCharge[] = [];
 
   for (const sub of subscriptions) {
-    if (!isBillable(sub)) continue;
-    const dates = chargeDatesInMonth(sub, start, end);
+    const until = billableUntil(sub);
+    if (until === null) continue;
+    const dates = chargeDatesInMonth(sub, start, end).filter((date) => date.getTime() <= until);
     if (dates.length === 0) continue;
 
     const amountMinor = fx ? convertMinor(sub.price.amountMinor, sub.price.currency, fx.homeCurrency, fx.rates) : sub.price.amountMinor;
@@ -129,8 +143,9 @@ export function computeCategoryForecast(subscriptions: Subscription[], now: Date
   const { start, end } = monthBounds(now);
   const out: Record<string, number> = {};
   for (const sub of subscriptions) {
-    if (!isBillable(sub)) continue;
-    const charges = chargeDatesInMonth(sub, start, end).length;
+    const until = billableUntil(sub);
+    if (until === null) continue;
+    const charges = chargeDatesInMonth(sub, start, end).filter((date) => date.getTime() <= until).length;
     if (charges === 0) continue;
     const amountMinor = fx ? convertMinor(sub.price.amountMinor, sub.price.currency, fx.homeCurrency, fx.rates) : sub.price.amountMinor;
     if (amountMinor === null) continue;

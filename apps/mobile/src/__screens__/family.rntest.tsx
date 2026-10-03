@@ -1,7 +1,7 @@
 import type { Subscription } from "@zeno/shared";
 import { act, fireEvent, screen } from "@testing-library/react-native";
 import FamilyScreen from "../../app/family";
-import { renderScreen, resetFakes, unnamedControls } from "../test-support/screen-harness";
+import { renderScreen, resetFakes, routerMock, unnamedControls } from "../test-support/screen-harness";
 
 /**
  * P3.8f-2: Family (app/family.tsx). The household API calls and the secure
@@ -55,7 +55,7 @@ beforeEach(() => {
   for (const f of Object.values(api)) f.mockReset();
   api.getHousehold!.mockResolvedValue({ ok: true, data: HOUSEHOLD });
   api.setMemberSpend!.mockResolvedValue({ ok: true, data: HOUSEHOLD });
-  useAuthStore.setState({ email: "sam.lee@example.com", accountId: "acct_9f2c" });
+  useAuthStore.setState({ email: "sam.lee@example.com", accountId: "acct_9f2c", status: undefined });
 });
 afterEach(() => jest.useRealTimers());
 
@@ -69,6 +69,21 @@ const press = async (name: string | RegExp) => {
 const typeCode = async (text: string) => {
   await act(async () => { fireEvent.changeText(screen.getByLabelText("Household share code"), text); });
 };
+
+describe("family, without an account (F190)", () => {
+  it("says a household needs an account and offers sign-in, instead of buttons that can only fail", async () => {
+    useAuthStore.setState({ email: null, accountId: null, status: "local_only" });
+    const r = await open();
+    expect(screen.getByText("Households need an account")).toBeTruthy();
+    expect(screen.queryByText("Create household")).toBeNull();
+    expect(screen.queryByText("Join household")).toBeNull();
+    expect(unnamedControls(r.toJSON() as never)).toEqual([]);
+    await press("Sign in");
+    expect(routerMock.push).toHaveBeenLastCalledWith("/login");
+    const api = jest.requireMock("../api/client") as Record<string, jest.Mock>;
+    for (const fn of Object.values(api)) expect(fn).not.toHaveBeenCalled();
+  });
+});
 
 describe("family, not in a household", () => {
   it("offers to start or join; every control is named", async () => {

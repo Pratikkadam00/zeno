@@ -50,7 +50,13 @@ const toggle = async (name: string, value: boolean) => {
 };
 const saved = () => [...fakeStorage.rows.values()];
 const settings = () => JSON.parse(fakeStorage.meta.get("notification.settings.v1") ?? "{}") as Record<string, unknown>;
-const daysAhead = (when?: string) => Math.round((Date.parse(when!) - Date.now()) / DAY);
+// Renewal dates are day labels (midnight UTC, F182): count whole days from
+// today's UTC day, not from this instant (rounding from "now" read 29 for 30
+// after 12:00 UTC).
+const daysAhead = (when?: string) => {
+  const now = new Date();
+  return (Date.parse(when!) - Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())) / DAY;
+};
 
 describe("add, step 1: find the service", () => {
   it("shows the 8 most popular services with their catalog prices; every control is named", async () => {

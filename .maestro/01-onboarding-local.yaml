@@ -1,0 +1,32 @@
+appId: app.zeno.mobile
+name: Onboarding, then continue without an account, to an empty ledger
+tags: [onboarding]
+---
+- clearState
+- launchApp
+# Beat 1: a sample ledger, said to be sample.
+- assertVisible: "Step 1 of 3"
+- assertVisible: "Sample figures — your ledger starts empty."
+- tapOn: "Continue"
+# Beat 2: the promise the site and the stores make (truthfulness rail).
+- assertVisible: "Step 2 of 3"
+- assertVisible: "No bank login required."
+- tapOn: "Continue"
+# Beat 3: sign in, or stay local.
+- assertVisible: "Step 3 of 3"
+- assertVisible: "Sign in"
+- tapOn: "Continue without an account"
+# The empty ledger, with its two ways to start.
+- assertVisible: "Your ledger"
+- assertVisible: "Nothing on the books yet."
+- assertVisible: "Discover subscriptions"
+- assertVisible: "Add one manually"
+- assertVisible: "LEDGER"
+- assertVisible: "SUBS"
+- assertVisible: "CALENDAR"
+- assertVisible: "INSIGHTS"
+# A relaunch keeps the choice: no onboarding again.
+- stopApp
+- launchApp
+- assertVisible: "Your ledger"
+- assertNotVisible: "Step 1 of 3"
