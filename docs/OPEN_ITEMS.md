@@ -3,7 +3,7 @@
 **One place for everything not yet solved.** Each item says who acts, exactly what to
 do, and where the full evidence lives (finding numbers point into
 `docs/HARDENING_LOG.md`). When an item is done it is removed from here and its log
-entry marked fixed. Last updated 2026-10-03, after P4.5; the owner items moved to OWNER_ACTIONS.md.
+entry marked fixed. Last updated 2026-10-03, after the P4 gate; the owner items moved to OWNER_ACTIONS.md.
 
 ---
 
@@ -19,7 +19,7 @@ Nothing that needs you is kept here, so there is one list to work from.
 
 | # | Item | When |
 |---|---|---|
-| — | **P4:** website tests done (P4.1a-c), every route, the behaviours and the Core Web Vitals budgets in a real browser done (P4.2), the CSP and headers done (P4.3), the build-output secret scan done (P4.4), the nightly ZAP scan in place (P4.5, its first passing run pending); next the P4 gate | next, in order |
+| — | **P4 done** (gate passed 2026-10-03). Next: **P5**, mobile end-to-end with Maestro on the emulator, with F178, F184, F185 and "which today?" | next |
 | — | **Which "today"?** The app counts days from the **UTC** day (countdowns, renewal roll-forward, budget months, spend history, trial guardian, insights), so near midnight a renewal can read "today" or "tomorrow" a day off from the user's own day. Moving to the user's local day is product-wide and touches money maths; places: `subscription-ui.ts` (getDaysRemaining, rollRenewalForward), `calendarUtils.ts` (dayDiffISO), `insightsEngine.ts` (day diffs), `finance/budget.ts` (month bounds), `packages/shared` (spend history, year in review, trial guardian, renewal plan) | P5 (timezone pass) |
 | F184 | The `/analytics` 404 (shown while the sample dashboard is off) ignores the dark theme: its page lacks the theme script | P5 |
 | F185 | The website has no favicon (browsers show a generic icon); take it from the design system | P5 |

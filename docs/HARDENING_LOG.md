@@ -87,8 +87,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] FX.6 F163: pause periods recorded (migration v2); history skips only the months inside a pause; verified as a real upgrade on the emulator; F164 found
   - [x] FX.7 F164: Insights' monthly chart read by a screen reader, each month with its amount (verified with TalkBack)
   - [ ] then the owner-only file (everything that needs the owner, nothing else)
-- [ ] **P4 — Website component tests, Playwright, CSP, DAST**
-  - [ ] P4.1 component and page tests (vitest + jsdom + Testing Library), split into steps; each adds a floor
+- [x] **P4 — Website component tests, Playwright, CSP, DAST** (gate passed 2026-10-03; evidence in the "P4 gate" entry)
+  - [x] P4.1 component and page tests (vitest + jsdom + Testing Library), split into steps; each adds a floor
     - [x] P4.1a the test setup, and the shared components (`components/ui/**` was dead code, removed); **fixes F165, F167, F168, F169**; F166 found (green: CI 37032423384, CodeQL 37032423356 on `62faef2`)
     - [x] P4.1b every page renders: metadata, canonical, JSON-LD, breadcrumbs, internal links, the sitemap, the 509 cancel guides; **fixes F170** (green: CI 37035441547, CodeQL 37035441551 on `b4b0b3d`)
     - [x] P4.1c the truthfulness rail as a test (banned phrases never rendered, required ones are), and every factual claim on the site checked against the app's code; **fixes F166, F171-F176**; D13 and three account checks to the owner (green: CI 37040621945, CodeQL 37040621963 on `d624f74`)
@@ -98,8 +98,8 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
     - [x] P4.2c Core Web Vitals budgets (LCP, CLS, INP) under Lighthouse's mobile throttling, measured in Chrome; **fixes F180**
   - [x] P4.3 CSP: no `'unsafe-inline'` scripts (hashes for the fixed inline scripts) or a written, measured reason; the other headers verified. **Done with per-page hashes**: each page's own inline scripts allowed by sha256, an injected one blocked (proven in Chrome); headers checked against OWASP's set; **fixes F183**, F184 and F185 logged
   - [x] P4.4 build-output secret scan: no non-public env value in `.next`. **Done as a canary build in CI**: every non-public name the repository knows (49) set to a random value, all of `.next` searched as written and base64, unreadable file kinds fail; **fixes F186** (Turbopack's cache stored the build environment)
-  - [ ] P4.5 DAST: OWASP ZAP baseline against `next start` and the API, nightly; no medium+ alerts
-  - [ ] P4 gate: Playwright green in CI; CSP without `'unsafe-inline'` scripts (or a written reason); axe clean on every route
+  - [x] P4.5 DAST: OWASP ZAP baseline against `next start` and the API, nightly; no medium+ alerts. **Done**: three scans nightly, gated by `scripts/zap-gate.mjs`; first run's two Mediums resolved (a guide step read as SQL, reworded; `style-src 'unsafe-inline'` accepted by alertRef until 2027-03-31 with measured reasons) (green: DAST 37104160285, CI 37104160223, CodeQL 37104160276 on `36f1bb0`)
+  - [x] P4 gate: Playwright green in CI; CSP without `'unsafe-inline'` scripts (or a written reason); axe clean on every route (all 509 guides too, light and dark: 1,018 views, 0 violations)
 - [ ] **P5 — Mobile end-to-end (Maestro on the emulator)** (watch for F94 and F106, closed as not reproduced in FX.5)
 - [ ] **P6 — Mutation + property-based testing**
 - [ ] **P7 — Security verification v2 with evidence**
@@ -5147,3 +5147,31 @@ website, two Mediums, so the gate failed as designed.
 "missing or invalid" on the API's catalogue route (it sends `same-site`), and
 Cross-Origin-Embedder-Policy missing on the website (P4.3 decided against COEP: nothing to
 isolate). Informational: cacheability notes only.
+
+**P4.5 on CI:** DAST 37104160285 green on `36f1bb0` (the three scans ran; nothing at Medium
+or above but the accepted style alert, shown as accepted; the SQL false positive gone),
+with CI 37104160223 and CodeQL 37104160276 green.
+
+### P4 gate — passed — 2026-10-03
+
+Each criterion, with its evidence:
+- **Playwright green in CI.** The browser suite (every route on desktop and phone, light
+  and dark; the behaviours; the Core Web Vitals budgets) runs in every CI build on the
+  runner's Chrome; green on every push since P4.2, last on `36f1bb0` (CI 37104160223),
+  over the canary build of P4.4.
+- **CSP without `'unsafe-inline'` scripts (or a written reason).** Done without the
+  reason: each page's inline scripts are allowed by their own sha256 (P4.3), an injected
+  inline script is blocked (a browser test, bite-checked), and all 509 guides carry exactly
+  their own hashes. `style-src` keeps `'unsafe-inline'`, with the measured reasons and an
+  expiry (P4.5).
+- **axe clean on every route.** CI checks all 17 pages and 5 representative guides on
+  desktop and phone, light and dark. For the gate, axe also ran once on **every one of the
+  509 guides, light and dark: 1,018 views, 0 violations** (desktop, WCAG 2.2 AA, this
+  build; a one-off spec, not kept: 17 minutes is too long for each CI run, and the guides
+  share one template, which CI's five cover).
+
+Also in P4: the website's component and page tests with their own floor (P4.1), the
+truthfulness rail as a test, the build-output secret scan by canary (P4.4), and the nightly
+ZAP scan (P4.5). Findings fixed in P4: F165-F177, F179-F183, F186. Open from P4, for P5:
+F178 (the app's matching low-contrast colours), F184 (the `/analytics` 404 ignores the
+theme), F185 (no favicon), and the product-wide "which today?" question.
