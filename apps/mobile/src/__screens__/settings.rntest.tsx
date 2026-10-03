@@ -134,6 +134,19 @@ describe("settings, the account", () => {
 });
 
 describe("settings, app and notifications", () => {
+  it("F192: renewal reminders say when the phone blocks them", async () => {
+    const fake = jest.requireActual("../test-support/screen-fakes").fakeNotificationsModule as { notificationsAllowed: jest.Mock };
+    await open();
+    expect(screen.getByText("7D · 3D · DAY OF")).toBeTruthy();
+    fake.notificationsAllowed.mockImplementation(async () => false);
+    try {
+      await open();
+      expect(screen.getByText("BLOCKED IN PHONE SETTINGS")).toBeTruthy();
+    } finally {
+      fake.notificationsAllowed.mockImplementation(async () => true);
+    }
+  });
+
   it("Dark mode switches the theme", async () => {
     await open();
     const before = screen.getByRole("switch", { name: "Dark mode" }).props.value as boolean;

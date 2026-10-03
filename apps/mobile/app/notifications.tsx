@@ -1,8 +1,9 @@
 import { router, Stack } from "expo-router";
 import { AlarmClock, AlertTriangle, Bell, BellOff, ChevronLeft, Clock, TrendingUp } from "lucide-react-native";
 import { useMemo, type ComponentType, type ReactNode } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Linking, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNotificationsAllowed } from "../src/components/use-notifications-allowed";
 import { ListRow } from "../src/components/zeno";
 import { useSubscriptionStore } from "../src/data/subscription-store";
 import { upcomingReminders } from "../src/notifications/notificationService";
@@ -28,6 +29,9 @@ export default function NotificationsScreen() {
   const c = t.color;
   const insets = useSafeAreaInsets();
   const { subscriptions, notificationSettings, quietHours, remindersEnabled, endingTrials, priceHikes } = useSubscriptionStore();
+  // F192: reminders on in Zeno but blocked by the phone would never appear.
+  const phoneAllows = useNotificationsAllowed();
+  const blockedByPhone = remindersEnabled && phoneAllows === false;
   // F129: exactly what the scheduler keeps (src/notifications/notificationService.ts):
   // each subscription's switches, quiet hours, the trial and weekly ladders and
   // Settings' master switch. It listed a separate plan that ignored all of them.
@@ -55,6 +59,24 @@ export default function NotificationsScreen() {
         <Text style={{ flex: 1, textAlign: "center", fontFamily: t.fonts.mono.bold, fontSize: 11, letterSpacing: 1.8, textTransform: "uppercase", color: c.textPrimary }}>Notifications</Text>
         <View style={{ minWidth: 60 }} />
       </View>
+
+      {blockedByPhone ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Notifications are off for Zeno. Reminders won't appear until you allow them. Open phone settings"
+          onPress={() => void Linking.openSettings()}
+          style={{ marginHorizontal: 16, marginTop: 8, padding: 14, borderWidth: 1, borderColor: c.ruleStrong, borderRadius: t.radius.lg, flexDirection: "row", gap: 12, alignItems: "center" }}
+        >
+          <BellOff size={20} color={c.danger} strokeWidth={2} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontFamily: t.fonts.sans.semibold, fontSize: t.fontSize.body, color: c.textPrimary }}>Notifications are off for Zeno</Text>
+            <Text style={{ fontFamily: t.fonts.sans.regular, fontSize: t.fontSize.bodySm, color: c.textSecondary, marginTop: 2 }}>
+              Reminders won&apos;t appear until you allow them in your phone&apos;s settings.
+            </Text>
+          </View>
+          <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: 10.5, letterSpacing: 1.2, color: c.accent }}>OPEN</Text>
+        </Pressable>
+      ) : null}
 
       {!hasAny ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 36, paddingBottom: 60 }}>

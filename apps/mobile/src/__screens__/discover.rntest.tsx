@@ -250,7 +250,7 @@ describe("Discover, the results receipt", () => {
     resetFakes({ rows: tracked(10) });
     await withScanResults([found({ name: "A" })]);
     expect(screen.getByText("Free plan limit reached (10 tracked). Upgrade to track any of these.")).toBeTruthy();
-    await press("Upgrade to add 1 subscriptions");
+    await press("Upgrade to add 1 subscription");
     expect(alert).toHaveBeenCalledWith("Zeno", "Free plan limit reached (10 tracked). Upgrade to track any of the 1 you selected.");
     expect([...fakeStorage.rows.values()].some((s) => s.name === "A")).toBe(false);
   });
@@ -259,7 +259,7 @@ describe("Discover, the results receipt", () => {
     resetFakes({ rows: tracked(10) });
     useAuthStore.setState({ plan: "pro" });
     await withScanResults([found({ name: "A" })]);
-    await press("Add 1 subscriptions");
+    await press("Add 1 subscription");
     expect([...fakeStorage.rows.values()].some((s) => s.name === "A")).toBe(true);
   });
 
@@ -267,7 +267,11 @@ describe("Discover, the results receipt", () => {
     await withScanResults([found({ name: "Spotify", amount: 10 }), found({ name: "Hulu", amount: 5 })]);
     expect(screen.getByText("$180.00/year")).toBeTruthy();
     await press("Share what Zeno found");
-    expect(mockShare).toHaveBeenCalledWith("Zeno found $180.00/year in subscriptions I'd forgotten I was paying for.");
+    // F193: what they cost, not "saving", and nothing presumed forgotten.
+    expect(screen.getByText("These cost you")).toBeTruthy();
+    expect(screen.getByText("a year, at their current prices")).toBeTruthy();
+    expect(screen.queryByText(/could be saving|forgotten/i)).toBeNull();
+    expect(mockShare).toHaveBeenCalledWith("Zeno found $180.00/year in subscriptions I'm paying for.");
     expect(mockFunnel).toHaveBeenCalledWith("share_card_generated", "found_money");
   });
 
@@ -347,7 +351,7 @@ describe("Discover, edges", () => {
     const os = jest.replaceProperty(Platform, "OS", "android");
     try {
       await withScanResults([found({ name: "Spotify" })]);
-      await press("Add 1 subscriptions");
+      await press("Add 1 subscription");
       expect(toast).toHaveBeenCalledWith("Added 1 subscriptions.", ToastAndroid.SHORT);
       expect(alert).not.toHaveBeenCalled();
     } finally {

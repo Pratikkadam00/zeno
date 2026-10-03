@@ -1,8 +1,8 @@
-import type { Subscription } from "@zeno/shared";
+import { monthlyAmount, type Subscription } from "@zeno/shared";
 import { act, fireEvent, screen } from "@testing-library/react-native";
 import CalendarScreen from "../../app/(tabs)/calendar";
 import { seedSubscriptions } from "../data/seed-subscriptions";
-import { getMonthlyTotal, getProjectedAnnual, getWeeklyGroups } from "../utils/calendarUtils";
+import { getProjectedAnnual, getWeeklyGroups } from "../utils/calendarUtils";
 import { formatMoney } from "../utils/format";
 import { formatShortDate } from "../utils/subscription-ui";
 import { renderScreen, resetFakes, routerMock, unnamedControls } from "../test-support/screen-harness";
@@ -51,8 +51,11 @@ const pressDay = async (dateString: string) => {
 describe("Calendar tab, seed data", () => {
   it("the three ledger lines match calendarUtils; every control is named", async () => {
     const r = await renderScreen(<CalendarScreen />);
-    const now = new Date();
-    expect(screen.getByText(usd(getMonthlyTotal(seedSubscriptions, now.getFullYear(), now.getMonth() + 1)))).toBeTruthy();
+    // F197: "This month" is the ledger headline's monthly total (every plan still
+    // billing), not the renewals left on this month's grid.
+    const monthly = seedSubscriptions.filter((s) => s.status === "active" || s.status === "trial").reduce((sum, s) => sum + monthlyAmount(s), 0);
+    expect(screen.getAllByText(formatMoney(monthly, "USD")).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/^\d+ RENEWALS$/)).toBeNull();
     expect(screen.getAllByText(usd(getProjectedAnnual(seedSubscriptions))).length).toBeGreaterThan(0);
     // Seed renewals are in 1, 2, 5, 9 and 14 days: 3 within a week.
     expect(screen.getByText("3 DUE SOON")).toBeTruthy();
@@ -105,6 +108,25 @@ describe("Calendar tab, seed data", () => {
     expect(screen.getByText("weekly")).toBeTruthy();
     await pressDay(dateKey(iso(20)));
     expect(screen.queryByText("Total for this day")).toBeNull();
+  });
+});
+
+describe("Calendar tab, labels that say what they mean (F194, F195)", () => {
+  it("a renewal 20-30 days out is under 'Later', not 'Later this month' (it may be next month)", async () => {
+    resetFakes({ rows: [sub({ id: "late", name: "Lateflix", nextRenewalDate: iso(25) })] });
+    await renderScreen(<CalendarScreen />);
+    expect(screen.getByText("Later")).toBeTruthy();
+    expect(screen.queryByText("Later this month")).toBeNull();
+  });
+
+  it("the selected day is announced as having entries only when it has a renewal", async () => {
+    resetFakes({ rows: [sub({ id: "x", nextRenewalDate: iso(10) })] });
+    await renderScreen(<CalendarScreen />);
+    const calendar = () => screen.UNSAFE_getByProps({ testID: "calendar" });
+    expect(calendar().props.markedDates[localToday()]).toMatchObject({ selected: true, marked: false });
+    const renewalDay = dateKey(iso(10));
+    await pressDay(renewalDay);
+    expect(calendar().props.markedDates[renewalDay]).toMatchObject({ selected: true, marked: true });
   });
 });
 

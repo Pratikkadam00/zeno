@@ -116,6 +116,25 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+describe("notificationsAllowed — whether the phone will show reminders (F192)", () => {
+  it("is the OS's answer: true when granted, false when blocked, on a device or an emulator", async () => {
+    N.getPermissions.mockResolvedValueOnce(GRANTED);
+    expect(await service.notificationsAllowed()).toBe(true);
+    N.getPermissions.mockResolvedValueOnce(DENIED);
+    expect(await service.notificationsAllowed()).toBe(false);
+    device.isDevice = false;
+    N.getPermissions.mockResolvedValueOnce(UNDETERMINED);
+    expect(await service.notificationsAllowed()).toBe(false);
+  });
+
+  it("is unknown (null) on the web, or when the OS can't be asked; it never rejects", async () => {
+    N.getPermissions.mockRejectedValueOnce(new Error("native module unavailable"));
+    expect(await service.notificationsAllowed()).toBeNull();
+    platform.OS = "web";
+    expect(await service.notificationsAllowed()).toBeNull();
+  });
+});
+
 describe("registerForPushNotifications — platform and device gates", () => {
   it("web: unsupported, and touches no native API", async () => {
     platform.OS = "web";

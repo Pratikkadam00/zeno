@@ -1,0 +1,25 @@
+appId: app.zeno.mobile
+name: Calendar - the month's figures agree with the ledger and the plan; renewals grouped as they fall
+tags: [calendar]
+---
+- runFlow: common/fresh-local-start.yaml
+- runFlow: common/add-netflix.yaml
+- tapOn: "CALENDAR"
+# This month is the ledger's monthly total (F197); a year at the current
+# price is the detail screen's "Per year at current rate" (F196).
+- assertVisible: "This month"
+- assertVisible: "\\$15\\.49"
+- assertVisible: "Projected year"
+- assertVisible: "\\$185\\.88"
+- assertNotVisible: "\\$46\\.47"
+- assertVisible: "0 DUE SOON"
+# Today is selected, and isn't announced as having entries (F195).
+- assertVisible: "today .* selected You have no entries for this day "
+# The Nov 2 renewal, 30 days out, is "Later", not "Later this month" (F194).
+- scrollUntilVisible:
+    element: "Netflix, \\$15\\.49, renews .*"
+    direction: DOWN
+- assertVisible: "Later"
+- assertNotVisible: "Later this month"
+- tapOn: "Netflix, \\$15\\.49, renews .*"
+- assertVisible: "More options"

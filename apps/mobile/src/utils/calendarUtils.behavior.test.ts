@@ -1,6 +1,6 @@
 import type { BillingCycle, FxContext, Subscription, SubscriptionCategory } from "@zeno/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getMarkedDates, getMonthRenewalCount, getMonthlyTotal, getProjectedAnnual, getSubscriptionsForDate, getWeeklyGroups } from "./calendarUtils";
+import { getMarkedDates, getProjectedAnnual, getSubscriptionsForDate, getWeeklyGroups } from "./calendarUtils";
 import { getDaysRemaining } from "./subscription-ui";
 
 // Node re-reads process.env.TZ on assignment; deleting it does NOT restore the
@@ -116,29 +116,6 @@ describe("getSubscriptionsForDate", () => {
   });
 });
 
-describe("getMonthlyTotal", () => {
-  it("sums only renewals in the requested UTC year and month, skipping unparseable dates", () => {
-    const total = getMonthlyTotal(
-      [
-        sub({ id: "may", nextRenewalDate: "2026-05-31T23:30:00.000Z", price: { amountMinor: 1250, currency: "USD" } }),
-        sub({ id: "june", nextRenewalDate: "2026-06-01T00:30:00.000Z", price: { amountMinor: 4000, currency: "USD" } }),
-        sub({ id: "may-last-year", nextRenewalDate: "2025-05-10T00:00:00.000Z", price: { amountMinor: 700, currency: "USD" } }),
-        sub({ id: "bad", nextRenewalDate: "junk", price: { amountMinor: 900, currency: "USD" } }),
-        sub({ id: "cancelled", status: "cancelled", nextRenewalDate: "2026-05-10T00:00:00.000Z", price: { amountMinor: 800, currency: "USD" } })
-      ],
-      2026,
-      5
-    );
-    expect(total).toBe(12.5);
-  });
-
-  it("puts a late-evening UTC renewal in its UTC month even when the device is already in the next month", () => {
-    const list = [sub({ id: "may", nextRenewalDate: "2026-05-31T23:30:00.000Z", price: { amountMinor: 1250, currency: "USD" } })];
-    expect(inTimeZone("Asia/Kolkata", () => getMonthlyTotal(list, 2026, 5))).toBe(12.5);
-    expect(inTimeZone("Asia/Kolkata", () => getMonthlyTotal(list, 2026, 6))).toBe(0);
-  });
-});
-
 describe("getWeeklyGroups", () => {
   // now = 2026-05-29T12:00Z. Offsets are whole UTC days from today.
   const day = (offset: number, hour = 9) => new Date(Date.UTC(2026, 4, 29 + offset, hour)).toISOString();
@@ -205,9 +182,11 @@ describe("getWeeklyGroups", () => {
   });
 });
 
-describe("getProjectedAnnual", () => {
-  // now = 2026-05-29 → 8 months remain in the year (May..Dec), matching the
-  // existing monthly expectation (monthly amount × remaining months).
+describe("getProjectedAnnual: a year of these plans at their current price (F196)", () => {
+  // The design's "Projected year" is the month's run-rate times twelve
+  // (ui_kits/app/CalendarScreen.jsx), the same figure as a subscription's own
+  // "Per year at current rate". It was the rest of THIS calendar year: $46.47
+  // for a $15.49 plan in October, beside the detail screen's $185.88.
   const soon = "2026-06-10T09:00:00.000Z";
 
   it("skips non-active subscriptions and ones with a missing or unparseable renewal date", () => {
@@ -218,68 +197,47 @@ describe("getProjectedAnnual", () => {
     ])).toBe(0);
   });
 
-  // Regression: every cycle other than annual was projected as if it were
-  // monthly — a $30 quarterly plan became $30 × 8 = $240 for the rest of the
-  // year (3× too high), a $5 weekly plan $40 (4.3× too low), and an "unknown"
-  // cycle a fabricated recurring charge.
+  it("a monthly plan is twelve charges, whatever the month", () => {
+    const monthly = [sub({ id: "m", nextRenewalDate: soon, price: { amountMinor: 1549, currency: "USD" } })];
+    expect(getProjectedAnnual(monthly)).toBeCloseTo(185.88, 9);
+    vi.setSystemTime(new Date("2026-12-20T12:00:00.000Z"));
+    expect(getProjectedAnnual(monthly)).toBeCloseTo(185.88, 9);
+  });
+
+  // F66's regression stays: every cycle by its monthly equivalent, not its raw price.
   it("projects quarterly and weekly plans by their monthly equivalent, not their raw price", () => {
-    expect(getProjectedAnnual([sub({ id: "q", billingCycle: "quarterly", nextRenewalDate: soon, price: { amountMinor: 3000, currency: "USD" } })])).toBe(80);
-    // weekly: round(500 × 52 / 12) = 2167 minor per month → $21.67 × 8.
-    expect(getProjectedAnnual([sub({ id: "w", billingCycle: "weekly", nextRenewalDate: soon, price: { amountMinor: 500, currency: "USD" } })])).toBeCloseTo(173.36, 9);
+    expect(getProjectedAnnual([sub({ id: "q", billingCycle: "quarterly", nextRenewalDate: soon, price: { amountMinor: 3000, currency: "USD" } })])).toBe(120);
+    // weekly: round(500 × 52 / 12) = 2167 minor per month → $21.67 × 12.
+    expect(getProjectedAnnual([sub({ id: "w", billingCycle: "weekly", nextRenewalDate: soon, price: { amountMinor: 500, currency: "USD" } })])).toBeCloseTo(260.04, 9);
   });
 
   it("projects nothing for an unknown cycle, which has no predictable charge", () => {
     expect(getProjectedAnnual([sub({ id: "u", billingCycle: "unknown", nextRenewalDate: soon, price: { amountMinor: 999, currency: "USD" } })])).toBe(0);
   });
 
-  it("counts a trial's conversion charge once, and only when it converts this year", () => {
+  it("counts a yearly plan's charge, and a trial's conversion charge, once, whenever it falls", () => {
+    expect(getProjectedAnnual([sub({ id: "a", billingCycle: "annual", nextRenewalDate: "2027-03-01T00:00:00.000Z", price: { amountMinor: 12000, currency: "USD" } })])).toBe(120);
     expect(getProjectedAnnual([sub({ id: "t", billingCycle: "trial", nextRenewalDate: soon, price: { amountMinor: 1200, currency: "USD" } })])).toBe(12);
-    expect(getProjectedAnnual([sub({ id: "t", billingCycle: "trial", nextRenewalDate: "2027-01-10T09:00:00.000Z", price: { amountMinor: 1200, currency: "USD" } })])).toBe(0);
+    expect(getProjectedAnnual([sub({ id: "t", billingCycle: "trial", nextRenewalDate: "2027-01-10T09:00:00.000Z", price: { amountMinor: 1200, currency: "USD" } })])).toBe(12);
   });
 
   it("converts into the home currency, and excludes (never raw-sums) a currency with no rate", () => {
     const fx: FxContext = { homeCurrency: "USD", rates: { USD: 1, INR: 95 } };
     expect(getProjectedAnnual([
-      sub({ id: "inr-monthly", nextRenewalDate: soon, price: { amountMinor: 9500, currency: "INR" } }), // $1 × 8
+      sub({ id: "inr-monthly", nextRenewalDate: soon, price: { amountMinor: 9500, currency: "INR" } }), // $1 × 12
       sub({ id: "inr-annual", billingCycle: "annual", nextRenewalDate: "2026-09-01T09:00:00.000Z", price: { amountMinor: 190000, currency: "INR" } }), // $20
       sub({ id: "gbp-monthly", nextRenewalDate: soon, price: { amountMinor: 1000, currency: "GBP" } }),
       sub({ id: "gbp-annual", billingCycle: "annual", nextRenewalDate: "2026-09-01T09:00:00.000Z", price: { amountMinor: 1000, currency: "GBP" } })
-    ], fx)).toBe(28);
+    ], fx)).toBe(32);
   });
 
-  // Regression: the year test used the device-local year, so an annual renewal
-  // on the UTC day 2027-01-01 counted as a 2026 charge anywhere west of UTC.
-  it("decides 'this year' by the renewal's UTC day, not the device's local year", () => {
-    const newYear = [sub({ id: "a", billingCycle: "annual", nextRenewalDate: "2027-01-01T00:00:00.000Z", price: { amountMinor: 12000, currency: "USD" } })];
-    expect(inTimeZone("America/Los_Angeles", () => getProjectedAnnual(newYear))).toBe(0);
-    expect(inTimeZone("Asia/Kolkata", () => getProjectedAnnual(newYear))).toBe(0);
-  });
-
-  it("counts remaining months from the UTC month, not the device's local month", () => {
-    vi.setSystemTime(new Date("2026-05-31T20:00:00.000Z")); // already June 1 in Kolkata
-    const monthly = [sub({ id: "m", nextRenewalDate: "2026-06-30T09:00:00.000Z", price: { amountMinor: 1000, currency: "USD" } })];
-    expect(inTimeZone("Asia/Kolkata", () => getProjectedAnnual(monthly))).toBe(80);
-    expect(inTimeZone("America/Los_Angeles", () => getProjectedAnnual(monthly))).toBe(80);
-  });
-});
-
-describe("getMonthRenewalCount (F181)", () => {
-  // A renewal dated 1 November is 31 October, 20:00 in New York, and 1 November,
-  // 05:30 in Kolkata. Its month is its UTC day's: November, everywhere.
-  const list = [
-    sub({ id: "first-of-november", nextRenewalDate: "2026-11-01T00:00:00.000Z", price: { amountMinor: 1000, currency: "USD" } }),
-    sub({ id: "mid-october", nextRenewalDate: "2026-10-15T00:00:00.000Z", price: { amountMinor: 500, currency: "USD" } })
-  ];
-
-  it.each(["America/New_York", "Asia/Kolkata", "UTC"])("in %s: each month counts exactly the renewals its total sums", (tz) => {
-    inTimeZone(tz, () => {
-      expect([getMonthRenewalCount(list, 2026, 10), getMonthlyTotal(list, 2026, 10)]).toEqual([1, 5]);
-      expect([getMonthRenewalCount(list, 2026, 11), getMonthlyTotal(list, 2026, 11)]).toEqual([1, 10]);
-    });
-  });
-
-  it("only active subscriptions with a renewal date count", () => {
-    const more = [...list, sub({ id: "paused", nextRenewalDate: "2026-10-20T00:00:00.000Z", status: "paused" }), sub({ id: "no-date", nextRenewalDate: undefined }), sub({ id: "bad-date", nextRenewalDate: "not a date" })];
-    expect(getMonthRenewalCount(more, 2026, 10)).toBe(1);
+  it("is the same figure in every timezone", () => {
+    vi.setSystemTime(new Date("2026-12-31T20:00:00.000Z")); // already 2027 in Kolkata
+    const list = [
+      sub({ id: "m", nextRenewalDate: "2027-01-01T00:00:00.000Z", price: { amountMinor: 1000, currency: "USD" } }),
+      sub({ id: "a", billingCycle: "annual", nextRenewalDate: "2027-01-01T00:00:00.000Z", price: { amountMinor: 12000, currency: "USD" } })
+    ];
+    expect(inTimeZone("Asia/Kolkata", () => getProjectedAnnual(list))).toBe(240);
+    expect(inTimeZone("America/Los_Angeles", () => getProjectedAnnual(list))).toBe(240);
   });
 });

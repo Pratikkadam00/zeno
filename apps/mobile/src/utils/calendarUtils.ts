@@ -117,41 +117,6 @@ export function getSubscriptionsForDate(subscriptions: Subscription[], dateStrin
     .sort((a, b) => Number(a.price.amountMinor) - Number(b.price.amountMinor));
 }
 
-export function getMonthlyTotal(subscriptions: Subscription[], year: number, month: number, fx?: FxContext): number {
-  return activeWithRenewal(subscriptions)
-    .reduce((sum, subscription) => {
-      const key = normalizeDate(subscription.nextRenewalDate);
-      if (!key) {
-        return sum;
-      }
-      const [dateYear, dateMonth] = key.split("-").map((value) => Number(value));
-      if (dateYear !== year || dateMonth !== month) {
-        return sum;
-      }
-
-      // Never silently sum raw minor units across currencies — convert (or
-      // skip, never fabricate) when fx is available; unconverted fallback
-      // preserves the pre-5.2 behavior when it isn't.
-      const amountMinor = fx ? convertMinor(subscription.price.amountMinor, subscription.price.currency, fx.homeCurrency, fx.rates) : subscription.price.amountMinor;
-      return amountMinor === null ? sum : sum + amountMinor / 100;
-    }, 0);
-}
-
-/**
- * How many renewals fall in a month: the same renewals, on the same UTC day,
- * that getMonthlyTotal sums. F181: the Calendar's "N RENEWALS" beside the
- * month's total counted by LOCAL day, so at a month boundary west of UTC a
- * renewal dated the 1st was in this month's count but not its total.
- */
-export function getMonthRenewalCount(subscriptions: Subscription[], year: number, month: number): number {
-  return activeWithRenewal(subscriptions).filter((subscription) => {
-    const key = normalizeDate(subscription.nextRenewalDate);
-    if (!key) return false;
-    const [dateYear, dateMonth] = key.split("-").map((value) => Number(value));
-    return dateYear === year && dateMonth === month;
-  }).length;
-}
-
 export function getWeeklyGroups(subscriptions: Subscription[]): {
   thisWeek: Subscription[];
   nextWeek: Subscription[];
@@ -196,43 +161,31 @@ export function getWeeklyGroups(subscriptions: Subscription[]): {
 }
 
 export function getProjectedAnnual(subscriptions: Subscription[], fx?: FxContext): number {
-  const now = new Date();
-  // UTC year and month, like the renewal days themselves (§10).
-  const currentYear = now.getUTCFullYear();
-  const remainingMonths = 12 - now.getUTCMonth();
+  // F196: a year of these plans at their current price, as the design defines
+  // "Projected year" (the month's run-rate × 12) and as each subscription's own
+  // "Per year at current rate" reads. It was the rest of THIS calendar year.
   let projected = 0;
-
   for (const subscription of activeWithRenewal(subscriptions)) {
-    const nextRenewal = new Date(subscription.nextRenewalDate);
-    if (Number.isNaN(nextRenewal.getTime())) {
+    if (Number.isNaN(new Date(subscription.nextRenewalDate).getTime())) {
       continue;
     }
-
     // Both branches convert into the home currency (or skip, never fabricate)
     // so a mixed-currency portfolio isn't silently summed in raw minor units.
     const cycle = subscription.billingCycle;
     if (cycle === "annual" || cycle === "trial") {
-      // One known charge — the annual renewal, or the trial converting to
-      // paid — counted once, and only if it lands in the current year.
-      if (nextRenewal.getUTCFullYear() !== currentYear) {
-        continue;
-      }
+      // One known charge a year: the annual renewal, or the trial converting.
       const amountMinor = fx ? convertMinor(subscription.price.amountMinor, subscription.price.currency, fx.homeCurrency, fx.rates) : subscription.price.amountMinor;
       if (amountMinor !== null) {
         projected += amountMinor / 100;
       }
       continue;
     }
-
-    // Recurring cycles project their monthly equivalent over the remaining
-    // months (weekly × 52/12, quarterly ÷ 3 — the shared monthlyAmount rule).
-    // Treating every cycle as monthly made a quarterly plan 3× too high and a
-    // weekly one ~4× too low; "unknown" has no predictable charge, so it adds 0.
+    // Recurring cycles by their monthly equivalent (weekly × 52/12, quarterly
+    // ÷ 3: the shared monthlyAmount rule, F66), twelve times; "unknown" adds 0.
     const monthlyMinor = fx ? monthlyAmountIn(subscription, fx.homeCurrency, fx.rates) : monthlyAmount(subscription);
     if (monthlyMinor !== null) {
-      projected += (monthlyMinor / 100) * remainingMonths;
+      projected += (monthlyMinor / 100) * 12;
     }
   }
-
   return projected;
 }

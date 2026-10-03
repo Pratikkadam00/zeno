@@ -50,6 +50,7 @@ import {
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useNotificationsAllowed } from "../src/components/use-notifications-allowed";
 import { LedgerSheet, SectionHead, ServiceAvatar } from "../src/components/zeno";
 import { useZenoTheme } from "../src/theme/theme-provider";
 import type { ThemeTokens } from "../src/theme/tokens";
@@ -97,6 +98,8 @@ export default function SettingsScreen() {
     }))
   );
   const isLocalOnly = status === "local_only";
+  // F192: say so when the phone blocks the reminders this switch turns on.
+  const phoneAllows = useNotificationsAllowed();
   const { subscriptions, clearAllData, quietHours, setQuietHours, remindersEnabled, setRemindersEnabled, homeCurrency, setHomeCurrency, exchangeRatesAvailable, coachAiConsent, setCoachAiConsent } = useSubscriptionStore();
   const { reset: resetBudget } = useBudgetStore();
   const lockEnabled = useLockStore((s) => s.enabled);
@@ -250,7 +253,7 @@ export default function SettingsScreen() {
       rows: [
         // F124: was "Push notifications", a switch held in this screen's state
         // that changed nothing. Now the design's master switch for reminders.
-        { id: "notifications", Icon: Bell, iconBg: palette.category.coral, label: "Renewal reminders", sub: "7D · 3D · DAY OF", isSwitch: true, switchValue: remindersEnabled, onToggle: setRemindersEnabled },
+        { id: "notifications", Icon: Bell, iconBg: palette.category.coral, label: "Renewal reminders", sub: remindersEnabled && phoneAllows === false ? "BLOCKED IN PHONE SETTINGS" : "7D · 3D · DAY OF", isSwitch: true, switchValue: remindersEnabled, onToggle: setRemindersEnabled },
         { id: "quiet-hours", Icon: MoonStar, iconBg: palette.category.violet, label: "Quiet hours", sub: quietHours.enabled ? `${quietWindowLabel} · reminders shift to morning` : "Off", isSwitch: true, switchValue: quietHours.enabled, onToggle: (value) => setQuietHours({ enabled: value }) },
         {
           id: "quiet-window", Icon: Clock, iconBg: palette.category.slate, label: "Quiet window", value: quietWindowLabel, chevron: true,

@@ -1,6 +1,6 @@
 import type { Subscription, BillingCycle } from "@zeno/shared";
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
-import { getMarkedDates, getMonthlyTotal, getProjectedAnnual, getSubscriptionsForDate, getWeeklyGroups } from "./calendarUtils";
+import { getMarkedDates, getProjectedAnnual, getSubscriptionsForDate, getWeeklyGroups } from "./calendarUtils";
 
 function buildSubscription(overrides: Partial<Subscription>): Subscription {
   return {
@@ -66,49 +66,6 @@ describe("calendarUtils", () => {
     expect(getSubscriptionsForDate(subscriptions, "2026-06-01")).toEqual([]);
   });
 
-  it("calculates monthly total for current month", () => {
-    const total = getMonthlyTotal(
-      [
-        buildSubscription({ id: "a", nextRenewalDate: "2026-05-05T00:00:00.000Z", price: { amountMinor: 1000, currency: "USD" } }),
-        buildSubscription({ id: "b", nextRenewalDate: "2026-05-10T00:00:00.000Z", price: { amountMinor: 2000, currency: "USD" } }),
-        buildSubscription({ id: "c", nextRenewalDate: "2026-06-01T00:00:00.000Z", price: { amountMinor: 4000, currency: "USD" } })
-      ],
-      2026,
-      5
-    );
-
-    expect(total).toBe(30);
-  });
-
-  it("converts mixed-currency charges into home currency instead of summing raw minor units", () => {
-    const total = getMonthlyTotal(
-      [
-        buildSubscription({ id: "a", nextRenewalDate: "2026-05-05T00:00:00.000Z", price: { amountMinor: 1000, currency: "USD" } }),
-        buildSubscription({ id: "b", nextRenewalDate: "2026-05-10T00:00:00.000Z", price: { amountMinor: 9500, currency: "INR" } })
-      ],
-      2026,
-      5,
-      { homeCurrency: "USD", rates: { USD: 1, INR: 95 } }
-    );
-
-    // $10 + (₹95 -> $1) = $11. A naive raw sum would be $105.
-    expect(total).toBe(11);
-  });
-
-  it("excludes a charge whose currency has no rate rather than summing it raw", () => {
-    const total = getMonthlyTotal(
-      [
-        buildSubscription({ id: "a", nextRenewalDate: "2026-05-05T00:00:00.000Z", price: { amountMinor: 1000, currency: "USD" } }),
-        buildSubscription({ id: "b", nextRenewalDate: "2026-05-10T00:00:00.000Z", price: { amountMinor: 500, currency: "GBP" } })
-      ],
-      2026,
-      5,
-      { homeCurrency: "USD", rates: { USD: 1 } }
-    );
-
-    expect(total).toBe(10);
-  });
-
   it("buckets upcoming subscriptions into week groups", () => {
     const subscriptions = [
       buildSubscription({ id: "a", nextRenewalDate: "2026-06-02T00:00:00.000Z", price: { amountMinor: 1000, currency: "USD" } }),
@@ -123,7 +80,7 @@ describe("calendarUtils", () => {
     expect(groups.laterThisMonth).toHaveLength(1);
   });
 
-  it("projects annual spend across the remaining year", () => {
+  it("projects a year at current prices: monthly × 12, each yearly plan once (F196)", () => {
     const projected = getProjectedAnnual([
       buildSubscription({
         id: "a",
@@ -145,6 +102,7 @@ describe("calendarUtils", () => {
       })
     ]);
 
-    expect(projected).toBe(280);
+    // $20 × 12 + $120 + $130 (both yearly plans renew within a year).
+    expect(projected).toBe(490);
   });
 });

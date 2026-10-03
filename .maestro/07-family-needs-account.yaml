@@ -8,12 +8,18 @@ tags: [family]
     element: "Family Vault"
     direction: DOWN
 - tapOn: "Family Vault"
-- assertVisible: "Each member shares only their monthly total — never their individual subscriptions\\."
+- assertVisible: ".*Each member shares only their monthly total — never their individual subscriptions\\."
 # A household is kept on the server: without an account, no Create or Join
 # that could only fail.
 - assertVisible: "Households need an account"
 - assertNotVisible: "Create household"
 - assertNotVisible: "Join household"
+# Sign in goes through the welcome screen, confirmed, as Profile's "Exit
+# local-only mode" does (a plain /login bounced back to the ledger).
 - tapOn: "Sign in"
+- assertVisible: "Exit local-only mode"
+- assertVisible: "This won't delete your data\\..*"
+- tapOn: "Exit"
+# Straight to sign-in (onboarding was already seen).
 - assertVisible: "Know what you pay."
 - assertVisible: "SIGN THE LINE TO CONTINUE"

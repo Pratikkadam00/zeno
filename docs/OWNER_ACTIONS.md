@@ -223,7 +223,8 @@ the number and "yes", or the option you prefer.
   the design. The alternative, making the headline this month's real total, makes a
   yearly renewal month spike and every other month look cheaper than it is.
 - **Then I:** change the label (or the number, if you choose that), with a test, and
-  re-run the ledger flows on the emulator.
+  re-run the ledger flows on the emulator. The Calendar's "This month" shows the same
+  figure (F197, as the design has it), so it follows your choice too.
 
 ---
 

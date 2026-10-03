@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Calendar, type DateData } from "react-native-calendars";
-import { getMarkedDates, getMonthRenewalCount, getProjectedAnnual, getSubscriptionsForDate, getWeeklyGroups, getMonthlyTotal } from "../../src/utils/calendarUtils";
+import { getMarkedDates, getProjectedAnnual, getSubscriptionsForDate, getWeeklyGroups } from "../../src/utils/calendarUtils";
 import { formatMoney } from "../../src/utils/format";
 import { formatShortDate, getDaysRemaining, getUrgencyBadge } from "../../src/utils/subscription-ui";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
@@ -200,7 +200,7 @@ export default function CalendarScreen() {
   const { theme, scheme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const calendarTheme = useMemo(() => getCalendarTheme(theme), [theme]);
-  const { subscriptions, homeCurrency, fx, spendSummary } = useSubscriptionStore();
+  const { subscriptions, homeCurrency, fx, spendSummary, totalMonthlyMinor } = useSubscriptionStore();
 
   // Sum a subscription list in the home currency, converting each amount (or
   // skipping when no rate is available) — never raw-sum across currencies.
@@ -227,12 +227,6 @@ export default function CalendarScreen() {
     [activeSubscriptions, selectedDate]
   );
   const groups = useMemo(() => getWeeklyGroups(activeSubscriptions), [activeSubscriptions]);
-  const nowYear = now.getFullYear();
-  const nowMonth = now.getMonth() + 1;
-  const monthlyTotal = useMemo(() =>
-    getMonthlyTotal(activeSubscriptions, nowYear, nowMonth, fx),
-    [activeSubscriptions, nowYear, nowMonth, fx]
-  );
   const projectedAnnual = useMemo(() => getProjectedAnnual(activeSubscriptions, fx), [activeSubscriptions, fx]);
 
   const next7DaysList = useMemo(() =>
@@ -248,8 +242,6 @@ export default function CalendarScreen() {
     return d !== null && d <= 3;
   });
 
-  // The same renewals, by the same UTC day, as the month total beside it (F181).
-  const thisMonthTotalCount = useMemo(() => getMonthRenewalCount(activeSubscriptions, nowYear, nowMonth), [activeSubscriptions, nowYear, nowMonth]);
 
   const markedDates = useMemo(() => {
     const base = getMarkedDates(activeSubscriptions);
@@ -258,7 +250,9 @@ export default function CalendarScreen() {
       ...base,
       [selectedDate]: {
         dots: sel?.dots ?? [],
-        marked: true,
+        // F195: "marked" is what the calendar announces as "You have entries
+        // for this day"; true only when the day has a renewal.
+        marked: (sel?.dots?.length ?? 0) > 0,
         selected: true,
         selectedColor: theme.primary,
         selectedTextColor: theme.onPrimary
@@ -295,8 +289,11 @@ export default function CalendarScreen() {
         <View style={styles.summaryBlock}>
           <LedgerLine
             label="This month"
-            sub={`${thisMonthTotalCount} RENEWALS`}
-            value={formatMoney(Math.round(monthlyTotal * 100), homeCurrency)}
+            // F197: the design's "This month" is the month's total of every
+            // plan, the ledger headline's own figure (one rule, F157). It was
+            // only the renewals still dated in this month on the grid: $0.00
+            // here beside the ledger's $15.49 for a plan charged on the 2nd.
+            value={formatMoney(totalMonthlyMinor, homeCurrency)}
           />
           <LedgerLine
             label="Next 7 days"
@@ -357,7 +354,10 @@ export default function CalendarScreen() {
           <>
             <RenewalGroup title="This week"       subscriptions={groups.thisWeek}        total={groupTotals.thisWeek}       homeCurrency={homeCurrency} />
             <RenewalGroup title="Next week"       subscriptions={groups.nextWeek}        total={groupTotals.nextWeek}       homeCurrency={homeCurrency} />
-            <RenewalGroup title="Later this month"subscriptions={groups.laterThisMonth}  total={groupTotals.laterThisMonth} homeCurrency={homeCurrency} />
+            {/* F194: the group is "within 30 days", which runs into next month;
+                "Later this month" put a Nov 2 renewal under October. The
+                design's groups: this week / next / later. */}
+            <RenewalGroup title="Later"           subscriptions={groups.laterThisMonth}  total={groupTotals.laterThisMonth} homeCurrency={homeCurrency} />
           </>
         )}
 

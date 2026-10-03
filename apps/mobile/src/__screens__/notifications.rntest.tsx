@@ -1,5 +1,6 @@
 import type { Subscription } from "@zeno/shared";
 import { act, fireEvent, screen } from "@testing-library/react-native";
+import { Linking } from "react-native";
 import NotificationsScreen from "../../app/notifications";
 import { fakeStorage, renderScreen, resetFakes, routerMock, unnamedControls } from "../test-support/screen-harness";
 
@@ -140,5 +141,31 @@ describe("notifications, flags", () => {
     await open([sub({ id: "x", name: "Hulu", status: "attention" })]);
     expect(screen.getByText("Hulu is still charging you")).toBeTruthy();
     expect(screen.queryByText("Upcoming reminders")).toBeNull();
+  });
+});
+
+describe("notifications, when the phone blocks them (F192)", () => {
+  const fake = jest.requireActual("../test-support/screen-fakes").fakeNotificationsModule as { notificationsAllowed: jest.Mock };
+  afterEach(() => fake.notificationsAllowed.mockImplementation(async () => true));
+
+  it("says reminders won't appear, and opens the phone's settings", async () => {
+    fake.notificationsAllowed.mockImplementation(async () => false);
+    const openSettings = jest.spyOn(Linking, "openSettings").mockResolvedValue(undefined);
+    const r = await open([sub({ id: "a" })]);
+    expect(screen.getByText("Notifications are off for Zeno")).toBeTruthy();
+    expect(unnamedControls(r.toJSON() as never)).toEqual([]);
+    await press(/^Notifications are off for Zeno/);
+    expect(openSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it("no notice when the phone allows them, when it can't be known, or when reminders are off in Zeno anyway", async () => {
+    await open([sub({ id: "a" })]);
+    expect(screen.queryByText("Notifications are off for Zeno")).toBeNull();
+    fake.notificationsAllowed.mockImplementation(async () => null);
+    await open([sub({ id: "a" })]);
+    expect(screen.queryByText("Notifications are off for Zeno")).toBeNull();
+    fake.notificationsAllowed.mockImplementation(async () => false);
+    await open([sub({ id: "a" })], { "notification.enabled.v1": "false" });
+    expect(screen.queryByText("Notifications are off for Zeno")).toBeNull();
   });
 });

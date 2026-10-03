@@ -1,0 +1,36 @@
+appId: app.zeno.mobile
+name: Notifications blocked by the phone - the app says reminders won't appear (F192), and stops saying it once allowed
+tags: [notifications]
+---
+# (The permission prompt itself is asked only on a real device: the app skips
+# push registration on an emulator, Device.isDevice. So the phone's answer is
+# set here: denied.)
+- clearState
+- launchApp:
+    permissions:
+      notifications: deny
+- tapOn: "Continue"
+- tapOn: "Continue"
+- tapOn: "Continue without an account"
+- assertVisible: "Your ledger"
+- runFlow: common/add-netflix.yaml
+- tapOn: "Notifications"
+- assertVisible: "Notifications are off for Zeno"
+- assertVisible: "Reminders won't appear until you allow them in your phone's settings\\."
+# The reminders still listed are what WOULD fire once allowed.
+- assertVisible: ".*Netflix.*"
+- tapOn: "Go back"
+- tapOn: "Settings"
+- scrollUntilVisible:
+    element: "BLOCKED IN PHONE SETTINGS"
+    direction: DOWN
+# Allowed: the notice goes (re-read when the app returns to the foreground).
+- launchApp:
+    stopApp: false
+    permissions:
+      notifications: allow
+- pressKey: Home
+- launchApp:
+    stopApp: false
+- assertNotVisible: "BLOCKED IN PHONE SETTINGS"
+- assertVisible: "7D · 3D · DAY OF"

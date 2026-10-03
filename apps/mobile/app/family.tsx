@@ -1,7 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { ScrollView, Text, TextInput, View, type StyleProp, type ViewStyle } from "react-native";
+import { Alert, ScrollView, Text, TextInput, View, type StyleProp, type ViewStyle } from "react-native";
 import * as SecureStore from "expo-secure-store";
-import { router } from "expo-router";
 import { Button, CodeBoxes } from "../src/components/zeno";
 import { fonts } from "../src/theme/zeno";
 import { createHousehold, getHousehold, joinHousehold, leaveHousehold, setMemberSpend, type ApiFailureReason, type Household } from "../src/api/client";
@@ -49,6 +48,19 @@ export default function FamilyScreen() {
   // one, Create and Join could only fail ("You're offline", or the server's
   // 401 read as "Please sign in again" to someone who never signed in).
   const isLocalOnly = useAuthStore((state) => state.status === "local_only");
+  const logout = useAuthStore((state) => state.logout);
+  // Signing in from local-only mode goes through the welcome screen, the same
+  // confirmed path as Profile's "Exit local-only mode" (/login itself sends a
+  // usable session straight back to the ledger).
+  const confirmSignIn = () =>
+    Alert.alert(
+      "Exit local-only mode",
+      "This won't delete your data. You'll return to the welcome screen, where you can sign in or continue locally again.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Exit", style: "destructive", onPress: () => void logout() }
+      ]
+    );
   const { totalMonthlyMinor, homeCurrency } = useSubscriptionStore();
 
   // The server takes the member from the sign-in token; this id is ignored.
@@ -160,7 +172,7 @@ export default function FamilyScreen() {
             <Text style={{ color: theme.mutedText, marginTop: 6, marginBottom: 12 }}>
               A household is kept on Zeno&apos;s server so its members can see it, so you&apos;ll need to sign in. Everything else works without an account.
             </Text>
-            <Button variant="primary" size="lg" fullWidth onPress={() => router.push("/login")}>Sign in</Button>
+            <Button variant="primary" size="lg" fullWidth onPress={confirmSignIn}>Sign in</Button>
           </Surface>
         ) : loading ? (
           <Surface><Text style={{ color: theme.mutedText }}>Loading…</Text></Surface>

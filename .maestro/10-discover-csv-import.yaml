@@ -1,0 +1,34 @@
+appId: app.zeno.mobile
+name: Discover - import a bank statement CSV through the system file picker; the two subscriptions found, the one-offs not
+tags: [discover]
+---
+# Needs fixtures/statement.csv on the device as Download/zeno-statement.csv
+# (.maestro/run.sh pushes it).
+- runFlow: common/fresh-local-start.yaml
+- tapOn: "Discover subscriptions"
+- assertVisible: "Import bank statement"
+- tapOn: "Import CSV file"
+# Android's own file picker.
+- tapOn: "zeno-statement.csv"
+- extendedWaitUntil:
+    visible: "SCAN RESULTS"
+    timeout: 20000
+- assertVisible: "Found 2 subscriptions"
+- assertVisible: "Netflix"
+- assertVisible: "Spotify"
+# The bakery and the hardware store were one-offs.
+- assertNotVisible: ".*BAKERY.*"
+- assertNotVisible: ".*HARDWARE.*"
+# What they cost, not "saving", and nothing presumed forgotten (F193).
+- assertVisible: "These cost you"
+- assertVisible: "\\$317\\.76/year"
+- assertVisible: "a year, at their current prices"
+- assertNotVisible: ".*forgotten.*"
+# Keep Netflix only.
+- tapOn: "Deselect Spotify"
+- assertVisible: "1 selected"
+- tapOn: "Add 1 subscription"
+- assertVisible: "Your ledger"
+- assertVisible:
+    text: "Netflix, .*\\$15\\.49 per mo"
+- assertNotVisible: ".*Spotify.*"

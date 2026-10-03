@@ -1,5 +1,6 @@
 import type { Subscription } from "@zeno/shared";
 import { act, fireEvent, screen } from "@testing-library/react-native";
+import { Alert } from "react-native";
 import FamilyScreen from "../../app/family";
 import { renderScreen, resetFakes, routerMock, unnamedControls } from "../test-support/screen-harness";
 
@@ -72,14 +73,23 @@ const typeCode = async (text: string) => {
 
 describe("family, without an account (F190)", () => {
   it("says a household needs an account and offers sign-in, instead of buttons that can only fail", async () => {
-    useAuthStore.setState({ email: null, accountId: null, status: "local_only" });
+    const logout = jest.fn(async () => undefined);
+    useAuthStore.setState({ email: null, accountId: null, status: "local_only", logout });
     const r = await open();
     expect(screen.getByText("Households need an account")).toBeTruthy();
     expect(screen.queryByText("Create household")).toBeNull();
     expect(screen.queryByText("Join household")).toBeNull();
     expect(unnamedControls(r.toJSON() as never)).toEqual([]);
+    // The same confirmed path as Profile's "Exit local-only mode" (pushing
+    // /login bounced straight back to the ledger: seen on the emulator).
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
     await press("Sign in");
-    expect(routerMock.push).toHaveBeenLastCalledWith("/login");
+    expect(routerMock.push).not.toHaveBeenCalledWith("/login");
+    expect(alert).toHaveBeenCalledWith("Exit local-only mode", expect.stringContaining("won't delete your data"), expect.any(Array));
+    expect(logout).not.toHaveBeenCalled();
+    const buttons = alert.mock.calls[0]![2] as { text: string; onPress?: () => void }[];
+    buttons.find((b) => b.text === "Exit")!.onPress!();
+    expect(logout).toHaveBeenCalledTimes(1);
     const api = jest.requireMock("../api/client") as Record<string, jest.Mock>;
     for (const fn of Object.values(api)) expect(fn).not.toHaveBeenCalled();
   });

@@ -277,7 +277,7 @@ export default function DiscoverScreen() {
       ? ` (plus ${foundMoney.excludedCount} more in other currencies)`
       : "";
     recordFunnelEvent("share_card_generated", "found_money");
-    await shareText(`Zeno found ${total}/year in subscriptions I'd forgotten I was paying for${excludedNote}.`);
+    await shareText(`Zeno found ${total}/year in subscriptions I'm paying for${excludedNote}.`);
   }
 
   // ── Results view ──────────────────────────────────────────────────────────
@@ -297,11 +297,15 @@ export default function DiscoverScreen() {
               produces, shown for everything found before any add decision. */}
           {foundMoney.annualTotal > 0 ? (
             <View style={styles.foundMoneyCard}>
-              <Text style={styles.foundMoneyLabel}>You could be saving</Text>
+              {/* F193: was "You could be saving ... in subscriptions you'd
+                  forgotten about": the full yearly cost called "saving" (true
+                  only if every one is cancelled) and every plan presumed
+                  forgotten. It is what they cost; the user decides the rest. */}
+              <Text style={styles.foundMoneyLabel}>These cost you</Text>
               <Text style={styles.foundMoneyAmount}>
                 {formatMoney(Math.round(foundMoney.annualTotal * 100), foundMoney.currency)}/year
               </Text>
-              <Text style={styles.foundMoneySub}>in subscriptions you&apos;d forgotten about</Text>
+              <Text style={styles.foundMoneySub}>a year, at their current prices</Text>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Share what Zeno found"
@@ -426,10 +430,10 @@ export default function DiscoverScreen() {
               {selectedCount === 0
                 ? "Select subscriptions to add"
                 : plan !== "free" || selectedCount <= remainingFreeSlots
-                  ? `Add ${selectedCount} subscriptions`
+                  ? `Add ${selectedCount} subscription${selectedCount === 1 ? "" : "s"}`
                   : remainingFreeSlots > 0
                     ? `Add ${remainingFreeSlots} of ${selectedCount} (Free plan)`
-                    : `Upgrade to add ${selectedCount} subscriptions`}
+                    : `Upgrade to add ${selectedCount} subscription${selectedCount === 1 ? "" : "s"}`}
             </Text>
           </Pressable>
         </View>

@@ -81,6 +81,22 @@ export function shiftOutOfQuietHours(date: Date, quiet?: QuietHours): Date {
   return adjusted;
 }
 
+/**
+ * Whether the phone will show Zeno's notifications: false when they're blocked
+ * (the user tapped "Don't allow", or turned them off in the phone's settings),
+ * null when it can't be known. Reminders are scheduled either way, so without
+ * this the app said "on" while the phone showed nothing (F192). Resolves,
+ * never rejects.
+ */
+export async function notificationsAllowed(): Promise<boolean | null> {
+  if (Platform.OS === "web") return null;
+  try {
+    return (await Notifications.getPermissionsAsync()).granted;
+  } catch {
+    return null;
+  }
+}
+
 export type PushRegistrationResult =
   | { ok: true; token: string }
   | { ok: false; reason: "unsupported" | "denied" | "failed" };

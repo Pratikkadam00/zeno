@@ -49,6 +49,8 @@ export const fakeNotificationsModule = {
   scheduleRenewalNotifications: jest.fn(async () => {}),
   rescheduleAllNotifications: jest.fn(),
   registerForPushNotifications: jest.fn(async () => ({ status: "granted" })),
+  // F192: the phone allows Zeno's notifications unless a test says otherwise.
+  notificationsAllowed: jest.fn(async (): Promise<boolean | null> => true),
   clearStoredPushToken: jest.fn(async () => {}),
   // The REAL list (pure: no native call), resolved when called so this file
   // still imports no app code: a screen must list what the scheduler keeps.
