@@ -1,0 +1,109 @@
+name: DAST (ZAP baseline)
+
+# P4.5: OWASP ZAP's baseline scan against the running website (`next start`
+# over the production build) and the running API (production mode, in-memory
+# storage, throwaway keys), nightly. The baseline scan spiders the target and
+# checks every response passively; it sends no attacks. ZAP runs with -I, so
+# scripts/zap-gate.mjs decides: any Medium or High alert fails the run unless
+# .zap-accepted.json accepts it with a reason and an expiry, and so does a
+# scan ZAP stopped early. Every alert is printed as an annotation, and the full
+# HTML and JSON reports are kept as an artifact for 14 days.
+#
+# It also runs on a push that changes the scan itself (this file, the gate or
+# its acceptance list), so a change to the scan is proven when it lands, not
+# the next night.
+on:
+  schedule:
+    - cron: "41 3 * * *" # 03:41 UTC daily, after the nightly fuzz (off the hour)
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/dast.yml
+      - scripts/zap-gate.mjs
+      - .zap-accepted.json
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dast
+  cancel-in-progress: false
+
+env:
+  # ZAP 2.17.0, by digest (the "stable" tag on 2026-10-03; ghcr.io registry API).
+  ZAP_IMAGE: ghcr.io/zaproxy/zaproxy:2.17.0@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef
+
+jobs:
+  zap-baseline:
+    name: ZAP baseline (website and API)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Pull ZAP
+        run: docker pull "$ZAP_IMAGE"
+
+      - name: Build the website
+        run: npm run build --workspace @zeno/web
+
+      - name: Start the website and the API
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The website, as served in production.
+          ( cd apps/web && WAITLIST_FILE="$RUNNER_TEMP/waitlist.jsonl" nohup npx next start -p 3100 -H 127.0.0.1 > "$RUNNER_TEMP/web.log" 2>&1 & )
+          # The API in production mode. Throwaway RS256 keys made here and
+          # never stored; no database (in-memory), no email, no AI provider.
+          openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out "$RUNNER_TEMP/jwt.pem" 2>/dev/null
+          openssl pkey -in "$RUNNER_TEMP/jwt.pem" -pubout -out "$RUNNER_TEMP/jwt.pub"
+          ( cd apps/api && NODE_ENV=production API_PORT=8787 \
+              JWT_PRIVATE_KEY="$(cat "$RUNNER_TEMP/jwt.pem")" JWT_PUBLIC_KEY="$(cat "$RUNNER_TEMP/jwt.pub")" \
+              MAGIC_LINK_REDIRECT_URL=https://zeno.app/auth CORS_ALLOWED_ORIGINS=https://zeno.app \
+              nohup npx tsx src/server.ts > "$RUNNER_TEMP/api.log" 2>&1 & )
+          for url in http://127.0.0.1:3100/ http://127.0.0.1:8787/health; do
+            for i in $(seq 1 60); do curl -sf -o /dev/null "$url" && break; sleep 1; done
+            curl -sf -o /dev/null "$url" || { echo "::error::$url never answered"; tail -40 "$RUNNER_TEMP/web.log" "$RUNNER_TEMP/api.log"; exit 1; }
+          done
+
+      - name: Scan
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p zap && chmod 777 zap
+          failed=0
+          scan() { # label target spider-minutes
+            echo "== $1: $2"
+            docker run --rm --network host -v "$PWD/zap:/zap/wrk:rw" "$ZAP_IMAGE" \
+              zap-baseline.py -t "$2" -m "$3" -I -s -J "$1.json" -r "$1.html" || {
+                echo "::error title=ZAP did not finish::$1 ($2): zap-baseline.py exited $?"; failed=1; }
+          }
+          scan website http://127.0.0.1:3100/ 3
+          # The API has no pages to spider; each scan is one of its routes:
+          # a public catalogue answer, and the auth guard's 401.
+          scan api-services "http://127.0.0.1:8787/api/v1/services?q=netflix" 1
+          scan api-auth http://127.0.0.1:8787/api/v1/account 1
+          exit $failed
+
+      - name: Gate (no Medium or High alert)
+        if: always()
+        run: node scripts/zap-gate.mjs website=zap/website.json api-services=zap/api-services.json api-auth=zap/api-auth.json
+
+      - name: Keep the reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: zap-reports
+          path: zap/
+          retention-days: 14

@@ -1,0 +1,4 @@
+{
+  "$comment": "ZAP alerts of Medium or High risk that the DAST gate (scripts/zap-gate.mjs) may pass. Each entry names the scan target and ZAP rule, MUST say why it is safe, and MUST expire, so it is re-reviewed rather than forgotten.",
+  "accepted": []
+}
