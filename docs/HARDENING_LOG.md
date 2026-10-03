@@ -96,7 +96,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
     - [x] P4.2a every route, desktop and phone, light and dark: 200, the security headers, no console error, nothing from another host, axe clean (WCAG 2.2 AA); in CI; **fixes F177**, F178 logged (green: CI 37042604157, CodeQL 37042604027 on `1903ee3`; the Playwright step ran 2 min on the runner's Chrome)
     - [x] P4.2b the behaviours: the homepage book, no-JS, reduced motion, theme persistence, the waitlist end to end, the hub and guides, the book-mode nav links; **fixes F179** (green: CI 37043864957, CodeQL 37043865051 on `e0e6b31`)
     - [x] P4.2c Core Web Vitals budgets (LCP, CLS, INP) under Lighthouse's mobile throttling, measured in Chrome; **fixes F180**
-  - [ ] P4.3 CSP: no `'unsafe-inline'` scripts (hashes for the fixed inline scripts) or a written, measured reason; the other headers verified
+  - [x] P4.3 CSP: no `'unsafe-inline'` scripts (hashes for the fixed inline scripts) or a written, measured reason; the other headers verified. **Done with per-page hashes**: each page's own inline scripts allowed by sha256, an injected one blocked (proven in Chrome); headers checked against OWASP's set; **fixes F183**, F184 and F185 logged
   - [ ] P4.4 build-output secret scan: no non-public env value in `.next`
   - [ ] P4.5 DAST: OWASP ZAP baseline against `next start` and the API, nightly; no medium+ alerts
   - [ ] P4 gate: Playwright green in CI; CSP without `'unsafe-inline'` scripts (or a written reason); axe clean on every route
@@ -286,6 +286,9 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F180 | **FIXED in P4.2c.** ~~Under Lighthouse's mobile throttling the homepage's first paint (and LCP, the nav's "zeno") came at ~2.9 s, over the 2.5 s "good" line; every other page measured 2.0-2.3 s.~~ Cause, measured step by step: not the scripts (2.65-2.87 s with JavaScript off), not the markup (every script async), but the **first layout**: one 1,120 ms layout (4x CPU) covering the whole long page while the web fonts were still loading; layout with the fallback fonts costs ~2.5x layout with the web fonts (1,070 ms vs 410 ms), and a relayout once loaded costs 7 ms. Fixed with `content-visibility: auto` on the homepage sections below the hero, so the first layout covers what is on screen: homepage LCP 2.42-2.45 s standalone, 1.89-1.93 s in later full-suite runs (lab timings move ~0.5 s with the machine's state), CLS 0.000-0.008. Side effect, accepted: without JavaScript, sections fade in briefly as they come into view (their styles resolve then); the no-JS test checks each section's settled state on screen. | Medium (performance on phones) | me | P4.2c |
 | F181 | **FIXED (found during P4.2c's gate run).** ~~The mobile Calendar's "N RENEWALS" line counted each renewal by its LOCAL day while the month total beside it (`getMonthlyTotal`) uses its UTC day; renewal dates are UTC days (§10). At a month boundary west of UTC, a renewal dated the 1st (midnight UTC, the evening before in New York) was in this month's count but not its total.~~ The count is now `getMonthRenewalCount` in `calendarUtils`, the same renewals on the same UTC day as the total; the screen's private local-day helper is gone. Tested in New York, Kolkata and UTC (the New York case fails with the old local-day count). | Low (a count disagreeing with its own total) | me | P4.2c |
 | F182 | **FIXED (found by CI's new far-from-UTC step).** ~~Renewal dates are stored as day labels (midnight UTC of the day, §10), but the mobile app formatted them in the phone's timezone, so every imported renewal (CSV, email receipt) showed **a day early anywhere west of UTC**: all of the Americas ("Oct 6" for a renewal on the 7th).~~ Four formatters (`formatShortDate`, `formatMonthYear`, the insights' dates, the add screen's) now show a label as the day it names (`src/utils/day-label.ts`, `timeZone: "UTC"`), the same day the calendar's dots and the countdowns already use. The add screen stored "now + N days" at the current time of day, a raw instant; it now stores a day label like imports and the edit screen. Tested in six zones (Los Angeles, New York, UTC, Kolkata, Kiritimati, Honolulu); with the old formatting the three western zones fail. | Medium (wrong dates shown in the Americas) | me | P4 (CI) |
+| F183 | **FIXED in P4.3.** ~~Any made-up `/cancel/<slug>` was rendered on request and **written to the server's disk cache**: about nine files per slug, without limit (measured: five random slugs, five sets of files under `.next/server/app/cancel/`). Anyone could grow the server's disk and spend its CPU just by requesting URLs.~~ `dynamicParams = false` on the guide route: an unknown slug is now the prebuilt 404 page, byte for byte, and nothing is written. | Medium (unbounded disk growth from anonymous requests) | me | P4.3 |
+| F184 | **OPEN (P5).** `/analytics`, the 404 served while the sample-analytics flag is off, lacks the root layout's theme script (measured in the build: its page has Next's two scripts but not ours). So a visitor who chose the dark theme sees it light there, and the page shows its no-JS layout. Cause inside Next (the page calls `notFound()` while prerendering) not investigated; the page is linked from nowhere. | Low (cosmetic, one unlinked page) | me | P5 |
+| F185 | **OPEN (P5).** The website has **no favicon**: no icon file and no `<link rel="icon">`, so browsers show a generic icon and their automatic `/favicon.ico` request is a 404 (seen in Chrome's console in P4.3). The icon should come from the design system, not be invented here. | Low (brand) | me | P5 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **CLOSED in the P3 gate (2026-10-02): reachable, not a bug.** TalkBack, driven by touches from the emulator's own touchscreen, put its focus on each nested button's exact bounds, separately from its parent: the calendar's "Cancel Figma", the menu's Edit/Pause/Delete, the login's Terms and Privacy links. Original note: on the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -4940,3 +4943,89 @@ zone; CI runs jest at UTC+14. **Bite check: 1, caught 1** (local formatting fail
 Angeles, New York and Honolulu, and only those).
 
 Also: three unused variables in this phase's test files (lint warnings CI reported) removed.
+
+**F182 on CI:** run 37100882161 passed every step, the far-from-UTC step included, except
+the last, the dependency audit: a new high advisory against `braces`, published
+2026-09-18 (below, in P4.3). CodeQL 37100882131 green.
+
+### P4.3 — inline scripts allowed by hash, page by page; the headers checked; F183 fixed — 2026-10-03
+
+**What the site had.** `script-src 'self' 'unsafe-inline'`, with a written reason: Next
+emits inline scripts a fixed header can't name, and nonces would end static rendering.
+P4.3 asked for that reason to be measured, or the permission removed. It is removed in
+effect: every page now names its own inline scripts by hash.
+
+**Measured first (the build, 529 HTML pages).** Each page has exactly three inline
+scripts: Next's 43-byte bootstrap and our theme script (the same on every page), and the
+page's React Server Components payload, **different on every page** (530 distinct
+bodies). So one header can't list them. Every HTML page is prerendered, apart from one
+hole: an unknown `/cancel/<slug>` was rendered on request (F183, below).
+
+**The three ways Next offers, tried, not assumed:**
+- **Nonces** (Next's CSP guide): "you must use dynamic rendering", so all 529 pages would
+  render per request. Not taken: slower pages and more server work for the same result.
+- **Experimental SRI** (`experimental.sri`), which Next's guide says keeps static pages
+  "while still having a strict CSP" with `script-src 'self'`: **measured false on
+  16.3.6.** Built with it, served, loaded in Chrome: the three inline scripts on every
+  page were blocked (3 CSP violations a page), the theme script didn't run and React
+  never hydrated. SRI only adds `integrity` to the script files.
+- **`'unsafe-inline'`**: what we had.
+
+**What was done: a per-page `<meta>` policy.** After `next build`,
+`scripts/csp-script-hashes.mjs` writes into each prerendered page, first in its
+`<head>`, `<meta http-equiv="Content-Security-Policy" content="script-src 'self'
+'sha256-…' …">` naming the hashes of that page's own inline scripts (hashed as the
+browser does: line endings normalised; JSON-LD data blocks skipped, import maps and
+speculation rules included). A browser enforces every policy it is given, so an inline
+script now runs only if the header AND the page's policy allow it: only the page's own.
+The header keeps `'unsafe-inline'` as the fallback if a page ever lacked its policy (the
+site keeps working at the old level, never breaks), and keeps what a `<meta>` can't
+carry (`frame-ancestors`). The step is part of the website's `build` script, so CI, the
+release workflow and any deploy that runs it get it.
+
+**F183, found on the way.** With `dynamicParams` at its default, every unknown
+`/cancel/<slug>` was rendered on request and written to the server's disk cache (about
+nine files each, measured), without limit: an anonymous disk-filling route. Now
+`dynamicParams = false`: unknown slugs get the prebuilt 404 page, byte for byte, and
+nothing is written (measured: zero files). This also made every HTML response a
+prebuilt page, which the hashes need.
+
+**The other headers, against OWASP Secure Headers' recommended set (2026-09-13):**
+- **Adopted:** `Cross-Origin-Opener-Policy: same-origin`, `X-Permitted-Cross-Domain-Policies:
+  none`, `X-DNS-Prefetch-Control: off` (was `on`: the guides link to hundreds of services,
+  and prefetching tells the visitor's DNS resolver which ones a page shows), OWASP's
+  Permissions-Policy list (27 features off, none used by the site: checked in the code),
+  and no `X-Powered-By` (`poweredByHeader: false`; OWASP lists it to remove).
+- **Kept different, on purpose:** Referrer-Policy stays `strict-origin-when-cross-origin`
+  (sends our origin, never the path, to the services we link to, so they can see visits
+  came from Zeno; OWASP says `no-referrer`). HSTS keeps `preload` (submitting needs it;
+  submitting is the owner's call, D14). No `Cache-Control: no-store` or `Clear-Site-Data`
+  (a public site meant to be cached; no sign-out), no COEP (nothing to isolate).
+- `style-src` keeps `'unsafe-inline'`: measured, 5 pages carry style attributes in their
+  markup and 2 carry `<style>` elements. P4.3 was about scripts.
+
+**Tests.**
+- `scripts/csp-script-hashes.test.ts` (14): which scripts count, the hash (line
+  endings), the policy's place and content, re-running changes nothing, refusals, the
+  folder walk, and that the website's build runs it.
+- Chrome (both projects): every route and the 404 carry exactly their own scripts'
+  hashes, the theme script ran and React hydrated, no console error (a CSP violation is
+  one); all 509 guides checked the same way over HTTP; an injected inline script is
+  blocked while the page's own run; a made-up guide is byte for byte the 404 page.
+- `next.config.test.ts`: the new header set; `guides.test.tsx`: `dynamicParams` off.
+
+**Bite checks: 2, caught 2.** Built without the hash step and with `dynamicParams` back
+on: five new browser checks failed, and the injection test failed because the injected
+script ran (`__injected` was `true`).
+
+**Not CSP, logged:** F184 (the `/analytics` 404 lacks the theme script) and F185 (no
+favicon), both for P5.
+
+**Dependency audit (found by F182's CI run).** A new high advisory, GHSA-vfj7-8cjw-p6xm
+(`braces`, stack exhaustion from deeply nested patterns), has no fixed release (every
+version up to 3.0.3, the latest, is affected). Production trees, measured with
+`npm ls --omit=dev`: the API and the website have no path to it; the only one is the
+mobile workspace's `@expo/cli` -> `@expo/metro-file-map` -> `micromatch`, the developer
+CLI's file watcher (Node-only, not in the app bundle), expanding patterns from our own
+config. Accepted in `.audit-allowlist.json` with a short expiry (2026-11-30), like
+node-forge, to re-check for a fix.

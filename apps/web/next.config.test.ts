@@ -42,23 +42,43 @@ describe("security headers", () => {
     expect(source).toBe("/:path*");
   });
 
-  it("set HSTS, nosniff, deny-framing, a strict referrer policy and a locked-down Permissions-Policy", async () => {
+  it("set HSTS, nosniff, deny-framing, a strict referrer policy, no DNS prefetch and a cross-origin opener policy", async () => {
     const { headers } = await headersFor("production");
     expect(headers.get("Strict-Transport-Security")).toBe("max-age=63072000; includeSubDomains; preload");
     expect(headers.get("X-Content-Type-Options")).toBe("nosniff");
     expect(headers.get("X-Frame-Options")).toBe("DENY");
     expect(headers.get("Referrer-Policy")).toBe("strict-origin-when-cross-origin");
-    expect(headers.get("Permissions-Policy")).toBe("camera=(), microphone=(), geolocation=(), browsing-topics=()");
-    expect(headers.get("X-DNS-Prefetch-Control")).toBe("on");
+    expect(headers.get("X-DNS-Prefetch-Control")).toBe("off");
+    expect(headers.get("Cross-Origin-Opener-Policy")).toBe("same-origin");
+    expect(headers.get("X-Permitted-Cross-Domain-Policies")).toBe("none");
     expect([...headers.keys()].sort()).toEqual([
       "Content-Security-Policy",
+      "Cross-Origin-Opener-Policy",
       "Permissions-Policy",
       "Referrer-Policy",
       "Strict-Transport-Security",
       "X-Content-Type-Options",
       "X-DNS-Prefetch-Control",
-      "X-Frame-Options"
+      "X-Frame-Options",
+      "X-Permitted-Cross-Domain-Policies"
     ]);
+  });
+
+  it("Permissions-Policy switches off every powerful feature the site doesn't use", async () => {
+    const { headers } = await headersFor("production");
+    const entries = headers.get("Permissions-Policy")!.split(", ");
+    // Every entry denies the feature outright.
+    for (const entry of entries) expect(entry, entry).toMatch(/^[a-z-]+=\(\)$/);
+    const denied = entries.map((e) => e.replace("=()", ""));
+    expect(new Set(denied).size).toBe(denied.length);
+    for (const feature of ["camera", "microphone", "geolocation", "browsing-topics", "payment", "usb", "clipboard-read", "display-capture", "publickey-credentials-get"]) {
+      expect(denied, feature).toContain(feature);
+    }
+  });
+
+  it("don't announce the framework (no X-Powered-By)", async () => {
+    const config = await load({ NODE_ENV: "production" });
+    expect(config.poweredByHeader).toBe(false);
   });
 });
 

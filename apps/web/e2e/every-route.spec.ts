@@ -1,9 +1,11 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page, type Response } from "@playwright/test";
+import { governedInlineScripts, hashSource } from "../../../scripts/csp-script-hashes.mjs";
 
 // Every route the site serves, taken from its own sitemap.xml (so a new page
 // is covered the day the sitemap lists it), in a real Chrome, on desktop and
-// on a phone. Per route: 200, the security headers, no console error, no
+// on a phone. Per route: 200, the security headers, its inline scripts allowed
+// by hash and running (P4.3), no console error (a CSP violation is one), no
 // request to any other host, and axe finding nothing at WCAG 2.2 AA.
 
 const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
@@ -16,8 +18,25 @@ const EXPECTED_HEADERS: Record<string, string> = {
   "x-content-type-options": "nosniff",
   "x-frame-options": "DENY",
   "referrer-policy": "strict-origin-when-cross-origin",
-  "permissions-policy": "camera=(), microphone=(), geolocation=(), browsing-topics=()"
+  "permissions-policy":
+    "accelerometer=(), autoplay=(), browsing-topics=(), camera=(), cross-origin-isolated=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), keyboard-map=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), usb=(), web-share=(), xr-spatial-tracking=(), clipboard-read=(), clipboard-write=(), gamepad=(), hid=(), idle-detection=(), serial=()",
+  "x-dns-prefetch-control": "off",
+  "cross-origin-opener-policy": "same-origin",
+  "x-permitted-cross-domain-policies": "none"
 };
+
+/** The page's own <meta> script policy (scripts/csp-script-hashes.mjs). */
+function scriptPolicy(html: string): string | undefined {
+  return /<meta data-zeno-csp http-equiv="Content-Security-Policy" content="([^"]*)">/.exec(html)?.[1];
+}
+
+/** Problems with a page's script policy: missing, or not exactly its own inline scripts. */
+function scriptPolicyProblems(html: string): string[] {
+  const policy = scriptPolicy(html);
+  if (!policy) return ["no script policy"];
+  const expected = `script-src 'self' ${[...new Set(governedInlineScripts(html).map(hashSource))].join(" ")}`;
+  return policy === expected ? [] : [`policy ${policy.slice(0, 60)}… is not the page's own scripts`];
+}
 
 async function sitemapPaths(baseURL: string): Promise<string[]> {
   const xml = await (await fetch(`${baseURL}/sitemap.xml`)).text();
@@ -46,6 +65,15 @@ function checkHeaders(response: Response | null) {
   expect(response, "a response").not.toBeNull();
   const headers = response!.headers();
   for (const [name, value] of Object.entries(EXPECTED_HEADERS)) expect.soft(headers[name], name).toBe(value);
+  expect.soft(headers["x-powered-by"], "x-powered-by").toBeUndefined();
+}
+
+/** The theme script ran (html.js) and React hydrated the page. */
+async function scriptsRan(page: Page) {
+  return page.evaluate(() => ({
+    themeScript: document.documentElement.classList.contains("js"),
+    hydrated: [...document.querySelectorAll("body *")].some((el) => Object.keys(el).some((k) => k.startsWith("__react")))
+  }));
 }
 
 /**
@@ -112,6 +140,8 @@ for (const path of [...PAGES, ...GUIDES]) {
     const response = await page.goto(path, { waitUntil: "networkidle" });
     expect(response?.status()).toBe(200);
     checkHeaders(response);
+    expect.soft(scriptPolicyProblems(await response!.text()), "script policy").toEqual([]);
+    expect.soft(await scriptsRan(page), "inline scripts ran").toEqual({ themeScript: true, hydrated: true });
     expect.soft(w.consoleErrors, "console errors").toEqual([]);
     expect.soft(w.outside, "requests to other hosts").toEqual([]);
     expect.soft(await axe(page), "axe violations").toEqual([]);
@@ -126,13 +156,41 @@ for (const path of [...PAGES, ...GUIDES]) {
   });
 }
 
-test("an unknown path: 404, the same headers, still accessible", async ({ page }) => {
+test("an unknown path: 404, the same headers and script policy, still accessible", async ({ page }) => {
   const w = await watch(page);
   const response = await page.goto("/no-such-page", { waitUntil: "networkidle" });
   expect(response?.status()).toBe(404);
   checkHeaders(response);
+  expect.soft(scriptPolicyProblems(await response!.text()), "script policy").toEqual([]);
+  expect.soft(await scriptsRan(page), "inline scripts ran").toEqual({ themeScript: true, hydrated: true });
   expect.soft(w.outside).toEqual([]);
   expect.soft(await axe(page)).toEqual([]);
+});
+
+test("a made-up guide is the same prebuilt 404, not rendered on request (F183)", async ({ request }) => {
+  const made = await request.get(`/cancel/not-a-service-${Date.now()}`);
+  const unknown = await request.get("/no-such-page");
+  expect(made.status()).toBe(404);
+  // Byte for byte the static 404 page: nothing was rendered (or cached) for this slug.
+  expect(await made.text()).toBe(await unknown.text());
+});
+
+test("an injected inline script is blocked; the page's own still run (P4.3)", async ({ page }) => {
+  // Stand in for an HTML-injection bug: serve the real home page with one
+  // extra inline script, under the real headers.
+  const errors: string[] = [];
+  page.on("console", (msg) => {
+    if (msg.type() === "error") errors.push(msg.text());
+  });
+  await page.route("**/", async (route) => {
+    const real = await route.fetch();
+    const html = (await real.text()).replace("</body>", "<script>window.__injected = true;</script></body>");
+    await route.fulfill({ response: real, body: html });
+  });
+  await page.goto("/", { waitUntil: "networkidle" });
+  expect(await page.evaluate(() => (window as { __injected?: boolean }).__injected)).toBeUndefined();
+  expect(errors.some((e) => e.includes("Content Security Policy"))).toBe(true);
+  expect(await scriptsRan(page)).toEqual({ themeScript: true, hydrated: true });
 });
 
 test("the sample analytics page is a 404 in production (its flag is off)", async ({ page }) => {
@@ -140,7 +198,7 @@ test("the sample analytics page is a 404 in production (its flag is off)", async
   expect(response?.status()).toBe(404);
 });
 
-test("all 509 guides answer 200 with the security headers", async ({ request }) => {
+test("all 509 guides answer 200 with the security headers and their own script policy", async ({ request }) => {
   // 509 fetches: batched 25 at a time, with its own time budget.
   test.setTimeout(120_000);
   const guides = routes.filter((r) => r.startsWith("/cancel/"));
@@ -150,6 +208,7 @@ test("all 509 guides answer 200 with the security headers", async ({ request }) 
       guides.slice(i, i + 25).map(async (path) => {
         const res = await request.get(path);
         if (res.status() !== 200 || res.headers()["content-security-policy"] !== EXPECTED_HEADERS["content-security-policy"]) bad.push(`${path} ${res.status()}`);
+        for (const problem of scriptPolicyProblems(await res.text())) bad.push(`${path} ${problem}`);
       })
     );
   }

@@ -8,6 +8,11 @@ import { JsonLd } from "@/components/site/JsonLd";
 import styles from "@/components/site/content.module.css";
 import hubStyles from "../cancel-hub.module.css";
 
+// Only the catalogue's guides exist. Without this, any made-up /cancel/<slug> was
+// rendered on request and written to the server's disk cache (about nine files
+// each, without limit: F183); now it gets the prebuilt 404 page.
+export const dynamicParams = false;
+
 export function generateStaticParams() {
   return services.map((service) => ({ slug: service.slug }));
 }

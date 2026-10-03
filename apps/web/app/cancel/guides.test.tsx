@@ -6,7 +6,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { siteUrl } from "@/lib/site";
 import { jsonLd, parse } from "@/test-support/pages";
 import CancelHubPage from "./page";
-import GuidePage, { generateMetadata, generateStaticParams } from "./[slug]/page";
+import GuidePage, { dynamicParams, generateMetadata, generateStaticParams } from "./[slug]/page";
 import { CancelHubBrowser } from "./CancelHubBrowser";
 
 const props = (slug: string) => ({ params: Promise.resolve({ slug }) });
@@ -25,6 +25,10 @@ describe("the cancel guides: one per catalog service", () => {
     expect(slugs).toEqual(services.map((s) => s.slug));
     expect(new Set(slugs).size).toBe(services.length);
     expect(guides).toHaveLength(services.length);
+  });
+
+  it("and only those: any other slug is the prebuilt 404, never rendered and cached on request (F183)", () => {
+    expect(dynamicParams).toBe(false);
   });
 
   it("each: its own title, description and canonical, as an article with a social card", () => {

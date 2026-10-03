@@ -7,8 +7,9 @@
 // THEME_SCRIPT runs inline in <body> before hydration (layout.tsx) so neither
 // theme flashes. It also arms html.js, which gates ALL CSS-driven entrance
 // choreography (no-JS visitors get the finished page, never a hidden one).
-// Inline script is allowed by the CSP ('unsafe-inline' on script-src is
-// already required by Next's own hydration inlines).
+// The CSP allows it by its hash: each built page names the hashes of its own
+// inline scripts (scripts/csp-script-hashes.mjs, P4.3), so editing this string
+// needs nothing more than a rebuild.
 
 export const THEME_STORAGE_KEY = "zeno-theme";
 

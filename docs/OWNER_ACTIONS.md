@@ -29,7 +29,7 @@ Finding numbers (F…) point to rows in `docs/HARDENING_LOG.md` for the full det
 | F134 | Set up the **Pro free trial**: an App Store introductory offer (free, 1 week to match "7-day"), and on Google Play a **new-customer-acquisition** offer (not "developer determined", which Play shows even to people who already had a trial) | App Store Connect; Play Console | The paywall offers a trial only when the store does. |
 | F101 | Send the real **store listing links** (App Store id, Play package page) once published | — | "Rate Zeno" opens Apple's store front on every platform, Android included. |
 | F19 | Send one **real Wells Fargo CSV export** (redact it) | — | The detector assumes a header row WF may not have; if wrong, the first transaction is silently dropped. |
-| — | Confirm **where the website is hosted** and that the privacy policy names that host (it says Render runs "the website and API"; `render.yaml` deploys only the API) | your hosting account | The policy must name every processor (P4.1c). |
+| — | Confirm **where the website is hosted** and that the privacy policy names that host (it says Render runs "the website and API"; `render.yaml` deploys only the API). Whatever the host, its build command must be `npm run build --workspace @zeno/web` (not a bare `next build`) | your hosting account | The policy must name every processor (P4.1c). The build script writes each page's script policy after `next build` (P4.3); a bare `next build` skips it: the site still works, with the weaker policy. |
 | — | Confirm **which AI coach provider** is set on Render (`COACH_PROVIDER`, or whichever of `ANTHROPIC_API_KEY` / `GROQ_API_KEY` exists) | Render → API → Environment | The policy now names both; if only one is ever used, I narrow it to that one. |
 | — | Confirm **Render's log retention** on your plan is 30 days or less | Render → Logs / plan | The privacy policy says server logs are kept "up to 30 days". |
 | — | Before launch: have the **privacy policy, cookie policy and terms** reviewed by a lawyer | — | They say they are pre-launch drafts. P4.1c made every factual statement in them match the code; legal sufficiency is a lawyer's call. |
@@ -195,6 +195,22 @@ the number and "yes", or the option you prefer.
   honest too, but loses the waitlist's main hook.
 - **Then I:** nothing until launch; at launch, the email and the code handling, and the
   site's wording if you choose to drop it instead.
+
+### D14 · HSTS preload: put zeno.app on the browsers' HTTPS-only list?
+- **Today:** the site's HSTS header already carries `preload`, which is one of the
+  list's requirements; nothing is submitted, so it does nothing yet.
+- **Recommendation: yes, after launch, once every subdomain you use serves HTTPS**
+  (including any added by an email, help-desk or marketing tool). Submit at
+  hstspreload.org.
+- **Why:** browsers then never make a plain-HTTP request to zeno.app, even on a
+  visitor's first visit, which closes the one gap HSTS leaves. The catch, in the list's
+  own words: "inclusion in the preload list cannot easily be undone. Domains can be
+  removed, but it takes months for a change to reach users with a Chrome update", and
+  it applies to all subdomains, "including internal subdomains"
+  ([hstspreload.org](https://hstspreload.org/)). So it is a commitment for the domain,
+  which is why it's yours.
+- **Then I:** check the requirements against the live site before you submit; if you
+  say no, I drop `preload` from the header.
 
 ---
 
