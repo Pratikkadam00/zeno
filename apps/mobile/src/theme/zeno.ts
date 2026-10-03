@@ -144,7 +144,9 @@ export const lightScheme: ColorScheme = {
 
   textPrimary: palette.ink[900],
   textSecondary: palette.ink[500],
-  textTertiary: palette.ink[400],
+  // F178: ink[400] (#808698) was 3.27-3.63:1 on paper, card and sunken; the
+  // smallest darker step that passes AA (4.5:1) on all three, measured.
+  textTertiary: "#686E81",
   textDisabled: palette.ink[300],
   textOnAccent: palette.ink[900],
   textOnInk: palette.paper,
@@ -160,7 +162,8 @@ export const lightScheme: ColorScheme = {
   rule: palette.ledger.rule,
   ruleStrong: palette.ledger.ruleStrong,
   inkPanel: palette.ledger.inkPanel,
-  stampVerified: palette.ledger.stampVerified,
+  // F178: #0B8A54 was 3.96-4.40:1; this passes 4.5:1 on paper, card and sunken.
+  stampVerified: "#097F4D",
   stampAlert: palette.ledger.stampAlert,
 
   accent: palette.green[500],
@@ -194,7 +197,9 @@ export const darkScheme: ColorScheme = {
 
   textPrimary: "#F2F1EA", // warm paper-white
   textSecondary: "#9BA0AF",
-  textTertiary: "#6C7180",
+  // F178: #6C7180 was 3.40-4.01:1 on the desk, card and raised surfaces; the
+  // smallest lighter step that passes 4.5:1 on all three, measured.
+  textTertiary: "#80859A",
   textDisabled: "#4B505E",
   textOnAccent: "#0A0C13",
   // the ink panel stays dark in both schemes, so its text stays paper

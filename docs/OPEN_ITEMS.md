@@ -19,14 +19,13 @@ Nothing that needs you is kept here, so there is one list to work from.
 
 | # | Item | When |
 |---|---|---|
-| — | **P5 in progress:** 13 Maestro flows and the accessibility audit (17 screens) green on the emulator; the nightly CI job's first run pending; then F178, F184, F185 and "which today?" | now |
+| — | **P5 in progress:** 13 Maestro flows and the accessibility audit (17 screens) green on the emulator; the nightly CI job's first run pending; then F184, F185 and "which today?" | now |
 | F191 | A rare native crash (1 in ~33) right after "Continue without an account": react-native-screens + Reanimated re-entering a fragment transaction. No released fix; re-test on each screens/reanimated upgrade; the nightly run counts it | each upgrade |
 | — | **Which "today"?** The app counts days from the **UTC** day (countdowns, renewal roll-forward, budget months, spend history, trial guardian, insights), so near midnight a renewal can read "today" or "tomorrow" a day off from the user's own day. Moving to the user's local day is product-wide and touches money maths; places: `subscription-ui.ts` (getDaysRemaining, rollRenewalForward), `calendarUtils.ts` (dayDiffISO), `insightsEngine.ts` (day diffs), `finance/budget.ts` (month bounds), `packages/shared` (spend history, year in review, trial guardian, renewal plan) | P5 (timezone pass) |
 | F184 | The `/analytics` 404 (shown while the sample dashboard is off) ignores the dark theme: its page lacks the theme script | P5 |
 | F185 | The website has no favicon (browsers show a generic icon); take it from the design system | P5 |
 | — | ZAP's "CSP: style-src unsafe-inline" (10055-6) on the website accepted until 2027-03-31 (`.zap-accepted.json`, reasons in the P4.5 log): re-review then, or sooner if the site ever shows user data | by 2027-03-31 |
 | — | `braces` advisory accepted until 2026-11-30 (no fix exists; only Expo's developer CLI reaches it): re-check for a fixed release | by 2026-11-30 |
-| F178 | The mobile app uses the same low-contrast green and grey the website just fixed (F177); fix and measure on the device | P5 |
 | — | R8 warns about RevenueCat's Amazon Appstore SDK ("may be assumed not reachable" in later R8 versions). Not used for Google Play; re-check on each RevenueCat upgrade | each RevenueCat upgrade |
 | — | Sentry and RevenueCat code paths haven't run under R8 (no keys yet). Re-run the device smoke when the keys exist, and in the Sentry UI check one JS error and one native crash for scrubbed content (P3.3: a native crash skips `beforeSend`; only its breadcrumbs are scrubbed, by `beforeBreadcrumb`) | after the keys above |
 | — | Size the webhook's 30/min limit, and an edge rate limiter (the app's is per instance) | P8 |
@@ -49,6 +48,7 @@ Nothing that needs you is kept here, so there is one list to work from.
 | F125 | Found in P3.8e-1: Settings and Profile showed an **internal account id where your email belongs** (or a made-up "you@example.com") | Your email is shown now. |
 | F124 | Found in P3.8e-1: Settings' **"Push notifications" switch did nothing** | It's now "Renewal reminders" (as designed) and really turns every reminder off and on. |
 | F186 | Building the website **left a copy of every secret in the build environment on disk** (inside the build tool's cache) | That cache is off; our builds never reused it. CI now builds with a decoy value in every secret and fails if any shows up in the build. |
+| F178 | The app's **faint grey labels and the green "verified" ink were below the accessibility standard** (WCAG AA), as the website's were | Darkened (lightened in dark mode) by the smallest step that passes; measured on the phone screen. |
 | F192 | If the phone blocked Zeno's notifications, the app **still said renewal reminders were on** | It says they're blocked and opens the phone's settings. |
 | F193 | After a scan, Discover said **"You could be saving $X/year in subscriptions you'd forgotten about"** (the full cost, called saving) | "These cost you $X/year, at their current prices". |
 | F196 / F197 | The Calendar's **"Projected year" and "This month" disagreed** with the subscription screen and the Ledger | Both now use the same figures. |

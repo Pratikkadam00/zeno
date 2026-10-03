@@ -9,7 +9,9 @@ import xml.etree.ElementTree as ET
 
 
 def check(path: str) -> str:
-    nodes = list(ET.parse(path).getroot().iter('node'))
+    # The input is uiautomator's dump of our own app on our own test emulator,
+    # never untrusted XML; Python's parser doesn't resolve external entities.
+    nodes = list(ET.parse(path).getroot().iter('node'))  # nosemgrep: python.lang.security.use-defused-xml-parse.use-defused-xml-parse -- our own device's dump, not untrusted input
     zeno = [n for n in nodes if n.get('package') == 'app.zeno.mobile']
     if not zeno:
         return 'NOT-ZENO'

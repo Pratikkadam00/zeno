@@ -91,7 +91,12 @@ describe("contrast promises (WCAG 2.1 AA)", () => {
     ["textSecondary", "surfaceCard"],
     ["buttonPrimaryText", "buttonPrimaryBg"],
     ["textOnAccent", "accent"],
-    ["textOnInk", "inkPanel"]
+    ["textOnInk", "inkPanel"],
+    // F178: tertiary text and the coloured ink, on every surface they sit on
+    // (they were never checked, and three were below 4.5:1).
+    ...(["textTertiary", "stampVerified", "stampAlert", "accentText"] as const).flatMap(
+      (fg) => (["bgApp", "surfaceCard", "surfaceSunken", "surfaceRaised"] as const).map((bg) => [fg, bg] as [keyof ColorScheme, keyof ColorScheme])
+    )
   ];
 
   describe.each([
