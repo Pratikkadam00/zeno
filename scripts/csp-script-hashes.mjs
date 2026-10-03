@@ -15,7 +15,7 @@
 // page's own scripts run. If this step were skipped, the header alone applies:
 // the site still works, at the old posture. Re-running it is safe.
 import { createHash } from "node:crypto";
-import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -77,9 +77,10 @@ export function withScriptCsp(html) {
 /** Every .html file under `dir`. */
 function htmlFiles(dir) {
   const out = [];
-  for (const name of readdirSync(dir)) {
-    const p = join(dir, name);
-    if (statSync(p).isDirectory()) out.push(...htmlFiles(p));
+  // The type comes with the listing (no stat-then-use; CodeQL js/file-system-race).
+  for (const dirent of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, dirent.name);
+    if (dirent.isDirectory()) out.push(...htmlFiles(p));
     else if (p.endsWith(".html")) out.push(p);
   }
   return out;

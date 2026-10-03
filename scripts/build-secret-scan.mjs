@@ -11,7 +11,7 @@
 // variable and the file.
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { readdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -95,9 +95,12 @@ export function findCanaries(dir, canaries) {
   const unreadable = [];
   const searches = Object.entries(canaries).map(([name, value]) => [name, needles(value)]);
   const walk = (d) => {
-    for (const entry of readdirSync(d)) {
+    // The type comes with the listing: no separate stat before the read
+    // (CodeQL js/file-system-race).
+    for (const dirent of readdirSync(d, { withFileTypes: true })) {
+      const entry = dirent.name;
       const p = join(d, entry);
-      if (statSync(p).isDirectory()) {
+      if (dirent.isDirectory()) {
         walk(p);
         continue;
       }
