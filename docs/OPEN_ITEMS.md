@@ -20,6 +20,7 @@ Nothing that needs you is kept here, so there is one list to work from.
 | # | Item | When |
 |---|---|---|
 | — | **P5 in progress:** 13 Maestro flows and the accessibility audit (17 screens) green on the emulator; the nightly CI job's first run pending; then "which today?" | now |
+| F200 | On a wide screen, text typed in the first ~65 ms after the homepage loads is lost (the page switches to its book layout); too fast for a person, it only tripped a test | design-level, if ever |
 | F199 | Made-up cancel-guide addresses each put an "error" line in the website server's log (the visitor gets the right "not found" page) | P8 (log alerting) / Next upgrades |
 | F191 | A rare native crash (1 in ~33) right after "Continue without an account": react-native-screens + Reanimated re-entering a fragment transaction. No released fix; re-test on each screens/reanimated upgrade; the nightly run counts it | each upgrade |
 | — | **Which "today"?** The app counts days from the **UTC** day (countdowns, renewal roll-forward, budget months, spend history, trial guardian, insights), so near midnight a renewal can read "today" or "tomorrow" a day off from the user's own day. Moving to the user's local day is product-wide and touches money maths; places: `subscription-ui.ts` (getDaysRemaining, rollRenewalForward), `calendarUtils.ts` (dayDiffISO), `insightsEngine.ts` (day diffs), `finance/budget.ts` (month bounds), `packages/shared` (spend history, year in review, trial guardian, renewal plan) | P5 (timezone pass) |

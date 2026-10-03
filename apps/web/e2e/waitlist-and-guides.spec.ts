@@ -19,20 +19,26 @@ const signUp = (request: APIRequestContext, email: unknown, client: string, raw?
   });
 
 test.describe("the waitlist", () => {
-  test("the form: an address in, the receipt line out", async ({ page }) => {
+  test("the form: an address in, the receipt line out", async ({ page, isMobile }) => {
     await page.goto("/");
+    // F200: on a wide screen the page switches to book mode just after load
+    // (measured: ~65 ms, ~500 ms with a 4x-slowed CPU) and the switch remounts
+    // the sections, so text typed before it is lost. No person types that fast;
+    // a test on a loaded CI runner did, and flaked (CI 37137561648). Wait for it.
+    if (!isMobile) await page.locator('[aria-roledescription="ledger book"]').waitFor();
     const form = page.locator("#ledger form");
     await form.getByRole("textbox", { name: "Email address" }).fill(`e2e-${Date.now()}@example.com`);
     await form.getByRole("button", { name: /Join the waitlist/ }).click();
     await expect(page.locator("#ledger").getByRole("status").filter({ hasText: "ON THE LIST" })).toBeVisible();
   });
 
-  test("the form refuses a non-address without sending anything", async ({ page }) => {
+  test("the form refuses a non-address without sending anything", async ({ page, isMobile }) => {
     const posts: string[] = [];
     page.on("request", (r) => {
       if (r.url().endsWith("/api/waitlist")) posts.push(r.method());
     });
     await page.goto("/");
+    if (!isMobile) await page.locator('[aria-roledescription="ledger book"]').waitFor();
     const form = page.locator("#ledger form");
     await form.getByRole("textbox", { name: "Email address" }).fill("not-an-address");
     await form.getByRole("button", { name: /Join the waitlist/ }).click();
