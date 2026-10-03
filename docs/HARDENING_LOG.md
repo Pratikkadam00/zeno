@@ -5094,3 +5094,56 @@ rendered into every page, the Groq key rendered base64-encoded, and Turbopack's 
 back on. The scan failed on all three: both values in all 2,113 page files, and 9
 unreadable `.sst` files (plus `API_PORT` again). (2) Without the base64 trimming, the
 base64 tests fail.
+
+**P4.4 on CI:** CI 37103114341 green (the canary build and scan, then the browser tests on
+that same build). CodeQL 37103114274 failed its gate on one alert,
+`js/file-system-race` in `scripts/build-secret-scan.mjs` (a `stat`, then a read of the same
+path). Both folder walkers now take the entry type from the listing (`withFileTypes`);
+CodeQL 37103592019 and CI 37103591985 green on `7492e01`. The scan's name list is 51 now: the scanner's own
+test fixture (`EXPO_TOKEN`, a real secret name) and a comment (`X`) count too; an extra
+canary costs nothing.
+
+### P4.5 — DAST: OWASP ZAP's baseline scan, nightly, gated; first run's two Mediums resolved — 2026-10-03
+
+**What runs** (`.github/workflows/dast.yml`): nightly at 03:41 UTC, on demand, and on any
+push that changes the scan. The website is built and served with `next start`; the API
+runs in production mode (in-memory storage, RS256 keys generated for the run and never
+stored, no email or AI provider; measured locally first: it boots and answers 200, 200,
+401, 404). ZAP 2.17.0, pinned by digest (the `stable` tag on 2026-10-03, read from the
+registry), runs `zap-baseline.py` three times: the website (3-minute spider), the API's
+public catalogue route and its auth guard's 401. The baseline scan spiders and checks
+responses passively; it sends no attacks.
+
+**The gate** (`scripts/zap-gate.mjs`, 11 tests). ZAP runs with `-I`, so its exit code only
+says the scan ran (0, or 3 on an error: read from `zap-baseline.py`'s source). The gate
+reads each JSON report (field names from ZAP's own report template) and fails on any
+Medium or High alert that ZAP didn't mark a false positive, unless `.zap-accepted.json`
+accepts that exact alert with a reason and an expiry; on a scan ZAP stopped early; on a
+missing or empty report; and on an expired acceptance. An acceptance names ZAP's
+`alertRef`, not the rule: rule 10055 reports every CSP problem, and accepting the style
+one must not pass a script one. Every alert is printed as an annotation; the HTML and
+JSON reports are kept 14 days. Bite checks: blocking only High fails 4 tests; matching
+acceptances by rule instead of alertRef fails 2.
+
+**First run** (DAST 37103592028 on `7492e01`): the API, nothing at Medium or above; the
+website, two Mediums, so the gate failed as designed.
+- **"Source Code Disclosure - SQL" on `/cancel/adobe-creative-cloud`: a false positive.**
+  ZAP's pattern (`select … from …`, from the rule's source) matched the guide step "Select
+  a cancellation reason from dropdown"; run over all 529 built pages, that step was the
+  only match. Reworded ("Choose a cancellation reason in the dropdown"), and a catalogue
+  test now runs ZAP's pattern over every step (it fails on the old wording).
+- **"CSP: style-src unsafe-inline" (10055-6), every page: accepted until 2027-03-31.**
+  Measured: 156 inline style attributes (63 distinct, nearly all on the homepage: Motion's
+  server-rendered start states, which F169's no-JS fix relies on, and component style
+  props) and 2 `<style>` elements (Next's own 404 and error pages). The only way to drop
+  `'unsafe-inline'` is `'unsafe-hashes'` per attribute, which ZAP also rates Medium
+  (10055-8, from the rule's source), adds ~63 hashes to the homepage's head, and breaks
+  layout in browsers that support hashes but not `'unsafe-hashes'` (before Firefox 109 and
+  Safari 15.4, MDN's compatibility data). Scripts are already locked to their own hashes
+  (P4.3), and the site shows no user data for CSS to read. GitHub, Stripe and Vercel all
+  send `style-src … 'unsafe-inline'` (their live headers, fetched 2026-10-03).
+
+**Lows, recorded, not blocking:** Cross-Origin-Resource-Policy missing on the website and
+"missing or invalid" on the API's catalogue route (it sends `same-site`), and
+Cross-Origin-Embedder-Policy missing on the website (P4.3 decided against COEP: nothing to
+isolate). Informational: cacheability notes only.

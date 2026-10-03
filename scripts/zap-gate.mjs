@@ -6,7 +6,9 @@
 // format) and fails on:
 //   - any alert of Medium or High risk (riskcode >= 2) that ZAP didn't itself
 //     mark a false positive (confidence 0), unless .zap-accepted.json lists it
-//     with a reason and an expiry that hasn't passed;
+//     with a reason and an expiry that hasn't passed. An acceptance names
+//     ZAP's alertRef, not just the rule: one rule (10055, CSP) reports several
+//     different problems, and accepting one must not hide another;
 //   - a scan ZAP stopped early (its "stoppingInsight"), so a cut-short scan
 //     can't pass as a clean one;
 //   - a report with no site in it (nothing was scanned);
@@ -25,6 +27,7 @@ export function alertsOf(report) {
       out.push({
         site: site["@name"] ?? "unknown-site",
         pluginId: String(a.pluginid ?? ""),
+        alertRef: String(a.alertRef ?? a.pluginid ?? ""),
         name: a.name ?? a.alert ?? "unnamed alert",
         risk: Number.parseInt(a.riskcode ?? "0", 10),
         confidence: Number.parseInt(a.confidence ?? "1", 10),
@@ -41,17 +44,17 @@ export function evaluate(reports, accepted, today = new Date()) {
   const alerts = [];
   const list = accepted?.accepted ?? [];
   for (const entry of list) {
-    if (new Date(entry.expires) < today) problems.push(`acceptance of ZAP rule ${entry.pluginId} on ${entry.target} EXPIRED on ${entry.expires}: re-review it`);
+    if (new Date(entry.expires) < today) problems.push(`acceptance of ZAP alert ${entry.alertRef} on ${entry.target} EXPIRED on ${entry.expires}: re-review it`);
   }
   for (const { target, report } of reports) {
     if (!Array.isArray(report?.site) || report.site.length === 0) problems.push(`${target}: the report has no site in it (nothing was scanned)`);
     if (report?.stoppingInsight) problems.push(`${target}: ZAP stopped the scan early (${report.stoppingInsight.reason ?? report.stoppingInsight.description ?? "no reason given"})`);
     for (const alert of alertsOf(report)) {
       const falsePositive = alert.confidence === 0;
-      const acceptance = list.find((e) => e.target === target && String(e.pluginId) === alert.pluginId);
+      const acceptance = list.find((e) => e.target === target && String(e.alertRef) === alert.alertRef);
       const blocking = alert.risk >= 2 && !falsePositive && !acceptance;
       alerts.push({ ...alert, target, falsePositive, accepted: Boolean(acceptance), blocking });
-      if (blocking) problems.push(`${target}: ${RISK[alert.risk] ?? alert.risk} "${alert.name}" (ZAP rule ${alert.pluginId}) at ${alert.uris.slice(0, 3).join(", ") || alert.site}`);
+      if (blocking) problems.push(`${target}: ${RISK[alert.risk] ?? alert.risk} "${alert.name}" (ZAP alert ${alert.alertRef}) at ${alert.uris.slice(0, 3).join(", ") || alert.site}`);
     }
   }
   return { ok: problems.length === 0, problems, alerts };
@@ -67,7 +70,7 @@ export function annotation(alert) {
   const level = alert.blocking ? "error" : alert.risk >= 1 ? "warning" : "notice";
   const note = alert.falsePositive ? " [ZAP: false positive]" : alert.accepted ? " [accepted: .zap-accepted.json]" : "";
   const where = alert.uris.length ? ` at ${alert.uris.slice(0, 3).join(", ")}${alert.uris.length > 3 ? ` (+${alert.uris.length - 3} more)` : ""}` : "";
-  return `::${level} title=ZAP ${RISK[alert.risk] ?? alert.risk}: ${escapeData(alert.name)}::${escapeData(`${alert.target}: rule ${alert.pluginId}${note}${where}`)}`;
+  return `::${level} title=ZAP ${RISK[alert.risk] ?? alert.risk}: ${escapeData(alert.name)}::${escapeData(`${alert.target}: alert ${alert.alertRef}${note}${where}`)}`;
 }
 
 function main() {

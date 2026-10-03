@@ -1,4 +1,12 @@
 {
-  "$comment": "ZAP alerts of Medium or High risk that the DAST gate (scripts/zap-gate.mjs) may pass. Each entry names the scan target and ZAP rule, MUST say why it is safe, and MUST expire, so it is re-reviewed rather than forgotten.",
-  "accepted": []
+  "$comment": "ZAP alerts of Medium or High risk that the DAST gate (scripts/zap-gate.mjs) may pass. Each entry names the scan target and ZAP's alertRef (one rule can report several problems; accepting one must not hide another), MUST say why it is safe, and MUST expire, so it is re-reviewed rather than forgotten.",
+  "accepted": [
+    {
+      "target": "website",
+      "alertRef": "10055-6",
+      "name": "CSP: style-src unsafe-inline",
+      "reason": "Measured in P4.5: the built site carries 156 inline style attributes (63 distinct, nearly all on the homepage: Motion's server-rendered start states, which the no-JS fix F169 relies on, and component style props) and 2 <style> elements (Next's own 404 and error pages). Removing 'unsafe-inline' means hashing each attribute with 'unsafe-hashes', which ZAP rates Medium too (alert 10055-8), adds ~63 hashes to the homepage's head, and breaks layout in browsers that support hashes but not 'unsafe-hashes' (before Firefox 109 / Safari 15.4, MDN). Scripts are already locked to their own hashes (P4.3), so an injection can't run code; the site shows no user data for CSS to read. GitHub, Stripe and Vercel all send style-src 'unsafe-inline' (their live headers, 2026-10-03).",
+      "expires": "2027-03-31"
+    }
+  ]
 }

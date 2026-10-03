@@ -29,6 +29,7 @@ describe("alertsOf", () => {
       {
         site: "http://127.0.0.1:3100",
         pluginId: "10038",
+        alertRef: "10038-1",
         name: "Content Security Policy (CSP) Header Not Set",
         risk: 2,
         confidence: 3,
@@ -52,11 +53,11 @@ describe("evaluate", () => {
   });
 
   it("fails a Medium and a High alert, naming target, rule and where", () => {
-    const result = evaluate([{ target: "website", report: report([alert(), alert({ riskcode: "3", pluginid: "40012", name: "Cross Site Scripting (Reflected)" })]) }], none, today);
+    const result = evaluate([{ target: "website", report: report([alert(), alert({ riskcode: "3", pluginid: "40012", alertRef: "40012", name: "Cross Site Scripting (Reflected)" })]) }], none, today);
     expect(result.ok).toBe(false);
     expect(result.problems).toEqual([
-      'website: Medium "Content Security Policy (CSP) Header Not Set" (ZAP rule 10038) at http://127.0.0.1:3100/',
-      'website: High "Cross Site Scripting (Reflected)" (ZAP rule 40012) at http://127.0.0.1:3100/'
+      'website: Medium "Content Security Policy (CSP) Header Not Set" (ZAP alert 10038-1) at http://127.0.0.1:3100/',
+      'website: High "Cross Site Scripting (Reflected)" (ZAP alert 40012) at http://127.0.0.1:3100/'
     ]);
   });
 
@@ -66,14 +67,23 @@ describe("evaluate", () => {
     expect(result.alerts[0]).toMatchObject({ falsePositive: true, blocking: false });
   });
 
-  it("passes an accepted alert only for its own target and rule, and only until it expires", () => {
-    const accepted = { accepted: [{ target: "website", pluginId: "10038", reason: "why", expires: "2026-12-31" }] };
+  it("passes an accepted alert only for its own target and alertRef, and only until it expires", () => {
+    const accepted = { accepted: [{ target: "website", alertRef: "10038-1", reason: "why", expires: "2026-12-31" }] };
     expect(evaluate([{ target: "website", report: report([alert()]) }], accepted, today).ok).toBe(true);
     expect(evaluate([{ target: "api", report: report([alert()]) }], accepted, today).ok).toBe(false);
-    expect(evaluate([{ target: "website", report: report([alert({ pluginid: "10055" })]) }], accepted, today).ok).toBe(false);
+    expect(evaluate([{ target: "website", report: report([alert({ alertRef: "10038-2" })]) }], accepted, today).ok).toBe(false);
     const expired = evaluate([{ target: "website", report: report([alert()]) }], accepted, new Date("2027-01-01T00:00:00Z"));
     expect(expired.ok).toBe(false);
     expect(expired.problems[0]).toMatch(/EXPIRED on 2026-12-31/);
+  });
+
+  it("accepting one CSP problem (10055-6, style-src) doesn't pass another from the same rule (10055-5, script-src)", () => {
+    const accepted = { accepted: [{ target: "website", alertRef: "10055-6", reason: "why", expires: "2026-12-31" }] };
+    const csp = (ref: string, name: string) => alert({ pluginid: "10055", alertRef: ref, name });
+    expect(evaluate([{ target: "website", report: report([csp("10055-6", "CSP: style-src unsafe-inline")]) }], accepted, today).ok).toBe(true);
+    const script = evaluate([{ target: "website", report: report([csp("10055-5", "CSP: script-src unsafe-inline")]) }], accepted, today);
+    expect(script.ok).toBe(false);
+    expect(script.problems[0]).toMatch(/10055-5/);
   });
 
   it("fails a scan ZAP stopped early, and a report with nothing scanned", () => {
@@ -102,18 +112,18 @@ describe("evaluate", () => {
 describe("annotation", () => {
   it("an error for a blocking alert, a warning for Low, a notice for Informational, with escaping", () => {
     const [blocking] = evaluate([{ target: "website", report: report([alert({ name: "50%\nbad" })]) }], none, today).alerts;
-    expect(annotation(blocking!)).toBe("::error title=ZAP Medium: 50%25%0Abad::website: rule 10038 at http://127.0.0.1:3100/");
+    expect(annotation(blocking!)).toBe("::error title=ZAP Medium: 50%25%0Abad::website: alert 10038-1 at http://127.0.0.1:3100/");
     const [low] = evaluate([{ target: "website", report: report([alert({ riskcode: "1" })]) }], none, today).alerts;
     expect(annotation(low!)).toMatch(/^::warning title=ZAP Low/);
     const [info] = evaluate([{ target: "website", report: report([alert({ riskcode: "0", instances: [] })]) }], none, today).alerts;
-    expect(annotation(info!)).toBe("::notice title=ZAP Informational: Content Security Policy (CSP) Header Not Set::website: rule 10038");
+    expect(annotation(info!)).toBe("::notice title=ZAP Informational: Content Security Policy (CSP) Header Not Set::website: alert 10038-1");
   });
 
   it("marks false positives and accepted alerts, and counts URIs past three", () => {
     const uris = ["/a", "/b", "/c", "/d", "/e"].map((p) => ({ uri: `http://h${p}` }));
     const [fp] = evaluate([{ target: "website", report: report([alert({ confidence: "0", instances: uris })]) }], none, today).alerts;
-    expect(annotation(fp!)).toBe("::warning title=ZAP Medium: Content Security Policy (CSP) Header Not Set::website: rule 10038 [ZAP: false positive] at http://h/a, http://h/b, http://h/c (+2 more)");
-    const accepted = { accepted: [{ target: "website", pluginId: "10038", reason: "r", expires: "2026-12-31" }] };
+    expect(annotation(fp!)).toBe("::warning title=ZAP Medium: Content Security Policy (CSP) Header Not Set::website: alert 10038-1 [ZAP: false positive] at http://h/a, http://h/b, http://h/c (+2 more)");
+    const accepted = { accepted: [{ target: "website", alertRef: "10038-1", reason: "r", expires: "2026-12-31" }] };
     const [acc] = evaluate([{ target: "website", report: report([alert()]) }], accepted, today).alerts;
     expect(annotation(acc!)).toMatch(/\[accepted: \.zap-accepted\.json\]/);
   });

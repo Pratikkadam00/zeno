@@ -79,6 +79,16 @@ describe("catalog invariants — every one of the entries", () => {
     }
   });
 
+  // ZAP's passive "Source Code Disclosure - SQL" pattern (rule 10099,
+  // zap-extensions SourceCodeDisclosureScanRule). Plain English can trip it:
+  // "Select a cancellation reason from dropdown" failed the nightly DAST gate
+  // as a Medium (P4.5). Guide steps are written so it can't.
+  it("no step reads as SQL to ZAP's source-code-disclosure check", () => {
+    const zapSql = /select\s+[a-z0-9., "'()*]+\s+from\s+[a-z0-9._, ]+/im;
+    expect(zapSql.test("Select a cancellation reason from dropdown")).toBe(true);
+    for (const s of services) for (const step of s.cancelGuide) expect(zapSql.test(step), `${s.slug}: ${step}`).toBe(false);
+  });
+
   it("every record converts with a svc_ id and matching fields", () => {
     for (const r of serviceRecords) {
       expect(r.id).toBe(`svc_${r.slug}`);

@@ -96,7 +96,7 @@ const guideOverrides: Record<string, string[]> = {
     "Go to account.adobe.com/plans",
     "Click Manage Plan next to Creative Cloud",
     "Click Cancel Plan - Adobe will offer discounts, decline them all",
-    "Select a cancellation reason from dropdown",
+    "Choose a cancellation reason in the dropdown",
     "WARNING: If in first year, Adobe charges an early termination fee of 50% of remaining contract",
     "Click Continue to confirm - check your email for confirmation"
   ],
