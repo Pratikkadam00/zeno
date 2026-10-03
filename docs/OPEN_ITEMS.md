@@ -3,7 +3,7 @@
 **One place for everything not yet solved.** Each item says who acts, exactly what to
 do, and where the full evidence lives (finding numbers point into
 `docs/HARDENING_LOG.md`). When an item is done it is removed from here and its log
-entry marked fixed. Last updated 2026-10-03, after P4.3; the owner items moved to OWNER_ACTIONS.md.
+entry marked fixed. Last updated 2026-10-03, after P4.4; the owner items moved to OWNER_ACTIONS.md.
 
 ---
 
@@ -19,7 +19,7 @@ Nothing that needs you is kept here, so there is one list to work from.
 
 | # | Item | When |
 |---|---|---|
-| — | **P4:** website tests done (P4.1a-c), every route, the behaviours and the Core Web Vitals budgets in a real browser done (P4.2), the CSP and headers done (P4.3); next the build-output secret scan (P4.4), then DAST (P4.5) | next, in order |
+| — | **P4:** website tests done (P4.1a-c), every route, the behaviours and the Core Web Vitals budgets in a real browser done (P4.2), the CSP and headers done (P4.3), the build-output secret scan done (P4.4); next DAST (P4.5), then the P4 gate | next, in order |
 | — | **Which "today"?** The app counts days from the **UTC** day (countdowns, renewal roll-forward, budget months, spend history, trial guardian, insights), so near midnight a renewal can read "today" or "tomorrow" a day off from the user's own day. Moving to the user's local day is product-wide and touches money maths; places: `subscription-ui.ts` (getDaysRemaining, rollRenewalForward), `calendarUtils.ts` (dayDiffISO), `insightsEngine.ts` (day diffs), `finance/budget.ts` (month bounds), `packages/shared` (spend history, year in review, trial guardian, renewal plan) | P5 (timezone pass) |
 | F184 | The `/analytics` 404 (shown while the sample dashboard is off) ignores the dark theme: its page lacks the theme script | P5 |
 | F185 | The website has no favicon (browsers show a generic icon); take it from the design system | P5 |
@@ -46,6 +46,7 @@ Nothing that needs you is kept here, so there is one list to work from.
 | F126 | Found in P3.8e-1: Settings showed **"Version 1.0.0"**; the app is 0.1.0 | Shows the real version. |
 | F125 | Found in P3.8e-1: Settings and Profile showed an **internal account id where your email belongs** (or a made-up "you@example.com") | Your email is shown now. |
 | F124 | Found in P3.8e-1: Settings' **"Push notifications" switch did nothing** | It's now "Renewal reminders" (as designed) and really turns every reminder off and on. |
+| F186 | Building the website **left a copy of every secret in the build environment on disk** (inside the build tool's cache) | That cache is off; our builds never reused it. CI now builds with a decoy value in every secret and fails if any shows up in the build. |
 | F183 | Anyone could make the website's server **write files to its disk without limit**, by asking for made-up cancel-guide addresses | Made-up addresses get the ready-made "not found" page; nothing is written. |
 | — | The website allowed **any inline script** to run, so one HTML-injection bug would have been enough for an attack | Each page now allows only its own scripts, by fingerprint; an injected one is blocked (tested in Chrome). |
 | F182 | **Imported renewal dates showed a day early** everywhere west of UTC (the Americas) | They show the day they name, in every timezone; tests run in six zones. |

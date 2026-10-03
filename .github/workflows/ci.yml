@@ -105,11 +105,17 @@ jobs:
       # On failure the log's last 40 lines become an annotation, readable through
       # the public API (the raw log needs a login); before this a CI-only build
       # failure showed only "exit code 1" (CI 36845816550).
-      - name: Build web
+      #
+      # The build runs inside the build-output secret scan (P4.4): every
+      # non-public environment name the repository knows is set to a random
+      # canary, and the scan fails if any canary is anywhere in apps/web/.next
+      # (as written or base64), or if .next holds a kind of file it can't read.
+      # The browser tests below then run on this same build.
+      - name: Build web (with the build-output secret scan)
         shell: bash
         run: |
           set -o pipefail
-          if ! npm run build --workspace @zeno/web 2>&1 | tee "$RUNNER_TEMP/web-build.log"; then
+          if ! node scripts/build-secret-scan.mjs 2>&1 | tee "$RUNNER_TEMP/web-build.log"; then
             # The first error lines (the cause) and then the last 40 (the context).
             msg=$({ grep -m 8 -iE "error|failed|could not" "$RUNNER_TEMP/web-build.log"; echo "..."; tail -n 40 "$RUNNER_TEMP/web-build.log"; } | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'BEGIN{ORS="%0A"} {print}')
             echo "::error title=Build web failed::${msg}"

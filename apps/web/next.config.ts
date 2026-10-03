@@ -81,6 +81,15 @@ const nextConfig: NextConfig = {
   // No "X-Powered-By: Next.js": it tells a scanner which exploits to try first
   // (OWASP Secure Headers lists it to remove).
   poweredByHeader: false,
+  experimental: {
+    // Turbopack's build cache (on by default since 16.3) stores a snapshot of
+    // the build's ENVIRONMENT in .next/cache, compressed: every variable set
+    // while building, secrets included (measured, F186). Our builds never keep
+    // .next/cache (fresh CI runners, no cache step), so it only ever wrote that
+    // snapshot to disk; Next's docs: if the build environment never preserves
+    // .next/cache, set this to false.
+    turbopackFileSystemCacheForBuild: false
+  },
   allowedDevOrigins: ["127.0.0.1"],
   transpilePackages: ["@zeno/shared", "@zeno/service-catalog"],
   async headers() {

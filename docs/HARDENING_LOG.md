@@ -97,7 +97,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
     - [x] P4.2b the behaviours: the homepage book, no-JS, reduced motion, theme persistence, the waitlist end to end, the hub and guides, the book-mode nav links; **fixes F179** (green: CI 37043864957, CodeQL 37043865051 on `e0e6b31`)
     - [x] P4.2c Core Web Vitals budgets (LCP, CLS, INP) under Lighthouse's mobile throttling, measured in Chrome; **fixes F180**
   - [x] P4.3 CSP: no `'unsafe-inline'` scripts (hashes for the fixed inline scripts) or a written, measured reason; the other headers verified. **Done with per-page hashes**: each page's own inline scripts allowed by sha256, an injected one blocked (proven in Chrome); headers checked against OWASP's set; **fixes F183**, F184 and F185 logged
-  - [ ] P4.4 build-output secret scan: no non-public env value in `.next`
+  - [x] P4.4 build-output secret scan: no non-public env value in `.next`. **Done as a canary build in CI**: every non-public name the repository knows (49) set to a random value, all of `.next` searched as written and base64, unreadable file kinds fail; **fixes F186** (Turbopack's cache stored the build environment)
   - [ ] P4.5 DAST: OWASP ZAP baseline against `next start` and the API, nightly; no medium+ alerts
   - [ ] P4 gate: Playwright green in CI; CSP without `'unsafe-inline'` scripts (or a written reason); axe clean on every route
 - [ ] **P5 — Mobile end-to-end (Maestro on the emulator)** (watch for F94 and F106, closed as not reproduced in FX.5)
@@ -289,6 +289,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F183 | **FIXED in P4.3.** ~~Any made-up `/cancel/<slug>` was rendered on request and **written to the server's disk cache**: about nine files per slug, without limit (measured: five random slugs, five sets of files under `.next/server/app/cancel/`). Anyone could grow the server's disk and spend its CPU just by requesting URLs.~~ `dynamicParams = false` on the guide route: an unknown slug is now the prebuilt 404 page, byte for byte, and nothing is written. | Medium (unbounded disk growth from anonymous requests) | me | P4.3 |
 | F184 | **OPEN (P5).** `/analytics`, the 404 served while the sample-analytics flag is off, lacks the root layout's theme script (measured in the build: its page has Next's two scripts but not ours). So a visitor who chose the dark theme sees it light there, and the page shows its no-JS layout. Cause inside Next (the page calls `notFound()` while prerendering) not investigated; the page is linked from nowhere. | Low (cosmetic, one unlinked page) | me | P5 |
 | F185 | **OPEN (P5).** The website has **no favicon**: no icon file and no `<link rel="icon">`, so browsers show a generic icon and their automatic `/favicon.ico` request is a 404 (seen in Chrome's console in P4.3). The icon should come from the design system, not be invented here. | Low (brand) | me | P5 |
+| F186 | **FIXED in P4.4.** ~~Turbopack's build cache (on by default for `next build` since Next 16.3) wrote **a snapshot of the whole build environment** into `.next/cache/turbopack/*.sst`: every variable set while building, secrets included, compressed (measured: the canary build's `API_PORT` value sat beside `ALLOW_UNVERIFIED_OAUTH_TOKENS` and this session's own variables; the rest was in compressed blocks a byte scan can't read). Not served (measured 404 on the server, path tricks included), but on the disk of every machine that builds the site, and in anything that copies `.next`.~~ `experimental.turbopackFileSystemCacheForBuild: false`: our builds never keep `.next/cache` (fresh CI runners, no cache step), and Next's own docs say to turn it off then. No `.sst` is written now, and the scan fails if one ever is. | Medium (secrets at rest in build output) | me | P4.4 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **CLOSED in the P3 gate (2026-10-02): reachable, not a bug.** TalkBack, driven by touches from the emulator's own touchscreen, put its focus on each nested button's exact bounds, separately from its parent: the calendar's "Cancel Figma", the menu's Edit/Pause/Delete, the login's Terms and Privacy links. Original note: on the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -5029,3 +5030,67 @@ mobile workspace's `@expo/cli` -> `@expo/metro-file-map` -> `micromatch`, the de
 CLI's file watcher (Node-only, not in the app bundle), expanding patterns from our own
 config. Accepted in `.audit-allowlist.json` with a short expiry (2026-11-30), like
 node-forge, to re-check for a fix.
+
+**P4.3 on CI:** CI 37101977826 green (every step, the browser tests on the runner's
+Chrome included). CodeQL 37101977824 failed its zero-findings gate on one alert,
+`js/bad-tag-filter` in `scripts/csp-script-hashes.mjs`: the script-end pattern didn't
+match end tags HTML accepts, such as `</script\t\n bar>`. The input is our own build
+output, so not exploitable here, but the pattern now follows HTML's tokenizer
+(`</script` then whitespace, `/` or `>`, anything up to `>`), with a test. Bite check: 1,
+caught 1 (the old pattern fails it).
+
+### P4.4 — the build output scanned for secrets, by canary; F186 fixed — 2026-10-03
+
+**Why a canary, not a pattern scan.** A pattern scanner recognises key-shaped strings;
+it can't recognise a webhook URL, a database URL or a password it has never seen. So
+`scripts/build-secret-scan.mjs` builds the website with every non-public environment
+name the repository knows set to a fresh random value, then searches every byte under
+`apps/web/.next` for each one, as written and base64-encoded (at each of the three
+alignments). The names come from every tracked file that can name one: code
+(`process.env`), `render.yaml`, the `.env` examples and the workflows' secrets: 49 today,
+the website's secret (`WAITLIST_WEBHOOK_URL`) and every API secret included. Only the
+public-by-design prefixes (`NEXT_PUBLIC_`, `EXPO_PUBLIC_`) and the build's own controls
+(`NODE_ENV`, `CI`, `TZ`, `BABEL_ENV`) are left out. This is how CI builds the website
+now, so the browser tests run on the canary build.
+
+**F186, found by the first run.** One hit: `API_PORT`'s canary, inside Turbopack's build
+cache (`.next/cache/turbopack/*.sst`), next to other variable names and this session's
+own environment variables. Turbopack (its build cache on by default since Next 16.3)
+stores a snapshot of the build's environment there, compressed; `API_PORT` happened
+to fall in an uncompressed stretch, which is why a byte search saw only that one. Not
+served: `next start` answered 404 for the cache, the manifests, `BUILD_ID`, the server
+files and `.env`, including `..`, `%2f` and `%2e%2e` tricks. But it's every secret of the
+build environment, at rest on any machine that builds the site and in anything that
+copies `.next`. Our builds never keep the cache (fresh CI runners, no cache step), and
+Next's own docs say "if your build environment never preserves `.next/cache`, set
+`turbopackFileSystemCacheForBuild: false`". Done; no `.sst` is written now.
+
+**So the scan can't pass blind:** every kind of file the build writes was listed
+(`.rsc`, `.meta`, `.html`, `.js`, `.json`, `.map`, `.ts`, `.css`, `.body`, `.woff2`, and a
+few Next info files), all text except the fonts (`next/font`'s subsets, skipped by
+design). A kind not on that list (an `.sst`, a `.gz`) fails the scan until reviewed.
+
+The scan deletes `.next` before building, so it judges that build alone: Next keeps
+files from earlier builds (turning the cache off left the old `.sst` files in place,
+which the scan duly refused on this machine's next gate run).
+
+**Result: PASS.** None of the 49 values is anywhere in `.next`.
+
+**Also measured: gitleaks over `.next`:** 6 hits, every one Next's own per-build random
+keys: the draft-mode ("preview") keys (`.previewinfo`, `prerender-manifest.json`) and the
+Server Action encryption key (`.rscinfo`, `server-reference-manifest.json`). They are in
+server-only files (none in `.next/static`, which is all browsers get; served files
+answer 404), and the site uses neither feature (no `"use server"`, no `draftMode`), so
+they protect nothing. Not added to CI: its only hits would be these by-design keys, and
+our own secrets are covered by the canaries.
+
+**Tests:** `scripts/build-secret-scan.test.ts` (9): the name sources, what's left out,
+that the repository's list covers the website's and the API's secrets, the canaries,
+the base64 search (random bytes around the value, every alignment), the file kinds, and
+the search itself on a planted tree.
+
+**Bite checks: 2, caught 2.** (1) One build with three planted leaks: the webhook URL
+rendered into every page, the Groq key rendered base64-encoded, and Turbopack's cache
+back on. The scan failed on all three: both values in all 2,113 page files, and 9
+unreadable `.sst` files (plus `API_PORT` again). (2) Without the base64 trimming, the
+base64 tests fail.
