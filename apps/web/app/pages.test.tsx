@@ -140,3 +140,15 @@ describe("the sitemap and robots.txt", () => {
     expect(robots()).toEqual({ rules: [{ userAgent: "*", allow: "/" }], sitemap: siteUrl("/sitemap.xml"), host: siteUrl("/").replace(/\/$/, "") });
   });
 });
+
+describe("the site's 404 (F184)", () => {
+  it("is the content layout: a heading, the main landmark, and the way back", async () => {
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { default: NotFound } = await import("./not-found");
+    const doc = parse(renderToStaticMarkup(<NotFound />));
+    expect(doc.querySelector("h1")?.textContent).toBe("Page not found");
+    expect(doc.querySelector("main#main")).not.toBeNull();
+    const links = [...doc.querySelectorAll("main a")].map((a) => a.getAttribute("href"));
+    expect(links).toEqual(["/", "/cancel"]);
+  });
+});

@@ -69,11 +69,13 @@ export function needles(canary) {
 // rather than being passed unread.
 const READABLE = new Set([
   ".rsc", ".meta", ".html", ".js", ".json", ".map", ".ts", ".css", ".body",
-  ".tsbuildinfo", ".rscinfo", ".previewinfo"
+  ".tsbuildinfo", ".rscinfo", ".previewinfo",
+  ".svg" // the site icon (F185), text
 ]);
 // Not text, but not a hiding place either: next/font's subsets of the fonts we
-// ship, compressed font files whose bytes come from the font, not the build.
-const OPAQUE_BY_DESIGN = new Set([".woff2"]);
+// ship, compressed font files whose bytes come from the font, not the build;
+// and the Apple touch icon (F185), a copy of a committed image.
+const OPAQUE_BY_DESIGN = new Set([".woff2", ".png"]);
 // Text files with no extension (Next's BUILD_ID and build traces).
 const NO_EXTENSION_TEXT = new Set(["BUILD_ID", "trace", "trace-build", "turbopack"]);
 

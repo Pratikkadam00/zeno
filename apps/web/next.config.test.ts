@@ -130,6 +130,21 @@ describe("dev-only relaxation", () => {
   );
 });
 
+describe("the sample analytics page (F184)", () => {
+  it("while its flag is off, /analytics is rewritten to a path no page matches, so the site's own 404 answers", async () => {
+    vi.stubEnv("SHOW_PUBLIC_ANALYTICS", "");
+    const config = await load({ NODE_ENV: "production" });
+    expect(await config.rewrites!()).toEqual({ beforeFiles: [{ source: "/analytics", destination: "/analytics-is-off" }], afterFiles: [], fallback: [] });
+  });
+
+  it("with the flag on (or on the dev server), nothing is rewritten", async () => {
+    vi.stubEnv("SHOW_PUBLIC_ANALYTICS", "1");
+    expect(await (await load({ NODE_ENV: "production" })).rewrites!()).toEqual([]);
+    vi.stubEnv("SHOW_PUBLIC_ANALYTICS", "");
+    expect(await (await load({ NODE_ENV: "development" })).rewrites!()).toEqual([]);
+  });
+});
+
 describe("www -> apex redirect", () => {
   it("permanently redirects the www host to the canonical origin, keeping the path", async () => {
     const config = await load({ NODE_ENV: "production", NEXT_PUBLIC_SITE_URL: "https://example.com" });

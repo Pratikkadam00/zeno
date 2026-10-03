@@ -1,0 +1,7 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Zeno app icon">
+  <!-- The Honest Ledger "Navy" icon: the Zeno coin (two rings + Z) on navy. -->
+  <rect width="1024" height="1024" fill="#0A0F2C"/>
+  <circle cx="512" cy="512" r="336" fill="none" stroke="#1ED47F" stroke-width="36"/>
+  <circle cx="512" cy="512" r="282" fill="none" stroke="#1ED47F" stroke-width="13"/>
+  <path d="M400 414 H624 L400 610 H624" fill="none" stroke="#1ED47F" stroke-width="62" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

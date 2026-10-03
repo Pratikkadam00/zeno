@@ -193,9 +193,28 @@ test("an injected inline script is blocked; the page's own still run (P4.3)", as
   expect(await scriptsRan(page)).toEqual({ themeScript: true, hydrated: true });
 });
 
-test("the sample analytics page is a 404 in production (its flag is off)", async ({ page }) => {
-  const response = await page.goto("/analytics");
+test("the sample analytics page is a 404 in production (its flag is off), and it's the site's own 404 (F184)", async ({ page }) => {
+  const response = await page.goto("/analytics", { waitUntil: "networkidle" });
   expect(response?.status()).toBe(404);
+  // Not Next's bare error document: the root layout, its language and its theme script.
+  expect(await page.getAttribute("html", "lang")).toBe("en");
+  expect(await page.locator("h1").textContent()).toBe("Page not found");
+  expect(await scriptsRan(page)).toEqual({ themeScript: true, hydrated: true });
+  expect.soft(scriptPolicyProblems(await response!.text()), "script policy").toEqual([]);
+});
+
+test("the site has its icon (F185): an SVG favicon and an Apple touch icon, both served", async ({ page, request }) => {
+  await page.goto("/");
+  const icon = await page.getAttribute('link[rel="icon"]', "href");
+  const apple = await page.getAttribute('link[rel="apple-touch-icon"]', "href");
+  expect(icon).toMatch(/^\/icon\.svg/);
+  expect(apple).toMatch(/^\/apple-icon\.png/);
+  const svg = await request.get(icon!);
+  expect(svg.status()).toBe(200);
+  expect(svg.headers()["content-type"]).toContain("image/svg+xml");
+  const png = await request.get(apple!);
+  expect(png.status()).toBe(200);
+  expect(png.headers()["content-type"]).toContain("image/png");
 });
 
 test("all 509 guides answer 200 with the security headers and their own script policy", async ({ request }) => {

@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { isPublicAnalyticsEnabled } from "./lib/analytics-flag";
 import { SITE_HOST, SITE_URL } from "./lib/site";
 
 // Security headers applied to every response, including a complete Content-
@@ -94,6 +95,15 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@zeno/shared", "@zeno/service-catalog"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
+  },
+  async rewrites() {
+    // F184: while the sample dashboard is off, /analytics is answered by the
+    // site's own 404 page. Its notFound() during prerender gave Next's bare
+    // error document instead (no lang attribute, no fonts, no theme script),
+    // whichever file threw it; a path that matches no page gets the real one.
+    return isPublicAnalyticsEnabled()
+      ? []
+      : { beforeFiles: [{ source: "/analytics", destination: "/analytics-is-off" }], afterFiles: [], fallback: [] };
   },
   async redirects() {
     return [

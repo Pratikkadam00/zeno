@@ -72,6 +72,8 @@ describe("kindOf", () => {
     expect(kindOf(".previewinfo")).toBe("readable");
     expect(kindOf("BUILD_ID")).toBe("readable");
     expect(kindOf("latin.woff2")).toBe("opaque");
+    expect(kindOf("icon.36hrpa5p3fect.svg")).toBe("readable");
+    expect(kindOf("apple-icon.3mnei0fi0ql54.png")).toBe("opaque");
     expect(kindOf("00000003.sst")).toBe("unknown");
     expect(kindOf("bundle.js.gz")).toBe("unknown");
     expect(kindOf("SOMETHING")).toBe("unknown");
