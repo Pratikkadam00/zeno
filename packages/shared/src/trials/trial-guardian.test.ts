@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Subscription } from "../domain";
 import { getEndingTrials } from "./trial-guardian";
 
@@ -20,6 +20,17 @@ function trial(id: string, endsInDays: number, over: Partial<Subscription> = {})
 }
 
 const NOW = new Date(Date.UTC(2026, 5, 15, 12, 0, 0));
+
+// "now" is given as UTC instants, so these cases run with the device on UTC;
+// "today" and "this month" are the user's ("which today?", P5).
+const DEVICE_TZ = process.env.TZ;
+beforeEach(() => {
+  process.env.TZ = "UTC";
+});
+afterEach(() => {
+  if (DEVICE_TZ === undefined) delete process.env.TZ;
+  else process.env.TZ = DEVICE_TZ;
+});
 
 describe("getEndingTrials", () => {
   it("returns active trials within the window, soonest first, with whole-day countdown", () => {

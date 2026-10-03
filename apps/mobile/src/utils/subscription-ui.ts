@@ -1,4 +1,4 @@
-import type { BillingCycle } from "@zeno/shared";
+import { currentMonth, todayLabel, type BillingCycle } from "@zeno/shared";
 import type { ThemeTokens } from "../theme/tokens";
 import { formatDayLabel } from "./day-label";
 
@@ -17,7 +17,8 @@ export function rollRenewalForward(dateValue: string | undefined | null, cycle: 
   if (Number.isNaN(date.getTime())) return dateValue;
   if (cycle === "trial" || cycle === "unknown") return dateValue;
 
-  const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  // "Today" is the user's calendar date, as a day label (shared todayLabel).
+  const todayUTC = todayLabel(now);
   const hours = date.getUTCHours();
   const minutes = date.getUTCMinutes();
 
@@ -49,7 +50,8 @@ export function rollRenewalForward(dateValue: string | undefined | null, cycle: 
   // Start at the last whole cycle that is not past today's month. That candidate
   // is in today's month or earlier; one more step is always in a later month,
   // so the loop below runs at most once and needs no iteration cap.
-  const monthsBehind = (now.getUTCFullYear() - baseYear) * 12 + (now.getUTCMonth() - baseMonth);
+  const { year: nowYear, month: nowMonth } = currentMonth(now);
+  const monthsBehind = (nowYear - baseYear) * 12 + (nowMonth - baseMonth);
   let months = monthsBehind > 0 ? Math.floor(monthsBehind / step) * step : 0;
   let current = at(months);
   while (Date.UTC(current.year, current.month, current.day) < todayUTC) {
@@ -68,8 +70,8 @@ export function getDaysRemaining(dateValue?: string | null): number | null {
   if (!dateValue) return null;
   const target = new Date(dateValue);
   if (Number.isNaN(target.getTime())) return null;
-  const today = new Date();
-  const todayUTC = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  // From the user's calendar date to the renewal's day label.
+  const todayUTC = todayLabel(new Date());
   const targetUTC = Date.UTC(target.getUTCFullYear(), target.getUTCMonth(), target.getUTCDate());
   return Math.max(0, Math.ceil((targetUTC - todayUTC) / DAY_MS));
 }

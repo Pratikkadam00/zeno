@@ -1,3 +1,4 @@
+import { todayLabel } from "../dates/day-label";
 import type { Subscription } from "../domain";
 
 export type EndingTrial = {
@@ -24,7 +25,8 @@ function toUtcDay(ms: number): number {
  * trials (countdown < 0) are excluded.
  */
 export function getEndingTrials(subscriptions: Subscription[], now: Date = new Date(), withinDays = 30): EndingTrial[] {
-  const today = toUtcDay(now.getTime());
+  // The user's calendar date ("which today?", P5), as a day label.
+  const today = todayLabel(now);
   const trials: EndingTrial[] = [];
 
   for (const subscription of subscriptions) {

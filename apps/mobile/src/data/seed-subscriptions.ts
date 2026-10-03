@@ -1,4 +1,4 @@
-import type { Subscription } from "@zeno/shared";
+import { todayLabel, type Subscription } from "@zeno/shared";
 
 // Seed dates are relative to first launch so the demo always shows a believable
 // mix of imminent renewals (and never stale "TODAY" badges from fixed dates).
@@ -8,8 +8,9 @@ const now = (() => {
   created.setUTCMonth(created.getUTCMonth() - 2);
   return created.toISOString();
 })();
+// N days after the user's date at launch ("which today?", P5), at 09:00 UTC.
 function renewalInDays(days: number): string {
-  const date = new Date(launch);
+  const date = new Date(todayLabel(launch));
   date.setUTCDate(date.getUTCDate() + days);
   date.setUTCHours(9, 0, 0, 0);
   return date.toISOString();

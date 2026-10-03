@@ -1,4 +1,4 @@
-import { convertMinor, monthlyAmount, monthlyAmountIn, type FxContext, type Subscription, type SubscriptionCategory } from "@zeno/shared";
+import { convertMinor, monthlyAmount, monthlyAmountIn, type FxContext, type Subscription, type SubscriptionCategory, todayLabel } from "@zeno/shared";
 
 export interface CalendarDot {
   key: string;
@@ -49,7 +49,8 @@ function dayDiffISO(dateValue: string, fromDate: Date): number | null {
     return null;
   }
 
-  return Math.floor((utcDayStart(date) - utcDayStart(fromDate)) / DAY_MS);
+  // From the user's calendar date ("which today?", P5) to the renewal's day.
+  return Math.floor((utcDayStart(date) - todayLabel(fromDate)) / DAY_MS);
 }
 
 function mapCategoryToColor(category: SubscriptionCategory): string {

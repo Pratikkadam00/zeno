@@ -1,4 +1,4 @@
-import { convertMinor, type FxContext, type Subscription } from "@zeno/shared";
+import { convertMinor, currentMonth, dayLabelOf, todayLabel, type FxContext, type Subscription } from "@zeno/shared";
 
 /* Subscription-first, forecast-led budgeting — all derived from real renewal
    dates (no bank feed). "committed" = charges that have already hit this month;
@@ -26,9 +26,11 @@ export type BudgetStatus = "under" | "approaching" | "over";
 // UTC throughout — the cadence stepping below is UTC, so the month window must
 // be too, or charges near a month edge land in the wrong month (and the result
 // would vary by the user's timezone).
+// The user's month ("which today?", P5), as day labels: charges are day labels.
 function monthBounds(now: Date): { start: number; end: number } {
-  const start = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
-  const end = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1) - 1; // last ms of the month
+  const { year, month } = currentMonth(now);
+  const start = Date.UTC(year, month, 1);
+  const end = Date.UTC(year, month + 1, 1) - 1; // last ms of the month
   return { start, end };
 }
 
@@ -95,7 +97,8 @@ function billableUntil(sub: Subscription): number | null {
 
 export function computeBudgetForecast(subscriptions: Subscription[], now: Date = new Date(), fx?: FxContext): BudgetForecast {
   const { start, end } = monthBounds(now);
-  const nowMs = now.getTime();
+  // A charge has happened once its day is today or earlier, on the user's calendar.
+  const today = todayLabel(now);
   let committedMinor = 0;
   let projectedMinor = 0;
   let excludedCurrencyCount = 0;
@@ -115,7 +118,7 @@ export function computeBudgetForecast(subscriptions: Subscription[], now: Date =
 
     for (const date of dates) {
       projectedMinor += amountMinor;
-      if (date.getTime() <= nowMs) {
+      if (dayLabelOf(date) <= today) {
         committedMinor += amountMinor;
       } else {
         remaining.push({
@@ -130,7 +133,7 @@ export function computeBudgetForecast(subscriptions: Subscription[], now: Date =
   }
 
   remaining.sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
-  const daysLeftInMonth = Math.max(0, Math.ceil((end - nowMs) / DAY_MS));
+  const daysLeftInMonth = Math.max(0, Math.round((end + 1 - today) / DAY_MS));
   const forecast: BudgetForecast = { committedMinor, projectedMinor, remaining, daysLeftInMonth };
   if (fx) {
     forecast.excludedCurrencyCount = excludedCurrencyCount;
@@ -185,10 +188,11 @@ export function budgetRecap(
 ): BudgetRecap | null {
   const setAt = capSetAt ? Date.parse(capSetAt) : Number.NaN;
   if (Number.isNaN(setAt)) return null;
-  const currentMonth = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
+  const { year, month } = currentMonth(now);
+  const thisMonth = Date.UTC(year, month, 1);
   const counts = (point: { year: number; month: number }) => {
     const start = Date.UTC(point.year, point.month, 1);
-    return start >= setAt && start < currentMonth;
+    return start >= setAt && start < thisMonth;
   };
   let recapIndex = -1;
   for (let i = history.length - 1; i >= 0; i--) {

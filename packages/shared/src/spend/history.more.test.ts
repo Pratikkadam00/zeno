@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { BillingCycle, Subscription } from "../domain";
 import type { FxContext } from "./coach";
 import { buildMonthlySpendHistory } from "./history";
@@ -23,7 +23,18 @@ const NOW = new Date(Date.UTC(2026, 5, 15)); // 15 June 2026
 const fx: FxContext = { homeCurrency: "USD", rates: { USD: 1, INR: 95 } };
 const amounts = (points: ReturnType<typeof buildMonthlySpendHistory>) => points.map((p) => p.amountMinor);
 
-describe("buildMonthlySpendHistory — calendar (UTC)", () => {
+// "now" is given as UTC instants, so these cases run with the device on UTC;
+// "today" and "this month" are the user's ("which today?", P5).
+const DEVICE_TZ = process.env.TZ;
+beforeEach(() => {
+  process.env.TZ = "UTC";
+});
+afterEach(() => {
+  if (DEVICE_TZ === undefined) delete process.env.TZ;
+  else process.env.TZ = DEVICE_TZ;
+});
+
+describe("buildMonthlySpendHistory — calendar", () => {
   it("walks back across a year boundary with the right year and label", () => {
     const points = buildMonthlySpendHistory([], 3, new Date(Date.UTC(2026, 0, 15)));
     expect(points.map((p) => [p.year, p.month, p.label])).toEqual([
@@ -38,10 +49,12 @@ describe("buildMonthlySpendHistory — calendar (UTC)", () => {
     expect(points.map((p) => p.label)).toEqual(["Jan", "Feb", "Mar"]);
   });
 
-  it("uses the UTC month even when a local timezone would already be in the next month", () => {
-    // 23:30 UTC on 30 June is 1 July in UTC+1 and later zones.
-    const points = buildMonthlySpendHistory([], 1, new Date(Date.UTC(2026, 5, 30, 23, 30)));
-    expect(points[0]).toMatchObject({ year: 2026, month: 5, label: "Jun" });
+  it("ends at the user's month: 23:30 UTC on 30 June is still June in New York, July in Kolkata", () => {
+    const now = new Date(Date.UTC(2026, 5, 30, 23, 30));
+    process.env.TZ = "America/New_York";
+    expect(buildMonthlySpendHistory([], 1, now)[0]).toMatchObject({ year: 2026, month: 5, label: "Jun" });
+    process.env.TZ = "Asia/Kolkata";
+    expect(buildMonthlySpendHistory([], 1, now)[0]).toMatchObject({ year: 2026, month: 6, label: "Jul" });
   });
 });
 

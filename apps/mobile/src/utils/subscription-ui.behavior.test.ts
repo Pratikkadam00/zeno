@@ -27,6 +27,15 @@ function inTimeZone<T>(tz: string, fn: () => T): T {
 }
 
 describe("rollRenewalForward — edge cases", () => {
+  // These cases give "now" as UTC instants; "today" is the user's date, so they
+  // run with the device in UTC. The zone-dependent rule is tested below.
+  beforeEach(() => {
+    process.env.TZ = "UTC";
+  });
+  afterEach(() => {
+    process.env.TZ = ORIGINAL_TZ;
+  });
+
   it("passes an empty string through as-is (a missing date, not a date to roll)", () => {
     expect(rollRenewalForward("", "monthly")).toBe("");
   });
@@ -69,17 +78,18 @@ describe("rollRenewalForward — edge cases", () => {
     expect(rollRenewalForward(leapDay, "annual", new Date("2027-03-01T00:00:00.000Z"))).toBe("2028-02-29T06:00:00.000Z");
   });
 
-  it("gives the same answer whatever the device timezone is (UTC-day arithmetic)", () => {
+  // "Which today?" (P5): the user's calendar date, not the UTC date. At 03:00
+  // UTC on Mar 1 it is still Feb 28 in Los Angeles: a renewal dated Feb 28 is
+  // due today there (kept), and already past in Kolkata (rolled a month).
+  it("rolls from the user's own date, not the UTC date", () => {
     const now = new Date("2026-03-01T03:00:00.000Z");
-    const run = () => [
-      rollRenewalForward("2026-01-31T23:30:00.000Z", "monthly", now),
-      rollRenewalForward("2026-02-02T23:30:00.000Z", "weekly", now),
-      rollRenewalForward("2025-11-30T00:15:00.000Z", "quarterly", now)
-    ];
-    const la = inTimeZone("America/Los_Angeles", run);
-    const kolkata = inTimeZone("Asia/Kolkata", run);
-    expect(la).toEqual(["2026-03-31T23:30:00.000Z", "2026-03-02T23:30:00.000Z", "2026-05-30T00:15:00.000Z"]);
-    expect(kolkata).toEqual(la);
+    const feb28 = "2026-02-28T00:00:00.000Z";
+    expect(inTimeZone("America/Los_Angeles", () => rollRenewalForward(feb28, "monthly", now))).toBe("2026-02-28T00:00:00.000Z");
+    expect(inTimeZone("Asia/Kolkata", () => rollRenewalForward(feb28, "monthly", now))).toBe("2026-03-28T00:00:00.000Z");
+    // Dates comfortably clear of midnight agree everywhere.
+    const run = () => rollRenewalForward("2026-01-15T12:00:00.000Z", "monthly", now);
+    expect(inTimeZone("America/Los_Angeles", run)).toBe("2026-03-15T12:00:00.000Z");
+    expect(inTimeZone("Asia/Kolkata", run)).toBe("2026-03-15T12:00:00.000Z");
   });
 
   // Regression: the roll walked one cycle at a time and gave up after 1000
@@ -122,26 +132,28 @@ describe("rollRenewalForward — edge cases", () => {
   });
 });
 
-describe("getDaysRemaining — UTC-day arithmetic", () => {
+describe("getDaysRemaining — from the user's calendar date to the renewal's day", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-01T23:30:00.000Z"));
   });
   afterEach(() => {
     vi.useRealTimers();
+    process.env.TZ = ORIGINAL_TZ;
   });
 
-  it("counts calendar days in UTC, so a renewal one hour away on the next UTC day is 1 day", () => {
+  it("counts whole days between day labels (a device on UTC)", () => {
+    process.env.TZ = "UTC";
     expect(getDaysRemaining("2026-06-02T00:30:00.000Z")).toBe(1);
     expect(getDaysRemaining("2026-06-01T00:00:00.000Z")).toBe(0);
     expect(getDaysRemaining("2026-06-11T12:00:00.000Z")).toBe(10);
   });
 
-  it("does not depend on the device timezone", () => {
-    const la = inTimeZone("America/Los_Angeles", () => getDaysRemaining("2026-06-02T00:30:00.000Z"));
-    const kolkata = inTimeZone("Asia/Kolkata", () => getDaysRemaining("2026-06-02T00:30:00.000Z"));
-    expect(la).toBe(1);
-    expect(kolkata).toBe(1);
+  // 23:30 UTC on Jun 1 is still Jun 1 in Los Angeles and already Jun 2 in
+  // Kolkata: the Jun 2 renewal is tomorrow for one and today for the other.
+  it("counts from the user's own date (\"which today?\", P5)", () => {
+    expect(inTimeZone("America/Los_Angeles", () => getDaysRemaining("2026-06-02T00:00:00.000Z"))).toBe(1);
+    expect(inTimeZone("Asia/Kolkata", () => getDaysRemaining("2026-06-02T00:00:00.000Z"))).toBe(0);
   });
 });
 

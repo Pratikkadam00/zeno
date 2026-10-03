@@ -1,3 +1,4 @@
+import { currentMonth } from "../dates/day-label";
 import type { Subscription } from "../domain";
 import { convertMinor, monthlyAmount, type FxContext } from "./coach";
 
@@ -26,8 +27,10 @@ export function buildMonthlySpendHistory(subscriptions: Subscription[], months =
   const monthFmt = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" });
   const points: MonthlySpendPoint[] = [];
 
+  // Counted back from the user's month ("which today?", P5).
+  const current = currentMonth(now);
   for (let i = months - 1; i >= 0; i -= 1) {
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    const d = new Date(Date.UTC(current.year, current.month - i, 1));
     const year = d.getUTCFullYear();
     const month = d.getUTCMonth();
     let amountMinor = 0;

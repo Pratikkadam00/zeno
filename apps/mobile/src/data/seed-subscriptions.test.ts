@@ -54,7 +54,7 @@ describe("seedSubscriptions (demo data)", () => {
     }
   });
 
-  it("schedules renewals 1-14 UTC days after launch at 09:00 UTC, so no demo badge starts as a stale TODAY", async () => {
+  it("schedules renewals 1-14 days after the user's date at launch, at 09:00 UTC, so no demo badge starts as a stale TODAY", async () => {
     for (const launchIso of ["2026-06-15T10:00:00.000Z", "2026-12-31T23:30:00.000Z", "2027-02-27T00:15:00.000Z"]) {
       const seed = await seedAt(launchIso);
       const launch = Date.parse(launchIso);

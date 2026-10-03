@@ -419,7 +419,7 @@ export default function AddSubscriptionScreen() {
           <View style={styles.renewStepperRow}>
             <View style={{ flex: 1 }}>
               <Text style={styles.renewDateText}>{formatDate(renewalDate)}</Text>
-              <Text style={styles.renewSubText}>in {renewalDays} day{renewalDays === 1 ? "" : "s"}</Text>
+              <Text style={styles.renewSubText}>{renewalDays === 0 ? "today" : `in ${renewalDays} day${renewalDays === 1 ? "" : "s"}`}</Text>
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel="Renew earlier" hitSlop={6} onPress={() => setRenewalDays((d) => Math.max(0, d - 1))} style={styles.stepperBtn}>
               <Minus size={16} color={theme.text} strokeWidth={2} />

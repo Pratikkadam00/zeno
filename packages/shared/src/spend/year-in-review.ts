@@ -1,3 +1,4 @@
+import { currentMonth } from "../dates/day-label";
 import type { Subscription, SubscriptionCategory } from "../domain";
 import { monthlyAmount, monthlyAmountIn, type FxContext } from "./coach";
 import { buildMonthlySpendHistory } from "./history";
@@ -24,7 +25,9 @@ export type YearInReview = {
 
 function coverageStart(subscriptions: Subscription[], now: Date): { label: string | null; coversFullTrailingYear: boolean } {
   // First day of the earliest month in the trailing-12-month window.
-  const windowStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1);
+  // The trailing 12 of the user's months ("which today?", P5).
+  const { year, month } = currentMonth(now);
+  const windowStart = Date.UTC(year, month - 11, 1);
   const stamps = subscriptions
     .map((s) => Date.parse(s.createdAt))
     .filter((n) => Number.isFinite(n));

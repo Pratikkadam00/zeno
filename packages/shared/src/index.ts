@@ -17,3 +17,4 @@ export * from "./spend/twin";
 export * from "./spend/year-in-review";
 export * from "./trials/trial-guardian";
 export * from "./widgets/snapshot";
+export * from "./dates/day-label";

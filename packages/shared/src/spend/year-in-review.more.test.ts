@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import type { Subscription } from "../domain";
 import { buildYearInReview } from "./year-in-review";
 
@@ -101,5 +101,22 @@ describe("buildYearInReview — coverage window", () => {
     const review = buildYearInReview([sub({ id: "edge", createdAt: "2025-07-01T00:00:00.000Z" })], NOW);
     expect(review.coversFullTrailingYear).toBe(true);
     expect(review.coverageStartLabel).toBe("Jul 2025");
+  });
+
+  // "Which today?" (P5): the window is the user's last 12 months. 23:30 UTC on
+  // 30 June 2026 is still June in New York (window Jul 2025..Jun 2026) and
+  // already July in Kolkata (Aug 2025..Jul 2026).
+  const DEVICE_TZ = process.env.TZ;
+  afterEach(() => {
+    if (DEVICE_TZ === undefined) delete process.env.TZ;
+    else process.env.TZ = DEVICE_TZ;
+  });
+  it("is the user's trailing 12 months", () => {
+    const now = new Date(Date.UTC(2026, 5, 30, 23, 30));
+    const list = [sub({ id: "edge", createdAt: "2025-07-01T00:00:00.000Z" })];
+    process.env.TZ = "America/New_York";
+    expect(buildYearInReview(list, now).coverageStartLabel).toBe("Jul 2025");
+    process.env.TZ = "Asia/Kolkata";
+    expect(buildYearInReview(list, now).coverageStartLabel).toBe("Aug 2025");
   });
 });

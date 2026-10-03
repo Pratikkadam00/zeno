@@ -117,8 +117,24 @@ describe("getSubscriptionsForDate", () => {
 });
 
 describe("getWeeklyGroups", () => {
-  // now = 2026-05-29T12:00Z. Offsets are whole UTC days from today.
+  // now = 2026-05-29T12:00Z. Offsets are whole days from today, with the device
+  // on UTC; "today" is the user's date, and the zone rule is tested below.
   const day = (offset: number, hour = 9) => new Date(Date.UTC(2026, 4, 29 + offset, hour)).toISOString();
+  beforeEach(() => {
+    process.env.TZ = "UTC";
+  });
+  afterEach(() => {
+    process.env.TZ = ORIGINAL_TZ;
+  });
+
+  // "Which today?" (P5): 12:00 UTC on May 29 is already May 30 in Kiritimati,
+  // so a May 29 renewal has passed there and is no longer grouped.
+  it("groups from the user's own date", () => {
+    const list = [sub({ id: "may29", nextRenewalDate: "2026-05-29T00:00:00.000Z" }), sub({ id: "jun5", nextRenewalDate: "2026-06-05T00:00:00.000Z" })];
+    expect(ids(getWeeklyGroups(list).thisWeek)).toEqual(["may29", "jun5"]);
+    process.env.TZ = "Pacific/Kiritimati";
+    expect(ids(getWeeklyGroups(list).thisWeek)).toEqual(["jun5"]);
+  });
 
   it("buckets by whole UTC days: 0-7 this week, 8-14 next week, 15-30 later this month, else nothing", () => {
     const groups = getWeeklyGroups([

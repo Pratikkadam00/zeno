@@ -28,15 +28,25 @@ describe("F182: a renewal day label reads as the day it names, in every timezone
 });
 
 describe("dayLabelInDays", () => {
-  it.each(ZONES)("%s: midnight UTC, N days after today's UTC day", (tz) => {
+  // 22:30 UTC on Oct 2 is still Oct 2 in the Americas and Honolulu, already
+  // Oct 3 in Kolkata and Kiritimati: N days from the USER's date ("which
+  // today?", P5), as a day label.
+  it.each([
+    ["America/Los_Angeles", "2026-10-02", "2026-11-01"],
+    ["America/New_York", "2026-10-02", "2026-11-01"],
+    ["UTC", "2026-10-02", "2026-11-01"],
+    ["Pacific/Honolulu", "2026-10-02", "2026-11-01"],
+    ["Asia/Kolkata", "2026-10-03", "2026-11-02"],
+    ["Pacific/Kiritimati", "2026-10-03", "2026-11-02"]
+  ])("%s: midnight UTC of the user's date, and 30 days on", (tz, today, in30) => {
     process.env.TZ = tz;
     const now = new Date("2026-10-02T22:30:00.000Z");
-    expect(dayLabelInDays(0, now).toISOString()).toBe("2026-10-02T00:00:00.000Z");
-    expect(dayLabelInDays(30, now).toISOString()).toBe("2026-11-01T00:00:00.000Z");
+    expect(dayLabelInDays(0, now).toISOString()).toBe(`${today}T00:00:00.000Z`);
+    expect(dayLabelInDays(30, now).toISOString()).toBe(`${in30}T00:00:00.000Z`);
   });
 
   it("defaults to now", () => {
     const today = new Date();
-    expect(dayLabelInDays(0).getUTCDate()).toBe(today.getUTCDate());
+    expect(dayLabelInDays(0).getUTCDate()).toBe(today.getDate());
   });
 });

@@ -50,13 +50,19 @@ function sub(overrides: Partial<WithUsage> & { id: string }): WithUsage {
 const usd: FxContext = { homeCurrency: "USD", rates: { USD: 1, INR: 83 } };
 const inrHome: FxContext = { homeCurrency: "INR", rates: { USD: 1, INR: 83 } };
 
+// NOW is a UTC instant and offsets are whole days from it, with the device on
+// UTC. "Today" is the user's date ("which today?", P5): tested at the end.
+const DEVICE_TZ = process.env.TZ;
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date(NOW));
+  process.env.TZ = "UTC";
 });
 
 afterEach(() => {
   vi.useRealTimers();
+  if (DEVICE_TZ === undefined) delete process.env.TZ;
+  else process.env.TZ = DEVICE_TZ;
 });
 
 describe("detectUnused", () => {
@@ -293,7 +299,7 @@ describe("detectTrialEnding", () => {
       sub({ id: "not-a-trial", nextRenewalDate: utcDay(1) })
     ]);
     expect(insights.map((insight) => [insight.subscriptionId, insight.title, insight.priority])).toEqual([
-      ["d0", "Trial ends in 0 days", "high"],
+      ["d0", "Trial ends today", "high"],
       ["d2", "Trial ends in 2 days", "high"],
       ["d3", "Trial ends in 3 days", "medium"],
       ["d7", "Trial ends in 7 days", "medium"]
@@ -524,5 +530,17 @@ describe("getTotalSavingOpportunity", () => {
   it("sums savings, treating a missing saving as none, and rounds to cents", () => {
     expect(getTotalSavingOpportunity([insight(0.1), insight(0.2), insight(undefined)])).toBe(0.3);
     expect(getTotalSavingOpportunity([])).toBe(0);
+  });
+});
+
+describe("day counts start from the user's own date (\"which today?\", P5)", () => {
+  // 12:00 UTC on May 25 is already May 26 in Kiritimati: a trial converting on
+  // May 26 converts today there, and tomorrow on a device on UTC.
+  it("a trial converting on the 26th: tomorrow on UTC, today in Kiritimati", () => {
+    const trial = [sub({ id: "trial", billingCycle: "trial", nextRenewalDate: "2026-05-26T00:00:00.000Z" })];
+    const title = () => detectTrialEnding(trial)[0]?.title;
+    expect(title()).toBe("Trial ends tomorrow");
+    process.env.TZ = "Pacific/Kiritimati";
+    expect(title()).toBe("Trial ends today");
   });
 });

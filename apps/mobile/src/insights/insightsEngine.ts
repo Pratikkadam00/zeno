@@ -1,5 +1,5 @@
 import { getServiceById, getServiceBySlug } from "@zeno/service-catalog";
-import { convertMinor, monthlyAmount, monthlyAmountIn, type FxContext, type Subscription } from "@zeno/shared";
+import { convertMinor, monthlyAmount, monthlyAmountIn, todayLabel, type FxContext, type Subscription } from "@zeno/shared";
 import { currencySymbol } from "../utils/format";
 import { formatDayLabel } from "../utils/day-label";
 import { categoryLabel } from "../utils/subscription-ui";
@@ -231,7 +231,8 @@ export function detectTrialEnding(subscriptions: Subscription[]): Insight[] {
         insight: createInsight({
           id: `trial-${subscription.id}`,
           type: "trial_ending",
-          title: `Trial ends in ${daysUntilEnd} days`,
+          // F201: it said "Trial ends in 0 days" and "in 1 days".
+          title: daysUntilEnd === 0 ? "Trial ends today" : daysUntilEnd === 1 ? "Trial ends tomorrow" : `Trial ends in ${daysUntilEnd} days`,
           message: `${subscription.name} free trial ends ${formatDate(trialEnd)}. Cancel now to avoid being charged${chargeText}.`,
           subscriptionId: subscription.id,
           priority: daysUntilEnd <= 2 ? "high" : "medium",
@@ -511,13 +512,13 @@ function getTopCategory(subscriptions: Subscription[], fx?: FxContext): { catego
   return category ? { category, spend } : null;
 }
 
-// Whole UTC days from today to the instant's UTC day (negative = in the past).
-// Renewal dates are UTC days (standards §10) and the shared Trial Guardian and
-// getDaysRemaining count the same way. UTC has no DST, so the gap between two
-// UTC midnights is exact; local midnights made a DST day 23 or 25 hours long,
-// which shifted counts by one.
+// Whole days from the user's calendar date (todayLabel, "which today?", P5) to
+// the instant's UTC day (negative = in the past). Renewal dates are UTC days
+// (standards §10); both ends are day labels, so the gap is an exact number of
+// days (local midnights made a DST day 23 or 25 hours long).
 function daysFromToday(timestamp: number): number {
-  return Math.round((utcDayStart(timestamp) - utcDayStart(Date.now())) / dayMs);
+  // From the user's calendar date ("which today?", P5) to the renewal's day.
+  return Math.round((utcDayStart(timestamp) - todayLabel(new Date())) / dayMs);
 }
 
 function utcDayStart(timestamp: number): number {

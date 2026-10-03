@@ -240,7 +240,9 @@ describe("add, step 2: the details form", () => {
     expect(screen.getByText("in 1 day")).toBeTruthy();
     await press("Renew earlier");
     await press("Renew earlier");
-    expect(screen.getByText("in 0 days")).toBeTruthy();
+    // F201: a renewal today says "today", not "in 0 days".
+    expect(screen.getByText("today")).toBeTruthy();
+    expect(screen.queryByText("in 0 days")).toBeNull();
   });
 
   it("F120: reminders switched off here are off for the saved subscription", async () => {

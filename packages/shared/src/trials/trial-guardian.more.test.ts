@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Subscription } from "../domain";
 import { getEndingTrials } from "./trial-guardian";
 
@@ -22,7 +22,28 @@ function trial(id: string, nextRenewalDate: string | undefined, over: Partial<Su
 
 const days = (result: ReturnType<typeof getEndingTrials>) => result.map((t) => [t.subscription.id, t.daysUntilEnd]);
 
-describe("getEndingTrials — whole UTC calendar days", () => {
+// "now" is given as UTC instants, so these cases run with the device on UTC;
+// "today" and "this month" are the user's ("which today?", P5).
+const DEVICE_TZ = process.env.TZ;
+beforeEach(() => {
+  process.env.TZ = "UTC";
+});
+afterEach(() => {
+  if (DEVICE_TZ === undefined) delete process.env.TZ;
+  else process.env.TZ = DEVICE_TZ;
+});
+
+describe("getEndingTrials — whole calendar days", () => {
+  // 22:00 UTC on Jun 15 is already Jun 16 in Kiritimati: a trial ending Jun 16
+  // ends tomorrow on UTC and today there ("which today?", P5).
+  it("counts from the user's own date", () => {
+    const now = new Date("2026-06-15T22:00:00.000Z");
+    const list = [trial("t", "2026-06-16T00:00:00.000Z")];
+    expect(days(getEndingTrials(list, now))).toEqual([["t", 1]]);
+    process.env.TZ = "Pacific/Kiritimati";
+    expect(days(getEndingTrials(list, now))).toEqual([["t", 0]]);
+  });
+
   it("counts calendar days, not 24-hour periods", () => {
     const now = new Date("2026-06-15T23:59:00.000Z");
     const result = getEndingTrials([

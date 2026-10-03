@@ -1,9 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { todayLabel } from "@zeno/shared";
 import { getDaysRemaining, rollRenewalForward } from "./subscription-ui";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 describe("rollRenewalForward", () => {
+  // "now" is given as UTC instants; "today" is the user's date, so these run
+  // with the device on UTC (the zone rule: subscription-ui.behavior.test.ts).
+  const original = process.env.TZ;
+  beforeEach(() => {
+    process.env.TZ = "UTC";
+  });
+  afterEach(() => {
+    if (original === undefined) delete process.env.TZ;
+    else process.env.TZ = original;
+  });
+
   it("passes through missing, invalid, trial, and unknown-cycle input untouched", () => {
     expect(rollRenewalForward(undefined, "monthly")).toBeUndefined();
     expect(rollRenewalForward(null, "monthly")).toBeUndefined();
@@ -64,17 +76,18 @@ describe("getDaysRemaining", () => {
     expect(getDaysRemaining("not-a-date")).toBeNull();
   });
 
+  // Renewal dates are day labels and "today" is the user's date (todayLabel).
   it("returns 0 for today", () => {
-    expect(getDaysRemaining(new Date().toISOString())).toBe(0);
+    expect(getDaysRemaining(new Date(todayLabel()).toISOString())).toBe(0);
   });
 
   it("returns the correct whole-day count for a future date", () => {
-    const future = new Date(Date.now() + 5 * DAY_MS).toISOString();
+    const future = new Date(todayLabel() + 5 * DAY_MS).toISOString();
     expect(getDaysRemaining(future)).toBe(5);
   });
 
   it("clamps a past date to 0, never negative", () => {
-    const past = new Date(Date.now() - 10 * DAY_MS).toISOString();
+    const past = new Date(todayLabel() - 10 * DAY_MS).toISOString();
     expect(getDaysRemaining(past)).toBe(0);
   });
 });
