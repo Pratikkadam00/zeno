@@ -10,6 +10,14 @@ tags: [discover]
 - tapOn: "Import CSV file"
 # Android's own file picker.
 - tapOn: "zeno-statement.csv"
+# Measured (2026-10-03 run): the picker can stop at the file ticked, "1 selected",
+# waiting for its own "Select" button instead of returning the file. That is the
+# system picker, not the app; confirm it when it asks.
+- runFlow:
+    when:
+      visible: "1 selected"
+    commands:
+      - tapOn: "Select"
 - extendedWaitUntil:
     visible: "SCAN RESULTS"
     timeout: 20000

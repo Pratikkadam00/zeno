@@ -72,9 +72,13 @@ jobs:
           cd android
           # On failure, Gradle's "What went wrong" becomes an annotation: the raw
           # log needs a login, annotations are readable through the public API.
-          if ! ./gradlew assembleRelease -x lint -PreactNativeArchitectures=x86_64 --no-daemon 2>&1 | tee "$RUNNER_TEMP/gradle.log"; then
+          if ! ./gradlew assembleRelease -x lint -PreactNativeArchitectures=x86_64 --no-daemon --stacktrace 2>&1 | tee "$RUNNER_TEMP/gradle.log"; then
             msg=$({ grep -A 14 "What went wrong" "$RUNNER_TEMP/gradle.log" | head -30; echo "..."; tail -n 15 "$RUNNER_TEMP/gradle.log"; } | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'BEGIN{ORS="%0A"} {print}')
             echo "::error title=APK build failed::${msg}"
+            # R8 prints its cause above "What went wrong" ("Compilation failed to
+            # complete" alone says nothing): its own error lines, as a second one.
+            r8=$({ grep -E "ERROR|Missing class|OutOfMemoryError|R8:|Caused by" "$RUNNER_TEMP/gradle.log" | grep -v "^> Task" | head -40 || true; } | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'BEGIN{ORS="%0A"} {print}')
+            echo "::error title=APK build errors (R8 and compiler lines)::${r8:-none matched}"
             exit 1
           fi
 

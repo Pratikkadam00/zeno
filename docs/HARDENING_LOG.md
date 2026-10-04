@@ -5332,3 +5332,18 @@ it. Reproduced in Honolulu, fixed (fixtures from `dayLabelInDays`, counts from
 Kiritimati and Kolkata. Bite: with `todayLabel` put back on the UTC date, the budget test
 fails in Kiritimati; the other four suites are now zone-proof but don't pin the rule, which
 the shared boundary tests do.
+
+**Flow 10, flow 12 and the nightly build (2026-10-04).** Flow 10's failure the night
+before was the system file picker, not the app: its screenshot shows the file ticked,
+"1 selected", the picker waiting on its own "Select" button (the app asks for one file,
+`multiple: false`; Maestro sent one plain tap). The flow now taps "Select" only when the
+picker asks. Rerun: flows 10 and 12 pass, and flow 10 passed again later; both times the picker
+returned at once, so the new step was skipped. It covers the stop seen once and was not
+exercised here. One more run of flow 10 died in 6 s on "device offline" (the emulator
+dropped off adb while the gate ran beside it; no app step had run); `run.sh` retries only
+on Maestro's DeviceServerDied text, so it was counted as a failure, correctly not hidden. Flow 12's
+earlier failure was Maestro's session-file lock; it passes. The nightly job now builds
+with Java 21 and fails in R8 (`minifyReleaseWithR8`: "Compilation failed to complete";
+the same build passes locally). The job log needs admin rights, so R8's own error lines
+now go into a second annotation (readable through the public API), and Gradle runs with
+`--stacktrace`; the cause gets fixed from that, not guessed.
