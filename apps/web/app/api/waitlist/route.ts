@@ -93,6 +93,14 @@ async function persist(email: string): Promise<void> {
       body: record
     });
     if (!res.ok) throw new Error(`waitlist webhook responded ${res.status}`);
+    // Some webhooks can only answer 200 (Google Apps Script can't set a status),
+    // so a JSON reply of { ok: false } is a failure too, with its reason: a
+    // script error once read as "saved" while nothing was (2026-10-04). Any
+    // other 2xx body (Slack's "ok", Zapier's JSON) still counts as stored.
+    const reply: unknown = await res.json().catch(() => null);
+    if (reply && typeof reply === "object" && (reply as { ok?: unknown }).ok === false) {
+      throw new Error(`waitlist webhook said not stored: ${String((reply as { error?: unknown }).error ?? "no reason given")}`);
+    }
     return;
   }
 

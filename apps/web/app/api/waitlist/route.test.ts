@@ -76,6 +76,35 @@ describe("waitlist POST", () => {
     warn.mockRestore();
   });
 
+  it("treats a 200 reply of { ok: false } as not stored (502), and logs the webhook's reason", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(Response.json({ ok: false, error: "TypeError: sheet is null" }))));
+    const response = await POST(post("someone@example.com", "10.0.0.40"));
+    expect(response.status).toBe(502);
+    const logged = warn.mock.calls.map((call) => String(call[0])).join("\n");
+    expect(logged).toContain("waitlist webhook said not stored: TypeError: sheet is null");
+    expect(logged).not.toContain("someone@example.com");
+    warn.mockRestore();
+  });
+
+  it("says 'no reason given' when a { ok: false } reply carries no error", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(Response.json({ ok: false }))));
+    const response = await POST(post("noreason@example.com", "10.0.0.41"));
+    expect(response.status).toBe(502);
+    expect(warn.mock.calls.map((call) => String(call[0])).join("\n")).toContain("no reason given");
+    warn.mockRestore();
+  });
+
+  it("still counts other 2xx replies as stored: { ok: true }, a plain-text body, an empty body", async () => {
+    const replies = [Response.json({ ok: true }), new Response("ok", { status: 200 }), new Response(null, { status: 200 })];
+    for (const [i, reply] of replies.entries()) {
+      vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(reply)));
+      const response = await POST(post(`stored${i}@example.com`, `10.0.1.${i + 1}`));
+      expect(response.status).toBe(200);
+    }
+  });
+
   it("rate-limits a burst from one IP with 429", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(null, { status: 200 }))));
     const ip = "10.0.0.5";
