@@ -148,7 +148,15 @@ export async function POST(request: Request) {
 
   try {
     await persist(email);
-  } catch {
+  } catch (error) {
+    // Say why in the server log (the webhook's status, a network error), never
+    // the address: a failing webhook left no trace anywhere (2026-10-04).
+    console.warn(JSON.stringify({
+      event: "waitlist.signup.failed",
+      email: maskEmail(email),
+      at: new Date().toISOString(),
+      reason: String(error).slice(0, 200)
+    }));
     return NextResponse.json({ ok: false, error: "Could not save your signup. Please try again." }, { status: 502 });
   }
   return NextResponse.json({ ok: true });

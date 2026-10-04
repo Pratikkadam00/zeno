@@ -64,9 +64,16 @@ describe("waitlist POST", () => {
   it("fails loudly with 502 when the webhook rejects (never a silent ok)", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(null, { status: 500 }))));
 
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const response = await POST(post("real@example.com", "10.0.0.4"));
     expect(response.status).toBe(502);
     expect(await response.json()).toMatchObject({ ok: false });
+    // The server log says why (the webhook's status), and never the address.
+    const logged = warn.mock.calls.map((call) => String(call[0])).join("\n");
+    expect(logged).toContain("waitlist.signup.failed");
+    expect(logged).toContain("waitlist webhook responded 500");
+    expect(logged).not.toContain("real@example.com");
+    warn.mockRestore();
   });
 
   it("rate-limits a burst from one IP with 429", async () => {
