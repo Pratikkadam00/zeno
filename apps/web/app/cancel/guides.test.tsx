@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { findServiceBySlug, services } from "@zeno/service-catalog";
+import { findServiceBySlug, isGeneralCancelGuide, services } from "@zeno/service-catalog";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { siteUrl } from "@/lib/site";
 import { jsonLd, parse } from "@/test-support/pages";
 import CancelHubPage from "./page";
@@ -48,6 +48,27 @@ describe("the cancel guides: one per catalog service", () => {
       expect([slug, steps]).toEqual([slug, service.cancellationGuideSteps]);
       expect(doc.querySelector("main")!.textContent).toContain(`Difficulty: ${service.cancellationDifficulty.replace("_", " ")}`);
     }
+  });
+
+  it("a general guide says so (F171: 470 carry the same five steps), in the page and in its search description; a researched one doesn't", () => {
+    let generalSeen = 0;
+    let researchedSeen = 0;
+    for (const { slug, doc, meta } of guides) {
+      const service = findServiceBySlug(slug)!;
+      const text = doc.querySelector("main")!.textContent ?? "";
+      if (isGeneralCancelGuide(service.name, service.cancellationGuideSteps)) {
+        generalSeen += 1;
+        expect([slug, text]).toEqual([slug, expect.stringContaining("General steps.")]);
+        expect([slug, text]).toEqual([slug, expect.stringContaining(`We haven't written ${service.name}-specific steps yet`)]);
+        expect([slug, String(meta.description)]).toEqual([slug, expect.stringContaining("General steps")]);
+      } else {
+        researchedSeen += 1;
+        expect([slug, text]).toEqual([slug, expect.not.stringContaining("General steps.")]);
+        expect([slug, String(meta.description)]).toEqual([slug, expect.stringContaining("Step-by-step guide")]);
+      }
+    }
+    expect(generalSeen).toBeGreaterThan(0);
+    expect(researchedSeen).toBeGreaterThan(0);
   });
 
   it("no guide repeats a step (steps are list keys; a repeat would also be a catalog error)", () => {
@@ -98,6 +119,24 @@ describe("the cancel guides: one per catalog service", () => {
       const expected = services.filter((s) => s.category === own.category && s.slug !== slug).slice(0, 6).map((s) => s.slug);
       expect([slug, related]).toEqual([slug, expected]);
     }
+  });
+
+  // D16 the other way: the general guides stay on the site, marked noindex,
+  // and leave the sitemap; the researched ones are unchanged.
+  it("with INDEX_GENERAL_GUIDES off, a general guide is noindex (follow) and out of the sitemap; a researched one is indexed", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/guides", () => ({ INDEX_GENERAL_GUIDES: false }));
+    const { generateMetadata: meta } = await import("./[slug]/page");
+    const { default: sitemap } = await import("../sitemap");
+    const general = services.find((s) => isGeneralCancelGuide(s.name, s.cancelGuide))!;
+    const researched = services.find((s) => !isGeneralCancelGuide(s.name, s.cancelGuide))!;
+    expect((await meta(props(general.slug))).robots).toEqual({ index: false, follow: true });
+    expect((await meta(props(researched.slug))).robots).toBeUndefined();
+    const listed = new Set(sitemap().map((e) => e.url));
+    expect(listed.has(siteUrl(`/cancel/${general.slug}`))).toBe(false);
+    expect(listed.has(siteUrl(`/cancel/${researched.slug}`))).toBe(true);
+    vi.doUnmock("@/lib/guides");
+    vi.resetModules();
   });
 
   it("an unknown slug is a 404, with a 'not found' title rather than a made-up guide", async () => {

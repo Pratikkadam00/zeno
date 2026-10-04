@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
-import { services } from "@zeno/service-catalog";
+import { isGeneralCancelGuide, services } from "@zeno/service-catalog";
 import { existsSync } from "node:fs";
+import { INDEX_GENERAL_GUIDES } from "@/lib/guides";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { siteUrl } from "@/lib/site";
 import { jsonLd, listPages, parse, renderPage, type PageFile } from "@/test-support/pages";
+import { POSTS } from "./blog/posts";
 
 // next/font is compiled by Next itself; the root layout's metadata is what
 // these tests need from it, not its font files.
@@ -14,7 +16,9 @@ vi.mock("./fonts", () => ({ fontClassNames: "fonts" }));
 const PAGES = listPages();
 const FIRST_SLUG = services[0]!.slug;
 const NOINDEX = new Set(["/analytics"]);
-const urlOf = (p: PageFile) => p.route.replace("[slug]", FIRST_SLUG);
+// A [slug] route renders with its own first slug: a guide's or a post's.
+const slugFor = (route: string) => (route.startsWith("/blog/") ? POSTS[0]!.slug : FIRST_SLUG);
+const urlOf = (p: PageFile) => p.route.replace("[slug]", slugFor(p.route));
 const PUBLIC_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../public") + "/";
 
 type Rendered = { page: PageFile; url: string; doc: Document; metadata: Awaited<ReturnType<typeof renderPage>>["metadata"] };
@@ -25,7 +29,7 @@ beforeAll(async () => {
   vi.stubEnv("SHOW_PUBLIC_ANALYTICS", "1");
   rendered = await Promise.all(
     PAGES.map(async (p) => {
-      const { html, metadata } = await renderPage(p, p.route.includes("[slug]") ? { slug: FIRST_SLUG } : {});
+      const { html, metadata } = await renderPage(p, p.route.includes("[slug]") ? { slug: slugFor(p.route) } : {});
       return { page: p, url: urlOf(p), doc: parse(html), metadata };
     })
   );
@@ -33,21 +37,29 @@ beforeAll(async () => {
 });
 
 // Every route the site serves (the 509 guides expanded), for the link check.
-const ROUTES = new Set(PAGES.flatMap((p) => (p.route === "/cancel/[slug]" ? services.map((s) => `/cancel/${s.slug}`) : [p.route])));
+const ROUTES = new Set(
+  PAGES.flatMap((p) =>
+    p.route === "/cancel/[slug]" ? services.map((s) => `/cancel/${s.slug}`) : p.route === "/blog/[slug]" ? POSTS.map((post) => `/blog/${post.slug}`) : [p.route]
+  )
+);
 
 describe("the page list itself", () => {
   it("finds every page on disk (24 routes today, the guides as one)", () => {
     expect(PAGES.map((p) => p.route)).toEqual([
       "/",
       "/analytics",
+      "/blog",
+      "/blog/[slug]",
       "/cancel",
       "/cancel/[slug]",
+      "/compare",
       "/compare/budget-app-no-bank-sync",
       "/compare/monarch-alternative",
       "/compare/no-bank-login",
       "/compare/rocket-money-alternative",
       "/compare/ynab-alternative",
       "/developers",
+      "/features",
       "/features/business",
       "/features/family-vault",
       "/features/open-banking",
@@ -127,12 +139,28 @@ describe("every page", () => {
 });
 
 describe("the sitemap and robots.txt", () => {
-  it("the sitemap lists exactly the indexable pages, every guide included, as absolute URLs", async () => {
+  it("the sitemap lists exactly the indexable pages (every guide, or only the researched ones: D16), as absolute URLs", async () => {
     const { default: sitemap } = await import("./sitemap");
     const listed = sitemap().map((e) => e.url);
-    const expected = [...ROUTES].filter((r) => !NOINDEX.has(r)).map((r) => siteUrl(r));
+    const general = new Set(services.filter((s) => isGeneralCancelGuide(s.name, s.cancelGuide)).map((s) => `/cancel/${s.slug}`));
+    const expected = [...ROUTES]
+      .filter((r) => !NOINDEX.has(r))
+      .filter((r) => INDEX_GENERAL_GUIDES || !general.has(r))
+      .map((r) => siteUrl(r));
     expect(new Set(listed).size).toBe(listed.length);
     expect([...listed].sort()).toEqual([...expected].sort());
+  });
+
+  it("a guide with its own steps outranks a general one in the sitemap (F171), and the hubs are listed", async () => {
+    const { default: sitemap } = await import("./sitemap");
+    const byUrl = new Map(sitemap().map((e) => [e.url, e.priority]));
+    const researched = services.find((s) => !isGeneralCancelGuide(s.name, s.cancelGuide))!;
+    const general = services.find((s) => isGeneralCancelGuide(s.name, s.cancelGuide))!;
+    expect(byUrl.get(siteUrl(`/cancel/${researched.slug}`))).toBe(0.8);
+    if (INDEX_GENERAL_GUIDES) expect(byUrl.get(siteUrl(`/cancel/${general.slug}`))).toBe(0.5);
+    else expect(byUrl.has(siteUrl(`/cancel/${general.slug}`))).toBe(false);
+    expect(byUrl.has(siteUrl("/compare"))).toBe(true);
+    expect(byUrl.has(siteUrl("/features"))).toBe(true);
   });
 
   it("robots allows everything and points at the sitemap", async () => {

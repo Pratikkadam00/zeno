@@ -34,6 +34,8 @@ Finding numbers (F…) point to rows in `docs/HARDENING_LOG.md` for the full det
 | F19 | Send one **real Wells Fargo CSV export** (redact it) | — | The detector assumes a header row WF may not have; if wrong, the first transaction is silently dropped. |
 | — | Website: **hosted on Netlify** since 2026-10-04 (`zenoapp-in.netlify.app`; checked from outside: every security header, each page's script policy, 404s, the waitlist route's validation; the privacy policy now names Netlify and Render). Left: set the build command to `npm run build --workspace @zeno/web` (it runs the root build, which also typechecks the whole repo), the waitlist goes to a private Google Sheet through an Apps Script web app (`WAITLIST_WEBHOOK_URL`, working 2026-10-04; script changes: Manage deployments → Edit → New version keeps the URL), and `zenoapp.in` is connected (external DNS at GoDaddy, Let's Encrypt certificate, http and www redirect; checked 2026-10-04) | Netlify; GoDaddy | Until the webhook is set, waitlist sign-ups fail. |
 | — | AI coach: **Groq** is set on Render (2026-10-04), no `COACH_PROVIDER`, no Anthropic key. Say whether Claude will be added; if not, I narrow the privacy policy to Groq | — | The policy names both providers. |
+| — | **Netlify: make the project public.** While it is private, Netlify injects its pre-launch toolbar script (`/.netlify/scripts/hud`) into every page; our script policy blocks its inner script, so every visitor's browser logs a security error (measured 2026-10-04 in a plain browser and in Lighthouse). Netlify's docs: the toolbar "stops appearing when you make the project public" | Netlify → the project's settings (visibility) | Clean console for every visitor; the badge doesn't belong on a public site. I re-measure after. |
+| — | **Google Search Console:** the Domain property `zenoapp.in` exists (2026-10-04). Left: **Sitemaps → add** `https://zenoapp.in/sitemap.xml` (the one sitemap covers every page, the blog included), then **Bing Webmaster Tools → Import from Google Search Console**. Data appears after a day or so | search.google.com/search-console; bing.com/webmasters | The sitemap tells Google what to crawl first; the reports show what it indexed and why not (D16 needs that data). |
 | — | Confirm **Render's and Netlify's log retention** on your plans are 30 days or less | Render → Logs / plan | The privacy policy says server logs are kept "up to 30 days". |
 | — | Before launch: have the **privacy policy, cookie policy and terms** reviewed by a lawyer | — | They say they are pre-launch drafts. P4.1c made every factual statement in them match the code; legal sufficiency is a lawyer's call. |
 | — | Before shipping iOS: file the annual **encryption self-classification** report (BIS / NSA) | export compliance | The app declares non-exempt encryption (SQLCipher) under the mass-market exemption, which requires it. |
@@ -214,6 +216,27 @@ the number and "yes", or the option you prefer.
   which is why it's yours.
 - **Then I:** check the requirements against the live site before you submit; if you
   say no, I drop `preload` from the header.
+
+### D16 · the 470 general cancellation guides: offered to search engines, or not?
+
+**Measured (2026-10-04):** 509 guides; 39 have steps written for their service; 470 carry the
+same five general steps with the service's name filled in (one template, measured by
+replacing the name and domain and counting distinct texts), ~34 words of steps each, every
+one with the service's own cancellation link. Google's spam policy: "Scaled content abuse is
+when many pages are generated for the primary purpose of manipulating search rankings and
+not helping users" (developers.google.com/search/docs/essentials/spam-policies). Our pages
+are not made to game rankings and each offers one real thing (the service's cancel link), but
+470 near-identical pages on a brand-new domain are what that policy, and Google's "thin
+content" assessments, look at. Since today each general guide says it is general (on the page
+and in its search description), and the sitemap ranks it below the 39 real ones.
+
+**Options:** (a) keep them indexed (today's setting), (b) keep them on the site and linked but
+tell search engines not to index them (`INDEX_GENERAL_GUIDES = false` in
+`apps/web/lib/guides.ts`: one line; the 39 real guides stay indexed) until each gets its own
+steps (D5). **My recommendation:** (a) for now, because they are honestly labelled and each
+carries a unique link, then read Search Console after ~60 days: if most of the 470 sit in
+"Crawled, currently not indexed", or any manual action appears, switch to (b) the same day.
+Writing real steps (D5) is what actually earns rankings for those 470 names.
 
 ### D15 · F187 — what the ledger's headline number means
 - **Today:** the headline says "COMMITTED THIS MONTH" but shows the monthly average of

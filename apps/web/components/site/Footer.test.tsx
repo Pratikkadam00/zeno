@@ -35,6 +35,7 @@ describe("Footer", () => {
       ["Business", "/features/business"]
     ]);
     expect(column("Company")).toEqual([
+      ["Blog", "/blog"],
       ["Developers", "/developers"],
       ["Partners", "/partners"],
       ["Privacy policy", "/legal/privacy"],

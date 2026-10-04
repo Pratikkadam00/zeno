@@ -9,6 +9,12 @@ device="${2:-emulator-5554}"
 adb="${ADB:-adb}"
 "$adb" -s "$device" install -r "$apk" || exit 1
 "$adb" -s "$device" shell svc power stayon true
+# No system error dialogs: on the runner's phone-sized emulator (pixel_6) a
+# "Pixel Launcher isn't responding" dialog sat over the app and every flow
+# failed at its first step (measured 2026-10-04, every saved screen showed it).
+# This hides ANR/crash dialogs system-wide; the app's own crashes are still
+# read from the crash log by run.sh.
+"$adb" -s "$device" shell settings put global hide_error_dialogs 1
 out="${TMPDIR:-/tmp}/zeno-ci-summary.txt"
 # The screen the flows run on (it decides what is visible without scrolling).
 echo "screen: $("$adb" -s "$device" shell wm size | tr -d '\r' | tail -n1), $("$adb" -s "$device" shell wm density | tr -d '\r' | tail -n1)" | tee "$out"

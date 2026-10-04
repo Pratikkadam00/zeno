@@ -5418,3 +5418,61 @@ the measured screen size (`wm size`, `wm density`) at the top of the summary. No
 claimed fixed until the next run says so; a flow that still fails there gets its own
 look. The app itself showed no fault in any of these screens (no crash line, the right
 content in each).
+
+
+### SEO audit of the live site, measured — 2026-10-04
+
+Asked for "top of search for everything subscription-related, beat every competitor". What
+can be measured and fixed was; what can't be promised (a ranking) isn't claimed. Measured on
+`zenoapp.in` with Lighthouse 12.8 (mobile, simulated), Google's PageSpeed API (rate-limited,
+so Lighthouse ran locally), public DNS and curl:
+
+- **Scores:** home SEO 100, performance 94, accessibility 98, best practices 93; a cancel guide
+  SEO 100 / 96 / 98 / 93. LCP 2.6-2.8 s, layout shift 0, blocking time 10 ms (all inside
+  Google's "good" thresholds). Pages come from Netlify's cache in 0.5-0.8 s.
+- **Already right:** canonical on every page, Open Graph and Twitter cards with a real
+  1200x630 image, a 526-URL sitemap, robots.txt, FAQ/HowTo/Breadcrumb/Organization/WebSite
+  structured data, `www` and trailing-slash redirects, HSTS, every image with alt text, one h1
+  per page.
+- **Found and fixed:** (1) the footer's column headings were h4 after h2 (Lighthouse
+  heading-order on every page): h2 now, same look. (2) `/features` and `/compare` were 404s,
+  their ten pages reachable only from the footer: both are hubs now, in the sitemap, with
+  breadcrumbs. (3) 470 of 509 guides are one template (measured: name and domain replaced,
+  40 distinct texts in 509), and read as if written for the service: each now says it is
+  general, on the page and in its search description, and the sitemap ranks it 0.5 against
+  0.8 for the 39 real ones; whether to index them at all is D16, one switch
+  (`apps/web/lib/guides.ts`). Bite: the label test fails with the label misspelt; the priority
+  test fails with both at 0.7.
+- **Found, owner's to fix:** a console security error on every page is Netlify's pre-launch
+  toolbar (`/.netlify/scripts/hud`, injected while the project is private; it builds a
+  `srcdoc` frame whose inline script our policy blocks, hash `mTJ4cJ…`, found by hashing every
+  script in the live page). Netlify's docs: it stops when the project is made public.
+  Google Search Console and Bing are not set up (owner list, exact steps).
+- **Not done, on purpose:** no `sameAs` social links in the Organization data (none exist);
+  no dates in titles; no ratings or app-store schema (no app is published). Minor: 13-26 KiB
+  of unused/legacy JavaScript flagged by Lighthouse; not worth a change.
+
+
+### The blog, and the phone-sized runner's launcher dialog — 2026-10-04
+
+**Blog.** `/blog` and four posts (`apps/web/app/blog/posts.ts`): finding every subscription,
+keeping a free trial free, why cancelling is made hard, a 20-minute audit. Written by hand
+in plain words; the two figures a post quotes (509 services, 14 hard or dark-pattern) are
+filled from the catalog at render time, never typed. Each post: its own title, description,
+canonical, article social card with a published date, BlogPosting and Breadcrumb structured
+data, 600+ words, links to the other posts and to the guides. Tests
+(`apps/web/app/blog/blog.test.tsx`) hold every post to the truthfulness rail (the site test
+renders only the first post of the route), check every internal link resolves, and that
+the index lists them newest first. In the sitemap (0.7) and the footer. Legal lines kept:
+no competitor is named in a post with a claim about it; no statistics; app-store steps are
+the stores' own (Settings → name → Subscriptions; Play Store → Payments & subscriptions).
+The D16 switch got a root-scope test (`apps/web/lib/guides.test.ts`) that also keeps the
+decision record in OWNER_ACTIONS.md in step with the setting (the root coverage floor had
+caught the file at 0%).
+
+**Runner (`2bf6d7d`, pixel_6 profile).** The screen is now the local phone's
+(1080x2400, density 420: `ci.sh` prints it), but every flow failed at its first step and
+every saved screen read "Pixel Launcher isn't responding · Close app · Wait": the launcher's
+ANR dialog sat over the app. `ci.sh` now sets `hide_error_dialogs 1` on the device before
+the flows (system dialogs off; the app's own crashes are still read from the crash log).
+Not claimed fixed until the next run says so.

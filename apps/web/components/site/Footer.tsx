@@ -41,6 +41,7 @@ export function Footer() {
     {
       h: "Company",
       links: [
+        ["Blog", "/blog"],
         ["Developers", "/developers"],
         ["Partners", "/partners"],
         ["Privacy policy", "/legal/privacy"],
@@ -73,7 +74,10 @@ export function Footer() {
           </div>
           {cols.map((c) => (
             <div key={c.h} className={styles.footerCol}>
-              <h4>{c.h}</h4>
+              {/* h2, not h4: the pages' outline runs h1 → h2, and a jump to h4
+                  skipped two levels (Lighthouse heading-order, measured on the
+                  live site 2026-10-04). The look is the same (home.module.css). */}
+              <h2>{c.h}</h2>
               {/* Homepage sections are plain links to "/#…" (F168: they were
                   "#…", which on any other page pointed at nothing). On the
                   homepage itself "/#how" is still an in-page jump, no reload. */}

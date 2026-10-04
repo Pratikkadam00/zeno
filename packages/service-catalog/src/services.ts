@@ -842,6 +842,16 @@ function defaultCancelGuide(name: string): string[] {
   ];
 }
 
+/**
+ * Whether a guide is the general five steps above with the name filled in,
+ * rather than steps written for that service (39 of 509 are, F171). The site
+ * says which it is showing, and the sitemap ranks the two differently.
+ */
+export function isGeneralCancelGuide(name: string, steps: readonly string[]): boolean {
+  const general = defaultCancelGuide(name);
+  return steps.length === general.length && steps.every((step, i) => step === general[i]);
+}
+
 function parsePrice(value: string | undefined): number | null {
   if (!value || value.toLowerCase() === "null") {
     return null;

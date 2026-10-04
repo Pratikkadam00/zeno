@@ -1,5 +1,6 @@
 import { siteUrl } from "@/lib/site";
-import { findServiceBySlug, services } from "@zeno/service-catalog";
+import { findServiceBySlug, isGeneralCancelGuide, services } from "@zeno/service-catalog";
+import { INDEX_GENERAL_GUIDES } from "@/lib/guides";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -28,13 +29,22 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   }
 
   const title = `How to cancel ${service.name} — Zeno`;
-  const description = `Step-by-step guide to cancel your ${service.name} subscription (difficulty: ${service.cancellationDifficulty.replace("_", " ")}), with a direct link to the cancellation page when available.`;
+  // A general guide says so in search results too (F171: 470 of 509 carry the
+  // same five steps); the unique thing it offers is the service's own cancel link.
+  const general = isGeneralCancelGuide(service.name, service.cancellationGuideSteps);
+  const difficulty = service.cancellationDifficulty.replace("_", " ");
+  const description = general
+    ? `General steps to cancel your ${service.name} subscription (difficulty: ${difficulty}), with a direct link to ${service.name}'s cancellation page. We haven't verified ${service.name}'s exact flow yet.`
+    : `Step-by-step guide to cancel your ${service.name} subscription (difficulty: ${difficulty}), with a direct link to the cancellation page when available.`;
 
   const path = `/cancel/${slug}`;
   return {
     title,
     description,
     alternates: { canonical: path },
+    // D16: general guides stay on the site either way; this decides whether
+    // search engines are asked to index them (apps/web/lib/guides.ts).
+    ...(general && !INDEX_GENERAL_GUIDES ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       title,
       description,
@@ -62,6 +72,7 @@ export default async function CancellationGuidePage({ params }: { params: Promis
 
   const difficulty = service.cancellationDifficulty;
   const difficultyLabel = difficulty.replace("_", " ");
+  const general = isGeneralCancelGuide(service.name, service.cancellationGuideSteps);
   const badgeClass = DIFFICULTY_BADGE[difficulty] ?? styles.badgeMedium ?? "";
 
   // Related guides: other services in the same catalog category (the raw,
@@ -77,7 +88,12 @@ export default async function CancellationGuidePage({ params }: { params: Promis
     <ContentShell
       eyebrow="Cancellation guide"
       title={`How to cancel ${service.name}`}
-      lead={`Follow these steps to stop your ${service.name} subscription. Zeno tracks the renewal date so you can cancel before the next charge lands.`}
+      lead={
+        general
+          ? // Every catalog entry has a cancellation link (services.test.ts checks each one is https).
+            `We haven't written ${service.name}-specific steps yet: these are the steps most services use, and the link below opens ${service.name}'s own cancellation page. Zeno tracks the renewal date so you can cancel before the next charge lands.`
+          : `Follow these steps to stop your ${service.name} subscription. Zeno tracks the renewal date so you can cancel before the next charge lands.`
+      }
     >
       <JsonLd
         data={{
@@ -104,6 +120,13 @@ export default async function CancellationGuidePage({ params }: { params: Promis
         }}
       />
       <span className={`${styles.badge} ${badgeClass}`}>Difficulty: {difficultyLabel}</span>
+
+      {general ? (
+        <p>
+          <strong>General steps.</strong> We haven&apos;t verified {service.name}&apos;s exact cancellation flow yet. If a step doesn&apos;t
+          match what you see, look for Billing or Subscription in your account settings.
+        </p>
+      ) : null}
 
       <ol className={styles.steps}>
         {service.cancellationGuideSteps.map((step) => (

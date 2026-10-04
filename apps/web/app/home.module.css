@@ -998,7 +998,7 @@
   max-width: 30ch;
   margin: 14px 0 0;
 }
-.footerCol h4 {
+.footerCol h2 {
   font-family: var(--font-mono), monospace;
   font-size: 10px;
   font-weight: 700;

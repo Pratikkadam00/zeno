@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   findServiceBySlug,
+  isGeneralCancelGuide,
   parsePriceToMinorUnits,
   getPopularServices,
   getServiceById,
@@ -69,6 +70,20 @@ describe("catalog invariants — every one of the entries", () => {
         expect(Math.round(price * 100) / 100, `${s.slug} ${field}=${price} has >2 decimals`).toBe(price);
       }
     }
+  });
+
+  // F171: 39 guides have steps written for their service; the rest are the
+  // five general steps with the name filled in. The site says which (D16).
+  it("tells a general guide from a researched one: 470 general, 39 researched, and the name alone doesn't make one researched", () => {
+    const general = services.filter((s) => isGeneralCancelGuide(s.name, s.cancelGuide));
+    expect(general.length).toBe(470);
+    expect(services.length - general.length).toBe(39);
+    expect(isGeneralCancelGuide("Netflix", findServiceBySlug("netflix")!.cancellationGuideSteps)).toBe(false);
+    const twitch = services.find((s) => s.slug === "twitch")!;
+    expect(isGeneralCancelGuide(twitch.name, twitch.cancelGuide)).toBe(true);
+    // One step changed, or one step fewer: no longer the general guide.
+    expect(isGeneralCancelGuide(twitch.name, [...twitch.cancelGuide.slice(0, -1), "Call them"])).toBe(false);
+    expect(isGeneralCancelGuide(twitch.name, twitch.cancelGuide.slice(0, -1))).toBe(false);
   });
 
   it("every entry has a non-empty cancel guide of non-empty steps, and a palette colour", () => {
