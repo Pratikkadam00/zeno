@@ -20,6 +20,9 @@ tags: [onboarding, auth]
 # An address alone isn't enough.
 - tapOn: "Email address"
 - inputText: "maestro@example.com"
+# On GitHub's phone-sized emulator the keyboard stayed up and covered the
+# button below the field (its saved screen had no button, 2026-10-04).
+- hideKeyboard
 - assertVisible:
     text: "Send sign-in link"
     enabled: false

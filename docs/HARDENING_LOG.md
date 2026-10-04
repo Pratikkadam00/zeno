@@ -5528,3 +5528,13 @@ line of the summary. Not claimed fixed until the next run says so.
 99.44 / 97.84, twice. The floors had been written by one run that rounded up (the cards
 commit's), so they were unreachable for any change. Set to the stable measured level, as
 the jest floors were after their truncation lesson; the ratchet still only moves up.
+
+
+**Runner, third try (`41d8d8f`): 10 of 13 flows pass on GitHub, the audit 17/17.** The
+dismiss flow cleared the dialog ("none left"). Left: flow 02, where the runner's keyboard
+stayed up over the button below the email field (the saved screen had the typed address
+and no button): `hideKeyboard` after typing, only there (the other typing flows passed).
+Flow 05 asserted the day it was written ("Nov 2", "REPORTED OCT 3"); the renewal is 30 days
+from the day the flow runs, so those are date-shaped patterns now. Flow 11 died on
+Maestro's device server on the first try and again on the retry (flow 06 once): `run.sh`
+allows a second retry for that tooling case only, and an app crash is still never retried.

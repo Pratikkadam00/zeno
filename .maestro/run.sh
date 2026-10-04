@@ -47,11 +47,15 @@ for flow in "${flows[@]}"; do
     grep -qE "DeviceServerDiedException|device offline" "$log" && return 0
     grep -rqsE "DeviceServerDiedException|device offline" --include=maestro.log "$dbg"
   }
-  if [ $rc -ne 0 ] && tooling_died && ! "$adb" -s "$device" logcat -d -b crash | grep -q "FATAL EXCEPTION"; then
-    echo "RETRY $name (Maestro's device server died; no app crash)"
-    run_flow
-    rc=$?
-  fi
+  # Up to two retries: on GitHub's runner the server died on the retry too
+  # (flow 11, 2026-10-04), and a second death is still not the app's fault.
+  for attempt in 1 2; do
+    if [ $rc -ne 0 ] && tooling_died && ! "$adb" -s "$device" logcat -d -b crash | grep -q "FATAL EXCEPTION"; then
+      echo "RETRY $name (Maestro's device server died; no app crash; retry $attempt)"
+      run_flow
+      rc=$?
+    fi
+  done
   if [ $rc -eq 0 ]; then
     echo "PASS $name"
   else

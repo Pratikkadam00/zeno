@@ -18,15 +18,17 @@ tags: [subscriptions, cancel]
 - tapOn: "Mark Netflix as cancelled"
 # The stamp: pending, with what will be checked and what it saves.
 - assertVisible:
-    text: "Netflix marked cancelled, pending verification\\. We'll confirm there's no charge around Nov 2\\. If it stops, you keep \\$185\\.88 a year\\."
+    # The date is the renewal 30 days from the day the flow runs: a pattern,
+    # not the day it was written (it read "Nov 2" and failed on Oct 4).
+    text: "Netflix marked cancelled, pending verification\\. We'll confirm there's no charge around [A-Z][a-z]{2} \\d{1,2}\\. If it stops, you keep \\$185\\.88 a year\\."
 - assertVisible: "PENDING"
-- assertVisible: "REPORTED OCT 3"
+- assertVisible: "REPORTED [A-Z]{3} \\d{1,2}"
 # Back on the detail: pending until the renewal date has passed. It can't be
 # confirmed "verified, no charge found" a month early (F188); a charge can be
 # reported at any time.
 - tapOn: "Go back"
 - assertVisible: "Cancellation pending verification"
-- assertVisible: "We'll confirm there's no charge around Nov 2."
+- assertVisible: "We'll confirm there's no charge around [A-Z][a-z]{2} \\d{1,2}\\."
 - assertNotVisible: "Confirm it stopped"
 - assertVisible: "I was charged again"
 - assertNotVisible: "Verified cancelled"
