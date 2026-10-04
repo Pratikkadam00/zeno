@@ -38,7 +38,7 @@ export default function PrivacyPage() {
     <>
       <p className={styles.eyebrow}>Legal</p>
       <h1 className={styles.title}>Privacy Policy</h1>
-      <p className={styles.updated}>Last updated: October 2, 2026</p>
+      <p className={styles.updated}>Last updated: October 4, 2026</p>
       <hr className={styles.rule} />
 
       <p className={styles.lede}>
@@ -185,7 +185,7 @@ export default function PrivacyPage() {
       </p>
       <ul>
         <li><strong>Email delivery</strong> — <strong>Resend</strong>, to send waitlist and sign-in emails;</li>
-        <li><strong>Hosting &amp; infrastructure</strong> — <strong>Render</strong>, to run the website and API;</li>
+        <li><strong>Hosting &amp; infrastructure</strong> — <strong>Netlify</strong>, to serve the website (including the waitlist form), and <strong>Render</strong>, to run the API and its database;</li>
         <li><strong>App stores &amp; billing</strong> — <strong>Apple App Store</strong> and <strong>Google Play</strong> for distribution, and <strong>RevenueCat</strong> to manage paid-plan entitlements;</li>
         <li>
           <strong>AI coaching provider</strong> — <strong>Anthropic</strong> (Claude) or{" "}
