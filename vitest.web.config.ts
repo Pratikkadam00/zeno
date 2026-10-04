@@ -41,7 +41,7 @@ export default defineConfig({
       // COVERAGE RATCHET: floors = the measured level; autoUpdate raises them in
       // this file on every full run that beats them, so they never fall.
       thresholds: {
-        statements: 97.73,
+        statements: 97.74,
         branches: 87.86,
         functions: 99.39,
         lines: 99.9,

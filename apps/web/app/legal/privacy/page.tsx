@@ -83,7 +83,8 @@ export default function PrivacyPage() {
       <h3>Waitlist data</h3>
       <p>
         When you join the waitlist, we record your <strong>email address</strong> and the date and
-        time you signed up. That is all we need to email you about availability.
+        time you signed up, in a private spreadsheet only we can open (stored by Google; see
+        section 6). That is all we need to email you about availability.
       </p>
       <h3>In-app subscription data</h3>
       <p>
@@ -186,6 +187,7 @@ export default function PrivacyPage() {
       <ul>
         <li><strong>Email delivery</strong> — <strong>Resend</strong>, to send waitlist and sign-in emails;</li>
         <li><strong>Hosting &amp; infrastructure</strong> — <strong>Netlify</strong>, to serve the website (including the waitlist form), and <strong>Render</strong>, to run the API and its database;</li>
+        <li><strong>Waitlist storage</strong> — <strong>Google</strong> (Google Sheets, through Google Apps Script), where your waitlist email address and sign-up time are kept;</li>
         <li><strong>App stores &amp; billing</strong> — <strong>Apple App Store</strong> and <strong>Google Play</strong> for distribution, and <strong>RevenueCat</strong> to manage paid-plan entitlements;</li>
         <li>
           <strong>AI coaching provider</strong> — <strong>Anthropic</strong> (Claude) or{" "}
