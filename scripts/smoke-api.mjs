@@ -2,7 +2,7 @@
 // Post-deploy smoke test for the Zeno API. No dependencies (uses global fetch).
 //
 // Usage:
-//   node scripts/smoke-api.mjs https://zeno-zw8i.onrender.com
+//   node scripts/smoke-api.mjs https://zeno-api-5dwv.onrender.com
 //   node scripts/smoke-api.mjs            # defaults to the env URL or localhost
 //
 // Checks the things Phase 2 cares about WITHOUT needing any secret:
