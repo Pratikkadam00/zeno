@@ -13,8 +13,9 @@ tags: [security]
 - tapOn: "Confirm PIN"
 - inputText: "2580"
 - tapOn: "Turn on app lock"
-# Back on Settings, the lock reads On.
-- assertVisible: "APP LOCK · PIN \\+ BIOMETRICS"
+# Back on Settings, the lock reads On. The label says what this phone allows
+# (F128): "PIN + BIOMETRICS" with a fingerprint enrolled, "PIN" without one.
+- assertVisible: "APP LOCK · PIN( \\+ BIOMETRICS)?"
 - assertVisible: "On"
 # Leave the app (Home), come back: locked.
 - pressKey: Home

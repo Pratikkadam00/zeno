@@ -48,9 +48,10 @@ services:
       # Where the magic-link email points (the mobile deep link):
       - key: MAGIC_LINK_REDIRECT_URL
         value: zeno://auth/verify
-      # AI coach provider (anthropic | groq); auto-detects from the keys if unset:
-      - key: COACH_PROVIDER
-        value: anthropic
+      # AI coach provider: deliberately NOT set, so it auto-selects from the keys
+      # (Claude when ANTHROPIC_API_KEY is set, else Groq; coach.ts resolveProvider).
+      # Forcing "anthropic" turned the coach off when only a Groq key existed.
+      # Set COACH_PROVIDER=anthropic|groq in the dashboard only to override.
       # Postgres connection string, pulled from the managed database above so the
       # stores persist across restarts (TLS required — handled by default in code):
       - key: DATABASE_URL
@@ -90,6 +91,10 @@ services:
       # Old encryption key(s), comma-separated, kept during a rotation so
       # already-sealed data still decrypts. Leave unset outside a rotation window.
       - key: STORAGE_ENCRYPTION_KEYS_PREVIOUS
+        sync: false
+      # Bearer token for /metrics. In production /metrics is locked without it
+      # (app.ts: fail closed); set it to let a scraper read the counters.
+      - key: METRICS_TOKEN
         sync: false
       # Optional: shared rate-limit store so limits hold across instances. Only
       # needed when scaling past one instance; leave unset for the single free node.

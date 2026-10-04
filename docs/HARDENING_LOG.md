@@ -5382,3 +5382,16 @@ need a login. So each failed flow now also prints what was on screen (texts and 
 from Maestro's saved screen, `.maestro/screen_texts.py`), and that goes into the
 annotation. Checked on the real 2026-10-03 failure: it prints the picker's
 "1 selected · Select", as its screenshot shows.
+
+**GitHub's emulator, second readable run (`c2909f6`, 2026-10-04).** Flow 01 passed this
+time (so its failure on `5466b6e` was not stable); 02, 05, 06, 08, 10 and 13 failed; the
+audit passed (17/17). No "SCREEN" lines: the runner's console never printed Maestro's
+"Debug output" folder, so `run.sh` found nothing to read. Now each run writes its evidence
+to a folder `run.sh` names (`maestro test --debug-output`), read for the screen and for
+the retry check, and uploaded with the logs; tested with a stand-in Maestro that never
+prints the folder (screen reported) and with the "device offline" run (one retry).
+Flow 06 accepts "APP LOCK · PIN" as well as "PIN + BIOMETRICS": the label says what the
+phone allows (F128), and a fresh emulator has no fingerprint enrolled.
+`render.yaml`: no forced `COACH_PROVIDER` (forcing "anthropic" turned the coach off with
+only a Groq key; `coach.ts` picks by key), and `METRICS_TOKEN` is listed. The API now runs
+from the Blueprint (`zeno-api` + `zeno-db`, Oregon), with the database linked.

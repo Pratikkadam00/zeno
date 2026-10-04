@@ -19,42 +19,49 @@ command -v cygpath > /dev/null && fixture="$(cygpath -w "$fixture")"
 
 flows=("$@")
 [ ${#flows[@]} -eq 0 ] && flows=("$here"/[0-9][0-9]-*.yaml)
+helper="$here/screen_texts.py"
+# Windows' Python and Maestro's Java need Windows paths (path conversion is off above).
+winpath() { if command -v cygpath > /dev/null; then cygpath -w "$1"; else printf '%s' "$1"; fi; }
+helper="$(winpath "$helper")"
 failed=0
 for flow in "${flows[@]}"; do
-  log="${TMPDIR:-/tmp}/maestro-$(basename "$flow").log"
-  "$adb" -s "$device" logcat -b crash -c > /dev/null 2>&1
-  "$maestro" --device "$device" test "$flow" > "$log" 2>&1
+  name="$(basename "$flow")"
+  log="${TMPDIR:-/tmp}/maestro-$name.log"
+  # Each run's evidence (maestro.log, the saved screens) goes to a folder we name
+  # (--debug-output), not one we have to find in the console output: on GitHub's
+  # runner the console never named it (2026-10-04), so no screen was reported.
+  dbg="${TMPDIR:-/tmp}/zeno-maestro-debug/${name%.yaml}"
+  run_flow() {
+    rm -rf "$dbg"; mkdir -p "$dbg"
+    "$adb" -s "$device" logcat -b crash -c > /dev/null 2>&1
+    "$maestro" --device "$device" test --debug-output "$(winpath "$dbg")" "$flow" > "$log" 2>&1
+  }
+  run_flow
   rc=$?
   # Retry once ONLY when Maestro's own device server died and the app did not
   # crash (its crash log is empty): a tooling hiccup, measured twice in P5. An
   # app crash is never retried away. The console log doesn't always say so; the
-  # run's own maestro.log (the folder printed after "Debug output") does: on
-  # 2026-10-04 a run died on "device offline" with only that file saying why.
-  debug_dir="$(grep -A1 "==== Debug output" "$log" | tail -n1 | tr -d '\r')"
+  # run's own maestro.log does: on 2026-10-04 a run died on "device offline"
+  # with only that file saying why.
   tooling_died() {
     grep -qE "DeviceServerDiedException|device offline" "$log" && return 0
-    [ -n "$debug_dir" ] && [ -f "$debug_dir/maestro.log" ] && grep -qE "DeviceServerDiedException|device offline" "$debug_dir/maestro.log"
+    grep -rqsE "DeviceServerDiedException|device offline" --include=maestro.log "$dbg"
   }
   if [ $rc -ne 0 ] && tooling_died && ! "$adb" -s "$device" logcat -d -b crash | grep -q "FATAL EXCEPTION"; then
-    echo "RETRY $(basename "$flow") (Maestro's device server died; no app crash)"
-    "$maestro" --device "$device" test "$flow" > "$log" 2>&1
+    echo "RETRY $name (Maestro's device server died; no app crash)"
+    run_flow
     rc=$?
   fi
   if [ $rc -eq 0 ]; then
-    echo "PASS $(basename "$flow")"
+    echo "PASS $name"
   else
-    echo "FAIL $(basename "$flow")"
+    echo "FAIL $name"
     grep -E "FAILED|Assertion is|Exception" "$log" | head -4
     # What the screen showed at the failure (texts and labels), so a CI summary
-    # says why, not only where. The folder is re-read: a retry wrote a new one.
-    debug_dir="$(grep -A1 "==== Debug output" "$log" | tail -n1 | tr -d '\r')"
-    if [ -n "$debug_dir" ]; then
-      helper="$here/screen_texts.py"
-      command -v cygpath > /dev/null && helper="$(cygpath -w "$helper")" # Windows Python, path conversion off
-      for py in python3 python; do
-        screen="$("$py" "$helper" "$debug_dir" 2>/dev/null)" && { echo "  SCREEN: $screen"; break; }
-      done
-    fi
+    # says why, not only where.
+    for py in python3 python; do
+      screen="$("$py" "$helper" "$(winpath "$dbg")" 2>/dev/null)" && { echo "  SCREEN: $screen"; break; }
+    done
     "$adb" -s "$device" logcat -d -b crash | grep -m1 -A2 "FATAL EXCEPTION"
     failed=1
   fi

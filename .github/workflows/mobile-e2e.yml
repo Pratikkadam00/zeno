@@ -113,6 +113,7 @@ jobs:
           name: maestro-logs
           path: |
             ~/.maestro/tests
+            /tmp/zeno-maestro-debug
             /tmp/maestro-*.log
             /tmp/zeno-a11y
           retention-days: 14
