@@ -6,7 +6,6 @@ accessibility labels of the last saved screen, in reading order, one line.
 run.sh calls it on a failure so the CI summary (an annotation, readable without
 a login) says what the emulator actually showed, not only which step failed.
 """
-import glob
 import json
 import os
 import sys
@@ -25,7 +24,16 @@ def texts(node, out):
 
 
 def main(folder):
-    files = sorted(glob.glob(os.path.join(folder, "**", "screen-hierarchy", "*.json"), recursive=True))
+    # os.walk, not glob: `maestro test --debug-output DIR` writes under the hidden
+    # DIR/.maestro/tests/<time>/..., and glob's "**" skips hidden folders
+    # (measured 2026-10-04: every CI failure read "no screen saved").
+    files = sorted(
+        os.path.join(root, name)
+        for root, _dirs, names in os.walk(folder)
+        if os.path.basename(root) == "screen-hierarchy"
+        for name in names
+        if name.endswith(".json")
+    )
     if not files:
         return "no screen saved"
     with open(files[-1], encoding="utf-8") as handle:

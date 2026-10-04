@@ -5395,3 +5395,13 @@ phone allows (F128), and a fresh emulator has no fingerprint enrolled.
 `render.yaml`: no forced `COACH_PROVIDER` (forcing "anthropic" turned the coach off with
 only a Groq key; `coach.ts` picks by key), and `METRICS_TOKEN` is listed. The API now runs
 from the Blueprint (`zeno-api` + `zeno-db`, Oregon), with the database linked.
+
+**Third readable run (`c161230`): the screens still missing, cause measured (2026-10-04).**
+Every failure read "no screen saved", and flow 06 still failed with "PIN" accepted too, so
+the fingerprint explanation was at best incomplete (not claimed fixed). Measured on the
+local emulator with a flow that fails on purpose: `maestro test --debug-output DIR`
+writes under a hidden `DIR/.maestro/tests/<time>/`, and Python's glob skips hidden
+folders. `screen_texts.py` now walks the tree (reads the probe's screen and the
+2026-10-03 one); the log upload sets `include-hidden-files`, which the action needs for
+hidden files. On GitHub, flows 10 and 13 each hit Maestro's device-server dropout once
+and were retried once (both then failed their assertions).

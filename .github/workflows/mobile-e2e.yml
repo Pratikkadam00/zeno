@@ -117,3 +117,6 @@ jobs:
             /tmp/maestro-*.log
             /tmp/zeno-a11y
           retention-days: 14
+          # --debug-output writes under a hidden .maestro/ folder; the action
+          # leaves hidden files out unless asked.
+          include-hidden-files: true
