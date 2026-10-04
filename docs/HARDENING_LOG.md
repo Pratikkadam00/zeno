@@ -100,7 +100,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P4.4 build-output secret scan: no non-public env value in `.next`. **Done as a canary build in CI**: every non-public name the repository knows (49) set to a random value, all of `.next` searched as written and base64, unreadable file kinds fail; **fixes F186** (Turbopack's cache stored the build environment)
   - [x] P4.5 DAST: OWASP ZAP baseline against `next start` and the API, nightly; no medium+ alerts. **Done**: three scans nightly, gated by `scripts/zap-gate.mjs`; first run's two Mediums resolved (a guide step read as SQL, reworded; `style-src 'unsafe-inline'` accepted by alertRef until 2027-03-31 with measured reasons) (green: DAST 37104160285, CI 37104160223, CodeQL 37104160276 on `36f1bb0`)
   - [x] P4 gate: Playwright green in CI; CSP without `'unsafe-inline'` scripts (or a written reason); axe clean on every route (all 509 guides too, light and dark: 1,018 views, 0 violations)
-- [ ] **P5 — Mobile end-to-end (Maestro on the emulator)** (watch for F94 and F106, closed as not reproduced in FX.5)
+- [x] **P5 — Mobile end-to-end (Maestro on the emulator)** (watch for F94 and F106, closed as not reproduced in FX.5). **Done**: 13 flows and the 17-screen accessibility-tree audit, green on the local emulator and on GitHub's (green: Mobile end-to-end 37205579950, CI 37205579972, CodeQL 37205579957 on `5dbddd7`); fixes F178, F184, F185, F188-F190, F192-F198, F201, F202; F191, F199, F200 logged
 - [ ] **P6 — Mutation + property-based testing**
 - [ ] **P7 — Security verification v2 with evidence**
 - [ ] **P8 — Infrastructure and operations (owner-driven)**
@@ -5538,3 +5538,25 @@ Flow 05 asserted the day it was written ("Nov 2", "REPORTED OCT 3"); the renewal
 from the day the flow runs, so those are date-shaped patterns now. Flow 11 died on
 Maestro's device server on the first try and again on the retry (flow 06 once): `run.sh`
 allows a second retry for that tooling case only, and an app crash is still never retried.
+
+
+### P5 gate — passed; the mobile job green on GitHub — 2026-10-04
+
+The gate: at least 12 of the 13 flows green locally and on the runner. Measured: all 13
+flows and the accessibility audit (17 screens, every control named) passed on GitHub's
+emulator (Mobile end-to-end 37205579950 on `5dbddd7`, 38 min; CI 37205579972 and CodeQL
+37205579957 green on the same commit), and all 13 on the local emulator (flows 10 and 12
+rerun 2026-10-04, the rest 2026-10-03). Neither F94 nor F106 reappeared in any run.
+
+What it took to get the runner green, each step measured before the next (the day's
+entries above): Java 21; a 6 GB Gradle heap (R8 ran out); a readable summary and then each
+failure's saved screen in an annotation (the job log needs a login); Maestro's evidence in a
+folder `run.sh` names, read from its hidden `.maestro` subfolder; a phone-sized device
+profile (the default was smaller and every button sat below the fold); the launcher's
+"isn't responding" dialog dismissed by a first flow (`hide_error_dialogs` only stops new
+ones); the keyboard hidden after typing in one flow; date patterns instead of the day a
+flow was written; up to two retries when Maestro's own device server dies (never for an
+app crash). The scheduled 04:07 UTC run is the same job; GitHub starts this repo's
+schedules ~6 h late, so its first result is due mid-morning UTC on 2026-10-05.
+
+**Next: P6** (mutation and property-based testing), when the owner says so.

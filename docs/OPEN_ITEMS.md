@@ -19,7 +19,7 @@ Nothing that needs you is kept here, so there is one list to work from.
 
 | # | Item | When |
 |---|---|---|
-| — | **P5 in progress:** 13 Maestro flows and the accessibility audit (17 screens) pass on the emulator (flows 10 and 12 rerun green 2026-10-04). The nightly CI job hasn't passed yet: its build ran out of memory in R8 (measured), now given 6 GB; then the P5 gate (the flows green on the nightly run too) | now |
+| — | **P5 done (2026-10-04):** 13 Maestro flows and the 17-screen accessibility audit green on GitHub's emulator and locally. Left: read the first *scheduled* run (due ~10:00 UTC 2026-10-05; same job) and then P6 | next session |
 | — | Blog: four posts live (2026-10-04); more posts as real material comes (each must pass the truthfulness rail and quote no figure the catalog can't back) | as written |
 | — | SEO: re-measure the live site after the next deploy (Lighthouse: heading order fixed, hubs live, general-guide labels); after the owner makes the Netlify project public, confirm the console error is gone; after Search Console has ~60 days of data, D16 | next deploy; ~2026-12 |
 | F200 | On a wide screen, text typed in the first ~65 ms after the homepage loads is lost (the page switches to its book layout); too fast for a person, it only tripped a test | design-level, if ever |
