@@ -10,7 +10,9 @@ adb="${ADB:-adb}"
 "$adb" -s "$device" install -r "$apk" || exit 1
 "$adb" -s "$device" shell svc power stayon true
 out="${TMPDIR:-/tmp}/zeno-ci-summary.txt"
-bash "$here/run.sh" "$device" 2>&1 | tee "$out"; flows=${PIPESTATUS[0]}
+# The screen the flows run on (it decides what is visible without scrolling).
+echo "screen: $("$adb" -s "$device" shell wm size | tr -d '\r' | tail -n1), $("$adb" -s "$device" shell wm density | tr -d '\r' | tail -n1)" | tee "$out"
+bash "$here/run.sh" "$device" 2>&1 | tee -a "$out"; flows=${PIPESTATUS[0]}
 bash "$here/a11y-audit.sh" "$device" 2>&1 | tee -a "$out"; audit=${PIPESTATUS[0]}
 echo "flows exit $flows, accessibility audit exit $audit"
 # The job log and the uploaded logs need a login to read; an annotation doesn't.

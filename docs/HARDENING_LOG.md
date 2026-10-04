@@ -5405,3 +5405,16 @@ folders. `screen_texts.py` now walks the tree (reads the probe's screen and the
 2026-10-03 one); the log upload sets `include-hidden-files`, which the action needs for
 hidden files. On GitHub, flows 10 and 13 each hit Maestro's device-server dropout once
 and were retried once (both then failed their assertions).
+
+**The screens arrived, and they agree (`34ff7d5`, 2026-10-04).** Each failing flow's saved
+screen stopped short of the control it needed: 02 ends at "Send sign-in link · OR" (the
+Google button below is off screen), 05 at the cancel guide's step 4 ("Mark Netflix as
+cancelled" below), 06 shows the keyboard open over "Turn on app lock", 08 ends at the
+consent's point 03 ("Not now" below), 10 still reads "2 selected" after the "Deselect
+Spotify" tap; 13 saved no screen. The local emulator the flows were written on is a
+1080x2400 phone; the workflow set no device profile, so the runner used the tool's
+default device. So: the emulator is now `profile: pixel_6` (1080x2400), and `ci.sh` puts
+the measured screen size (`wm size`, `wm density`) at the top of the summary. Not
+claimed fixed until the next run says so; a flow that still fails there gets its own
+look. The app itself showed no fault in any of these screens (no crash line, the right
+content in each).

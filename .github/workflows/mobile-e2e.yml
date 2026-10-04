@@ -103,6 +103,11 @@ jobs:
           api-level: 35
           target: google_apis
           arch: x86_64
+          # A 1080x2400 phone, as the local emulator the flows were written on.
+          # Without a profile the runner's default device was smaller, and every
+          # failing flow's saved screen (2026-10-04) stopped above the button it
+          # needed: "Continue with Google", "Mark … as cancelled", "Not now".
+          profile: pixel_6
           disable-animations: false
           script: bash .maestro/ci.sh apps/mobile/android/app/build/outputs/apk/release/app-release.apk emulator-5554
 
