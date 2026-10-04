@@ -5347,3 +5347,17 @@ with Java 21 and fails in R8 (`minifyReleaseWithR8`: "Compilation failed to comp
 the same build passes locally). The job log needs admin rights, so R8's own error lines
 now go into a second annotation (readable through the public API), and Gradle runs with
 `--stacktrace`; the cause gets fixed from that, not guessed.
+
+**Second red run, and the nightly build's cause (2026-10-04).** CI on `dd73eee` failed in
+"Tests far from UTC" again, in a suite the first fix didn't touch: `insightsEngine.test.ts`
+put a trial "2 days" away as now + 48 h, which in Honolulu is 3 days from the user's date
+(priority "medium", not "high"). This time I ran every suite in Honolulu while its date
+differed from UTC's (through PowerShell, which passes `TZ`), to find all such cases at once
+rather than one per CI run: that one, plus `subscription-detail.rntest.tsx` (F116), whose
+expected label was read in local time ("MAR 30" in Honolulu for the 31st) while the app
+shows day labels in UTC (F182). CI never saw the second because it runs the screen tests
+only in Kiritimati. Both fixed; both pass in Honolulu, Kiritimati and Kolkata; the detail
+test fails with dates formatted in local time (bite). The whole suites pass in Honolulu.
+The new R8 annotation gave the nightly build's cause: `java.lang.OutOfMemoryError: Java
+heap space` with the template's 2 GB Gradle heap (enough locally, not on the runner). The
+workflow now gives Gradle 6 GB on the 16 GB runner.

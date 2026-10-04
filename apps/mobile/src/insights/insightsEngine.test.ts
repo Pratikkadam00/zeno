@@ -1,4 +1,5 @@
 import type { ExchangeRates, FxContext, Subscription } from "@zeno/shared";
+import { dayLabelInDays } from "../utils/day-label";
 import { describe, expect, it } from "vitest";
 import { detectAnnualSavings, detectCancellationReminders, detectDuplicates, detectHighSpend, detectTrialEnding, detectUnused, generateInsights, generateSpendSummary, getTotalSavingOpportunity } from "./insightsEngine";
 
@@ -53,7 +54,7 @@ describe("insightsEngine", () => {
   // Regression: detectTrialEnding used to check isTrial/trialEndDate fields the
   // real Subscription model never populates, so this insight could never fire.
   it("detects a trial ending soon via billingCycle/nextRenewalDate", () => {
-    const soon = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+    const soon = dayLabelInDays(2).toISOString(); // a day label, 2 days from the user's date (F182, F202)
     const insights = detectTrialEnding([
       subscription({ id: "trial-soon", name: "Streamify", billingCycle: "trial", nextRenewalDate: soon })
     ]);
@@ -62,7 +63,7 @@ describe("insightsEngine", () => {
   });
 
   it("does not flag a cancelled trial or one converting far in the future", () => {
-    const soon = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+    const soon = dayLabelInDays(2).toISOString(); // a day label, 2 days from the user's date (F182, F202)
     const farFuture = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     const insights = detectTrialEnding([
       subscription({ id: "cancelled-trial", billingCycle: "trial", nextRenewalDate: soon, status: "cancelled" }),

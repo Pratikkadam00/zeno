@@ -350,13 +350,14 @@ describe("detail, figures that must not be invented", () => {
     await open("e", [sub({ id: "e", createdAt: "2026-01-01T00:00:00.000Z", lastChargedDate: "2026-03-31T00:00:00.000Z", nextRenewalDate: "2026-04-30T00:00:00.000Z" })]);
     expect(screen.getByText("3 ENTRIES")).toBeTruthy();
     for (const day of ["2026-03-31", "2026-02-28", "2026-01-31"]) {
-      // formatShortDate, uppercased by the ledger line.
-      const label = new Date(`${day}T00:00:00.000Z`).toLocaleDateString(undefined, { month: "short", day: "numeric" }).toUpperCase();
+      // formatShortDate, uppercased by the ledger line: a day label, shown as the
+      // day it names in every timezone (F182), so the expectation is read in UTC.
+      const label = new Date(`${day}T00:00:00.000Z`).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" }).toUpperCase();
       expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     }
     // A receipt date is known (lastChargedDate), so the history is not labelled estimated.
     expect(screen.queryByText("ESTIMATED FROM YOUR BILLING CYCLE")).toBeNull();
-    expect(screen.queryByText(new Date("2026-03-03T00:00:00.000Z").toLocaleDateString(undefined, { month: "short", day: "numeric" }).toUpperCase())).toBeNull();
+    expect(screen.queryByText(new Date("2026-03-03T00:00:00.000Z").toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" }).toUpperCase())).toBeNull();
   });
 
   it("a brand-new subscription has no history yet, and says so honestly", async () => {
