@@ -5361,3 +5361,13 @@ test fails with dates formatted in local time (bite). The whole suites pass in H
 The new R8 annotation gave the nightly build's cause: `java.lang.OutOfMemoryError: Java
 heap space` with the template's 2 GB Gradle heap (enough locally, not on the runner). The
 workflow now gives Gradle 6 GB on the 16 GB runner.
+
+**The nightly job builds now; the flows' result needs to be readable (2026-10-04).** With
+6 GB, the APK build passed on GitHub (17 min) and the emulator step ran for 14 min, then
+failed with only "exit code 1" readable: the job log and the uploaded Maestro logs both
+need a login. As with R8, `ci.sh` now turns its own summary (PASS/FAIL/RETRY per flow,
+each failure's assertion and crash line, the audit's result) into an annotation, on
+failure only (tested with stand-in scripts: a failing run annotates, a passing one
+doesn't). Which flows failed on the runner is not known yet; the next run says.
+GitHub's schedules for this repo run ~6 h late (measured: the fuzz job, due 03:17 UTC,
+started 09:14-10:14 UTC each day), so "nightly" results arrive mid-morning UTC.

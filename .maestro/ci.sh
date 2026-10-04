@@ -9,7 +9,15 @@ device="${2:-emulator-5554}"
 adb="${ADB:-adb}"
 "$adb" -s "$device" install -r "$apk" || exit 1
 "$adb" -s "$device" shell svc power stayon true
-bash "$here/run.sh" "$device"; flows=$?
-bash "$here/a11y-audit.sh" "$device"; audit=$?
+out="${TMPDIR:-/tmp}/zeno-ci-summary.txt"
+bash "$here/run.sh" "$device" 2>&1 | tee "$out"; flows=${PIPESTATUS[0]}
+bash "$here/a11y-audit.sh" "$device" 2>&1 | tee -a "$out"; audit=${PIPESTATUS[0]}
 echo "flows exit $flows, accessibility audit exit $audit"
+# The job log and the uploaded logs need a login to read; an annotation doesn't.
+# So the run's own summary (PASS/FAIL/RETRY per flow, each failure's assertion
+# and any crash line, then the audit's result) becomes one, on failure only.
+if [ "${GITHUB_ACTIONS:-}" = "true" ] && { [ $flows -ne 0 ] || [ $audit -ne 0 ]; }; then
+  msg=$({ echo "flows exit $flows, accessibility audit exit $audit"; tail -n 80 "$out"; } | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'BEGIN{ORS="%0A"} {print}')
+  echo "::error title=Maestro flows and audit::${msg}"
+fi
 [ $flows -eq 0 ] && [ $audit -eq 0 ]
