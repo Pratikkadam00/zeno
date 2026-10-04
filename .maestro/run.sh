@@ -27,8 +27,15 @@ for flow in "${flows[@]}"; do
   rc=$?
   # Retry once ONLY when Maestro's own device server died and the app did not
   # crash (its crash log is empty): a tooling hiccup, measured twice in P5. An
-  # app crash is never retried away.
-  if [ $rc -ne 0 ] && grep -q "DeviceServerDiedException" "$log" && ! "$adb" -s "$device" logcat -d -b crash | grep -q "FATAL EXCEPTION"; then
+  # app crash is never retried away. The console log doesn't always say so; the
+  # run's own maestro.log (the folder printed after "Debug output") does: on
+  # 2026-10-04 a run died on "device offline" with only that file saying why.
+  debug_dir="$(grep -A1 "==== Debug output" "$log" | tail -n1 | tr -d '\r')"
+  tooling_died() {
+    grep -qE "DeviceServerDiedException|device offline" "$log" && return 0
+    [ -n "$debug_dir" ] && [ -f "$debug_dir/maestro.log" ] && grep -qE "DeviceServerDiedException|device offline" "$debug_dir/maestro.log"
+  }
+  if [ $rc -ne 0 ] && tooling_died && ! "$adb" -s "$device" logcat -d -b crash | grep -q "FATAL EXCEPTION"; then
     echo "RETRY $(basename "$flow") (Maestro's device server died; no app crash)"
     "$maestro" --device "$device" test "$flow" > "$log" 2>&1
     rc=$?

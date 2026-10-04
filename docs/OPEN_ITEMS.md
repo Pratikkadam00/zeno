@@ -3,7 +3,7 @@
 **One place for everything not yet solved.** Each item says who acts, exactly what to
 do, and where the full evidence lives (finding numbers point into
 `docs/HARDENING_LOG.md`). When an item is done it is removed from here and its log
-entry marked fixed. Last updated 2026-10-03, in P5; the owner items moved to OWNER_ACTIONS.md.
+entry marked fixed. Last updated 2026-10-04, in P5; the owner items moved to OWNER_ACTIONS.md.
 
 ---
 
@@ -19,7 +19,7 @@ Nothing that needs you is kept here, so there is one list to work from.
 
 | # | Item | When |
 |---|---|---|
-| — | **P5 in progress:** 13 Maestro flows and the accessibility audit (17 screens) green on the emulator; the nightly CI job's first run pending; then the P5 gate | now |
+| — | **P5 in progress:** 13 Maestro flows and the accessibility audit (17 screens) pass on the emulator (flows 10 and 12 rerun green 2026-10-04). The nightly CI job hasn't passed yet: its build ran out of memory in R8 (measured), now given 6 GB; then the P5 gate (the flows green on the nightly run too) | now |
 | F200 | On a wide screen, text typed in the first ~65 ms after the homepage loads is lost (the page switches to its book layout); too fast for a person, it only tripped a test | design-level, if ever |
 | F199 | Made-up cancel-guide addresses each put an "error" line in the website server's log (the visitor gets the right "not found" page) | P8 (log alerting) / Next upgrades |
 | F191 | A rare native crash (1 in ~33) right after "Continue without an account": react-native-screens + Reanimated re-entering a fragment transaction. No released fix; re-test on each screens/reanimated upgrade; the nightly run counts it | each upgrade |
