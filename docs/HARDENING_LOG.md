@@ -5371,3 +5371,14 @@ failure only (tested with stand-in scripts: a failing run annotates, a passing o
 doesn't). Which flows failed on the runner is not known yet; the next run says.
 GitHub's schedules for this repo run ~6 h late (measured: the fuzz job, due 03:17 UTC,
 started 09:14-10:14 UTC each day), so "nightly" results arrive mid-morning UTC.
+
+**First readable result from GitHub's emulator, and the screen behind each failure
+(2026-10-04).** The summary on `5466b6e`: the accessibility audit passes on all 17 screens;
+flows 03, 04, 07, 09, 11 and 12 pass; 01, 02, 05, 06, 08, 10 and 13 fail (all 13 pass on
+the local emulator, Android 36 with July app data; the runner is a fresh Android 35). One
+is plainly an assumption of the test: flow 06 expects "PIN + BIOMETRICS", shown only when
+a fingerprint is enrolled. The others are not diagnosed: the screenshots are in logs that
+need a login. So each failed flow now also prints what was on screen (texts and labels
+from Maestro's saved screen, `.maestro/screen_texts.py`), and that goes into the
+annotation. Checked on the real 2026-10-03 failure: it prints the picker's
+"1 selected · Select", as its screenshot shows.

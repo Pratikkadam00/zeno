@@ -44,7 +44,17 @@ for flow in "${flows[@]}"; do
     echo "PASS $(basename "$flow")"
   else
     echo "FAIL $(basename "$flow")"
-    grep -E "FAILED|Assertion is" "$log" | head -3
+    grep -E "FAILED|Assertion is|Exception" "$log" | head -4
+    # What the screen showed at the failure (texts and labels), so a CI summary
+    # says why, not only where. The folder is re-read: a retry wrote a new one.
+    debug_dir="$(grep -A1 "==== Debug output" "$log" | tail -n1 | tr -d '\r')"
+    if [ -n "$debug_dir" ]; then
+      helper="$here/screen_texts.py"
+      command -v cygpath > /dev/null && helper="$(cygpath -w "$helper")" # Windows Python, path conversion off
+      for py in python3 python; do
+        screen="$("$py" "$helper" "$debug_dir" 2>/dev/null)" && { echo "  SCREEN: $screen"; break; }
+      done
+    fi
     "$adb" -s "$device" logcat -d -b crash | grep -m1 -A2 "FATAL EXCEPTION"
     failed=1
   fi

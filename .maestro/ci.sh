@@ -17,7 +17,7 @@ echo "flows exit $flows, accessibility audit exit $audit"
 # So the run's own summary (PASS/FAIL/RETRY per flow, each failure's assertion
 # and any crash line, then the audit's result) becomes one, on failure only.
 if [ "${GITHUB_ACTIONS:-}" = "true" ] && { [ $flows -ne 0 ] || [ $audit -ne 0 ]; }; then
-  msg=$({ echo "flows exit $flows, accessibility audit exit $audit"; tail -n 80 "$out"; } | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'BEGIN{ORS="%0A"} {print}')
+  msg=$({ echo "flows exit $flows, accessibility audit exit $audit"; grep -v "a11y.xml: 1 file pulled" "$out" | tail -n 200; } | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'BEGIN{ORS="%0A"} {print}')
   echo "::error title=Maestro flows and audit::${msg}"
 fi
 [ $flows -eq 0 ] && [ $audit -eq 0 ]
