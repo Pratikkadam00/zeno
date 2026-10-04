@@ -1,4 +1,6 @@
 import type { Subscription } from "@zeno/shared";
+import { todayLabel } from "@zeno/shared";
+import { dayLabelInDays } from "../utils/day-label";
 import { act, fireEvent, screen } from "@testing-library/react-native";
 import AddSubscriptionScreen from "../../app/subscription/add";
 import { fakeStorage, renderScreen, resetFakes, routerMock, unnamedControls } from "../test-support/screen-harness";
@@ -24,7 +26,9 @@ jest.mock("../auth/authStore", () => {
 const { useAuthStore } = require("../auth/authStore") as { useAuthStore: { setState: (s: object) => void } };
 
 const DAY = 86_400_000;
-const iso = (days: number) => new Date(Date.now() + days * DAY).toISOString();
+// Dates are stored as day labels (midnight UTC of the user's calendar day,
+// F182/F202), so fixtures are too: "in N days" counts from the phone's date.
+const iso = (days: number) => dayLabelInDays(days).toISOString();
 const sub = (i: number, over: Partial<Subscription> = {}): Subscription => ({
   id: `row_${i}`, createdAt: iso(-90), updatedAt: iso(-90), version: 1, name: `Row ${i}`, category: "other",
   price: { amountMinor: 100, currency: "USD" }, billingCycle: "monthly", nextRenewalDate: iso(9),
@@ -51,12 +55,9 @@ const toggle = async (name: string, value: boolean) => {
 const saved = () => [...fakeStorage.rows.values()];
 const settings = () => JSON.parse(fakeStorage.meta.get("notification.settings.v1") ?? "{}") as Record<string, unknown>;
 // Renewal dates are day labels (midnight UTC, F182): count whole days from
-// today's UTC day, not from this instant (rounding from "now" read 29 for 30
-// after 12:00 UTC).
-const daysAhead = (when?: string) => {
-  const now = new Date();
-  return (Date.parse(when!) - Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())) / DAY;
-};
+// today's label, the user's calendar date ("which today?", F202), not from this
+// instant (rounding from "now" read 29 for 30 after 12:00 UTC).
+const daysAhead = (when?: string) => (Date.parse(when!) - todayLabel()) / DAY;
 
 describe("add, step 1: find the service", () => {
   it("shows the 8 most popular services with their catalog prices; every control is named", async () => {

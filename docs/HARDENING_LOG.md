@@ -5318,3 +5318,17 @@ label, days left, the recap's month), spend history and year in review, the tria
 guardian, the add screen's "in N days" and the demo seed. Tests that had pinned the old
 UTC rule ("does not depend on the device timezone") now say which zone they run in, and
 each place has a boundary test across zones that fails with the old code.
+
+**CI caught a gap the next day (2026-10-04).** The push of F202 went red on GitHub in
+"Tests far from UTC": 10 screen tests failed in Kiritimati (UTC+14) at 17:50 UTC, when
+its date was a day ahead of UTC's. The app was right; the tests were not. Their fixtures
+stored "today" as the current instant instead of a day label (the app only ever stores
+day labels), the add screen's test counted "in 30 days" from the UTC date, and the budget
+test hardcoded "22 DAYS LEFT" for a moment that is 10 Oct or 11 Oct depending on the
+zone. My local gate had passed because it runs in one zone (Kolkata), and Git Bash drops
+`TZ` before it reaches Node (measured: `process.env.TZ` was undefined); PowerShell passes
+it. Reproduced in Honolulu, fixed (fixtures from `dayLabelInDays`, counts from
+`todayLabel`, days left from the phone's date), and the five suites pass in Honolulu,
+Kiritimati and Kolkata. Bite: with `todayLabel` put back on the UTC date, the budget test
+fails in Kiritimati; the other four suites are now zone-proof but don't pin the rule, which
+the shared boundary tests do.

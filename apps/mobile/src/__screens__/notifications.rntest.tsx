@@ -1,4 +1,5 @@
 import type { Subscription } from "@zeno/shared";
+import { dayLabelInDays } from "../utils/day-label";
 import { act, fireEvent, screen } from "@testing-library/react-native";
 import { Linking } from "react-native";
 import NotificationsScreen from "../../app/notifications";
@@ -20,7 +21,9 @@ jest.mock("expo-router", () => jest.requireActual("../test-support/screen-fakes"
 jest.mock("expo-notifications", () => ({}));
 
 const DAY = 86_400_000;
-const iso = (days: number) => new Date(Date.now() + days * DAY).toISOString();
+// Dates are stored as day labels (midnight UTC of the user's calendar day,
+// F182/F202), so fixtures are too: "in N days" counts from the phone's date.
+const iso = (days: number) => dayLabelInDays(days).toISOString();
 const sub = (over: Partial<Subscription>): Subscription => ({
   id: "s", createdAt: iso(-200), updatedAt: iso(-200), version: 1, name: "Gym", category: "health",
   price: { amountMinor: 4000, currency: "USD" }, billingCycle: "monthly", nextRenewalDate: iso(20),
@@ -128,7 +131,7 @@ describe("notifications, flags", () => {
       sub({ id: "x2", name: "B", status: "attention" }),
       sub({ id: "p1", name: "C", status: "pending" }),
       sub({ id: "p2", name: "D", status: "pending" }),
-      sub({ id: "t1", name: "E", billingCycle: "trial", nextRenewalDate: new Date().toISOString() }),
+      sub({ id: "t1", name: "E", billingCycle: "trial", nextRenewalDate: iso(0) }),
       sub({ id: "t2", name: "F", billingCycle: "trial", nextRenewalDate: iso(3) })
     ]);
     expect(screen.getByText("E trial ends today")).toBeTruthy();

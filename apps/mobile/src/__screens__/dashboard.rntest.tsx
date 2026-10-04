@@ -1,4 +1,5 @@
 import type { Subscription } from "@zeno/shared";
+import { dayLabelInDays } from "../utils/day-label";
 import { act, fireEvent, screen } from "@testing-library/react-native";
 import { AccessibilityInfo } from "react-native";
 import DashboardScreen from "../../app/(tabs)/dashboard";
@@ -31,7 +32,9 @@ const { useAuthStore } = require("../auth/authStore") as { useAuthStore: { setSt
 
 const reduceMotion = jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled");
 const DAY = 86_400_000;
-const iso = (days: number) => new Date(Date.now() + days * DAY).toISOString();
+// Dates are stored as day labels (midnight UTC of the user's calendar day,
+// F182/F202), so fixtures are too: "in N days" counts from the phone's date.
+const iso = (days: number) => dayLabelInDays(days).toISOString();
 const sub = (over: Partial<Subscription>): Subscription => ({
   id: "sub_x", createdAt: iso(-90), updatedAt: iso(-90), version: 1, name: "Zzqx", category: "other",
   price: { amountMinor: 1000, currency: "USD" }, billingCycle: "monthly", nextRenewalDate: iso(10),
@@ -160,7 +163,7 @@ describe("Ledger tab, needs attention", () => {
   });
 
   it("a trial ending today says 'today', and one day says 'in 1 day'", async () => {
-    resetFakes({ rows: [sub({ id: "t0", name: "Today", billingCycle: "trial", nextRenewalDate: new Date().toISOString() }), sub({ id: "t1", name: "Tomorrow", billingCycle: "trial", nextRenewalDate: iso(1) })] });
+    resetFakes({ rows: [sub({ id: "t0", name: "Today", billingCycle: "trial", nextRenewalDate: iso(0) }), sub({ id: "t1", name: "Tomorrow", billingCycle: "trial", nextRenewalDate: iso(1) })] });
     await show(<DashboardScreen />);
     expect(screen.getByRole("button", { name: /^Today trial ends today\./ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /^Tomorrow trial ends in 1 day\./ })).toBeTruthy();

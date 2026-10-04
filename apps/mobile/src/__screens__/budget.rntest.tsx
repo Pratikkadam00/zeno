@@ -84,7 +84,9 @@ describe("budget, with a cap", () => {
     const r = await open({ capMinor: 10000 });
     expect(screen.getByText("Over")).toBeTruthy();
     expect(screen.getByText("Charged so far")).toBeTruthy();
-    expect(screen.getByText("22 DAYS LEFT")).toBeTruthy(); // 10 Oct noon to 31 Oct, rounded up
+    // 12:00 UTC on 10 Oct is 10 Oct for a user west of UTC+12 and 11 Oct beyond
+    // it; "days left" counts from the user's own date to the 31st, inclusive (F202).
+    expect(screen.getByText(`${32 - new Date().getDate()} DAYS LEFT`)).toBeTruthy();
     expect(screen.getByText("Cut $54.00 to get back under")).toBeTruthy();
     // Ordered by a month's cost: Box $8.25, Pool $15, Gym $40.
     expect(screen.getAllByText(/^\$\d+\.\d{2}\/(year|month)/).map((n) => n.props.children)).toEqual([

@@ -1,4 +1,5 @@
 import type { Subscription } from "@zeno/shared";
+import { dayLabelInDays } from "../utils/day-label";
 import { act, fireEvent, screen } from "@testing-library/react-native";
 import { Alert, Linking } from "react-native";
 import SubscriptionCancelScreen from "../../app/subscription/cancel/[id]";
@@ -30,7 +31,9 @@ jest.mock("@zeno/service-catalog", () => {
 });
 
 const DAY = 86_400_000;
-const iso = (days: number) => new Date(Date.now() + days * DAY).toISOString();
+// Dates are stored as day labels (midnight UTC of the user's calendar day,
+// F182/F202), so fixtures are too: "in N days" counts from the phone's date.
+const iso = (days: number) => dayLabelInDays(days).toISOString();
 const sub = (over: Partial<Subscription>): Subscription => ({
   id: "c", createdAt: iso(-90), updatedAt: iso(-90), version: 1, name: "Gym Club", category: "health",
   price: { amountMinor: 4000, currency: "USD" }, billingCycle: "monthly", nextRenewalDate: iso(9),
@@ -148,7 +151,7 @@ describe("cancel guide, difficulty, support, renewal wording", () => {
     ["today", 0, /^Renews TODAY — /],
     ["in 9 days", 9, /^Renews in 9 days — /]
   ])("renewing %s", async (_n, days, pattern) => {
-    await open("c", [sub({ nextRenewalDate: days === 0 ? new Date().toISOString() : iso(days) })]);
+    await open("c", [sub({ nextRenewalDate: iso(days) })]);
     expect(screen.getByText(pattern)).toBeTruthy();
   });
 
