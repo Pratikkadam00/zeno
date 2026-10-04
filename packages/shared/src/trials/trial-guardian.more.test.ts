@@ -2,6 +2,10 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Subscription } from "../domain";
 import { getEndingTrials } from "./trial-guardian";
 
+// Switches the zone mid-test; skipped only where that is ignored (Stryker's
+// worker threads, vitest.tz-setup.ts). Everywhere else the setup insists it works.
+const itZone = process.env.ZENO_ZONE_SWITCH_IGNORED ? it.skip : it;
+
 function trial(id: string, nextRenewalDate: string | undefined, over: Partial<Subscription> = {}): Subscription {
   const base: Subscription = {
     id,
@@ -36,7 +40,7 @@ afterEach(() => {
 describe("getEndingTrials — whole calendar days", () => {
   // 22:00 UTC on Jun 15 is already Jun 16 in Kiritimati: a trial ending Jun 16
   // ends tomorrow on UTC and today there ("which today?", P5).
-  it("counts from the user's own date", () => {
+  itZone("counts from the user's own date", () => {
     const now = new Date("2026-06-15T22:00:00.000Z");
     const list = [trial("t", "2026-06-16T00:00:00.000Z")];
     expect(days(getEndingTrials(list, now))).toEqual([["t", 1]]);

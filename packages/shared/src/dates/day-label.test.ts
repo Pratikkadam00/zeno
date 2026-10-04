@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { currentMonth, dayLabelOf, daysFromToday, todayLabel } from "./day-label";
 
+// Switches the zone mid-test; skipped only where that is ignored (Stryker's
+// worker threads, vitest.tz-setup.ts). Everywhere else the setup insists it works.
+const itZone = process.env.ZENO_ZONE_SWITCH_IGNORED ? it.skip : it;
+
 // Vitest honours a runtime TZ change, so each case really runs in its zone.
 const ORIGINAL_TZ = process.env.TZ;
 afterEach(() => {
@@ -11,7 +15,7 @@ afterEach(() => {
 describe("todayLabel: the user's calendar date, whatever the UTC date", () => {
   // 02:00 UTC on Oct 7 is still Oct 6 in New York and Los Angeles, Oct 7 in Kolkata.
   const instant = new Date("2026-10-07T02:00:00.000Z");
-  it.each([
+  itZone.each([
     ["America/New_York", "2026-10-06"],
     ["America/Los_Angeles", "2026-10-06"],
     ["UTC", "2026-10-07"],
@@ -29,7 +33,7 @@ describe("todayLabel: the user's calendar date, whatever the UTC date", () => {
 });
 
 describe("daysFromToday", () => {
-  it("counts from the user's day: the 7th's renewal is tomorrow at 22:00 on the 6th in New York, today in Kolkata", () => {
+  itZone("counts from the user's day: the 7th's renewal is tomorrow at 22:00 on the 6th in New York, today in Kolkata", () => {
     const instant = new Date("2026-10-07T02:00:00.000Z");
     const renewal = "2026-10-07T00:00:00.000Z";
     process.env.TZ = "America/New_York";
@@ -50,7 +54,7 @@ describe("daysFromToday", () => {
 });
 
 describe("currentMonth", () => {
-  it("is the user's month: 20:00 UTC on Oct 31 is already November in Kolkata", () => {
+  itZone("is the user's month: 20:00 UTC on Oct 31 is already November in Kolkata", () => {
     const instant = new Date("2026-10-31T20:00:00.000Z");
     process.env.TZ = "Asia/Kolkata";
     expect(currentMonth(instant)).toEqual({ year: 2026, month: 10 });

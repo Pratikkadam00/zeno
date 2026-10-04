@@ -3,6 +3,10 @@ import type { BillingCycle, Subscription } from "../domain";
 import type { FxContext } from "./coach";
 import { buildMonthlySpendHistory } from "./history";
 
+// Switches the zone mid-test; skipped only where that is ignored (Stryker's
+// worker threads, vitest.tz-setup.ts). Everywhere else the setup insists it works.
+const itZone = process.env.ZENO_ZONE_SWITCH_IGNORED ? it.skip : it;
+
 function sub(input: Partial<Subscription> & Pick<Subscription, "id">): Subscription {
   return {
     name: input.id,
@@ -49,7 +53,7 @@ describe("buildMonthlySpendHistory — calendar", () => {
     expect(points.map((p) => p.label)).toEqual(["Jan", "Feb", "Mar"]);
   });
 
-  it("ends at the user's month: 23:30 UTC on 30 June is still June in New York, July in Kolkata", () => {
+  itZone("ends at the user's month: 23:30 UTC on 30 June is still June in New York, July in Kolkata", () => {
     const now = new Date(Date.UTC(2026, 5, 30, 23, 30));
     process.env.TZ = "America/New_York";
     expect(buildMonthlySpendHistory([], 1, now)[0]).toMatchObject({ year: 2026, month: 5, label: "Jun" });

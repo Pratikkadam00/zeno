@@ -33,3 +33,7 @@ zeno-settings.png
 
 # CycloneDX SBOM produced by CI (npm sbom) - an artifact, never committed
 sbom.cdx.json
+
+# Mutation testing (P6)
+.stryker-tmp/
+reports/mutation/

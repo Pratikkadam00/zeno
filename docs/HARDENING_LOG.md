@@ -102,6 +102,12 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P4 gate: Playwright green in CI; CSP without `'unsafe-inline'` scripts (or a written reason); axe clean on every route (all 509 guides too, light and dark: 1,018 views, 0 violations)
 - [x] **P5 — Mobile end-to-end (Maestro on the emulator)** (watch for F94 and F106, closed as not reproduced in FX.5). **Done**: 13 flows and the 17-screen accessibility-tree audit, green on the local emulator and on GitHub's (green: Mobile end-to-end 37205579950, CI 37205579972, CodeQL 37205579957 on `5dbddd7`); fixes F178, F184, F185, F188-F190, F192-F198, F201, F202; F191, F199, F200 logged
 - [ ] **P6 — Mutation + property-based testing**
+  - [ ] P6.1 Stryker on the shared packages (`packages/shared`, `packages/service-catalog`): measure the mutation score, kill the survivors that matter, floor at 85 %
+  - [ ] P6.2 Stryker on the API (`apps/api/src`), security and money paths first
+  - [ ] P6.3 Stryker on the app's logic (`apps/mobile/src`, outside screens and components)
+  - [ ] P6.4 fast-check properties: money math (rounding, minor units), UTC date math (DST, leap days), the email and CSV parsers (never throw, never over-match), the catalog (per-entry invariants), sync (idempotent, ordered)
+  - [ ] P6.5 CI: the mutation floor nightly, and on pull requests for changed files
+  - [ ] P6 gate: the floor enforced in CI and green on GitHub
 - [ ] **P7 — Security verification v2 with evidence**
 - [ ] **P8 — Infrastructure and operations (owner-driven)**
 
@@ -306,6 +312,9 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F200 | **OPEN (Low), measured.** On a wide screen the homepage switches to book mode just after load, and the two modes are different element trees, so the switch remounts every section: text typed before it is lost (measured: the form's input element is replaced). The window is ~65 ms after load at normal speed and ~500 ms with a 4x-slowed CPU, too short for a person; on phones (no book mode) a tap even before hydration works (React replays it: 4 of 4 sent and receipted, measured). It made a CI test flaky (CI 37137561648): the test typed within the window. The test now waits for book mode on desktop (bite check at 4x CPU: without the wait 5 of 5 fail, with it 5 of 5 pass). Making both modes one tree is a design-level change to the book, not done. Two fixes I first tried were measured wrong and dropped: an uncontrolled input and a button disabled until hydration (the phone was never losing text; the disabled button would have blocked React's replay). | Low | me | P5 |
 | F201 | **FIXED in P5.** ~~An ending trial's insight was titled "Trial ends in 0 days" on its last day and "Trial ends in 1 days" the day before; the add screen read "in 0 days" for a renewal today.~~ "Trial ends today", "Trial ends tomorrow", and "today" on the add screen. Tests. | Low (wording) | me | P5 |
 | F202 | **FIXED in P5 ("which today?").** ~~"Today" and "this month" were the UTC date everywhere: countdowns, the renewal roll-forward, the calendar's groups, insights' day counts, the budget's month and its "charged so far", spend history, year in review, the trial guardian, the add screen's "in N days". Near midnight the app was a day off the user's own calendar: at 22:00 on Oct 6 in New York (02:00 UTC on the 7th) a renewal on the 7th read "today" and counted as "charged so far".~~ "Today" is now the user's calendar date as a day label (`todayLabel` in `@zeno/shared`, with `daysFromToday`, `currentMonth`), and every one of those places uses it; renewal dates stay day labels and day arithmetic stays in UTC (§10). Tests at the boundary for each place in New York, Los Angeles, Kolkata and Kiritimati (each fails with the old code), and the whole logic suite passes in Honolulu, Kiritimati and New York. | Medium (dates and money a day off near midnight) | me | P5 |
+| F205 | **OPEN, measured in P6.1 (Stryker).** The input schemas in `packages/shared/src/schemas.ts` score 22 % (19 of 86 mutants killed, by every package and API test). The one that matters for security: the cap of 64 entries on a sync vector clock (a size limit against oversized requests) can be removed, or moved to 63, and no test notices. Most of the other 66 are accepted values (currencies, categories, difficulty levels) that no test sends, so dropping one would reject real input unnoticed. | Medium (an unguarded size limit) | me | P6.1 |
+| F206 | **OPEN, measured in P6.1.** The email-receipt parser (`discovery/email-receipts.ts`) scores 63 %: 72 changes pass every test, among them the confidence score (raising or lowering it), the order results are returned in, the category it guesses, and the rule that drops a direct email without billing words. | Medium (discovery accuracy) | me | P6.1 / P6.4 |
+| F207 | **OPEN, measured in P6.1.** The partner list the public `GET /api/v1/partners` returns is checked only as "an array of 5 or more". Its `exportsFinancialData` flag, which tells a reader whether an integration sends their money data elsewhere, can be flipped on any entry unnoticed. | Low (truthfulness of a public statement) | me | P6.1 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **CLOSED in the P3 gate (2026-10-02): reachable, not a bug.** TalkBack, driven by touches from the emulator's own touchscreen, put its focus on each nested button's exact bounds, separately from its parent: the calendar's "Cancel Figma", the menu's Edit/Pause/Delete, the login's Terms and Privacy links. Original note: on the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -5560,3 +5569,52 @@ app crash). The scheduled 04:07 UTC run is the same job; GitHub starts this repo
 schedules ~6 h late, so its first result is due mid-morning UTC on 2026-10-05.
 
 **Next: P6** (mutation and property-based testing), when the owner says so.
+
+
+### P6.1 — Stryker on the shared packages: set up and measured — 2026-10-04
+
+Stryker 10.0.0 with its vitest runner (`stryker.config.mjs`, run `npx stryker run`; the
+report goes to `reports/mutation/`, ignored by git). It mutates the 21 files of
+`packages/shared` and `packages/service-catalog` (the `index.ts` files only re-export,
+checked) and runs the tests that can reach them: the packages' own and the API's
+(`vitest.mutation.config.ts`). 2,159 mutants.
+
+**One harness problem, measured before it was fixed.** The first dry run failed a test
+that passes in the normal suite ("31 March of a leap year" read April). Stryker's source
+forces vitest into worker threads, and a probe showed that in a worker given its own env
+object (as vitest's are) `process.env.TZ = …` is silently ignored; in a forked process it
+works. So under Stryker every zone-switching test ran in this machine's zone (India).
+Fixed: Stryker's process sets TZ to UTC before it forks its workers (a startup TZ is
+honoured, measured), and `vitest.tz-setup.ts` probes whether a zone switch works. Where it
+does not, the 10 zone-switching cases skip ONLY if Stryker started the run; anywhere else
+the setup throws. Bite-checked: vitest with `--pool=threads` and no Stryker fails all 33
+files with that message; the normal run still runs all 278 package tests, none skipped.
+
+**Baseline** (the packages' tests alone: 79.90 %, 102 mutants no test reached, 86 of
+them in the schemas; then with the API's tests):
+
+| Measure | Value |
+|---|---|
+| Mutation score | 82.35 % |
+| Killed / timed out | 1,773 / 5 |
+| Survived | 373 |
+| No test reached | 8 (7 in `domain.ts`: the currency list and `isCurrencyCode`, which only the app's tests use, P6.3; 1 in `parse-utils.ts`) |
+| Run time on this machine | 28 min 44 s |
+
+Weakest files: `schemas.ts` 22 % (F205), `integrations/partners.ts` 21 % (F207),
+`discovery/email-receipts.ts` 63 % (F206), `scale/business.ts` 70 %, `dates/day-label.ts`
+71 % (2 survivors), `family/vault.ts` 76 %. Strongest: `finance/open-banking.ts`,
+`public-api/keys.ts` and `api.ts` at 100 %, `year-in-review.ts` 98.9 %.
+
+One worker process crashed once mid-run (Windows code 0xC0000409, a stack overrun, almost
+certainly a mutant recursing); Stryker restarted it and counted the mutant. The new
+dependency brings two moderate advisories in `qs`, used only by Stryker's dashboard
+upload, which this setup does not use; the audit gate passes.
+
+**Observed once, cause not known:** the first gate run after this change had one vitest
+fork exit mid-run ("Worker exited unexpectedly"), so one file's coverage was missing and
+the 100 % floor failed. Four runs after it were clean (150 of 150 files). Watching for it;
+if CI shows it, it gets a number and a cause.
+
+**Next in P6.1:** kill the survivors that matter (F205 first, then F206, F207, then the
+smaller files) and set the floor at 85 %.

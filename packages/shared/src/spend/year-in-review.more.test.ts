@@ -2,6 +2,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { Subscription } from "../domain";
 import { buildYearInReview } from "./year-in-review";
 
+// Switches the zone mid-test; skipped only where that is ignored (Stryker's
+// worker threads, vitest.tz-setup.ts). Everywhere else the setup insists it works.
+const itZone = process.env.ZENO_ZONE_SWITCH_IGNORED ? it.skip : it;
+
 const sub = (over: Partial<Subscription> & Pick<Subscription, "id">): Subscription => ({
   name: over.id,
   createdAt: "2025-01-01T00:00:00.000Z",
@@ -111,7 +115,7 @@ describe("buildYearInReview — coverage window", () => {
     if (DEVICE_TZ === undefined) delete process.env.TZ;
     else process.env.TZ = DEVICE_TZ;
   });
-  it("is the user's trailing 12 months", () => {
+  itZone("is the user's trailing 12 months", () => {
     const now = new Date(Date.UTC(2026, 5, 30, 23, 30));
     const list = [sub({ id: "edge", createdAt: "2025-07-01T00:00:00.000Z" })];
     process.env.TZ = "America/New_York";
