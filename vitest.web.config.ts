@@ -42,7 +42,7 @@ export default defineConfig({
       // this file on every full run that beats them, so they never fall.
       thresholds: {
         statements: 97.84,
-        branches: 88.44,
+        branches: 88.47,
         functions: 99.44,
         lines: 99.91,
         autoUpdate: true

@@ -3,6 +3,7 @@
 // (the truthfulness rail in app/truthfulness.test.tsx and blog.test.tsx runs
 // over every post). Two tokens are filled from the catalog at render time so a
 // number here can never go stale: {SERVICE_COUNT} and {HARD_COUNT}.
+import { serviceRecords } from "@zeno/service-catalog";
 
 export type PostSection = {
   heading?: string;
@@ -300,3 +301,24 @@ export function findPost(slug: string): Post | undefined {
 export function postText(post: Post): string {
   return [post.lead, ...post.sections.flatMap((s) => [s.heading ?? "", ...s.paragraphs, ...(s.list ?? [])])].join(" ");
 }
+
+// The two figures a post may quote, from the catalog, never typed in.
+const SERVICE_COUNT = serviceRecords.length;
+const HARD_COUNT = serviceRecords.filter((s) => s.cancellationDifficulty === "hard" || s.cancellationDifficulty === "dark_pattern").length;
+
+export function fillFigures(text: string): string {
+  return text.replaceAll("{SERVICE_COUNT}", String(SERVICE_COUNT)).replaceAll("{HARD_COUNT}", String(HARD_COUNT));
+}
+
+/** Words as rendered (figures filled in). */
+export function postWords(post: Post): number {
+  return fillFigures(postText(post)).split(/\s+/).filter(Boolean).length;
+}
+
+/** At about 220 words a minute, never less than one. */
+export function readingMinutes(post: Post): number {
+  return Math.max(1, Math.round(postWords(post) / 220));
+}
+
+export const dateLabel = (iso: string) =>
+  new Date(`${iso}T00:00:00.000Z`).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });

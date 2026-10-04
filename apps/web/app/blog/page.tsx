@@ -1,11 +1,11 @@
 import { siteUrl } from "@/lib/site";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CardList } from "@/components/site/CardList";
 import { ContentShell } from "@/components/site/ContentShell";
 import { JsonLd } from "@/components/site/JsonLd";
 import styles from "@/components/site/content.module.css";
-import hubStyles from "../cancel/cancel-hub.module.css";
-import { POSTS } from "./posts";
+import { POSTS, dateLabel, readingMinutes } from "./posts";
 
 export const metadata: Metadata = {
   title: "Blog — finding, tracking and cancelling subscriptions | Zeno",
@@ -19,8 +19,6 @@ export const metadata: Metadata = {
     images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno subscription manager dashboard" }]
   }
 };
-
-const dateLabel = (iso: string) => new Date(`${iso}T00:00:00.000Z`).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
 
 export default function BlogIndexPage() {
   const posts = [...POSTS].sort((a, b) => b.date.localeCompare(a.date)); // newest first
@@ -40,16 +38,19 @@ export default function BlogIndexPage() {
           ]
         }}
       />
-      <ul className={hubStyles.relatedGrid}>
-        {posts.map((post) => (
-          <li key={post.slug}>
-            <Link href={`/blog/${post.slug}`}>{post.title}</Link>
-            <p>
-              <time dateTime={post.date}>{dateLabel(post.date)}</time> · {post.description}
-            </p>
-          </li>
-        ))}
-      </ul>
+      <CardList
+        cards={posts.map((post) => ({
+          href: `/blog/${post.slug}`,
+          title: post.title,
+          description: post.description,
+          meta: (
+            <>
+              <time dateTime={post.date}>{dateLabel(post.date)}</time> · {readingMinutes(post)} min read
+            </>
+          ),
+          cta: "Read the post"
+        }))}
+      />
       <div className={styles.backRow}>
         <Link href="/">← Back to Zeno</Link>
       </div>

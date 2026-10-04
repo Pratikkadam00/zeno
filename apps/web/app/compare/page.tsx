@@ -1,10 +1,10 @@
 import { siteUrl } from "@/lib/site";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CardList } from "@/components/site/CardList";
 import { ContentShell } from "@/components/site/ContentShell";
 import { JsonLd } from "@/components/site/JsonLd";
 import styles from "@/components/site/content.module.css";
-import hubStyles from "../cancel/cancel-hub.module.css";
 
 // The hub for the comparison pages: before it, /compare was a 404 and the five
 // pages were reachable only from the footer (measured on the live site,
@@ -47,14 +47,7 @@ export default function ComparePage() {
           ]
         }}
       />
-      <ul className={hubStyles.relatedGrid}>
-        {COMPARISONS.map((c) => (
-          <li key={c.href}>
-            <Link href={c.href}>{c.name}</Link>
-            <p>{c.note}</p>
-          </li>
-        ))}
-      </ul>
+      <CardList cards={COMPARISONS.map((c) => ({ href: c.href, title: c.name, description: c.note, cta: "See the comparison" }))} />
       <div className={styles.backRow}>
         <Link href="/">← Back to Zeno</Link>
       </div>

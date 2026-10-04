@@ -1,10 +1,10 @@
 import { siteUrl } from "@/lib/site";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CardList } from "@/components/site/CardList";
 import { ContentShell } from "@/components/site/ContentShell";
 import { JsonLd } from "@/components/site/JsonLd";
 import styles from "@/components/site/content.module.css";
-import hubStyles from "../cancel/cancel-hub.module.css";
 
 // The hub for the feature pages: before it, /features was a 404 (measured on
 // the live site, 2026-10-04). Planned features are labelled as on their own
@@ -47,14 +47,15 @@ export default function FeaturesPage() {
           ]
         }}
       />
-      <ul className={hubStyles.relatedGrid}>
-        {FEATURES.map((f) => (
-          <li key={f.href}>
-            <Link href={f.href}>{f.name}</Link>
-            <p>{f.planned ? `Planned · not available today. ${f.note}` : f.note}</p>
-          </li>
-        ))}
-      </ul>
+      <CardList
+        cards={FEATURES.map((f) => ({
+          href: f.href,
+          title: f.name,
+          description: f.note,
+          meta: f.planned ? "Planned · not available today" : "In the app",
+          cta: "Learn more"
+        }))}
+      />
       <div className={styles.backRow}>
         <Link href="/">← Back to Zeno</Link>
       </div>

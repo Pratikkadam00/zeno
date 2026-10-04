@@ -1,5 +1,4 @@
 import { siteUrl } from "@/lib/site";
-import { serviceRecords } from "@zeno/service-catalog";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,7 +6,7 @@ import { ContentShell } from "@/components/site/ContentShell";
 import { JsonLd } from "@/components/site/JsonLd";
 import styles from "@/components/site/content.module.css";
 import hubStyles from "../../cancel/cancel-hub.module.css";
-import { POSTS, findPost, postText } from "../posts";
+import { POSTS, dateLabel, fillFigures, findPost, postWords, readingMinutes } from "../posts";
 
 // Only the posts in posts.ts exist (as the cancel guides: F183).
 export const dynamicParams = false;
@@ -15,20 +14,6 @@ export const dynamicParams = false;
 export function generateStaticParams() {
   return POSTS.map((post) => ({ slug: post.slug }));
 }
-
-// The two figures a post may quote, from the catalog, never typed in.
-const SERVICE_COUNT = serviceRecords.length;
-const HARD_COUNT = serviceRecords.filter((s) => s.cancellationDifficulty === "hard" || s.cancellationDifficulty === "dark_pattern").length;
-
-export function fillFigures(text: string): string {
-  return text.replaceAll("{SERVICE_COUNT}", String(SERVICE_COUNT)).replaceAll("{HARD_COUNT}", String(HARD_COUNT));
-}
-
-function readingMinutes(words: number): number {
-  return Math.max(1, Math.round(words / 220));
-}
-
-const dateLabel = (iso: string) => new Date(`${iso}T00:00:00.000Z`).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -61,12 +46,12 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
     notFound();
   }
 
-  const words = fillFigures(postText(post)).split(/\s+/).filter(Boolean).length;
+  const words = postWords(post);
   const published = `${post.date}T00:00:00.000Z`;
   const others = POSTS.filter((p) => p.slug !== slug);
 
   return (
-    <ContentShell eyebrow={`Zeno blog · ${dateLabel(post.date)} · ${readingMinutes(words)} min read`} title={post.title} lead={fillFigures(post.lead)}>
+    <ContentShell eyebrow={`Zeno blog · ${dateLabel(post.date)} · ${readingMinutes(post)} min read`} title={post.title} lead={fillFigures(post.lead)}>
       <JsonLd
         data={{
           "@context": "https://schema.org",

@@ -5,8 +5,8 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { siteUrl } from "@/lib/site";
 import { jsonLd, listPages, parse } from "@/test-support/pages";
 import BlogIndexPage from "./page";
-import BlogPostPage, { dynamicParams, fillFigures, generateMetadata, generateStaticParams } from "./[slug]/page";
-import { POSTS, findPost, postText } from "./posts";
+import BlogPostPage, { dynamicParams, generateMetadata, generateStaticParams } from "./[slug]/page";
+import { POSTS, fillFigures, findPost, postText, readingMinutes } from "./posts";
 
 type Rendered = { slug: string; doc: Document; meta: Awaited<ReturnType<typeof generateMetadata>> };
 const props = (slug: string) => ({ params: Promise.resolve({ slug }) });
@@ -146,7 +146,10 @@ describe("the blog index", () => {
     const sorted = [...POSTS].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).map((p) => `/blog/${p.slug}`);
     expect(links).toEqual(sorted);
     const text = doc.querySelector("main")!.textContent ?? "";
-    for (const post of POSTS) expect(text).toContain(post.description);
+    for (const post of POSTS) {
+      expect(text).toContain(post.description);
+      expect(text).toContain(`${readingMinutes(post)} min read`);
+    }
     expect([...doc.querySelectorAll("time")].map((t) => t.getAttribute("dateTime"))).toEqual(sorted.map((href) => POSTS.find((p) => `/blog/${p.slug}` === href)!.date));
   });
 });
