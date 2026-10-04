@@ -5476,3 +5476,55 @@ every saved screen read "Pixel Launcher isn't responding · Close app · Wait": 
 ANR dialog sat over the app. `ci.sh` now sets `hide_error_dialogs 1` on the device before
 the flows (system dialogs off; the app's own crashes are still read from the crash log).
 Not claimed fixed until the next run says so.
+
+
+### F203 and F204 — the website on phones and on a 27" screen, measured and fixed — 2026-10-04
+
+Owner's report: "the entire website feels broken on mobile, and on a 27-inch display it
+looks too small and doesn't fit". Measured in a real Chrome at 320, 375, 390, 412, 768,
+1024, 1280, 1440, 1920 and 2560 px wide, on the live site first, then on the fix.
+
+- **F204, phones.** Content pages (blog, guides, hubs) fit a 375px phone exactly. The
+  **homepage laid out 447px wide** on a 375px phone, so the browser zoomed out and clipped
+  the right side (the form's button, the sample ledger). Measured cause, by giving every
+  element `width: min-content` and reading the result: the sample ledger row's no-wrap label
+  ("RENEWS JUL 14 · DARK-PATTERN CANCEL", 233px) plus the row's other parts made the row
+  393px, and the hero's single-column grid was `1fr`, whose minimum is the content's, so the
+  column became 423px. Fixed: the single-column grids are `minmax(0, 1fr)` (the row shrinks
+  and the label's own ellipsis takes over); the "zeno" wordmark's floor went from 220px (a
+  461px word) to 96px; the refusal rows' label can shrink and wrap (its value had been pushed
+  51px off a 375px screen, more at 320px). After: the layout is exactly the screen's width at
+  every size, nothing past the edge, the form wraps.
+- **F203, large screens.** In the book, each sheet is the screen (2464x1335 on 2560x1440)
+  while the content was laid out for a 1440x900 desk: a 1080px column, a 64px headline, 44%
+  of the sheet's width and ~60% of its height used, the rest blank ruled paper. Fixed: the
+  sheet's content is scaled with the smaller of width/1440 and (height-nav)/860, never down,
+  at most 1.6x (`zoom` on a wrapper; LedgerBook sets `--book-zoom`); measured after: 1.6x on
+  2560x1440 (the column 70% of the sheet, the hero 74% of its height), 1.19x on 1920x1080,
+  1x on 1440x900, page turning and in-page scrolling unchanged, no sideways overflow in any
+  sheet. Tried and dropped: centring a short section in its sheet with a flex wrapper and
+  `min-height: 100%`; under `zoom` that wrapper stretched the section (The Method measured
+  1165px of its own 644px) and made the page scroll, so short pages keep their blank paper
+  below, as the 1440x900 design has. The ruled margin line is placed from the section's
+  width, not 100vw.
+- **Regression test:** `apps/web/e2e/viewports.spec.ts` loads seven page types at the eleven
+  sizes above and fails on any element past the screen's edge, any horizontal scroll, or a
+  layout wider than the screen; and checks the book scales on 2560x1440.
+- **Asked for, and why not:** "skeleton loading" is for content fetched after the page
+  arrives; every page here is complete HTML from the server (nothing loads afterwards,
+  layout shift measured at 0), so a skeleton would be a fake loading state. Fonts come from
+  the site itself with `font-display: swap` via next/font; images are a 49KB share card and
+  SVG icons.
+
+**Runner, second try (`c05e85e`).** `hide_error_dialogs 1` did not clear the launcher's
+"isn't responding" dialog: it was already on screen when the flows started (the runner's
+launcher stalls during boot), and the setting only stops new ones. `ci.sh` now runs a
+small Maestro flow first (`.maestro/ci/dismiss-system-dialogs.yaml`) that taps "Wait" or
+"Close app" if such a dialog is visible and asserts none is left; its result is the first
+line of the summary. Not claimed fixed until the next run says so.
+
+**Coverage floors (web), corrected.** The gate refused this change on functions 99.44% vs a
+99.45% floor and statements 97.84% vs 97.85%; measured at HEAD without the change: the same
+99.44 / 97.84, twice. The floors had been written by one run that rounded up (the cards
+commit's), so they were unreachable for any change. Set to the stable measured level, as
+the jest floors were after their truncation lesson; the ratchet still only moves up.

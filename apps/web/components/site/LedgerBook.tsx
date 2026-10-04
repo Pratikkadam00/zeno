@@ -40,7 +40,8 @@ export function LedgerBook({ sheets, footer }: { sheets: Sheet[]; footer: ReactN
   const turningRef = useRef(false);
   const mountedRef = useRef(true);
   const firstFocusRef = useRef(true);
-  const [viewportW, setViewportW] = useState(() => (typeof window !== "undefined" ? window.innerWidth : 1200));
+  const [viewport, setViewport] = useState(() => (typeof window === "undefined" ? { w: 1200, h: 900 } : { w: window.innerWidth, h: window.innerHeight }));
+  const viewportW = viewport.w;
 
   // Track mount and clear any pending turn timer on unmount — a committed turn
   // must never run setState / replaceState / scrollTop onto a detached tree.
@@ -257,7 +258,7 @@ export function LedgerBook({ sheets, footer }: { sheets: Sheet[]; footer: ReactN
   //    derived from the viewport width). ──
   useEffect(() => {
     if (!book) return;
-    const onResize = () => setViewportW(window.innerWidth);
+    const onResize = () => setViewport({ w: window.innerWidth, h: window.innerHeight });
     window.addEventListener("resize", onResize, { passive: true });
     return () => window.removeEventListener("resize", onResize);
   }, [book]);
@@ -517,13 +518,20 @@ export function LedgerBook({ sheets, footer }: { sheets: Sheet[]; footer: ReactN
   }
 
   const chipX = Math.min(Math.max(progress * viewportW - 150, 10), viewportW - 160);
+  // The content is laid out for a 1440x900 desk; on a bigger screen the sheet
+  // grows but a 1080px column and a 64px headline don't, and most of the page
+  // was blank paper (F203, measured on 2560x1440: 44% of the width used). Scale
+  // the content with the smaller of the two ratios, never down, and no more
+  // than 1.6x (book.module.css .zoomed). The nav bar is outside the sheet.
+  const bookZoom = Math.min(1.6, Math.max(1, Math.min(viewport.w / 1440, (viewport.h - 57) / 860)));
+  const bookStyle = { "--book-zoom": String(Math.round(bookZoom * 100) / 100) } as CSSProperties;
 
   // ── Book mode ──
   return (
     <>
       <p aria-live="polite" role="status" style={SR_ONLY} ref={liveRef} />
       <span className={styles.penRule} style={{ transform: `scaleX(${progress})` }} aria-hidden />
-      <div id="main" className={styles.book} role="region" aria-roledescription="ledger book" aria-label="Zeno — the audit, as a leafable ledger">
+      <div id="main" className={styles.book} style={bookStyle} role="region" aria-roledescription="ledger book" aria-label="Zeno — the audit, as a leafable ledger">
         <span className={`${styles.edge} ${styles.edgeR}`} style={{ width: `${(N - 1 - cur) * 3}px` }} aria-hidden />
         <span className={`${styles.edge} ${styles.edgeL}`} style={{ width: `${cur * 3}px` }} aria-hidden />
         {sheets.map((s, i) => {
@@ -572,8 +580,10 @@ export function LedgerBook({ sheets, footer }: { sheets: Sheet[]; footer: ReactN
             >
               <div className={styles.scroll} ref={(el) => { scrollersRef.current[i] = el; }}>
                 <span className={styles.pageNum} aria-hidden>{String(i + 1).padStart(2, "0")} / {String(N).padStart(2, "0")}</span>
-                {s.node}
-                {i === N - 1 ? footer : null}
+                <div className={styles.zoomed}>
+                  {s.node}
+                  {i === N - 1 ? footer : null}
+                </div>
               </div>
               {turning ? <div className={styles.foldShade} aria-hidden style={{ opacity: armed === isFrom ? 0.55 : 0 }} /> : null}
             </section>

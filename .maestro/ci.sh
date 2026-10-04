@@ -18,6 +18,16 @@ adb="${ADB:-adb}"
 out="${TMPDIR:-/tmp}/zeno-ci-summary.txt"
 # The screen the flows run on (it decides what is visible without scrolling).
 echo "screen: $("$adb" -s "$device" shell wm size | tr -d '\r' | tail -n1), $("$adb" -s "$device" shell wm density | tr -d '\r' | tail -n1)" | tee "$out"
+# A system dialog already on screen (the launcher's "isn't responding", seen in
+# two runs) blocks every flow; hide_error_dialogs above stops new ones, and this
+# flow taps the existing one away. Its result goes into the summary.
+maestro="${MAESTRO:-maestro}"
+export MAESTRO_CLI_NO_ANALYTICS=1 MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED=1
+if "$maestro" --device "$device" test "$here/ci/dismiss-system-dialogs.yaml" > "${TMPDIR:-/tmp}/maestro-dismiss.log" 2>&1; then
+  echo "system dialogs: none left ($(grep -c "COMPLETED" "${TMPDIR:-/tmp}/maestro-dismiss.log") steps ran)" | tee -a "$out"
+else
+  { echo "system dialogs: still present after the dismiss flow:"; grep -E "FAILED|Assertion" "${TMPDIR:-/tmp}/maestro-dismiss.log" | head -3; } | tee -a "$out"
+fi
 bash "$here/run.sh" "$device" 2>&1 | tee -a "$out"; flows=${PIPESTATUS[0]}
 bash "$here/a11y-audit.sh" "$device" 2>&1 | tee -a "$out"; audit=${PIPESTATUS[0]}
 echo "flows exit $flows, accessibility audit exit $audit"

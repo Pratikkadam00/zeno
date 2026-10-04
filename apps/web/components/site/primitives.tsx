@@ -223,7 +223,12 @@ export function PenLedgerLine({
       <span
         className={REVEAL}
         style={{
-          flex: "none",
+          // Shrinkable: with flex "none" the label and its sub-label stayed on
+          // one line, and on a 375px phone "Background scanning · SCANS RUN
+          // WHEN YOU TAP SCAN" pushed the value past the screen's edge
+          // (measured 2026-10-04). Now the sub-label wraps under the label.
+          flex: "0 1 auto",
+          minWidth: 0,
           fontSize: 15,
           fontWeight: strong ? 700 : 500,
           color: strong ? "var(--ink)" : "var(--ink-2)",

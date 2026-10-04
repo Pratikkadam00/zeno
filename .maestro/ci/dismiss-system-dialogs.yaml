@@ -1,0 +1,19 @@
+appId: app.zeno.mobile
+name: (CI) clear any system dialog left over from the emulator's boot
+---
+# On GitHub's phone-sized emulator the launcher's "isn't responding" dialog was
+# already on screen when the flows began, over everything, and every flow
+# failed at its first step (two runs, 2026-10-04). hide_error_dialogs stops
+# new ones; this clears one that is already there. Each step is optional:
+# with nothing to dismiss, the flow passes doing nothing.
+- runFlow:
+    when:
+      visible: "Wait"
+    commands:
+      - tapOn: "Wait"
+- runFlow:
+    when:
+      visible: ".*isn't responding.*"
+    commands:
+      - tapOn: "Close app"
+- assertNotVisible: ".*isn't responding.*"

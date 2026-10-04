@@ -93,6 +93,18 @@
   scrollbar-color: var(--rule-strong) transparent;
 }
 
+/* The sheet's content, scaled to the sheet. The design is laid out for a
+   1440x900 desk (a 1080px column, a 64px headline); on a 27" screen the
+   sheet is 2464x1335 and the content filled 44% of its width and 60% of its
+   height, the rest blank ruled paper (measured 2026-10-04, F203). LedgerBook
+   sets --book-zoom from the viewport (1 up to 1.6); `zoom` lays the content
+   out in the sheet's width divided by the factor and scales it up, so nothing
+   overflows sideways and in-page scrolling still works. Browsers without
+   `zoom` (Firefox before 126) keep the unscaled layout. */
+.zoomed {
+  zoom: var(--book-zoom, 1);
+}
+
 .pageNum {
   position: absolute;
   top: 12px;

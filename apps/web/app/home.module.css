@@ -61,7 +61,10 @@
     position: absolute;
     top: 0;
     bottom: 0;
-    left: max(20px, calc((100vw - 1080px) / 2 - 44px));
+    /* The section's own width, not 100vw: in the book the content is scaled
+       inside a sheet (book.module.css .zoomed), where 100vw no longer means
+       the width the container is centred in. Outside the book both are equal. */
+    left: max(20px, calc((100% - 1080px) / 2 - 44px));
     width: 1px;
     background: color-mix(in srgb, var(--stamp-alert) 26%, transparent);
     pointer-events: none;
@@ -891,7 +894,9 @@
   font-family: var(--font-display), sans-serif;
   font-weight: 700;
   letter-spacing: -0.055em;
-  font-size: clamp(220px, 34vw, 520px);
+  /* The floor was 220px: at that size the word is 461px wide, wider than any
+     phone, and even clipped it widened the page's layout (measured 2026-10-04). */
+  font-size: clamp(96px, 34vw, 520px);
   line-height: 1;
   color: var(--ink);
   pointer-events: none;
@@ -1034,11 +1039,16 @@
 
 /* ---------- responsive ---------- */
 @media (max-width: 980px) {
-  .heroGrid { grid-template-columns: 1fr; }
-  .exhibits { grid-template-columns: 1fr; gap: 40px; }
-  .methodGrid { grid-template-columns: 1fr; gap: 36px; }
-  .refusalGrid { grid-template-columns: 1fr; gap: 36px; }
-  .teaser { grid-template-columns: 1fr; }
+  /* minmax(0, 1fr), not 1fr: a bare 1fr track can't go below its content's
+     minimum, and the sample ledger's no-wrap "RENEWS JUL 14 · …" label made
+     the hero column 423px, so a 375px phone laid the page out 447px wide and
+     zoomed out (measured on the live site, 2026-10-04). With a 0 minimum the
+     row shrinks and the label's own ellipsis takes over. */
+  .heroGrid { grid-template-columns: minmax(0, 1fr); }
+  .exhibits { grid-template-columns: minmax(0, 1fr); gap: 40px; }
+  .methodGrid { grid-template-columns: minmax(0, 1fr); gap: 36px; }
+  .refusalGrid { grid-template-columns: minmax(0, 1fr); gap: 36px; }
+  .teaser { grid-template-columns: minmax(0, 1fr); }
   .planCols { display: none; }
   .planRow { grid-template-columns: 1fr; gap: 14px; }
   .planRowFeatured { margin-left: 0; }

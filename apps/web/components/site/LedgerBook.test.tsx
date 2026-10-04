@@ -409,3 +409,31 @@ describe("LedgerBook, dragging a page edge with the mouse", () => {
     expect(document.documentElement.classList.contains("znCanGrab")).toBe(false);
   });
 });
+
+describe("LedgerBook, the sheet's content scaled to the screen (F203)", () => {
+  const size = (w: number, h: number) => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: w });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: h });
+  };
+  const zoomVar = () => (document.querySelector("[aria-roledescription='ledger book']") as HTMLElement).style.getPropertyValue("--book-zoom");
+
+  it("is 1 on the 1440x900 desk it was designed for, the smaller of the two ratios above it, never more than 1.6, and follows a resize", () => {
+    size(1440, 900);
+    openBook();
+    expect(zoomVar()).toBe("1");
+    expect(document.querySelectorAll("[class*='zoomed']").length).toBe(SHEETS.length);
+    // 1920x1080: width allows 1.33, height (minus the 57px nav) allows 1.19.
+    size(1920, 1080);
+    act(() => window.dispatchEvent(new Event("resize")));
+    expect(zoomVar()).toBe("1.19");
+    // 2560x1440: both ratios exceed 1.6; capped.
+    size(2560, 1440);
+    act(() => window.dispatchEvent(new Event("resize")));
+    expect(zoomVar()).toBe("1.6");
+    // Smaller than the desk: never scaled down.
+    size(1000, 700);
+    act(() => window.dispatchEvent(new Event("resize")));
+    expect(zoomVar()).toBe("1");
+    size(1200, 900);
+  });
+});
