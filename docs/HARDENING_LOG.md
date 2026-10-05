@@ -112,7 +112,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P7.1 Threat model: the system and its trust boundaries (data-flow diagram), STRIDE per surface (phone, API, database, website, outside services) and per route (all 40), each threat with its evidence or marked open with an owner. **Done**: `docs/THREAT_MODEL.md`
   - [ ] P7.2 ASVS 5.0 Level 2 checklist, every control with its evidence (test, CI job or config line) or "open, owned by"; control text taken from OWASP's repository, not memory. **Done 2026-10-05**: all 253 assessed (158 met, 79 N/A, 12 partial, 4 open; every partial and open one is the owner's: host settings (P8) or a decision in `OWNER_ACTIONS.md` D17); **fixes F216 to F222**, plus the security-event log
   - [x] P7.3 MASVS checklist refreshed with P4-P6 (every row's evidence re-pointed at a test name). **Done 2026-10-05**: 41 tests named, held by `scripts/masvs-checklist.test.ts`
-  - [ ] P7.4 `docs/SECURITY_AUDIT_2026-10.md` replacing the July audit; a residual-risk register, each risk with an owner and a date
+  - [x] P7.4 `docs/SECURITY_AUDIT_2026-10.md` replacing the July audit; a residual-risk register, each risk with an owner and a date. **Done 2026-10-05**: 31 risks, held by `scripts/security-audit.test.ts`
   - [ ] P7 gate: no control marked "believed": each is "tested by …" or "open, owned by …"
 - [ ] **P8 — Infrastructure and operations (owner-driven)**
 
@@ -6203,4 +6203,25 @@ code word for word, and every cited file must exist. Bite-checked: renaming one 
 test and one cited path in the document fails both checks.
 
 **Next:** P7.4, the audit report and residual-risk register, then the P7 gate.
+
+### P7.4 — the October audit and its residual-risk register — 2026-10-05
+
+`docs/SECURITY_AUDIT_2026-10.md` replaces July's (which now says it is superseded). It
+states the verdict (ready to soft-launch on Android once the owner's "before launch"
+items are done; no defect in the code open above Low), what stands behind it (each check
+read on GitHub, with the one not yet run named: the first nightly mutation run), the
+results against ASVS (158 / 79 / 12 / 4) and MASVS (11 met, 7 partial, 5 not met, 1 N/A;
+counted from the checklist), what changed since July, what the audit does not cover (iOS,
+an external penetration test, the hosts' own controls, Sentry and RevenueCat in a release
+build, legal review), and a register of 31 residual risks, each with severity, owner,
+target date and source. The finding count was read row by row (220 recorded; 21 not
+closed, all in the register; F6 a working rule): a keyword count over-counted, because
+fixed rows keep their struck-through "OPEN" text.
+
+Cross-checked on the way: the threat model's list of threats handed to the register had
+one item I'd left out (an audit trail of user changes, now R31). `scripts/security-audit.test.ts`
+holds the register: numbered without gaps, every risk with a severity, an owner and a date
+or event, every cited finding in this log, every finding the threat model hands over
+present, every cited document existing. Bite-checked: a row without an owner and a
+dropped F14 each fail.
 

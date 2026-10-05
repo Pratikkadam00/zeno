@@ -1,5 +1,8 @@
 # Zeno — security & code audit (web + mobile + API)
 
+> **Superseded** by `docs/SECURITY_AUDIT_2026-10.md` (2026-10-05). Kept as the record of
+> the July state; its findings are not current.
+
 **Date:** 2026-07-28 · **Scope:** `apps/web`, `apps/mobile`, `apps/api`,
 `packages/shared`, `packages/service-catalog` · **Method:** every finding below
 was produced by running the command or reading the code cited. Nothing is
