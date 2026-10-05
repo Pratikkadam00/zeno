@@ -59,7 +59,8 @@ type GmailPayload = {
 
 const gmailScopes = ["https://www.googleapis.com/auth/gmail.readonly"];
 
-const knownBillingDomains = [
+/** @internal exported for tests: senders whose receipts are always read. */
+export const knownBillingDomains = [
   "netflix.com",
   "spotify.com",
   "adobe.com",

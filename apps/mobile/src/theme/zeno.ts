@@ -135,6 +135,8 @@ export type ColorScheme = {
   overlay: string;
 };
 
+// Stryker disable StringLiteral: colour values of the two schemes. A changed colour is a
+// design change seen on screen, not logic a unit test can judge (P6.3).
 export const lightScheme: ColorScheme = {
   bgApp: palette.paper,
   surfaceCard: palette.white,
@@ -238,6 +240,7 @@ export const darkScheme: ColorScheme = {
   focusRing: "rgba(20, 209, 126, 0.40)",
   overlay: "rgba(0, 0, 0, 0.6)"
 };
+// Stryker restore StringLiteral
 
 /* ---- Spacing (4px base) + layout — matches spacing.css ---- */
 export const space = {

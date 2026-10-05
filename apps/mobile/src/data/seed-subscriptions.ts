@@ -16,6 +16,8 @@ function renewalInDays(days: number): string {
   return date.toISOString();
 }
 
+// Stryker disable StringLiteral: sample subscriptions for the demo; a changed name,
+// id or category is a different sample, not a behaviour a test could judge (P6.3).
 export const seedSubscriptions: Subscription[] = [
   {
     id: "sub_adobe",
@@ -101,3 +103,4 @@ export const seedSubscriptions: Subscription[] = [
     source: "seed"
   }
 ];
+// Stryker restore StringLiteral

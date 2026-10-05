@@ -27,7 +27,8 @@ export default {
   ],
   htmlReporter: { fileName: "reports/mutation-mobile/mutation.html" },
   jsonReporter: { fileName: "reports/mutation-mobile/mutation.json" },
-  // No floor until the first measurement (P6.3 sets it).
-  thresholds: { high: 95, low: 90, break: null },
+  // The floor (P6.3, 2026-10-05): 89.74 % measured over the app's logic in three
+  // batches (4,566 of 5,088 mutants caught), set just under it and only raised.
+  thresholds: { high: 95, low: 90, break: 89 },
   tempDirName: ".stryker-tmp-mobile"
 };

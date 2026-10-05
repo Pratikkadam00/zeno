@@ -54,6 +54,8 @@ export type ThemeTokens = {
   numberFontFamily?: string;
 };
 
+// Stryker disable StringLiteral,BooleanLiteral: the retired per-generation theme fields,
+// kept only so a stored preference still resolves; nothing reads their values (P6.3).
 function buildZenoTheme(id: ThemePreference, c: ColorScheme): ThemeTokens {
   return {
     id,
@@ -97,6 +99,8 @@ function buildZenoTheme(id: ThemePreference, c: ColorScheme): ThemeTokens {
     numberFontFamily: fonts.mono.medium
   };
 }
+
+// Stryker restore StringLiteral,BooleanLiteral
 
 /** The one Zeno brand, in light and dark. */
 export const zenoLight: ThemeTokens = buildZenoTheme("millennial", lightScheme);
