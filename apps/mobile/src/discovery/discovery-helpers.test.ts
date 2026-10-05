@@ -2,6 +2,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { applyFreeCap, calculateNextRenewal, confidenceRank, currencyEvidence, detectCurrency, inferRecurringCycle, isWithin, slugify, summarizeFoundMoney, titleCase, toCurrencyCode } from "./discovery-helpers";
 import { parseDay } from "../utils/day-text";
 
+// Switches the zone mid-test; skipped only where that is ignored (Stryker's
+// worker threads, vitest.tz-setup.ts). Everywhere else the setup insists it works.
+const describeZone = process.env.ZENO_ZONE_SWITCH_IGNORED ? describe.skip : describe;
+
 describe("inferRecurringCycle", () => {
   it("infers monthly / weekly / annual from the median gap", () => {
     expect(inferRecurringCycle([30, 31, 29])).toBe("monthly");
@@ -52,7 +56,7 @@ describe("calculateNextRenewal (UTC days, F21)", () => {
   });
 });
 
-describe("calculateNextRenewal and parseDay on a US device (UTC-5), where local arithmetic went wrong (F21)", () => {
+describeZone("calculateNextRenewal and parseDay on a US device (UTC-5), where local arithmetic went wrong (F21)", () => {
   // Node re-reads TZ when process.env.TZ is assigned (checked: the same instant
   // reports day 30 in New York and 31 in Kolkata). Restored after the block;
   // vitest runs each file in its own context.

@@ -39,3 +39,5 @@ sbom.cdx.json
 reports/mutation/
 .stryker-tmp-api/
 reports/mutation-api/
+.stryker-tmp-mobile/
+reports/mutation-mobile/

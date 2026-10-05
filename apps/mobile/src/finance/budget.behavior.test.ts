@@ -2,6 +2,10 @@ import type { FxContext, Subscription } from "@zeno/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { budgetStatus, computeBudgetForecast, computeCategoryForecast, suggestedCapMinor } from "./budget";
 
+// Switches the zone mid-test; skipped only where that is ignored (Stryker's
+// worker threads, vitest.tz-setup.ts). Everywhere else the setup insists it works.
+const itZone = process.env.ZENO_ZONE_SWITCH_IGNORED ? it.skip : it;
+
 function sub(partial: Partial<Subscription> & { id: string }): Subscription {
   return {
     createdAt: "2026-01-01T00:00:00.000Z",
@@ -181,7 +185,7 @@ describe("computeCategoryForecast — currency", () => {
 });
 
 describe("the user's month and the user's today (\"which today?\", P5)", () => {
-  it("22:00 on Oct 6 in New York (02:00 UTC on the 7th): the 7th's charge is still to renew; in Kolkata it has happened", () => {
+  itZone("22:00 on Oct 6 in New York (02:00 UTC on the 7th): the 7th's charge is still to renew; in Kolkata it has happened", () => {
     const now = new Date("2026-10-07T02:00:00.000Z");
     const list = [sub({ id: "n", nextRenewalDate: "2026-10-07T00:00:00.000Z", price: { amountMinor: 1549, currency: "USD" } })];
     process.env.TZ = "America/New_York";
@@ -190,7 +194,7 @@ describe("the user's month and the user's today (\"which today?\", P5)", () => {
     expect(computeBudgetForecast(list, now)).toMatchObject({ committedMinor: 1549, projectedMinor: 1549 });
   });
 
-  it("23:30 UTC on Jun 30 is still June in New York and already July in Kolkata", () => {
+  itZone("23:30 UTC on Jun 30 is still June in New York and already July in Kolkata", () => {
     const now = new Date("2026-06-30T23:30:00.000Z");
     process.env.TZ = "America/New_York";
     expect(computeBudgetForecast([], now).daysLeftInMonth).toBe(1);

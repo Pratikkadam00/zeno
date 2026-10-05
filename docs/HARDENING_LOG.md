@@ -104,7 +104,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
 - [ ] **P6 — Mutation + property-based testing**
   - [x] P6.1 Stryker on the shared packages (`packages/shared`, `packages/service-catalog`): measure the mutation score, kill the survivors that matter, floor at 85 %. **Done**: 82.35 % to **92.44 %**, floor set at 92 % in `stryker.config.mjs`; **fixes F205, F206, F207** (green: CI 37254557059, CodeQL 37254557078 on `f2ec20d`)
   - [x] P6.2 Stryker on the API (`apps/api/src`), security and money paths first. **Done**: **88.95 %** over the whole API (2,752 of 3,094), floor 88 % in `stryker.api.config.mjs`; the sign-in routes 81.31 % to 84.53 %, the smaller security files 89.03 % to 95.69 %, coach/storage/startup 88.71 % to 92.80 %, the main routes 82.26 % to 83.52 %; **fixes F208-F211** (missing tests; no code was wrong)
-  - [ ] P6.3 Stryker on the app's logic (`apps/mobile/src`, outside screens and components)
+  - [ ] P6.3 Stryker on the app's logic (`apps/mobile/src`, outside screens and components). **In progress**: measured 88.53 % / 82.80 % / 87.07 % in three batches (5,198 mutants); the sign-in store and the crash-report scrubbers fixed (F212, F213); next the Gmail scanner (69 %) and the CSV parser (81 %)
   - [ ] P6.4 fast-check properties: money math (rounding, minor units), UTC date math (DST, leap days), the email and CSV parsers (never throw, never over-match), the catalog (per-entry invariants), sync (idempotent, ordered)
   - [ ] P6.5 CI: the mutation floor nightly, and on pull requests for changed files
   - [ ] P6 gate: the floor enforced in CI and green on GitHub
@@ -319,6 +319,8 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F209 | **FIXED in P6.2 (missing test).** The per-address limit on sign-in emails (5 per 15 minutes from any IP, the guard against bombing one inbox) could have its window cut to 250 ms, or never reset, or be wiped by the periodic sweep, unnoticed. Now tested at 1, 14 and 15 minutes, across a sweep. | Medium | me | P6.2 |
 | F210 | **FIXED in P6.2 (missing test).** The sweep could be changed to delete live sessions instead of used-up ones (signing everyone out each time it ran), unnoticed. Now a live session is refreshed after a sweep. | Medium | me | P6.2 |
 | F211 | **FIXED in P6.2 (missing test).** A household member's monthly spend could be dropped to 0 on create and on join (`?? 0` turned into `&& 0`), and the USD default on join blanked, unnoticed: no test created a household with a spend. `family-spend.test.ts` now sends both and reads them back. | Medium (money shown to a household) | me | P6.2 |
+| F212 | **FIXED in P6.3 (missing tests).** After a failed sign-in (a link request, a link, the demo, Apple, Google) or a rejected refresh, the app's auth store could be changed to say `isAuthenticated: true`, unnoticed: the failure tests read the status and the error, never the flag the screens gate on. And the 14-minute refresh timer could be left running after sign-out. Each failure now asserts signed-out, and no timer is left after sign-out, a rejected refresh, or a session that vanished from the keychain. | High (a screen gated on a false "signed in") | me | P6.3 |
+| F213 | **FIXED in P6.3 (missing tests).** The crash-report scrubbers (what may reach Sentry) could be loosened so that "Rs 499", "12,499.00 INR", a bearer token after two spaces, a long token whose first digit follows letters, emails inside a list, or a log entry's message and parameters went out unscrubbed, and no test noticed. Each case is now tested, with the opposite edge (a count stays a number). | High (user data in a third-party service) | me | P6.3 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **CLOSED in the P3 gate (2026-10-02): reachable, not a bug.** TalkBack, driven by touches from the emulator's own touchscreen, put its focus on each nested button's exact bounds, separately from its parent: the calendar's "Cancel Figma", the menu's Edit/Pause/Delete, the login's Terms and Privacy links. Original note: on the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -5908,3 +5910,32 @@ bookkeeping no API can observe.
 
 **Next: P6.3**, the app's logic (`apps/mobile/src`): its four zone-switching tests need the
 same `itZone` care first.
+
+
+### P6.3 — the app's logic under Stryker: set up, measured, the first fixes — 2026-10-05
+
+`stryker.mobile.config.mjs` mutates `apps/mobile/src` except the tests, test helpers, the
+React Native components and the four modules only jest can load (the same ones
+`vitest.config.ts` leaves out of its coverage). The app's logic tests joined the mutation
+test set (`vitest.mutation.config.ts`).
+
+**The zone tests first:** nine tests in six files switch the time zone mid-test (a
+`describe` with a New York `beforeAll`, `inTimeZone(...)` helpers, `it.each` over zones).
+Each is now `itZone`/`describeZone`, skipped only when Stryker runs it. Checked both ways:
+a normal run runs all 1,073 (none skipped); a run as Stryker starts it (UTC, the Stryker
+flag, worker threads) passes 1,047 and skips exactly 26.
+
+| Batch | Mutants | Score |
+|---|---|---|
+| security, sign-in, API client, storage, billing, config | 1,613 | 88.53 % |
+| discovery, budget, FX, insights, notifications, widgets, data | 2,564 | 82.80 % |
+| utilities, theme, crash reporting | 1,021 | 87.07 % |
+
+**Fixed so far (F212, F213):** the sign-in store's six failure paths and its refresh timer;
+the crash-report scrubbers. 11 sign-in and 9 scrubber mutations put back by hand, all
+caught. Two timer stops are equivalent (a failed new sign-in can't have a timer running:
+a signed-in phone refuses a new link before reaching them).
+
+**Next in P6.3:** the Gmail scanner (`emailScanner.ts`, 68.98 %, 224 survivors), the CSV
+statement parser (80.69 %), insights (91.32 %); the demo seed data and the theme's colour
+tables (no behaviour) get Stryker's disable comment with a reason; then the app's floor.

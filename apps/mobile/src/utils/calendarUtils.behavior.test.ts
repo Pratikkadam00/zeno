@@ -3,6 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getMarkedDates, getProjectedAnnual, getSubscriptionsForDate, getWeeklyGroups } from "./calendarUtils";
 import { getDaysRemaining } from "./subscription-ui";
 
+// Switches the zone mid-test; skipped only where that is ignored (Stryker's
+// worker threads, vitest.tz-setup.ts). Everywhere else the setup insists it works.
+const itZone = process.env.ZENO_ZONE_SWITCH_IGNORED ? it.skip : it;
+
 // Node re-reads process.env.TZ on assignment; deleting it does NOT restore the
 // original zone, so it is put back by name.
 const ORIGINAL_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -56,7 +60,7 @@ describe("getMarkedDates", () => {
     expect(marked["2026-06-01"]).toEqual({ marked: true, dots: [{ key: "active", color: "#3B82F6" }] });
   });
 
-  it("keys each renewal by its UTC calendar day, whatever the device timezone", () => {
+  itZone("keys each renewal by its UTC calendar day, whatever the device timezone", () => {
     const list = [sub({ id: "late", nextRenewalDate: "2026-05-29T23:30:00.000Z" })];
     // In Kolkata this instant is already May 30 locally; in LA it is still May 29.
     expect(Object.keys(inTimeZone("Asia/Kolkata", () => getMarkedDates(list)))).toEqual(["2026-05-29"]);
@@ -129,7 +133,7 @@ describe("getWeeklyGroups", () => {
 
   // "Which today?" (P5): 12:00 UTC on May 29 is already May 30 in Kiritimati,
   // so a May 29 renewal has passed there and is no longer grouped.
-  it("groups from the user's own date", () => {
+  itZone("groups from the user's own date", () => {
     const list = [sub({ id: "may29", nextRenewalDate: "2026-05-29T00:00:00.000Z" }), sub({ id: "jun5", nextRenewalDate: "2026-06-05T00:00:00.000Z" })];
     expect(ids(getWeeklyGroups(list).thisWeek)).toEqual(["may29", "jun5"]);
     process.env.TZ = "Pacific/Kiritimati";
@@ -174,7 +178,7 @@ describe("getWeeklyGroups", () => {
   // spring-forward night a "day" is 23 hours, so 8 days came out as
   // floor(7.96) = 7 and the renewal was put in "this week" — while the same
   // screen's getDaysRemaining (UTC days) said 8.
-  it("does not lose a day across a DST change (New York, March 2026)", () => {
+  itZone("does not lose a day across a DST change (New York, March 2026)", () => {
     vi.setSystemTime(new Date("2026-03-01T12:00:00.000Z"));
     const renewal = "2026-03-09T12:00:00.000Z";
     const groups = inTimeZone("America/New_York", () => getWeeklyGroups([sub({ id: "eight-days", nextRenewalDate: renewal })]));
@@ -247,7 +251,7 @@ describe("getProjectedAnnual: a year of these plans at their current price (F196
     ], fx)).toBe(32);
   });
 
-  it("is the same figure in every timezone", () => {
+  itZone("is the same figure in every timezone", () => {
     vi.setSystemTime(new Date("2026-12-31T20:00:00.000Z")); // already 2027 in Kolkata
     const list = [
       sub({ id: "m", nextRenewalDate: "2027-01-01T00:00:00.000Z", price: { amountMinor: 1000, currency: "USD" } }),

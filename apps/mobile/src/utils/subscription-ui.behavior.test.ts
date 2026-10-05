@@ -14,6 +14,10 @@ import {
   withAlpha
 } from "./subscription-ui";
 
+// Switches the zone mid-test; skipped only where that is ignored (Stryker's
+// worker threads, vitest.tz-setup.ts). Everywhere else the setup insists it works.
+const itZone = process.env.ZENO_ZONE_SWITCH_IGNORED ? it.skip : it;
+
 // Timezone switching: Node re-reads process.env.TZ on assignment. Deleting the
 // variable does NOT restore the original zone, so it is put back by name.
 const ORIGINAL_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -81,7 +85,7 @@ describe("rollRenewalForward — edge cases", () => {
   // "Which today?" (P5): the user's calendar date, not the UTC date. At 03:00
   // UTC on Mar 1 it is still Feb 28 in Los Angeles: a renewal dated Feb 28 is
   // due today there (kept), and already past in Kolkata (rolled a month).
-  it("rolls from the user's own date, not the UTC date", () => {
+  itZone("rolls from the user's own date, not the UTC date", () => {
     const now = new Date("2026-03-01T03:00:00.000Z");
     const feb28 = "2026-02-28T00:00:00.000Z";
     expect(inTimeZone("America/Los_Angeles", () => rollRenewalForward(feb28, "monthly", now))).toBe("2026-02-28T00:00:00.000Z");
@@ -151,7 +155,7 @@ describe("getDaysRemaining — from the user's calendar date to the renewal's da
 
   // 23:30 UTC on Jun 1 is still Jun 1 in Los Angeles and already Jun 2 in
   // Kolkata: the Jun 2 renewal is tomorrow for one and today for the other.
-  it("counts from the user's own date (\"which today?\", P5)", () => {
+  itZone("counts from the user's own date (\"which today?\", P5)", () => {
     expect(inTimeZone("America/Los_Angeles", () => getDaysRemaining("2026-06-02T00:00:00.000Z"))).toBe(1);
     expect(inTimeZone("Asia/Kolkata", () => getDaysRemaining("2026-06-02T00:00:00.000Z"))).toBe(0);
   });

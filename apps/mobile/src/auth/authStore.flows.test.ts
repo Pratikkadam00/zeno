@@ -668,3 +668,95 @@ describe("remaining edge paths", () => {
     await expect(useAuthStore.getState().loginWithGoogle()).rejects.toThrow("Google OAuth client ID is not configured.");
   });
 });
+
+// P6.3: Stryker turned `isAuthenticated: false` into `true` on six failure paths,
+// and dropped the call that stops the 14-minute refresh timer on sign-out, and no
+// test noticed: the failure tests read the status and the error, never the flag
+// the app's screens gate on, and no test let time pass after signing out.
+describe("a failure never leaves the store claiming to be signed in", () => {
+  const signedOut = () => expect(useAuthStore.getState()).toMatchObject({ isAuthenticated: false, status: "anonymous", accountId: null });
+
+  it("a refused sign-in link request", async () => {
+    http.timedFetch.mockResolvedValueOnce(errorEnvelope("Too many requests.", 429));
+    await expect(useAuthStore.getState().loginWithMagicLink(EMAIL)).rejects.toThrow();
+    signedOut();
+  });
+
+  it("a refused sign-in link", async () => {
+    linkRequested();
+    http.timedFetch.mockResolvedValueOnce(errorEnvelope("Link expired."));
+    await expect(useAuthStore.getState().verifyMagicLink("t".repeat(40))).rejects.toThrow();
+    signedOut();
+  });
+
+  it("a refused demo sign-in", async () => {
+    http.timedFetch.mockResolvedValueOnce(errorEnvelope("Invalid demo account credentials."));
+    await expect(useAuthStore.getState().loginWithDemoAccount("d@x.com", "wrong-pass")).rejects.toThrow();
+    signedOut();
+  });
+
+  it("Apple's token refused by the API", async () => {
+    apple.signInAsync.mockResolvedValue({ identityToken: "apple.id.token", authorizationCode: null, fullName: null });
+    http.timedFetch.mockResolvedValueOnce(errorEnvelope("Apple identity token could not be verified."));
+    await expect(useAuthStore.getState().loginWithApple()).rejects.toThrow();
+    signedOut();
+  });
+
+  it("Google's token refused by the API", async () => {
+    constants.extra = { google: { iosClientId: "ios-client" } };
+    authSession.loadAsync.mockResolvedValue({ promptAsync: vi.fn().mockResolvedValue({ type: "success", params: { id_token: "google.id.token" } }) });
+    http.timedFetch.mockResolvedValueOnce(errorEnvelope("Google identity token could not be verified."));
+    await expect(useAuthStore.getState().loginWithGoogle()).rejects.toThrow();
+    signedOut();
+  });
+
+  it("a refresh the server rejects", async () => {
+    storeSession();
+    await useAuthStore.getState().hydrate();
+    expect(useAuthStore.getState().isAuthenticated).toBe(true);
+    http.timedFetch.mockResolvedValueOnce(errorEnvelope("Refresh token reused."));
+    await useAuthStore.getState().refreshToken();
+    signedOut();
+  });
+});
+
+describe("the 14-minute refresh stops when the session ends", () => {
+  it("after signing out, no refresh is ever sent", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    storeSession(1);
+    await useAuthStore.getState().hydrate();
+    http.timedFetch.mockResolvedValue(envelope({}));
+    await useAuthStore.getState().logout();
+    // No timer left behind. (One left over would find no session and stop itself
+    // without a request, so the count is the only sign of it.)
+    expect(vi.getTimerCount()).toBe(0);
+    http.timedFetch.mockClear();
+    await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
+    expect(calls().filter((c) => c.url.endsWith("/auth/refresh"))).toEqual([]);
+  });
+
+  it("if the stored session disappears (the keychain was cleared), the next refresh stops the timer without a request", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    storeSession(1);
+    await useAuthStore.getState().hydrate();
+    expect(vi.getTimerCount()).toBe(1);
+    vault.store.clear();
+    await useAuthStore.getState().refreshToken();
+    expect(http.timedFetch).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("after the server rejects a refresh, the timer stops too", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    storeSession(1);
+    await useAuthStore.getState().hydrate();
+    http.timedFetch.mockResolvedValueOnce(errorEnvelope("Refresh token reused."));
+    await useAuthStore.getState().refreshToken();
+    // No timer left behind. (One left over would find no session and stop itself
+    // without a request, so the count is the only sign of it.)
+    expect(vi.getTimerCount()).toBe(0);
+    http.timedFetch.mockClear();
+    await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
+    expect(calls().filter((c) => c.url.endsWith("/auth/refresh"))).toEqual([]);
+  });
+});

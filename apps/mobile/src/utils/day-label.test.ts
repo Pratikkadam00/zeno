@@ -2,6 +2,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import { dayLabelInDays, formatDayLabel } from "./day-label";
 import { formatMonthYear, formatShortDate } from "./subscription-ui";
 
+// Switches the zone mid-test; skipped only where that is ignored (Stryker's
+// worker threads, vitest.tz-setup.ts). Everywhere else the setup insists it works.
+const itZone = process.env.ZENO_ZONE_SWITCH_IGNORED ? it.skip : it;
+
 // Vitest honours a runtime TZ change (jest and Node's startup TZ on Windows
 // don't), so each case really runs in its zone.
 const ORIGINAL_TZ = process.env.TZ;
@@ -12,7 +16,7 @@ afterEach(() => {
 const ZONES = ["America/Los_Angeles", "America/New_York", "UTC", "Asia/Kolkata", "Pacific/Kiritimati", "Pacific/Honolulu"];
 
 describe("F182: a renewal day label reads as the day it names, in every timezone", () => {
-  it.each(ZONES)("%s", (tz) => {
+  itZone.each(ZONES)("%s", (tz) => {
     process.env.TZ = tz;
     // The zone applies (so a local formatter would shift these days).
     if (tz !== "UTC") expect(new Date("2026-10-07T00:00:00.000Z").getTimezoneOffset()).not.toBe(0);
@@ -31,7 +35,7 @@ describe("dayLabelInDays", () => {
   // 22:30 UTC on Oct 2 is still Oct 2 in the Americas and Honolulu, already
   // Oct 3 in Kolkata and Kiritimati: N days from the USER's date ("which
   // today?", P5), as a day label.
-  it.each([
+  itZone.each([
     ["America/Los_Angeles", "2026-10-02", "2026-11-01"],
     ["America/New_York", "2026-10-02", "2026-11-01"],
     ["UTC", "2026-10-02", "2026-11-01"],

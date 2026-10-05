@@ -13,6 +13,10 @@ import {
   type Insight
 } from "./insightsEngine";
 
+// Switches the zone mid-test; skipped only where that is ignored (Stryker's
+// worker threads, vitest.tz-setup.ts). Everywhere else the setup insists it works.
+const itZone = process.env.ZENO_ZONE_SWITCH_IGNORED ? it.skip : it;
+
 // Node re-reads process.env.TZ on assignment; deleting it does NOT restore the
 // original zone, so it is put back by name.
 const ORIGINAL_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -110,7 +114,7 @@ describe("detectUnused", () => {
   // Regression: days were counted between LOCAL midnights. Across the US
   // spring-forward night a day is 23 hours, so 31 days came out as 30 and the
   // subscription was not flagged.
-  it("counts whole UTC days, so a DST change does not lose one (New York, March 2026)", () => {
+  itZone("counts whole UTC days, so a DST change does not lose one (New York, March 2026)", () => {
     vi.setSystemTime(new Date("2026-03-20T12:00:00.000Z"));
     const insights = inTimeZone("America/New_York", () => detectUnused([sub({ id: "x", lastUsedDate: "2026-02-17T12:00:00.000Z" })]));
     expect(insights.map((insight) => insight.title)).toEqual(["Not used in 31 days"]);
@@ -331,7 +335,7 @@ describe("detectTrialEnding", () => {
   // a 7-day gap 7 days + 1 hour, which Math.ceil turned into 8 — the trial
   // silently dropped out of the 7-day window (the shared Trial Guardian, which
   // counts UTC days, still said 7).
-  it("counts whole UTC days, so a DST change does not push a 7-day trial out of the window (New York, Nov 2026)", () => {
+  itZone("counts whole UTC days, so a DST change does not push a 7-day trial out of the window (New York, Nov 2026)", () => {
     vi.setSystemTime(new Date("2026-10-30T12:00:00.000Z"));
     const insights = inTimeZone("America/New_York", () => detectTrialEnding([trial("x", "2026-11-06T12:00:00.000Z")]));
     expect(insights.map((insight) => insight.title)).toEqual(["Trial ends in 7 days"]);
@@ -536,7 +540,7 @@ describe("getTotalSavingOpportunity", () => {
 describe("day counts start from the user's own date (\"which today?\", P5)", () => {
   // 12:00 UTC on May 25 is already May 26 in Kiritimati: a trial converting on
   // May 26 converts today there, and tomorrow on a device on UTC.
-  it("a trial converting on the 26th: tomorrow on UTC, today in Kiritimati", () => {
+  itZone("a trial converting on the 26th: tomorrow on UTC, today in Kiritimati", () => {
     const trial = [sub({ id: "trial", billingCycle: "trial", nextRenewalDate: "2026-05-26T00:00:00.000Z" })];
     const title = () => detectTrialEnding(trial)[0]?.title;
     expect(title()).toBe("Trial ends tomorrow");
