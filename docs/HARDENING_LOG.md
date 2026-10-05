@@ -103,7 +103,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
 - [x] **P5 — Mobile end-to-end (Maestro on the emulator)** (watch for F94 and F106, closed as not reproduced in FX.5). **Done**: 13 flows and the 17-screen accessibility-tree audit, green on the local emulator and on GitHub's (green: Mobile end-to-end 37205579950, CI 37205579972, CodeQL 37205579957 on `5dbddd7`); fixes F178, F184, F185, F188-F190, F192-F198, F201, F202; F191, F199, F200 logged
 - [ ] **P6 — Mutation + property-based testing**
   - [x] P6.1 Stryker on the shared packages (`packages/shared`, `packages/service-catalog`): measure the mutation score, kill the survivors that matter, floor at 85 %. **Done**: 82.35 % to **92.44 %**, floor set at 92 % in `stryker.config.mjs`; **fixes F205, F206, F207** (green: CI 37254557059, CodeQL 37254557078 on `f2ec20d`)
-  - [ ] P6.2 Stryker on the API (`apps/api/src`), security and money paths first. **In progress**: nine smaller files 89.03 % to 95.69 %; the sign-in routes measured at 81.31 % (next); `app.ts`, `coach.ts`, `storage/pg.ts`, `start.ts` not yet measured
+  - [ ] P6.2 Stryker on the API (`apps/api/src`), security and money paths first. **In progress**: nine smaller files 89.03 % to 95.69 %; the sign-in routes 81.31 % to 84.53 % (F208-F210: tests that were missing); `app.ts`, `coach.ts`, `storage/pg.ts`, `start.ts` not yet measured
   - [ ] P6.3 Stryker on the app's logic (`apps/mobile/src`, outside screens and components)
   - [ ] P6.4 fast-check properties: money math (rounding, minor units), UTC date math (DST, leap days), the email and CSV parsers (never throw, never over-match), the catalog (per-entry invariants), sync (idempotent, ordered)
   - [ ] P6.5 CI: the mutation floor nightly, and on pull requests for changed files
@@ -315,6 +315,9 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F205 | **FIXED in P6.1: six unused schemas removed, every limit of the two used ones pinned (100 %, 28 of 28).** ~~The input schemas in `packages/shared/src/schemas.ts` score 22 % (19 of 86 mutants killed, by every package and API test). The one that matters for security: the cap of 64 entries on a sync vector clock (a size limit against oversized requests) can be removed, or moved to 63, and no test notices. Most of the other 66 are accepted values (currencies, categories, difficulty levels) that no test sends, so dropping one would reject real input unnoticed.~~ Only the sync pull and push schemas had a user (the API); the sign-in pair was a weaker copy of the API's own (no 254-character email cap). | Medium (an unguarded size limit) | me | P6.1 |
 | F206 | **FIXED in P6.1: the unused detector removed; the app-name extractor the app uses at 85.42 %, every survivor equivalent or a timeout.** ~~The email-receipt parser (`discovery/email-receipts.ts`) scores 63 %: 72 changes pass every test, among them the confidence score (raising or lowering it), the order results are returned in, the category it guesses, and the rule that drops a direct email without billing words.~~ Nothing called that detector: the app's own scanner does that work. | Medium (discovery accuracy) | me | P6.1 / P6.4 |
 | F207 | **FIXED in P6.1: the list is pinned whole (100 %), and two statuses corrected.** ~~The partner list the public `GET /api/v1/partners` returns is checked only as "an array of 5 or more". Its `exportsFinancialData` flag, which tells a reader whether an integration sends their money data elsewhere, can be flipped on any entry unnoticed.~~ Pinning it showed Google Sheets and Slack labelled "dev adapter" (built, in development) with no code for either in the repository; both now read "planned", like the other three. | Low (truthfulness of a public statement) | me | P6.1 |
+| F208 | **FIXED in P6.2 (a test that was missing; the code was right).** Revoking one account's sessions (account deletion) could be changed to revoke EVERY account's refresh sessions, pending sign-in links and pending codes, and no test noticed: every test revoked one user with no one else on the server. `auth-scope.test.ts` now signs in a second user and holds a link and a code pending for two more, and all three still work after the first account is revoked. | High (one deletion would sign everyone out) | me | P6.2 |
+| F209 | **FIXED in P6.2 (missing test).** The per-address limit on sign-in emails (5 per 15 minutes from any IP, the guard against bombing one inbox) could have its window cut to 250 ms, or never reset, or be wiped by the periodic sweep, unnoticed. Now tested at 1, 14 and 15 minutes, across a sweep. | Medium | me | P6.2 |
+| F210 | **FIXED in P6.2 (missing test).** The sweep could be changed to delete live sessions instead of used-up ones (signing everyone out each time it ran), unnoticed. Now a live session is refreshed after a sweep. | Medium | me | P6.2 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **CLOSED in the P3 gate (2026-10-02): reachable, not a bug.** TalkBack, driven by touches from the emulator's own touchscreen, put its focus on each nested button's exact bounds, separately from its parent: the calendar's "Cancel Figma", the menu's Edit/Pause/Delete, the login's Terms and Privacy links. Original note: on the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -5832,3 +5835,32 @@ each blog post's link list leads with its landing page, and `llms.txt` lists the
 Checked in Chrome on the production build at desktop and phone width: no console error,
 no sideways scroll. The FAQ questions first rendered in body type, indistinguishable
 from their answers; they now have their own heading style (`.faqQ`).
+
+
+### P6.2 — the sign-in routes' survivors — 2026-10-05
+
+`routes/auth.ts`, 931 mutants: 81.31 % to **84.53 %** (782 killed, 5 timed out, 139
+survived, 5 no coverage). No code changed: every gap was a test that did not exist. Each
+fix was checked by putting the mutation back by hand (21 mutations, 21 caught).
+
+- **F208, F209, F210** (see the findings): one account's revocation reaching everyone,
+  the email-bombing limit, and the sweep deleting live sessions.
+- **Token expiry at the exact second**, for our own access tokens (`auth-expiry.test.ts`:
+  valid at 14:59, refused at 15:00) and for Apple and Google tokens. Every expired-token
+  test was minutes past expiry, so `>` and `>=` looked the same.
+- **The providers' key lists:** the cache test ran inside the 30-second refresh cooldown,
+  which hid mutants that re-fetched Apple's or Google's keys on EVERY sign-in (the abuse
+  F83 closed). Past the cooldown, a known key now costs no request, and a key the
+  provider really rotated in is picked up with one request and the sign-in succeeds. These
+  two use Google's key list: the fetch times are module state, and moving the clock on
+  Apple's broke the existing outage test.
+- **Why a social sign-in failed:** each refusal's logged reason is checked (the server log
+  is the operator's only clue). One expectation was wrong and the code right: an
+  "alg none" token has no signature part, so the shape check refuses it first.
+
+What survives in `auth.ts`, read and judged: most are equivalent because the code fails
+closed twice (a missing token part makes decoding throw; a missing audience or nonce
+fails a later check), millisecond boundaries on record expiry, error messages of paths
+that are themselves tested, and leaks a sweep would reclaim that no API shows. Two worth
+a later test: restoring pending sign-in links after a restart (the hydrators), and
+account deletion reporting success when only some of its deletes landed (`every`).

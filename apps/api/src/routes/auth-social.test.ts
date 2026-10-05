@@ -104,6 +104,17 @@ describe("POST /api/v1/auth/apple", () => {
     expect(res.statusCode).toBe(401);
   });
 
+  it("a token without a nonce claim is logged as a nonce failure", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const n = rawNonce();
+      expect((await post("/api/v1/auth/apple", { identityToken: sign(appleClaims(n, { nonce: undefined })), nonce: n })).statusCode).toBe(401);
+      expect(warn.mock.calls.map((call) => (call[0] as { error?: string }).error)).toContain("JWT nonce is invalid.");
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it("F10: a token without any nonce claim is rejected", async () => {
     const n = rawNonce();
     const res = await post("/api/v1/auth/apple", { identityToken: sign(appleClaims(n, { nonce: undefined })), nonce: n });
@@ -116,8 +127,32 @@ describe("POST /api/v1/auth/apple", () => {
     expect(res.statusCode).toBe(401);
   });
 
+  // P6.2: each refusal is also logged with its reason (an operator's only clue to
+  // why a sign-in failed); Stryker blanked every reason and no test noticed.
+  const EXPIRY = "JWT subject or expiry is invalid.";
+  const ALG = "JWT must use RS256 and include a key id.";
+  const SIGNATURE = "JWT signature is invalid.";
+  const REASON: Record<string, string> = {
+    "expired": EXPIRY,
+    "expiring this very second": EXPIRY,
+    "no expiry": EXPIRY,
+    "no subject": EXPIRY,
+    "wrong issuer": "JWT issuer is invalid.",
+    "no issuer": "JWT issuer is invalid.",
+    "wrong audience": "JWT audience is invalid.",
+    "no audience": "JWT audience is invalid.",
+    "signed by another key": SIGNATURE,
+    // An alg-none token carries no signature at all, so the shape check refuses it first.
+    "alg none": "JWT must contain header, payload, and signature.",
+    "HS256": ALG,
+    "no kid": ALG,
+    "not three parts (long enough to pass the schema)": "JWT must contain header, payload, and signature.",
+    "tampered payload": SIGNATURE
+  };
   const rejectCases: Array<[string, (n: string) => string]> = [
     ["expired", (n) => sign(appleClaims(n, { exp: now() - 1 }))],
+    // exp is the first second it is no longer valid: equal to now is expired.
+    ["expiring this very second", (n) => sign(appleClaims(n, { exp: now() }))],
     ["no expiry", (n) => sign(appleClaims(n, { exp: undefined }))],
     ["no subject", (n) => sign(appleClaims(n, { sub: undefined }))],
     ["wrong issuer", (n) => sign(appleClaims(n, { iss: "https://evil.example" }))],
@@ -132,11 +167,17 @@ describe("POST /api/v1/auth/apple", () => {
     ["tampered payload", (n) => { const [h, , s] = sign(appleClaims(n)).split("."); return `${h}.${b64(appleClaims(n, { sub: "someone-else" }))}.${s}`; }]
   ];
   for (const [label, make] of rejectCases) {
-    it(`rejects a token that is ${label}`, async () => {
-      const n = rawNonce();
-      const res = await post("/api/v1/auth/apple", { identityToken: make(n), nonce: n });
-      expect(res.statusCode, label).toBe(401);
-      expect(res.json().data ?? null).toBeNull();
+    it(`rejects a token that is ${label}, and logs why`, async () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+      try {
+        const n = rawNonce();
+        const res = await post("/api/v1/auth/apple", { identityToken: make(n), nonce: n });
+        expect(res.statusCode, label).toBe(401);
+        expect(res.json().data ?? null).toBeNull();
+        expect(warn.mock.calls.map((call) => (call[0] as { error?: string }).error), label).toContain(REASON[label]);
+      } finally {
+        warn.mockRestore();
+      }
     });
   }
 
@@ -208,6 +249,49 @@ describe("JWKS handling", () => {
     }
   });
 
+  // P6.2: the cache test above runs inside the 30 s cooldown, which hid mutants that
+  // re-fetched the keys on EVERY sign-in. Past the cooldown, a known key id must
+  // still cost no request to Apple or Google.
+  it("past the refresh cooldown, a sign-in with a known key still makes no request", async () => {
+    const n = rawNonce();
+    await post("/api/v1/auth/google", { idToken: sign(googleClaims(n)), nonce: n }); // warm the cache
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      // Ten minutes on: past the 30 s cooldown even after earlier tests moved the
+      // clock (the fetch times are module state), inside the keys' one-hour cache.
+      vi.setSystemTime(Date.now() + 10 * 60_000);
+      const before = jwks.calls.length;
+      const m = rawNonce();
+      expect((await post("/api/v1/auth/google", { idToken: sign(googleClaims(m)), nonce: m })).statusCode).toBe(200);
+      expect(jwks.calls.length - before).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a key the provider really rotated in is picked up past the cooldown: one request, and the sign-in succeeds", async () => {
+    const n = rawNonce();
+    await post("/api/v1/auth/google", { idToken: sign(googleClaims(n)), nonce: n }); // warm the cache
+    const next = generateKeyPairSync("rsa", { modulusLength: 2048 });
+    jwks.keys = [...jwks.keys, { ...next.publicKey.export({ format: "jwk" }), kid: "rotated-in", alg: "RS256", use: "sig" }];
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      // Ten minutes on: past the 30 s cooldown even after earlier tests moved the
+      // clock (the fetch times are module state), inside the keys' one-hour cache.
+      vi.setSystemTime(Date.now() + 10 * 60_000);
+      const before = jwks.calls.length;
+      const m = rawNonce();
+      const token = sign(googleClaims(m), { alg: "RS256", kid: "rotated-in" }, next.privateKey);
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+      const res = await post("/api/v1/auth/google", { idToken: token, nonce: m });
+      warn.mockRestore();
+      expect(res.statusCode).toBe(200);
+      expect(jwks.calls.length - before).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("a JWKS outage fails closed (401), never open", async () => {
     // A key id never cached forces a fetch (past the refresh cooldown), which fails.
     jwks.fail = true;
@@ -216,9 +300,12 @@ describe("JWKS handling", () => {
       vi.setSystemTime(Date.now() + 120_000);
       const before = jwks.calls.length;
       const n = rawNonce();
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
       const res = await post("/api/v1/auth/apple", { identityToken: sign(appleClaims(n), { alg: "RS256", kid: "never-cached" }), nonce: n });
       expect(res.statusCode).toBe(401);
       expect(jwks.calls.length - before).toBe(1);
+      expect(warn.mock.calls.map((call) => (call[0] as { error?: string }).error)).toContain("JWKS request failed with HTTP 503");
+      warn.mockRestore();
     } finally {
       vi.useRealTimers();
     }
