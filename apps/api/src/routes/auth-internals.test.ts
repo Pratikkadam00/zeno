@@ -137,7 +137,7 @@ describe("our own access tokens, validly signed (keys from JWT_PRIVATE_KEY / JWT
     const app = await loadApp();
     const { verifyAccessToken } = await loadAuth();
     const { devLink } = await requestLink(app, "kid@zeno.test");
-    const session = (await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(tokenOf(devLink))}` })).json().data;
+    const session = (await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: tokenOf(devLink) } })).json().data;
     const header = JSON.parse(Buffer.from(session.accessToken.split(".")[0], "base64url").toString());
     expect(header).toEqual({ alg: "RS256", typ: "JWT", kid: "env-key-7" });
     expect(verifyAccessToken(session.accessToken)?.sub).toBe(session.accountId);
@@ -151,7 +151,7 @@ describe("key loading", () => {
     setEnv("JWT_KEY_ID", undefined);
     const app = await loadApp();
     const { devLink } = await requestLink(app, "default-kid@zeno.test");
-    const session = (await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(tokenOf(devLink))}` })).json().data;
+    const session = (await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: tokenOf(devLink) } })).json().data;
     expect(JSON.parse(Buffer.from(session.accessToken.split(".")[0], "base64url").toString()).kid).toBe("zeno-rs256-env");
   });
 
@@ -205,7 +205,7 @@ describe("boot hydration and the expiry sweep", () => {
     const app = await loadApp();
     const { sweepExpiredAuth } = await loadAuth();
     const link = await requestLink(app, "sweep@zeno.test");
-    const session = (await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(tokenOf(link.devLink))}` })).json().data;
+    const session = (await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: tokenOf(link.devLink) } })).json().data;
     await app.inject({ method: "POST", url: "/api/v1/auth/refresh", payload: { refreshToken: session.refreshToken } }); // rotates it
     await requestLink(app, "pending@zeno.test"); // a pending link + code
     storage.deleted.length = 0;
@@ -227,7 +227,7 @@ describe("account deletion revokes pending sign-ins", () => {
     const app = await loadApp();
     const { revokeAllSessionsForAccount } = await loadAuth();
     const first = await requestLink(app, "gone@zeno.test");
-    const session = (await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(tokenOf(first.devLink))}` })).json().data;
+    const session = (await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: tokenOf(first.devLink) } })).json().data;
     const pending = await requestLink(app, "gone@zeno.test");
     await requestLink(app, "someone-else@zeno.test");
     storage.deleted.length = 0;
@@ -241,7 +241,7 @@ describe("account deletion revokes pending sign-ins", () => {
       `auth_refresh:accountId=${session.accountId}`
     ]);
     expect(storage.deleted.some((d) => d.includes("someone-else"))).toBe(false);
-    const byLink = await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(tokenOf(pending.devLink))}` });
+    const byLink = await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: tokenOf(pending.devLink) } });
     const byCode = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link/verify", payload: { email: "gone@zeno.test", code: pending.devCode } });
     const byRefresh = await app.inject({ method: "POST", url: "/api/v1/auth/refresh", payload: { refreshToken: session.refreshToken } });
     expect([byLink.statusCode, byCode.statusCode, byRefresh.statusCode]).toEqual([401, 401, 401]);
@@ -332,7 +332,7 @@ describe("P2.6: magic links are enumeration-safe, expire, and work once", () => 
     await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", remoteAddress: "192.0.2.1", payload: { email: "known@zeno.test" } });
     const emailed = JSON.parse(sent[0]!) as { text: string };
     const token = /token=([^\s]+)/.exec(emailed.text)![1]!;
-    expect((await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${token}`, remoteAddress: "192.0.2.1" })).statusCode).toBe(200);
+    expect((await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: token }, remoteAddress: "192.0.2.1" })).statusCode).toBe(200);
     sent.length = 0;
 
     const known = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", remoteAddress: "192.0.2.2", payload: { email: "known@zeno.test" } });
@@ -352,7 +352,7 @@ describe("P2.6: magic links are enumeration-safe, expire, and work once", () => 
     const now = Date.now();
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(now + 10 * 60 * 1000 + 1000);
-    const byLink = await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(tokenOf(devLink))}` });
+    const byLink = await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: tokenOf(devLink) } });
     const byCode = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link/verify", payload: { email: "expiry@zeno.test", code: devCode } });
     expect([byLink.statusCode, byCode.statusCode]).toEqual([401, 401]);
   });
@@ -360,9 +360,9 @@ describe("P2.6: magic links are enumeration-safe, expire, and work once", () => 
   it("a link works exactly once", async () => {
     const app = await loadApp();
     const { devLink } = await requestLink(app, "once@zeno.test");
-    const url = `/api/v1/auth/verify?token=${encodeURIComponent(tokenOf(devLink))}`;
-    expect((await app.inject({ method: "GET", url })).statusCode).toBe(200);
-    expect((await app.inject({ method: "GET", url })).statusCode).toBe(401);
+    const payload = { token: tokenOf(devLink) };
+    expect((await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload })).statusCode).toBe(200);
+    expect((await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload })).statusCode).toBe(401);
   });
 });
 
@@ -392,7 +392,7 @@ describe("F80: the 6-digit code has a per-address budget of wrong guesses, acros
     expect(refused.statusCode).toBe(401);
     expect(refused.json().error.message).toBe("Invalid or expired magic link code.");
     // The link is a 256-bit token, not guessable: the code budget does not touch it.
-    expect((await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(tokenOf(c.devLink))}` })).statusCode).toBe(200);
+    expect((await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: tokenOf(c.devLink) } })).statusCode).toBe(200);
     // Another address is unaffected.
     const other = await requestLink(app, "bystander@zeno.test");
     expect((await guess(app, "bystander@zeno.test", other.devCode)).statusCode).toBe(200);
@@ -570,7 +570,7 @@ describe("request validation and the legacy routes", () => {
     expect(await bad("/api/v1/auth/magic-link/request", { email: "nope" })).toBe(400);
     expect(await bad("/api/v1/auth/magic-link/verify", { email: "a@x.com" })).toBe(400);
     expect(await bad("/api/v1/auth/google", {})).toBe(400);
-    const verify = await app.inject({ method: "GET", url: "/api/v1/auth/verify" });
+    const verify = await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: {} });
     expect(verify.statusCode).toBe(400);
   });
 
@@ -578,7 +578,7 @@ describe("request validation and the legacy routes", () => {
     const app = await loadApp();
     const sent = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link/request", payload: { email: "legacy2@zeno.test" } });
     expect(sent.json().data.channel).toBe("dev_log");
-    const unknown = await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${"u".repeat(43)}` });
+    const unknown = await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: "u".repeat(43) } });
     expect(unknown.statusCode).toBe(401);
   });
 

@@ -10,7 +10,7 @@ async function mintRealToken(app: Awaited<ReturnType<typeof buildApp>>, email: s
   const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email } });
   const devLink = requested.json().data.devLink as string;
   const rawToken = decodeURIComponent(devLink.split("token=")[1] ?? "");
-  const verified = await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(rawToken)}` });
+  const verified = await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: rawToken } });
   return verified.json().data.accessToken as string;
 }
 
@@ -175,6 +175,34 @@ describe("magic-link send — per-recipient rate limit", () => {
   });
 });
 
+// ASVS V6.6.2: only the newest sign-in link works. An earlier email lying in
+// the inbox (or forwarded, or intercepted) stops working once a new one is sent.
+describe("magic-link — a new link retires the earlier one", () => {
+  const tokenOf = (response: { json(): { data: { devLink: string } } }) =>
+    decodeURIComponent(response.json().data.devLink.split("token=")[1] ?? "");
+
+  it("the first link is refused after a second is requested; the second works", async () => {
+    const app = await buildApp();
+    const email = "two-links@example.com";
+    const first = tokenOf(await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", remoteAddress: "172.16.7.1", payload: { email } }));
+    const second = tokenOf(await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", remoteAddress: "172.16.7.2", payload: { email } }));
+    expect(first).not.toBe(second);
+    const old = await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: first }, remoteAddress: "172.16.7.3" });
+    expect(old.statusCode).toBe(401);
+    const latest = await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: second }, remoteAddress: "172.16.7.4" });
+    expect(latest.statusCode).toBe(200);
+    expect(latest.json().data.accessToken).toEqual(expect.any(String));
+  });
+
+  it("another address's link is untouched", async () => {
+    const app = await buildApp();
+    const mine = tokenOf(await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", remoteAddress: "172.16.8.1", payload: { email: "first-person@example.com" } }));
+    await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", remoteAddress: "172.16.8.2", payload: { email: "second-person@example.com" } });
+    const verified = await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: mine }, remoteAddress: "172.16.8.3" });
+    expect(verified.statusCode).toBe(200);
+  });
+});
+
 // A wrong guess against consumeLegacyCode used to delete the record on the
 // FIRST mismatch — reachable unauthenticated by anyone who knows only the
 // victim's email (not their code), letting them destroy a legitimate pending
@@ -254,21 +282,23 @@ describe("magic-link code verification — wrong-guess denial-of-service guard",
     expect(replay.statusCode).toBe(401);
   });
 
-  it("the SAME fix applies via the GET /auth/verify?email=&code= path", async () => {
+  it("the SAME fix applies via POST /auth/verify with email and code", async () => {
     const app = await buildApp();
     const email = "code-dos-victim-get-path@example.com";
     const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email } });
     const realCode = requested.json().data.devCode as string;
 
     const attackerGuess = await app.inject({
-      method: "GET",
-      url: `/api/v1/auth/verify?email=${encodeURIComponent(email)}&code=${otherCode(realCode)}`
+      method: "POST",
+      url: "/api/v1/auth/verify",
+      payload: { email, code: otherCode(realCode) }
     });
     expect(attackerGuess.statusCode).toBe(401);
 
     const victimVerify = await app.inject({
-      method: "GET",
-      url: `/api/v1/auth/verify?email=${encodeURIComponent(email)}&code=${realCode}`
+      method: "POST",
+      url: "/api/v1/auth/verify",
+      payload: { email, code: realCode }
     });
     expect(victimVerify.statusCode).toBe(200);
   });

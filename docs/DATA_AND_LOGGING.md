@@ -17,9 +17,9 @@ is the public promise; this is how the code keeps it.
 Encoded is not protected: no level relies on base64 or similar to hide a value.
 
 Where these are held (ASVS V14.2): sensitive values travel in headers or bodies, never in
-a URL, with one exception recorded as a partial (V14.2.1): the sign-in link
-(`GET /auth/verify?token=...`) carries a one-time token in its query string, because it is
-a link in an email. It works once, expires in 10 minutes, and is never logged (F9). Every
+a URL. The sign-in email's link is a `zeno://` link that opens the app and reaches no
+server; the app then sends its token in the body of `POST /auth/verify` (a GET with the
+token in its query until P7.2; that route is gone). Query strings are never logged (F9). Every
 API answer says `Cache-Control: no-store` (F217), so no browser or proxy keeps one.
 
 ## 2. Logging inventory

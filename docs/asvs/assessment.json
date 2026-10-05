@@ -346,12 +346,12 @@
     ]
   },
   "V3.5.3": {
-    "status": "partial",
-    "note": "State changes use POST or DELETE, except GET /auth/verify, which uses up a sign-in link (the app opens it from the email). No cookies are involved, so another site can't ride it, but it is a GET that changes state.",
+    "status": "met",
+    "note": "Every state change is a POST or DELETE. Using up a sign-in link is POST /auth/verify (a GET until P7.2; the GET is gone and answers 404).",
     "evidence": [
-      "apps/api/src/routes/auth.ts"
-    ],
-    "owner": "me"
+      "apps/api/src/http-message.test.ts",
+      "apps/api/src/authz-matrix.test.ts"
+    ]
   },
   "V3.5.4": {
     "status": "met",
@@ -633,13 +633,13 @@
     "note": "No SMS or phone delivery of codes."
   },
   "V6.6.2": {
-    "status": "partial",
-    "note": "A code is replaced by the next one requested, and on the phone a link works only for a request made there for the same email. Gap: an earlier LINK stays usable for the rest of its 10 minutes after a newer one is requested.",
+    "status": "met",
+    "note": "Only the newest link and code for an address work: a new request retires the earlier link (the old one answers 401) as it replaces the code; on the phone a link works only for a request made there for the same email.",
     "evidence": [
+      "apps/api/src/routes/auth.test.ts",
       "apps/api/src/routes/auth-internals.test.ts",
       "apps/mobile/src/auth/authStore.flows.test.ts"
-    ],
-    "owner": "me"
+    ]
   },
   "V6.6.3": {
     "status": "met",
@@ -719,12 +719,11 @@
     ]
   },
   "V7.2.4": {
-    "status": "partial",
-    "note": "Each sign-in issues a new session. Gap: signing in again does not end the device's previous session on the server; it lasts until its refresh token expires or is used.",
+    "status": "met",
+    "note": "Each sign-in issues a new session, and the app revokes the device's previous one on the server once the new one is stored (best effort: offline, the old one ends at its 30-day expiry).",
     "evidence": [
-      "apps/api/src/routes/auth.ts"
-    ],
-    "owner": "me"
+      "apps/mobile/src/auth/authStore.flows.test.ts"
+    ]
   },
   "V7.3.1": {
     "status": "met",
@@ -1357,13 +1356,13 @@
     ]
   },
   "V14.2.1": {
-    "status": "partial",
-    "note": "Sensitive values travel in headers and bodies, except the email sign-in link, which carries a one-time token in its query string (GET /auth/verify). It works once, expires in 10 minutes, and is never logged (F9).",
+    "status": "met",
+    "note": "Sensitive values travel in headers and bodies only. The email's link is a zeno:// link that opens the app and reaches no server; the app sends its token in the body of POST /auth/verify. Query strings are never logged (F9).",
     "evidence": [
-      "docs/DATA_AND_LOGGING.md",
+      "apps/api/src/http-message.test.ts",
+      "apps/mobile/src/auth/authStore.flows.test.ts",
       "apps/api/src/log-hygiene.test.ts"
-    ],
-    "owner": "me"
+    ]
   },
   "V14.2.2": {
     "status": "met",

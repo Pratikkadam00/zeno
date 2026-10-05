@@ -46,7 +46,7 @@ const LIMITS: Record<string, Limit> = {
   "POST /api/v1/auth/magic-link/request": { max: 5, key: "ip" },
   "POST /api/v1/auth/demo-login": { max: 5, key: "ip" },
   "POST /api/v1/auth/logout": { max: 5, key: "ip" },
-  "GET /api/v1/auth/verify": { max: 10, key: "ip" },
+  "POST /api/v1/auth/verify": { max: 10, key: "ip" },
   "POST /api/v1/auth/magic-link/verify": { max: 10, key: "ip" },
   "POST /api/v1/auth/apple": { max: 10, key: "ip" },
   "POST /api/v1/auth/google": { max: 10, key: "ip" },
@@ -81,7 +81,7 @@ async function tokenFor(email: string): Promise<string> {
   const issuer = await buildApp();
   const requested = await issuer.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email } });
   const raw = decodeURIComponent((requested.json().data.devLink as string).split("token=")[1]!);
-  const token = (await issuer.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(raw)}` })).json().data.accessToken as string;
+  const token = (await issuer.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: raw } })).json().data.accessToken as string;
   await issuer.close();
   return token;
 }

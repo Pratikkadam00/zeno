@@ -86,7 +86,7 @@ async function tokenFor(app: App, email: string): Promise<string> {
   const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email } });
   const devLink = requested.json().data.devLink as string;
   const raw = decodeURIComponent(devLink.split("token=")[1] ?? "");
-  const verified = await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(raw)}` });
+  const verified = await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: raw } });
   return verified.json().data.accessToken as string;
 }
 const auth = (token: string) => ({ authorization: `Bearer ${token}` });

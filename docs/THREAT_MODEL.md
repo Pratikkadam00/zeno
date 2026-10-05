@@ -156,7 +156,7 @@ unless noted (`apps/api/src/rate-limits.test.ts`; "global" = the app-wide limit 
 | GET /api/v1/services, /services/:slug, /capabilities, /partners, /open-banking/providers | public | global | no | statements to users: partners pinned (F207) |
 | POST /api/v1/billing/webhook | own-auth | 30 | no (RevenueCat) | spoofing: see 3.2 |
 | POST /api/v1/auth/magic-link, /magic-link/request | public | 5 + 5 per address / 15 min | yes | email bombing (F209) |
-| GET /api/v1/auth/verify, POST /magic-link/verify | public | 10 | yes | code guessing: attempts per address |
+| POST /api/v1/auth/verify, POST /magic-link/verify | public | 10 | yes | code guessing: attempts per address |
 | POST /api/v1/auth/apple, /auth/google | public | 10 | yes | token reuse: nonce (F10) |
 | POST /api/v1/auth/refresh | public | 10 | yes | refresh reuse: rotation, reuse rejected |
 | POST /api/v1/auth/demo-login | public | 5 | yes (demo builds) | disabled in production, fail-closed (`apps/api/src/routes/auth-prod-guards.test.ts`) |

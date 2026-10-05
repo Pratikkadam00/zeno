@@ -16,7 +16,7 @@ describe("an access token at its expiry", () => {
     const app = await buildApp();
     const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email: "expiry-edge@zeno.test" } });
     const raw = decodeURIComponent(String(requested.json().data.devLink).split("token=")[1] ?? "");
-    const verified = await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(raw)}` });
+    const verified = await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: raw } });
     const { accessToken, expiresInSeconds } = verified.json().data as { accessToken: string; expiresInSeconds: number };
     expect(expiresInSeconds).toBe(15 * 60);
     const account = () => app.inject({ method: "GET", url: "/api/v1/account", headers: { authorization: `Bearer ${accessToken}` } });
@@ -39,7 +39,7 @@ describe("a refresh token at its expiry", () => {
     const app = await buildApp();
     const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email: "refresh-edge@zeno.test" } });
     const raw = decodeURIComponent(String(requested.json().data.devLink).split("token=")[1] ?? "");
-    const data = (await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(raw)}` })).json().data as { refreshToken: string; refreshExpiresInSeconds: number };
+    const data = (await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: raw } })).json().data as { refreshToken: string; refreshExpiresInSeconds: number };
     expect(data.refreshExpiresInSeconds).toBe(30 * 24 * 60 * 60);
     const refresh = (token: string) => app.inject({ method: "POST", url: "/api/v1/auth/refresh", payload: { refreshToken: token } });
 
@@ -55,7 +55,7 @@ describe("a refresh token at its expiry", () => {
     const app = await buildApp();
     const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email: "refresh-edge2@zeno.test" } });
     const raw = decodeURIComponent(String(requested.json().data.devLink).split("token=")[1] ?? "");
-    const data = (await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(raw)}` })).json().data as { refreshToken: string; refreshExpiresInSeconds: number };
+    const data = (await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: raw } })).json().data as { refreshToken: string; refreshExpiresInSeconds: number };
     vi.setSystemTime(issuedAt + data.refreshExpiresInSeconds * 1000 - 1000);
     expect((await app.inject({ method: "POST", url: "/api/v1/auth/refresh", payload: { refreshToken: data.refreshToken } })).statusCode).toBe(200);
     await app.close();

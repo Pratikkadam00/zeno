@@ -293,11 +293,11 @@ describe("magic link", () => {
     expect(pending.expiresAt).toBeLessThanOrEqual(Date.now() + 600_000);
   });
 
-  it("verification URL-encodes the token, stores the session device-only, and forgets the request", async () => {
+  it("verification POSTs the token in the body (never in the URL), stores the session device-only, and forgets the request", async () => {
     linkRequested();
     http.timedFetch.mockResolvedValueOnce(envelope(linkSession()));
     await useAuthStore.getState().verifyMagicLink("a+b/c=");
-    expect(calls()[0]?.url).toBe("https://api.test/api/v1/auth/verify?token=a%2Bb%2Fc%3D");
+    expect(calls()[0]).toEqual({ url: "https://api.test/api/v1/auth/verify", method: "POST", body: { token: "a+b/c=" } });
     expect(useAuthStore.getState()).toMatchObject({ status: "authenticated", accountId: "acct_1" });
     expect(vault.store.has(PENDING_KEY)).toBe(false);
   });
@@ -758,5 +758,44 @@ describe("the 14-minute refresh stops when the session ends", () => {
     http.timedFetch.mockClear();
     await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
     expect(calls().filter((c) => c.url.endsWith("/auth/refresh"))).toEqual([]);
+  });
+});
+
+// ASVS V7.2.4: signing in again ends this device's previous session on the
+// server, not only on the phone.
+describe("a new sign-in revokes the device's previous session", () => {
+  it("the old refresh token is revoked, after the new session is stored", async () => {
+    storeSession(1);
+    linkRequested();
+    let storedWhenRevoked: string | undefined;
+    http.timedFetch.mockImplementation(async (url: string) => {
+      if (url.endsWith("/auth/logout")) storedWhenRevoked = vault.store.get("zeno.auth.refreshToken.v1");
+      return url.includes("/auth/verify") ? envelope(linkSession(EMAIL, 2)) : envelope({ loggedOut: true });
+    });
+    await useAuthStore.getState().verifyMagicLink("t".repeat(40));
+    const revoke = calls().filter((c) => c.url.endsWith("/auth/logout"));
+    expect(revoke).toEqual([{ url: "https://api.test/api/v1/auth/logout", method: "POST", body: { refreshToken: "refresh-1" } }]);
+    expect(storedWhenRevoked).toBe("refresh-2");
+    expect(useAuthStore.getState()).toMatchObject({ status: "authenticated", accountId: "acct_2" });
+  });
+
+  it("with no earlier session nothing is revoked", async () => {
+    linkRequested();
+    http.timedFetch.mockResolvedValueOnce(envelope(linkSession()));
+    await useAuthStore.getState().verifyMagicLink("t".repeat(40));
+    expect(calls().map((c) => c.url)).toEqual(["https://api.test/api/v1/auth/verify"]);
+  });
+
+  it("offline, the revoke fails quietly and the new sign-in stands (Apple too)", async () => {
+    storeSession(1);
+    apple.signInAsync.mockResolvedValue({ identityToken: "apple-id-token", authorizationCode: null, fullName: null });
+    http.timedFetch.mockImplementation(async (url: string) => {
+      if (url.endsWith("/auth/logout")) throw new TypeError("Network request failed");
+      return envelope(sessionData(3));
+    });
+    await useAuthStore.getState().loginWithApple();
+    expect(calls().filter((c) => c.url.endsWith("/auth/logout")).map((c) => c.body)).toEqual([{ refreshToken: "refresh-1" }]);
+    expect(useAuthStore.getState()).toMatchObject({ status: "authenticated", accountId: "acct_3" });
+    expect(vault.store.get("zeno.auth.refreshToken.v1")).toBe("refresh-3");
   });
 });

@@ -12,7 +12,7 @@ Google account. Each ends in the same session (section 2).
 
 | Pathway | Proof | Account it signs into | Controls | Held by |
 |---|---|---|---|---|
-| Sign-in link (`/auth/magic-link`, then `/auth/verify`) | the link sent to the address: 256 random bits, single use, 10 minutes | `acct_` + hash of the email | 5 requests per IP per minute; 5 emails per address per 15 minutes from any IP; 10 verifications per IP per minute | `apps/api/src/routes/auth.test.ts`, `auth-scope.test.ts`, `apps/api/src/rate-limits.test.ts` |
+| Sign-in link (`/auth/magic-link`, then `POST /auth/verify` with the token in the body) | the link sent to the address: 256 random bits, single use, 10 minutes | `acct_` + hash of the email | 5 requests per IP per minute; 5 emails per address per 15 minutes from any IP; 10 verifications per IP per minute | `apps/api/src/routes/auth.test.ts`, `auth-scope.test.ts`, `apps/api/src/rate-limits.test.ts` |
 | Sign-in code (`/auth/magic-link/verify`) | the 6-digit code in the same email, single use, 10 minutes | the same | as above, plus 10 wrong codes per address per 24 hours, then refused | `apps/api/src/routes/auth.test.ts`, `apps/api/src/routes/auth-internals.test.ts` (F80) |
 | Sign in with Apple (`/auth/apple`) | Apple's signed identity token: signature against Apple's keys, issuer, audience, expiry, not-before, a nonce bound to this sign-in | `acct_apple_` + hash of Apple's user id | 10 per IP per minute | `apps/api/src/routes/auth-social.test.ts` |
 | Sign in with Google (`/auth/google`) | the same for Google; an ID token is required whenever Google is configured | `acct_google_` + hash of Google's user id | 10 per IP per minute | `apps/api/src/routes/auth-social.test.ts` |

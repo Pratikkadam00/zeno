@@ -188,7 +188,7 @@ async function bearer(app: App, email = `valid-${Math.random().toString(36).slic
   const ip = nextIp();
   const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", remoteAddress: ip, payload: { email } });
   const raw = decodeURIComponent(String(requested.json().data.devLink).split("token=")[1]!);
-  const verified = await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(raw)}`, remoteAddress: ip });
+  const verified = await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: raw }, remoteAddress: ip });
   return { authorization: `Bearer ${verified.json().data.accessToken as string}` };
 }
 const app_ = () => import("./app");
@@ -298,8 +298,8 @@ const ROUTES: Record<string, Spec> = {
     schemaName: "magicLinkRequestSchema", schema: async () => (await auth_()).magicLinkRequestSchema,
     rule: "the legacy route: the same as /auth/magic-link", generator: magicLinkInputs, expect: magicLinkRule
   },
-  "GET /api/v1/auth/verify": {
-    schemaName: "magicLinkVerifyQuerySchema", schema: async () => (await auth_()).magicLinkVerifyQuerySchema, query: true,
+  "POST /api/v1/auth/verify": {
+    schemaName: "magicLinkVerifySchema", schema: async () => (await auth_()).magicLinkVerifySchema,
     rule: "no link or code was issued for it: 401", expect: () => 401
   },
   "POST /api/v1/auth/magic-link/verify": {

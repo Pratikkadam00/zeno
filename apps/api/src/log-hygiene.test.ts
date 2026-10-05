@@ -82,8 +82,10 @@ describe("no secret a client sends ever reaches a log line", () => {
     });
     await app.inject({ method: "GET", url: "/api/v1/account", remoteAddress: ip(1), headers: { authorization: `Bearer ${secrets.bearer}`, cookie: `session=${secrets.cookie}` } });
     await app.inject({ method: "GET", url: "/api/v1/account", remoteAddress: ip(2), headers: { authorization: `Bearer ${secrets.forgedBearer}` } });
-    await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${secrets.magicToken}`, remoteAddress: ip(3) });
-    await app.inject({ method: "GET", url: `/api/v1/auth/verify?email=${secrets.email}&code=${secrets.magicCode}`, remoteAddress: ip(4) });
+    await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: secrets.magicToken }, remoteAddress: ip(3) });
+    await app.inject({ method: "POST", url: "/api/v1/auth/verify", remoteAddress: ip(4), payload: { email: secrets.email, code: secrets.magicCode } });
+    // An old app build's GET with the token in the query: refused, and the query still never logged.
+    await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${secrets.magicToken}`, remoteAddress: ip(12) });
     await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", remoteAddress: ip(11), payload: { email: secrets.email } });
     await app.inject({ method: "POST", url: "/api/v1/auth/refresh", remoteAddress: ip(5), payload: { refreshToken: secrets.refresh } });
     await app.inject({ method: "POST", url: "/api/v1/auth/demo-login", remoteAddress: ip(6), payload: { email: "demo@zeno.local", password: secrets.password } });

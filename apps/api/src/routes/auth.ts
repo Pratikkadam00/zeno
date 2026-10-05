@@ -22,7 +22,7 @@ export const magicLinkRequestSchema = z.object({
   email: emailSchema
 });
 
-export const magicLinkVerifyQuerySchema = z.object({
+export const magicLinkVerifySchema = z.object({
   token: z.string().min(32).optional(),
   email: emailSchema.optional(),
   code: z.string().min(6).max(12).optional()
@@ -372,8 +372,11 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     return requestMagicLink(parsed.data.email, request.id, reply);
   });
 
-  app.get("/auth/verify", verifyLimit, async (request, reply) => {
-    const parsed = parseRequest(magicLinkVerifyQuerySchema, request.query, request.id);
+  // A POST with the token in the body (ASVS V3.5.3, V14.2.1): using up a
+  // sign-in link changes state, and a one-time token doesn't belong in a URL,
+  // where proxies and histories keep it. (It was a GET with ?token= until P7.2.)
+  app.post("/auth/verify", verifyLimit, async (request, reply) => {
+    const parsed = parseRequest(magicLinkVerifySchema, request.body, request.id);
     if (!parsed.ok) {
       reply.code(400);
       return parsed.error;
@@ -537,6 +540,14 @@ async function requestMagicLink(emailInput: string, requestId: string, reply: Fa
     wrongAttempts: 0
   };
 
+  // Only the newest link works (ASVS V6.6.2): a new request retires the
+  // address's earlier link, as it already replaces its code. Awaited, so a
+  // restart can't bring the old link back from the database.
+  const previous = legacyCodesByEmail.get(email);
+  if (previous) {
+    magicLinksByHash.delete(previous.tokenHash);
+    await kvDeleteAwait("auth_magic", previous.tokenHash);
+  }
   magicLinksByHash.set(record.tokenHash, record);
   legacyCodesByEmail.set(email, record);
   // Await durability: the link must be persisted before we tell the user it was

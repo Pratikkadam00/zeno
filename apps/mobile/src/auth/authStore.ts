@@ -190,7 +190,7 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
         email: email.trim(),
         password
       });
-      await persistSession(session);
+      await persistSignIn(session);
       startRefreshTimer(get);
       setAuthenticated(set, toStoredSession(session));
     } catch (error) {
@@ -212,7 +212,7 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
     set({ status: "loading", error: null });
     let session: AuthSessionResponse;
     try {
-      session = await apiGet<AuthSessionResponse>(`/auth/verify?token=${encodeURIComponent(token)}`);
+      session = await apiPost<AuthSessionResponse>("/auth/verify", { token });
     } catch (error) {
       set({ status: "anonymous", isAuthenticated: false, error: getErrorMessage(error) });
       throw error;
@@ -224,7 +224,7 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
     }
     try {
       await clearPendingMagicLink();
-      await persistSession(session);
+      await persistSignIn(session);
       startRefreshTimer(get);
       setAuthenticated(set, toStoredSession(session));
     } catch (error) {
@@ -266,7 +266,7 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
         fullName: credential.fullName ? AppleAuthentication.formatFullName(credential.fullName) : undefined
       });
 
-      await persistSession(session);
+      await persistSignIn(session);
       startRefreshTimer(get);
       setAuthenticated(set, toStoredSession(session));
     } catch (error) {
@@ -312,7 +312,7 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
         nonce: nonce.raw
       });
 
-      await persistSession(session);
+      await persistSignIn(session);
       startRefreshTimer(get);
       setAuthenticated(set, toStoredSession(session));
     } catch (error) {
@@ -455,11 +455,6 @@ function setAnonymous(set: (partial: Partial<AuthStoreState>) => void): void {
   });
 }
 
-async function apiGet<T>(path: string): Promise<T> {
-  const response = await timedFetch(`${getApiBaseUrl()}${path}`, {}, { retries: 1 });
-  return readEnvelope<T>(response);
-}
-
 async function apiPost<T = unknown>(path: string, body: Record<string, unknown>): Promise<T> {
   const response = await timedFetch(`${getApiBaseUrl()}${path}`, {
     method: "POST",
@@ -501,6 +496,17 @@ async function readEnvelope<T>(response: Response): Promise<T> {
     throw new Error("Auth response did not include data.");
   }
   return envelope.data;
+}
+
+// A new sign-in replaces this device's session on the server too (ASVS
+// V7.2.4): the session it held before is revoked, after the new one is safely
+// stored. Best effort: offline, the old session still ends at its 30-day expiry.
+async function persistSignIn(session: AuthSessionResponse): Promise<void> {
+  const previous = Platform.OS === "web" ? memorySession?.refreshToken ?? null : await SecureStore.getItemAsync(tokenKeys.refreshToken);
+  await persistSession(session);
+  if (previous && previous !== session.refreshToken) {
+    await apiPost("/auth/logout", { refreshToken: previous }).catch(() => undefined);
+  }
 }
 
 async function persistSession(session: AuthSessionResponse): Promise<void> {

@@ -38,8 +38,6 @@ describe("HTTP messages", () => {
   // ASVS V15.3.7: a repeated parameter is refused, never silently resolved to
   // one of its values (which one a proxy and the API pick can differ).
   it("a query parameter sent twice is refused with 400", async () => {
-    const twice = await app.inject({ method: "GET", url: "/api/v1/auth/verify?token=first-value&token=second-value" });
-    expect(twice.statusCode).toBe(400);
     // The one route that reads its query without a schema (F219).
     for (const query of ["q=net&q=hulu", "limit=5&limit=500", "offset=0&offset=10"]) {
       const answer = await app.inject({ method: "GET", url: `/api/v1/services?${query}` });
@@ -47,6 +45,17 @@ describe("HTTP messages", () => {
     }
     // Each one alone is still fine.
     expect((await app.inject({ method: "GET", url: "/api/v1/services?q=net&limit=5&offset=0" })).statusCode).toBe(200);
+  });
+
+  // ASVS V3.5.3, V14.2.1: using up a sign-in link is a POST with the token in
+  // the body. The old GET with ?token= is gone, so a token in a URL does nothing.
+  it("a sign-in link is used up by POST only; the old GET with the token in its URL is gone", async () => {
+    const sent = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email: "post-only@example.com" } });
+    const token = decodeURIComponent((sent.json().data.devLink as string).split("token=")[1] ?? "");
+    const byGet = await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(token)}` });
+    expect(byGet.statusCode).toBe(404);
+    const byPost = await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token } });
+    expect(byPost.statusCode).toBe(200);
   });
 
   // ASVS V13.4.4: TRACE is not served (it would echo the request, cookies and all).

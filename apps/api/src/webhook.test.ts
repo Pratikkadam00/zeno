@@ -91,7 +91,7 @@ async function signIn({ app }: Booted, email: string) {
   const ip = nextIp();
   const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", remoteAddress: ip, payload: { email } });
   const raw = decodeURIComponent(String(requested.json().data.devLink).split("token=")[1]!);
-  const data = (await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(raw)}`, remoteAddress: ip })).json().data;
+  const data = (await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: raw }, remoteAddress: ip })).json().data;
   return { accountId: data.accountId as string, headers: { authorization: `Bearer ${data.accessToken as string}` } };
 }
 const plan = async ({ app }: Booted, headers: Record<string, string>) =>

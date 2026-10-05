@@ -17,7 +17,7 @@ async function tokenFor(app: Awaited<ReturnType<typeof buildApp>>, email: string
   const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email } });
   const devLink = requested.json().data.devLink as string;
   const rawToken = decodeURIComponent(devLink.split("token=")[1] ?? "");
-  const verified = await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(rawToken)}` });
+  const verified = await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: rawToken } });
   const data = verified.json().data;
   return { token: data.accessToken as string, accountId: data.accountId as string, refreshToken: data.refreshToken as string };
 }

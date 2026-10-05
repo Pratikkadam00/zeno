@@ -46,9 +46,9 @@ export function pathOnly(url: string | undefined): string | undefined {
  * field for field, EXCEPT `url`, which is logged WITHOUT its query string.
  *
  * Why (finding F9, verified 2026-09-30 by a probe with this exact config):
- * magic-link verification is `GET /api/v1/auth/verify?token=<raw token>`, and
- * the default serializer wrote that token into the "incoming request" line of
- * every verification. A query string can carry any client-chosen or secret
+ * magic-link verification was `GET /api/v1/auth/verify?token=<raw token>` (a
+ * POST with the token in the body since P7.2), and the default serializer wrote
+ * that token into the "incoming request" line of every verification. A query string can carry any client-chosen or secret
  * value, so none is logged; the route pattern is recorded separately by the
  * metrics hook.
  */

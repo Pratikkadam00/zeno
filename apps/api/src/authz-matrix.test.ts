@@ -54,7 +54,7 @@ const ACCESS: Record<string, Access> = {
   "POST /api/v1/auth/magic-link": "public",
   "POST /api/v1/auth/magic-link/request": "public",
   "POST /api/v1/auth/magic-link/verify": "public",
-  "GET /api/v1/auth/verify": "public",
+  "POST /api/v1/auth/verify": "public",
   "POST /api/v1/auth/apple": "public",
   "POST /api/v1/auth/google": "public",
   "POST /api/v1/auth/refresh": "public",
@@ -110,7 +110,7 @@ async function signIn(email: string) {
   const issuer = await buildApp();
   const requested = await issuer.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email } });
   const raw = decodeURIComponent((requested.json().data.devLink as string).split("token=")[1]!);
-  const data = (await issuer.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(raw)}` })).json().data;
+  const data = (await issuer.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: raw } })).json().data;
   await issuer.close();
   return { token: data.accessToken as string, accountId: data.accountId as string };
 }
@@ -207,7 +207,7 @@ describe("logout (KNOWN GAP F77, owner decision)", () => {
     const issuer = await buildApp();
     const requested = await issuer.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email: "matrix-logout@zeno.test" } });
     const raw = decodeURIComponent((requested.json().data.devLink as string).split("token=")[1]!);
-    const session = (await issuer.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(raw)}` })).json().data;
+    const session = (await issuer.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: raw } })).json().data;
     await issuer.inject({ method: "POST", url: "/api/v1/auth/logout", payload: { refreshToken: session.refreshToken } });
     const refresh = await issuer.inject({ method: "POST", url: "/api/v1/auth/refresh", payload: { refreshToken: session.refreshToken } });
     expect(refresh.statusCode).toBe(401);

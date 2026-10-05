@@ -65,7 +65,7 @@ describe("auth guard: a valid token is accepted only as a Bearer token", () => {
     const app = await buildApp();
     const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email: "guard-scheme@zeno.test" } });
     const raw = decodeURIComponent(String(requested.json().data.devLink).split("token=")[1] ?? "");
-    const verified = await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(raw)}` });
+    const verified = await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: raw } });
     return { app, token: verified.json().data.accessToken as string };
   }
 

@@ -33,7 +33,7 @@ type App = Awaited<ReturnType<typeof buildApp>>;
 async function session(app: App, email: string): Promise<{ token: string; accountId: string }> {
   const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email } });
   const raw = decodeURIComponent((requested.json().data.devLink as string).split("token=")[1]!);
-  const data = (await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(raw)}` })).json().data;
+  const data = (await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: raw } })).json().data;
   return { token: data.accessToken, accountId: data.accountId };
 }
 const auth = (token: string) => ({ authorization: `Bearer ${token}` });

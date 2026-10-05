@@ -85,7 +85,7 @@ describe("F88: unknown and revoked tokens are indistinguishable to the caller", 
     // A real account, then deleted: its still-unexpired token is revoked (F76).
     const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", remoteAddress: "192.0.2.1", payload: { email: "revoked@zeno.test" } });
     const raw = decodeURIComponent(String(requested.json().data.devLink).split("token=")[1]!);
-    const session = (await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(raw)}`, remoteAddress: "192.0.2.1" })).json().data;
+    const session = (await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: raw }, remoteAddress: "192.0.2.1" })).json().data;
     const deleted = await app.inject({ method: "DELETE", url: "/api/v1/account", remoteAddress: "192.0.2.1", headers: { authorization: `Bearer ${session.accessToken}` } });
     expect(deleted.json().data).toEqual({ deleted: true });
 

@@ -13,7 +13,7 @@ const nextIp = () => `10.88.0.${(ip += 1)}`;
 async function tokenFor(app: App, email: string): Promise<string> {
   const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email }, remoteAddress: nextIp() });
   const raw = decodeURIComponent(String(requested.json().data.devLink).split("token=")[1] ?? "");
-  const verified = await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(raw)}`, remoteAddress: nextIp() });
+  const verified = await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: raw }, remoteAddress: nextIp() });
   return verified.json().data.accessToken as string;
 }
 const auth = (token: string) => ({ authorization: `Bearer ${token}` });

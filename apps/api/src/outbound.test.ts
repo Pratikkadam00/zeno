@@ -120,7 +120,7 @@ const ip = (n: number) => `192.0.2.${n}`;
 async function signIn(app: App, email: string) {
   const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", remoteAddress: ip(200), payload: { email } });
   const raw = decodeURIComponent(String(requested.json().data.devLink).split("token=")[1]!);
-  const verified = await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(raw)}`, remoteAddress: ip(200) });
+  const verified = await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: raw }, remoteAddress: ip(200) });
   return { authorization: `Bearer ${verified.json().data.accessToken as string}` };
 }
 

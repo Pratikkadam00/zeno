@@ -24,7 +24,7 @@ async function pending(app: App, email: string) {
   return { token: decodeURIComponent(data.devLink.split("token=")[1] ?? ""), code: data.devCode };
 }
 const verifyLink = (app: App, token: string) =>
-  app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(token)}`, remoteAddress: nextIp() });
+  app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token: token }, remoteAddress: nextIp() });
 const verifyCode = (app: App, email: string, code: string) =>
   app.inject({ method: "POST", url: "/api/v1/auth/magic-link/verify", payload: { email, code }, remoteAddress: nextIp() });
 const refresh = (app: App, refreshToken: string) =>
