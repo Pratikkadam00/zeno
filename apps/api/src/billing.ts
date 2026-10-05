@@ -156,14 +156,13 @@ export async function deleteEntitlementForUser(appUserId: string): Promise<boole
 
 registerHydrator("billing", (entries: StoredEntry[]) => {
   for (const { key, value } of entries) {
-    // New rows are the { entitlement, cachedAtMs } wrapper; restore the real cache
-    // time so the TTL isn't reset by a restart. Tolerate an older bare-entitlement
-    // row by treating it as already stale (cachedAtMs 0) → re-verify on first read.
+    // Rows are the { entitlement, cachedAtMs } wrapper; restore the real cache
+    // time so the TTL isn't reset by a restart. An older bare-entitlement row is
+    // skipped: it used to be loaded as cached at time 0, which reads as stale on
+    // every lookup, exactly like no row, so loading it changed nothing (P6.2).
     const wrapped = value as { entitlement?: Entitlement; cachedAtMs?: number };
     if (wrapped && wrapped.entitlement) {
       cache.set(key, { entitlement: wrapped.entitlement, cachedAtMs: typeof wrapped.cachedAtMs === "number" ? wrapped.cachedAtMs : 0 });
-    } else {
-      cache.set(key, { entitlement: value as Entitlement, cachedAtMs: 0 });
     }
   }
 });

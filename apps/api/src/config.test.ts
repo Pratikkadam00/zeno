@@ -284,3 +284,57 @@ describe("assertConfigOrExit (boot gate)", () => {
     expect(exit).toHaveBeenCalledWith(1);
   });
 });
+
+// P6.2: each case below is a change Stryker made to config.ts that no test noticed.
+describe("production checks at their edges", () => {
+  const prod = () => {
+    clear();
+    process.env.NODE_ENV = "production";
+    process.env.JWT_PRIVATE_KEY = "k";
+    process.env.JWT_PUBLIC_KEY = "k";
+  };
+  const JWT_FATAL = "JWT_PRIVATE_KEY and JWT_PUBLIC_KEY are required in production (auth tokens would not survive a restart).";
+
+  it("either JWT key missing alone is fatal, not only both", () => {
+    prod();
+    delete process.env.JWT_PUBLIC_KEY;
+    expect(validateConfig().fatal).toContain(JWT_FATAL);
+    prod();
+    delete process.env.JWT_PRIVATE_KEY;
+    expect(validateConfig().fatal).toContain(JWT_FATAL);
+  });
+
+  it("warns, in these words, when the storage key or the email key is missing", () => {
+    prod();
+    const { warnings } = validateConfig();
+    expect(warnings).toContain("STORAGE_ENCRYPTION_KEY is not set — bank (Plaid) tokens cannot be persisted and stay in-memory only.");
+    expect(warnings).toContain("RESEND_API_KEY is not set — magic-link email delivery will fail (Apple/Google sign-in still work).");
+  });
+
+  it("reads http:// only at the start: an https:// URL that mentions http:// later is not cleartext", () => {
+    prod();
+    process.env.MAGIC_LINK_REDIRECT_URL = "https://zeno.app/verify?from=http://old";
+    process.env.CORS_ALLOWED_ORIGINS = "https://zeno.app/?x=http://old";
+    process.env.MONITORING_WEBHOOK_URL = "https://alerts.example/hook?via=http://old";
+    process.env.COACH_BASE_URL = "https://coach.example/v1?via=http://old";
+    const { fatal, warnings } = validateConfig();
+    expect(fatal).toEqual([]);
+    expect(warnings.filter((w) => /cleartext/.test(w))).toEqual([]);
+  });
+
+  it("trims the alert and coach URLs before checking them", () => {
+    prod();
+    process.env.MONITORING_WEBHOOK_URL = "  http://alerts.example/hook";
+    process.env.COACH_BASE_URL = "  http://coach.example/v1";
+    const { warnings } = validateConfig();
+    expect(warnings).toContain("MONITORING_WEBHOOK_URL uses http:// — error alerts would travel in cleartext.");
+    expect(warnings).toContain("COACH_BASE_URL uses http:// — the AI provider's API key would travel in cleartext.");
+  });
+
+  it("splits the CORS list on commas and quotes at most 60 characters of a cleartext origin", () => {
+    prod();
+    const long = `http://${"a".repeat(80)}.example`;
+    process.env.CORS_ALLOWED_ORIGINS = `https://zeno.app,${long}`;
+    expect(validateConfig().warnings).toContain(`CORS_ALLOWED_ORIGINS allows a cleartext origin (${long.slice(0, 60)}) in production.`);
+  });
+});

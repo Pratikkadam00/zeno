@@ -103,7 +103,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
 - [x] **P5 — Mobile end-to-end (Maestro on the emulator)** (watch for F94 and F106, closed as not reproduced in FX.5). **Done**: 13 flows and the 17-screen accessibility-tree audit, green on the local emulator and on GitHub's (green: Mobile end-to-end 37205579950, CI 37205579972, CodeQL 37205579957 on `5dbddd7`); fixes F178, F184, F185, F188-F190, F192-F198, F201, F202; F191, F199, F200 logged
 - [ ] **P6 — Mutation + property-based testing**
   - [x] P6.1 Stryker on the shared packages (`packages/shared`, `packages/service-catalog`): measure the mutation score, kill the survivors that matter, floor at 85 %. **Done**: 82.35 % to **92.44 %**, floor set at 92 % in `stryker.config.mjs`; **fixes F205, F206, F207** (green: CI 37254557059, CodeQL 37254557078 on `f2ec20d`)
-  - [ ] P6.2 Stryker on the API (`apps/api/src`), security and money paths first
+  - [ ] P6.2 Stryker on the API (`apps/api/src`), security and money paths first. **In progress**: nine smaller files 89.03 % to 95.69 %; the sign-in routes measured at 81.31 % (next); `app.ts`, `coach.ts`, `storage/pg.ts`, `start.ts` not yet measured
   - [ ] P6.3 Stryker on the app's logic (`apps/mobile/src`, outside screens and components)
   - [ ] P6.4 fast-check properties: money math (rounding, minor units), UTC date math (DST, leap days), the email and CSV parsers (never throw, never over-match), the catalog (per-entry invariants), sync (idempotent, ordered)
   - [ ] P6.5 CI: the mutation floor nightly, and on pull requests for changed files
@@ -5696,3 +5696,58 @@ margin of about eight mutants, for results that are timeouts on a slow machine),
 only. The plan's 85 % is met; the floor is set where the score is, like the coverage
 floors. Bite-checked: a run mutating only `twin.ts` (88.24 %) exits 1 with "Final mutation
 score 88.24 under breaking threshold 92". CI enforces it in P6.5.
+
+
+### P6.2 — Stryker on the API: set up, two batches measured, the first one's survivors fixed — 2026-10-05
+
+`stryker.api.config.mjs` reuses the shared-packages settings (UTC, the same tests) and
+mutates `apps/api/src` without the test helpers and the seven-line `server.ts`. Report:
+`reports/mutation-api/` (ignored by git).
+
+**Measured, not run whole.** A run over all 14 files (3,098 mutants) estimated 2 h 10 min
+at 4 workers: every API test builds the app, and 358 "static" mutants rerun all 564 of
+them. Stopped, and run in batches instead, with 10 workers (this machine: 12 cores,
+61 GB): the batches take 4 to 6 minutes.
+
+**One test could not run under Stryker:** the F89 check reads the route source as text to
+list every schema-parsing call, and Stryker's instrumented copy wraps each call, so the
+text no longer matches. A text scan never runs the code, so it can never notice a mutant;
+it skips under Stryker only (the dry run then passed, 564 tests).
+
+| Batch | Mutants | Score before | Score after |
+|---|---|---|---|
+| auth guard, sync, billing, family, Plaid, config, HTTP, metrics, server options | 839 (836 after: one branch removed) | 89.03 % | 95.69 % |
+| sign-in routes (`routes/auth.ts`) | 931 | 81.31 % | next |
+
+What the first batch's survivors were, read in the code, and what changed:
+- **Auth guard:** the "Bearer " check could be removed unnoticed, because every
+  wrong-scheme test carried an INVALID token, which fails anyway. Now a real signed-in
+  token is refused behind another seven-character scheme ("Tokens ", "Basic: ") or none,
+  and admitted as "Bearer " with stray spaces trimmed. (Lowercase "bearer " is refused
+  today; HTTP treats the scheme as case-insensitive, so that is a stricter choice than
+  needed, harmless with our own app as the only client. Not pinned by a test.)
+- **Billing:** the version counter that stops an in-flight RevenueCat answer from being
+  cached after a webhook (F87) could be broken so the first webhook set it to NaN, which
+  never equals itself: that user's answers were then never cached again, unnoticed. A test
+  reads twice after a webhook and expects one lookup. A branch loading a legacy bare row
+  as "cached at time 0" was removed: such a row is stale on every read, exactly like no
+  row.
+- **Config:** each JWT key missing alone (not only both) is fatal; the storage-key and
+  email-key warnings are checked in their words; `http://` is cleartext only at the start
+  (an https:// URL that mentions http:// later is not flagged); the alert and coach URLs
+  are trimmed before the check; the CORS list splits on commas and quotes at most 60
+  characters.
+- **Metrics:** the whole `/metrics` text is pinned for a known set of requests (HELP and
+  TYPE lines, sums, counts, label escaping, the in-flight gauge and its floor at zero), and
+  the public events endpoint's allowlist is pinned whole.
+
+Left in that batch, read and judged: family (10) is mostly equivalent (the owner is always
+the first member, so "is the leaver the owner" changes nothing; a missing household id
+finds nothing either way); Plaid (10) is the request shape sent to Plaid, which the
+owner's rule keeps out of tests that call Plaid; billing's remaining 6 include the expiry
+check at the exact millisecond.
+
+**Next in P6.2:** the sign-in routes, where the survivors sit in remote token
+verification (Apple and Google, 22), our own access-token check (12), the expired-entry
+sweep (18) and the code-guessing limits (7); then `app.ts`, `coach.ts`, `storage/pg.ts`,
+`start.ts`; then the API floor.

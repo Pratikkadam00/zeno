@@ -56,3 +56,34 @@ describe("auth guard", () => {
     expect(response.json().error.code).toBe("NOT_FOUND");
   });
 });
+
+// P6.2: the cases above all carry an invalid token, so dropping the "Bearer "
+// check let them through to the same 401 and no test noticed. These carry a
+// VALID token behind a different scheme: only "Bearer " may admit it.
+describe("auth guard: a valid token is accepted only as a Bearer token", () => {
+  async function signedIn() {
+    const app = await buildApp();
+    const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email: "guard-scheme@zeno.test" } });
+    const raw = decodeURIComponent(String(requested.json().data.devLink).split("token=")[1] ?? "");
+    const verified = await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${encodeURIComponent(raw)}` });
+    return { app, token: verified.json().data.accessToken as string };
+  }
+
+  it("admits it as 'Bearer <token>', with stray spaces around the token trimmed", async () => {
+    const { app, token } = await signedIn();
+    for (const authorization of [`Bearer ${token}`, `Bearer ${token}  `, `Bearer   ${token}`]) {
+      const response = await app.inject({ method: "GET", url: PROTECTED, headers: { authorization } });
+      expect(response.statusCode, JSON.stringify(authorization.replace(token, "<token>"))).toBe(200);
+    }
+    await app.close();
+  });
+
+  it("refuses the same token under any other scheme of the same length, or none", async () => {
+    const { app, token } = await signedIn();
+    for (const authorization of [`Tokens ${token}`, `Basic: ${token}`, token]) {
+      const response = await app.inject({ method: "GET", url: PROTECTED, headers: { authorization } });
+      expect(response.statusCode, JSON.stringify(authorization.replace(token, "<token>"))).toBe(401);
+    }
+    await app.close();
+  });
+});

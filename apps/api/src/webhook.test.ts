@@ -248,6 +248,19 @@ describe("F87: a lookup already in flight cannot put an older answer back", () =
     expect(booted.billing.getCachedEntitlement(user.accountId)).toBeUndefined();
   });
 
+  // P6.2: Stryker turned the counter's `?? 0` into `&& 0`; the first webhook then
+  // set it to NaN, which never equals itself, so that user's answers were never
+  // cached again, and no test read twice after a webhook.
+  it("after a webhook, the next answer is cached again: two reads, one lookup", async () => {
+    const booted = await boot();
+    const user = await signIn(booted, "cached-again@zeno.test");
+    truth[user.accountId] = PRO();
+    expect((await webhook(booted, { app_user_id: user.accountId, type: "RENEWAL" })).statusCode).toBe(200);
+    expect(await plan(booted, user.headers)).toBe("pro");
+    expect(await plan(booted, user.headers)).toBe("pro");
+    expect(lookups).toHaveLength(1);
+  });
+
   it("an invalidation for one user does not cut off another user's lookup", async () => {
     const booted = await boot();
     truth.acct_keep = PRO();

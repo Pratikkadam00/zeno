@@ -121,7 +121,11 @@ const nextIp = () => {
 };
 
 describe("F89: every input a route's own schema accepts gets exactly the status its handler gives it", () => {
-  it("covers every route that parses a request schema (a new one fails here until it is added)", () => {
+  // Reads the route SOURCE as text. Stryker runs tests against its instrumented
+  // copy, where every call is wrapped and this scan cannot match; a text scan can
+  // never notice a mutant anyway (it does not run the code), so it skips there only.
+  const itReadsSource = process.env.STRYKER_MUTATOR_WORKER ? it.skip : it;
+  itReadsSource("covers every route that parses a request schema (a new one fails here until it is added)", () => {
     // Every schema-parsing call site in the route code, by schema name.
     const sites: string[] = [];
     for (const file of ["app.ts", "routes/auth.ts"]) {

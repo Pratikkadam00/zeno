@@ -37,3 +37,5 @@ sbom.cdx.json
 # Mutation testing (P6)
 .stryker-tmp/
 reports/mutation/
+.stryker-tmp-api/
+reports/mutation-api/
