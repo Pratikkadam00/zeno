@@ -105,7 +105,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P6.1 Stryker on the shared packages (`packages/shared`, `packages/service-catalog`): measure the mutation score, kill the survivors that matter, floor at 85 %. **Done**: 82.35 % to **92.44 %**, floor set at 92 % in `stryker.config.mjs`; **fixes F205, F206, F207** (green: CI 37254557059, CodeQL 37254557078 on `f2ec20d`)
   - [x] P6.2 Stryker on the API (`apps/api/src`), security and money paths first. **Done**: **88.95 %** over the whole API (2,752 of 3,094), floor 88 % in `stryker.api.config.mjs`; the sign-in routes 81.31 % to 84.53 %, the smaller security files 89.03 % to 95.69 %, coach/storage/startup 88.71 % to 92.80 %, the main routes 82.26 % to 83.52 %; **fixes F208-F211** (missing tests; no code was wrong)
   - [x] P6.3 Stryker on the app's logic (`apps/mobile/src`, outside screens and components). **Done**: **89.74 %** (4,566 of 5,088), floor 89 % in `stryker.mobile.config.mjs`; **fixes F212-F214**
-  - [ ] P6.4 fast-check properties: money math (rounding, minor units), UTC date math (DST, leap days), the email and CSV parsers (never throw, never over-match), the catalog (per-entry invariants), sync (idempotent, ordered)
+  - [x] P6.4 fast-check properties: money math (rounding, minor units), UTC date math (DST, leap days), the email and CSV parsers (never throw, never over-match), the catalog (per-entry invariants), sync (idempotent, ordered). **Done**: 23 properties (24 tests) in four files, bite-checked with 7 deliberate breaks, all caught (the generated-input ones on three repeat runs)
   - [ ] P6.5 CI: the mutation floor nightly, and on pull requests for changed files
   - [ ] P6 gate: the floor enforced in CI and green on GitHub
 - [ ] **P7 — Security verification v2 with evidence**
@@ -5980,3 +5980,32 @@ before anything was counted.
 
 **Next: P6.4**, property-based tests with fast-check: money math, UTC date math across
 DST and leap days, the parsers (never throw, never over-match), the catalogue, sync.
+
+
+### P6.4 — property-based tests (fast-check) — 2026-10-05
+
+`fast-check` is now a root dev dependency (it was declared only by the API, and used
+undeclared by the app's tests). Each property runs 100 to 500 generated cases and shrinks
+a failure to its smallest example.
+
+| File | What holds for every generated input |
+|---|---|
+| `packages/shared/src/properties.test.ts` | conversion: whole minor units, never negative, the amount itself within one currency, null (never a made-up number) when a rate is missing, order kept; `monthlyAmount` per cycle in range; a summary's total is its categories' sum, largest first, and every subscription is counted or excluded; `parseAmountMinor` reads back any statement-style amount (sign, symbol or code, thousands commas) and never throws; `parseCsvRows` returns any simple table exactly and never throws; the store-app name extractor never throws and only returns words from its text |
+| `apps/mobile/src/properties.test.ts` | the next renewal: weekly exactly 7 days, monthly/quarterly/annual on the same day or the month's last, at the same time, always later; rolling a renewal forward: never in the past, idempotent, a renewal still ahead untouched, monthly-type plans on their anchor day; `parseCSV` and `parseEmailBody` never throw and never produce a charge that isn't a positive finite amount |
+| `apps/api/src/sync.properties.test.ts` | against a written-out model: per entity the highest version wins, a tie goes to the later push; a full paged pull returns each entity once with a cursor that never goes back; pushing a batch again changes nothing; an older version is refused and says so; one user's changes never reach another |
+| `packages/service-catalog/src/properties.test.ts` | search never throws, returns at most its limit, never a service twice; each of the 509 names, in either case, finds that name first |
+
+The catalogue's per-entry invariants already run over all 509 entries (exhaustive, not
+sampled), so they were kept as they are.
+
+**Checked that they bite**, not only that they pass: conversion without rounding, an
+excluded subscription not counted, a month end not clamped, a weekly roll that stops
+short, ties keeping the old change, a pull that repeats its cursor record, an older
+version accepted: each fails. Two of these first PASSED: the generated rate tables always
+had every currency (so nothing was ever excluded), and month ends came up only a few times
+in a hundred uniform dates. Rates are now optional there, and a third of the dates are
+month ends; both breaks then failed on three repeat runs. The date properties also pass in
+Kiritimati (UTC+14) and Los Angeles.
+
+**Next: P6.5**, the floors in CI: the mutation runs nightly, and on pull requests for the
+files they change.
