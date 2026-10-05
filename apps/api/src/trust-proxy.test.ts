@@ -102,6 +102,9 @@ describe("client IP behind the proxy (rate-limit key)", () => {
     expect(readTrustProxyHops({ NODE_ENV: "production", TRUST_PROXY_HOPS: "5" })).toBe(5);
     expect(readTrustProxyHops({ NODE_ENV: "production", TRUST_PROXY_HOPS: "6" })).toBe(1);
     expect(readTrustProxyHops({ NODE_ENV: "development", TRUST_PROXY_HOPS: "2" })).toBe(2);
+    // Whole numbers only: "1.5" would trust a hop and a half's worth (P6.2).
+    expect(readTrustProxyHops({ NODE_ENV: "production", TRUST_PROXY_HOPS: "1.5" })).toBe(1);
+    expect(readTrustProxyHops({ NODE_ENV: "production", TRUST_PROXY_HOPS: "-1" })).toBe(1);
   });
 
   it("two clients behind the same load balancer get SEPARATE rate-limit buckets", async () => {

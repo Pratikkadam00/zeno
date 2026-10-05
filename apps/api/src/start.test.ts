@@ -91,6 +91,9 @@ describe("startServer", () => {
     const on = harness({ pgEnabled: vi.fn(() => true) });
     await startServer(on.deps);
     expect(on.deps.console.warn).toHaveBeenCalledTimes(1);
+    expect(on.deps.console.warn).toHaveBeenCalledWith(
+      "[zeno] SINGLE-INSTANCE ONLY — do not scale replicas: in-memory reads + a per-process sync sequence mean >1 instance will corrupt sync and break auth."
+    );
     const acked = harness({ pgEnabled: vi.fn(() => true), env: { ALLOW_MULTI_INSTANCE: "1" } });
     await startServer(acked.deps);
     expect(acked.deps.console.warn).not.toHaveBeenCalled();
@@ -102,6 +105,9 @@ describe("startServer", () => {
   it("starts the auth sweeper every 10 minutes, unref'd", async () => {
     const h = harness();
     await startServer(h.deps);
+    // The literal, not only the constant: a test against SWEEP_INTERVAL_MS alone
+    // passes whatever the constant says (P6.2).
+    expect(SWEEP_INTERVAL_MS).toBe(10 * 60 * 1000);
     const sweep = h.timers.find((t) => t.ms === SWEEP_INTERVAL_MS);
     expect(sweep).toBeDefined();
     expect(sweep!.unref).toHaveBeenCalled();
@@ -124,6 +130,27 @@ describe("startServer", () => {
     h.handlers.SIGINT!();
     await flush();
     expect(h.app.close).toHaveBeenCalledTimes(1);
+  });
+
+  // P6.2: which signal started a shutdown is the first line an operator reads after
+  // a deploy or a crash; the signal names were blanked and no test noticed.
+  it("logs which signal (or crash) started the shutdown", async () => {
+    for (const [event, arg] of [["SIGTERM", undefined], ["SIGINT", undefined], ["uncaughtException", new Error("crash")]] as const) {
+      const h = harness();
+      await startServer(h.deps);
+      h.handlers[event]!(arg);
+      await flush();
+      expect(h.app.log.info, event).toHaveBeenCalledWith({ signal: event }, "graceful shutdown starting");
+    }
+  });
+
+  it("returns the app and its shutdown, which a caller can run itself", async () => {
+    const h = harness();
+    const started = await startServer(h.deps);
+    expect(started.app).toBe(h.app);
+    await started.shutdown("manual");
+    expect(h.app.log.info).toHaveBeenCalledWith({ signal: "manual" }, "graceful shutdown starting");
+    expect(h.deps.process.exit).toHaveBeenCalledWith(0);
   });
 
   it("SIGINT alone also shuts down gracefully", async () => {
@@ -197,6 +224,14 @@ describe("defaultDeps", () => {
     timeout.unref();
     d.clearTimeout(timeout);
     expect(noop).not.toHaveBeenCalled();
+  });
+
+  it("its clearTimeout really cancels a pending timer", async () => {
+    const d = defaultDeps();
+    const fired = vi.fn();
+    d.clearTimeout(d.setTimeout(fired, 10));
+    await new Promise((r) => setTimeout(r, 40));
+    expect(fired).not.toHaveBeenCalled();
     expect(d.console).toBe(console);
   });
 });

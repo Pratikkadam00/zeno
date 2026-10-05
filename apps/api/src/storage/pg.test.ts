@@ -132,6 +132,28 @@ describe("encryption at rest", () => {
     expect(openValue(resealed)).toEqual(secret);
   });
 
+  // P6.2: an operator writes the previous keys as "k1, k2"; the spaces and an empty
+  // entry must not cost them old rows (Stryker dropped the trim unnoticed).
+  it("reads the previous-key list with spaces around the commas and an empty entry", () => {
+    process.env.STORAGE_ENCRYPTION_KEY = TEST_KEY;
+    delete process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS;
+    const sealed = sealValue({ x: "old" });
+    process.env.STORAGE_ENCRYPTION_KEY = ROTATED_KEY;
+    process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS = ` ${"cd".repeat(32)} , , ${TEST_KEY} `;
+    expect(openValue(sealed)).toEqual({ x: "old" });
+  });
+
+  it("a key is 64 hex characters exactly (or base64): 64 hex plus anything more is malformed", () => {
+    process.env.STORAGE_ENCRYPTION_KEY = `${TEST_KEY}zz`;
+    expect(encryptionKeyStatus()).toBe("malformed");
+    expect(encryptionConfigured()).toBe(false);
+  });
+
+  it("the kid is a short fingerprint: 8 hex characters, never the key", () => {
+    process.env.STORAGE_ENCRYPTION_KEY = TEST_KEY;
+    expect(sealValue({ x: 1 }).kid).toMatch(/^[0-9a-f]{8}$/);
+  });
+
   it("cannot open a value once its key is fully removed from the ring", () => {
     process.env.STORAGE_ENCRYPTION_KEY = TEST_KEY;
     delete process.env.STORAGE_ENCRYPTION_KEYS_PREVIOUS;

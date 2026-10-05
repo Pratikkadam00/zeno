@@ -119,6 +119,9 @@ describe("CORS (F30: a disallowed origin is refused quietly, never a 500)", () =
     expect(loopback.headers["access-control-allow-origin"]).toBe("http://127.0.0.1");
     const lookalike = await app.inject({ method: "GET", url: "/api/v1/health", headers: { origin: "http://localhost.evil.example" } });
     expect(lookalike.headers["access-control-allow-origin"]).toBeUndefined();
+    // Only ENDS like a local origin: the pattern is anchored at the start too (P6.2).
+    const tail = await app.inject({ method: "GET", url: "/api/v1/health", headers: { origin: "http://evil.examplehttp://localhost" } });
+    expect(tail.headers["access-control-allow-origin"]).toBeUndefined();
     setEnv("NODE_ENV", "production"); // the check is per request
     const prod = await app.inject({ method: "GET", url: "/api/v1/health", headers: { origin: "http://localhost:3011" } });
     expect(prod.statusCode).toBe(200);
@@ -194,6 +197,31 @@ describe("unexpected server errors", () => {
       service: "zeno-api", level: "error", message: "kaput", method: "GET", route: "/api/v1/health", requestId: r.json().meta.requestId
     });
     expect(String(init!.body)).not.toContain("secret-value");
+  });
+
+  // P6.2: only a 4xx statusCode is the caller's fault. Stryker widened that test so
+  // an error carrying a 5xx status was answered and kept quiet like a bad request:
+  // no log, no alert. Errors from plugins and upstream clients do carry 5xx codes.
+  it("an error that carries a 5xx status (500 itself included) is a server error: 500 INTERNAL, and an alert", async () => {
+    setEnv("MONITORING_WEBHOOK_URL", "https://alerts.example/hook");
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}"));
+    const app = await buildApp();
+    app.addHook("preHandler", async (request) => {
+      const status = Number(new URL(request.url, "http://x").searchParams.get("status"));
+      if (status) throw Object.assign(new Error(`upstream ${status}`), { statusCode: status });
+    });
+    for (const status of [503, 500]) {
+      fetchSpy.mockClear();
+      const r = await app.inject({ method: "GET", url: `/api/v1/health?status=${status}` });
+      expect(r.statusCode, String(status)).toBe(500);
+      expect(r.json().error, String(status)).toEqual({ code: "INTERNAL", message: "Unexpected server error." });
+      expect(fetchSpy, String(status)).toHaveBeenCalledTimes(1);
+    }
+    // And a 499 is still the caller's: its own status, no alert.
+    fetchSpy.mockClear();
+    const client = await app.inject({ method: "GET", url: "/api/v1/health?status=499" });
+    expect(client.statusCode).toBe(499);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("a thrown non-Error is reported as its string; an error before routing reports route 'unknown'", async () => {

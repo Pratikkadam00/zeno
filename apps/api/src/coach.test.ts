@@ -59,6 +59,8 @@ describe("extractJson", () => {
 
   it("throws when there is no JSON object in the text", () => {
     expect(() => extractJson("no braces here")).toThrow("AI coach returned no JSON.");
+    // A closing brace before the only opening one is not an object either.
+    expect(() => extractJson("} and then {")).toThrow("AI coach returned no JSON.");
   });
 
   it("throws on malformed JSON between the braces", () => {

@@ -17,7 +17,8 @@ export default {
   ],
   htmlReporter: { fileName: "reports/mutation-api/mutation.html" },
   jsonReporter: { fileName: "reports/mutation-api/mutation.json" },
-  // No floor until the first measurement (P6.2 sets it).
-  thresholds: { high: 95, low: 90, break: null },
+  // The floor (P6.2, 2026-10-05): 88.95 % measured over the whole API, in four
+  // batches (2,752 of 3,094 mutants caught), set just under it and only raised.
+  thresholds: { high: 95, low: 90, break: 88 },
   tempDirName: ".stryker-tmp-api"
 };

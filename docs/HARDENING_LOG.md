@@ -103,7 +103,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
 - [x] **P5 — Mobile end-to-end (Maestro on the emulator)** (watch for F94 and F106, closed as not reproduced in FX.5). **Done**: 13 flows and the 17-screen accessibility-tree audit, green on the local emulator and on GitHub's (green: Mobile end-to-end 37205579950, CI 37205579972, CodeQL 37205579957 on `5dbddd7`); fixes F178, F184, F185, F188-F190, F192-F198, F201, F202; F191, F199, F200 logged
 - [ ] **P6 — Mutation + property-based testing**
   - [x] P6.1 Stryker on the shared packages (`packages/shared`, `packages/service-catalog`): measure the mutation score, kill the survivors that matter, floor at 85 %. **Done**: 82.35 % to **92.44 %**, floor set at 92 % in `stryker.config.mjs`; **fixes F205, F206, F207** (green: CI 37254557059, CodeQL 37254557078 on `f2ec20d`)
-  - [ ] P6.2 Stryker on the API (`apps/api/src`), security and money paths first. **In progress**: nine smaller files 89.03 % to 95.69 %; the sign-in routes 81.31 % to 84.53 % (F208-F210: tests that were missing); `app.ts`, `coach.ts`, `storage/pg.ts`, `start.ts` not yet measured
+  - [x] P6.2 Stryker on the API (`apps/api/src`), security and money paths first. **Done**: **88.95 %** over the whole API (2,752 of 3,094), floor 88 % in `stryker.api.config.mjs`; the sign-in routes 81.31 % to 84.53 %, the smaller security files 89.03 % to 95.69 %, coach/storage/startup 88.71 % to 92.80 %, the main routes 82.26 % to 83.52 %; **fixes F208-F211** (missing tests; no code was wrong)
   - [ ] P6.3 Stryker on the app's logic (`apps/mobile/src`, outside screens and components)
   - [ ] P6.4 fast-check properties: money math (rounding, minor units), UTC date math (DST, leap days), the email and CSV parsers (never throw, never over-match), the catalog (per-entry invariants), sync (idempotent, ordered)
   - [ ] P6.5 CI: the mutation floor nightly, and on pull requests for changed files
@@ -318,6 +318,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F208 | **FIXED in P6.2 (a test that was missing; the code was right).** Revoking one account's sessions (account deletion) could be changed to revoke EVERY account's refresh sessions, pending sign-in links and pending codes, and no test noticed: every test revoked one user with no one else on the server. `auth-scope.test.ts` now signs in a second user and holds a link and a code pending for two more, and all three still work after the first account is revoked. | High (one deletion would sign everyone out) | me | P6.2 |
 | F209 | **FIXED in P6.2 (missing test).** The per-address limit on sign-in emails (5 per 15 minutes from any IP, the guard against bombing one inbox) could have its window cut to 250 ms, or never reset, or be wiped by the periodic sweep, unnoticed. Now tested at 1, 14 and 15 minutes, across a sweep. | Medium | me | P6.2 |
 | F210 | **FIXED in P6.2 (missing test).** The sweep could be changed to delete live sessions instead of used-up ones (signing everyone out each time it ran), unnoticed. Now a live session is refreshed after a sweep. | Medium | me | P6.2 |
+| F211 | **FIXED in P6.2 (missing test).** A household member's monthly spend could be dropped to 0 on create and on join (`?? 0` turned into `&& 0`), and the USD default on join blanked, unnoticed: no test created a household with a spend. `family-spend.test.ts` now sends both and reads them back. | Medium (money shown to a household) | me | P6.2 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **CLOSED in the P3 gate (2026-10-02): reachable, not a bug.** TalkBack, driven by touches from the emulator's own touchscreen, put its focus on each nested button's exact bounds, separately from its parent: the calendar's "Cancel Figma", the menu's Edit/Pause/Delete, the login's Terms and Privacy links. Original note: on the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -5864,3 +5865,46 @@ fails a later check), millisecond boundaries on record expiry, error messages of
 that are themselves tested, and leaks a sweep would reclaim that no API shows. Two worth
 a later test: restoring pending sign-in links after a restart (the hydrators), and
 account deletion reporting success when only some of its deletes landed (`every`).
+
+
+### P6.2 — the rest of the API, and its floor — 2026-10-05
+
+Two more batches, each survivor read in the code first; every fix put back by hand (19
+mutations, 19 caught).
+
+| Batch | Mutants | Before | After |
+|---|---|---|---|
+| coach, storage, startup | 612 | 88.71 % | 92.80 % (startup 100 %) |
+| the main routes (`app.ts`) | 716 | 82.26 % | 83.52 % |
+
+- **The main routes:** F211 (household spend); an error that carries a 5xx status (500
+  included) was answerable as a client error with no log and no alert, now tested at 500,
+  503 and 499; the local-development CORS origin anchored at its start; `TRUST_PROXY_HOPS`
+  whole numbers only ("1.5" and "-1" fall back); the second open-banking provider by name
+  (the intent route uses the built-in mock adapter: no call reaches Plaid).
+- **The coach:** the fallback charter (the coach's whole safety posture when its file is
+  missing) pinned word for word, where four phrases had been checked; a reply whose only
+  `}` comes before its `{` is "no JSON".
+- **Storage:** previous encryption keys written as "k1, k2" (with spaces, and an empty
+  entry) still open old rows; 64 hex characters plus anything more is a malformed key;
+  the stored key id is an 8-character fingerprint.
+- **Startup:** the 10-minute sweep as a literal (the test compared against the code's own
+  constant), the signal that started each shutdown in the log, the single-instance
+  warning's words, the returned handle, and the real `clearTimeout`.
+
+**A mistake of mine, caught by Stryker:** one new test file did not parse (a `"\n"` written
+as a real line break by the editing script). My check grepped for failing tests and
+assertion errors, and a file that fails to parse shows neither, only `Test Files 1
+failed`; so I reported it passing and two hand bite-checks against it were false. Stryker's
+dry run refused the file. Fixed, the whole logic run re-read in full (75 files, 894 tests),
+and both bite-checks redone: both caught. The rule now is to read the `Test Files` line.
+
+**The API's score and floor:** 88.95 % over all four batches (2,752 of 3,094 mutants
+caught: 800, 787, 567 and 598 of 836, 931, 611 and 716). `break: 88` in
+`stryker.api.config.mjs`, just under it, raised only. A whole run is about 20 minutes at
+10 workers here. What survives is mostly response wording that is not a promise (the
+capabilities list, provider descriptions), equivalent fail-closed paths, and storage
+bookkeeping no API can observe.
+
+**Next: P6.3**, the app's logic (`apps/mobile/src`): its four zone-switching tests need the
+same `itZone` care first.
