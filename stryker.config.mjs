@@ -25,7 +25,10 @@ export default {
   reporters: ["clear-text", "progress", "html", "json"],
   htmlReporter: { fileName: "reports/mutation/mutation.html" },
   jsonReporter: { fileName: "reports/mutation/mutation.json" },
-  thresholds: { high: 90, low: 85, break: null },
+  // `break` is the floor: below it `stryker run` fails. Set just under the measured
+  // score (92.44 % on 2026-10-05, P6.1), like the coverage floors, and only raised.
+  // The margin covers the few mutants whose result is a timeout on a slow machine.
+  thresholds: { high: 95, low: 90, break: 92 },
   tempDirName: ".stryker-tmp",
   concurrency: 4,
   timeoutMS: 10000

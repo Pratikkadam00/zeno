@@ -102,7 +102,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P4 gate: Playwright green in CI; CSP without `'unsafe-inline'` scripts (or a written reason); axe clean on every route (all 509 guides too, light and dark: 1,018 views, 0 violations)
 - [x] **P5 — Mobile end-to-end (Maestro on the emulator)** (watch for F94 and F106, closed as not reproduced in FX.5). **Done**: 13 flows and the 17-screen accessibility-tree audit, green on the local emulator and on GitHub's (green: Mobile end-to-end 37205579950, CI 37205579972, CodeQL 37205579957 on `5dbddd7`); fixes F178, F184, F185, F188-F190, F192-F198, F201, F202; F191, F199, F200 logged
 - [ ] **P6 — Mutation + property-based testing**
-  - [ ] P6.1 Stryker on the shared packages (`packages/shared`, `packages/service-catalog`): measure the mutation score, kill the survivors that matter, floor at 85 %
+  - [x] P6.1 Stryker on the shared packages (`packages/shared`, `packages/service-catalog`): measure the mutation score, kill the survivors that matter, floor at 85 %. **Done**: 82.35 % to **92.44 %**, floor set at 92 % in `stryker.config.mjs`; **fixes F205, F206, F207** (green: CI 37254557059, CodeQL 37254557078 on `f2ec20d`)
   - [ ] P6.2 Stryker on the API (`apps/api/src`), security and money paths first
   - [ ] P6.3 Stryker on the app's logic (`apps/mobile/src`, outside screens and components)
   - [ ] P6.4 fast-check properties: money math (rounding, minor units), UTC date math (DST, leap days), the email and CSV parsers (never throw, never over-match), the catalog (per-entry invariants), sync (idempotent, ordered)
@@ -5669,3 +5669,30 @@ after `split("/")[0]`), is now a single replace with the same result and no dead
 A full run takes about half an hour here, because most mutants in module-level
 constants (the schemas, lists) rerun every test (Stryker calls them "static"). The full
 score with all of the above, and the 85 % floor, come from the next full run.
+
+
+### P6.1 — measured after the fixes; the floor — 2026-10-05
+
+A full run on `f2ec20d` (8 min 55 s here, down from 28 min 44 s: the six removed schemas
+were module-level constants whose every mutant reran all the API's tests):
+
+| Measure | Before (2026-10-04) | After |
+|---|---|---|
+| Mutation score | 82.35 % | 92.44 % |
+| Mutants | 2,159 | 1,919 |
+| Killed / timed out | 1,773 / 5 | 1,767 / 7 |
+| Survived | 373 | 137 |
+| No test reached | 8 | 8 (the same: `domain.ts` 7, `parse-utils.ts` 1) |
+
+At 100 % now: the schemas, partners, the email-receipt reader, `day-label.ts`,
+`vault.ts`, `business.ts` (the last two with their demo data marked), with
+`open-banking.ts`, `keys.ts` and `api.ts` as before. `coach.ts` 97.77 % (from 84.82 %).
+Still under 90 %: `services.ts` 89.05 % (54), `renewal-plan.ts` 87.22 % (23),
+`history.ts` 87.66 % (19), `analytics.ts` 88.89 % (7), `twin.ts` 88.24 % (6); they are
+above the floor and are next when the floor is raised.
+
+**The floor:** `break: 92` in `stryker.config.mjs`, just under the measured 92.44 % (a
+margin of about eight mutants, for results that are timeouts on a slow machine), raised
+only. The plan's 85 % is met; the floor is set where the score is, like the coverage
+floors. Bite-checked: a run mutating only `twin.ts` (88.24 %) exits 1 with "Final mutation
+score 88.24 under breaking threshold 92". CI enforces it in P6.5.
