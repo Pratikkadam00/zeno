@@ -123,7 +123,9 @@ describe("structured data (SEO.md §4)", () => {
 
 describe("the RSS feed (SEO.md §7.3)", () => {
   it("lists every post, newest first, with its real date and its canonical link", async () => {
-    const xml = await feed().text();
+    const response = feed();
+    expect(response.headers.get("content-type")).toBe("application/rss+xml; charset=utf-8");
+    const xml = await response.text();
     const links = [...xml.matchAll(/<item>[\s\S]*?<link>([^<]+)<\/link>[\s\S]*?<pubDate>([^<]+)<\/pubDate>/g)];
     const newestFirst = [...POSTS].sort((a, b) => b.date.localeCompare(a.date));
     expect(links.map((m) => m[1])).toEqual(newestFirst.map((p) => siteUrl(`/blog/${p.slug}`)));

@@ -871,7 +871,25 @@ describe("api app", () => {
     expect(response.headers["x-content-type-options"]).toBe("nosniff");
     expect(response.headers["x-frame-options"]).toBe("SAMEORIGIN");
     expect(response.headers["content-security-policy"]).toContain("frame-ancestors 'none'");
-    expect(response.headers["strict-transport-security"]).toBeTruthy();
+    // Exact values (ASVS V3.4.1, V3.4.3, V3.4.5), as the live API sent them on 2026-10-05.
+    expect(response.headers["strict-transport-security"]).toBe("max-age=31536000; includeSubDomains");
+    expect(response.headers["referrer-policy"]).toBe("no-referrer");
+    expect(String(response.headers["content-security-policy"]).split(";")).toEqual(expect.arrayContaining(["default-src 'none'", "object-src 'none'", "base-uri 'none'"]));
+  });
+
+  // ASVS V14.3.2 (F217): answers carry tokens and a user's data, so no cache
+  // (a browser's, a proxy's) may keep one. Every kind of answer: success, a
+  // client error, an auth refusal, an unknown route.
+  it("every answer says Cache-Control: no-store", async () => {
+    const app = await buildApp();
+    const answers = await Promise.all([
+      app.inject({ method: "GET", url: "/api/v1/health" }),
+      app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email: "not-an-email" } }),
+      app.inject({ method: "GET", url: "/api/v1/sync/pull" }),
+      app.inject({ method: "GET", url: "/api/v1/no-such-route" })
+    ]);
+    expect(answers.map((a) => a.statusCode)).toEqual([200, 400, 401, 404]);
+    for (const answer of answers) expect(answer.headers["cache-control"]).toBe("no-store");
   });
 
   it("protects Plaid and never accepts an access token from the client", async () => {

@@ -110,7 +110,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [ ] P6 gate: the floor enforced in CI and green on GitHub
 - [ ] **P7 — Security verification v2 with evidence**
   - [x] P7.1 Threat model: the system and its trust boundaries (data-flow diagram), STRIDE per surface (phone, API, database, website, outside services) and per route (all 40), each threat with its evidence or marked open with an owner. **Done**: `docs/THREAT_MODEL.md`
-  - [ ] P7.2 ASVS 5.0 Level 2 checklist, every control with its evidence (test, CI job or config line) or "open, owned by"; control text taken from OWASP's repository, not memory. **In progress**: 118 of 253 assessed (V4.3, V4.4, V5-V10, V17); **fixes F216**
+  - [ ] P7.2 ASVS 5.0 Level 2 checklist, every control with its evidence (test, CI job or config line) or "open, owned by"; control text taken from OWASP's repository, not memory. **All 253 assessed** (150 met, 79 N/A, 20 partial, 4 open, each open or partial with its owner); **fixes F216 to F219**. P7.2 is done as a checklist; its partials owned by me are next
   - [ ] P7.3 MASVS checklist refreshed with P4-P6 (every row's evidence re-pointed at a test name)
   - [ ] P7.4 `docs/SECURITY_AUDIT_2026-10.md` replacing the July audit; a residual-risk register, each risk with an owner and a date
   - [ ] P7 gate: no control marked "believed": each is "tested by …" or "open, owned by …"
@@ -329,6 +329,9 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F214 | **FIXED in P6.3 (missing tests).** Exchange rates: an HTTP error or a "not success" answer from the rate source, and a zero, negative or non-numeric rate, could all have been accepted unnoticed (a negative rate would turn every converted price negative). Each now gives no rate, as designed (the totals then show what could not be converted). | Medium (money shown to the user) | me | P6.3 |
 | F215 | **FIXED in P6.4 (found by a property test, on CI).** `parseAmountMinor("-0.00")` returned minus zero, not zero (also "$-0.00", "(0.00)", "0.00-"). Harmless where it was used (it is not below zero and prints as 0.00), but a signed zero in money code; now zero. The property passed locally and failed on GitHub with another random draw; that case is now always tried (`examples`), and a plain test pins the five spellings. | Low | me | P6.4 |
 | F216 | **FIXED in P7.2 (found by reading ASVS V9.2.1 against the code).** Neither token check read the "not before" (`nbf`) claim: an Apple or Google identity token, or one of our own, that was not valid yet would have been accepted. Both now refuse a future `nbf` (our tokens carry none; a provider's may). Tested both ways (`auth-social.test.ts`, `auth-nbf.test.ts`); both tests fail on the old code. | Low (no known provider token arrives early) | me | P7.2 |
+| F217 | **FIXED in P7.2 (ASVS V14.3.2).** No API answer said `Cache-Control`: answers carrying tokens (sign-in, refresh) and a user's data could be kept by a browser or a proxy cache. Every answer now says `no-store`, errors and 404s included (set in the first request hook). `app.test.ts` checks a 200, 400, 401 and 404; it fails on the old code. | Low (the app is the client; no cache sits in front of the API today) | me | P7.2 |
+| F218 | **FIXED in P7.2 (ASVS V15.3.2).** Every outbound call (Resend, the AI provider, RevenueCat, the JWKS endpoints, the alert webhook) followed redirects, fetch's default: a redirect would have re-sent the request, API key included, to a host nobody reviewed. `fetchWithTimeout` now refuses any redirect. `http.test.ts` checks it on a real local socket (the redirect target is never called); it fails on the old code. | Low (needs a provider, or the operator's webhook URL, to redirect) | me | P7.2 |
+| F219 | **FIXED in P7.2 (ASVS V15.3.5, V15.3.7).** `GET /services`, the one route that reads its query without a schema, turned a repeated parameter into a joined string (`q=net&q=hulu` searched "net,hulu") or silently dropped it (`limit`, `offset`). A repeated `q`, `limit` or `offset` is now a 400; every other route already refused it through its schema. `http-message.test.ts`; fails on the old code. | Low (public catalogue) | me | P7.2 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **CLOSED in the P3 gate (2026-10-02): reachable, not a bug.** TalkBack, driven by touches from the emulator's own touchscreen, put its focus on each nested button's exact bounds, separately from its parent: the calendar's "Cancel Figma", the menu's Edit/Pause/Delete, the login's Terms and Privacy links. Original note: on the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -6108,3 +6111,43 @@ the server (V7.2.4).
 
 **Next in P7.2:** V1 Encoding, V2 Validation, V3 Web frontend, V4.1-4.2, V11 Cryptography,
 V12 TLS, V13 Configuration, V14 Data protection, V15 Secure coding, V16 Logging.
+
+### P7.2 — ASVS 5.0 checklist: every requirement assessed — 2026-10-05
+
+**V1 to V4 and V11 to V16 assessed**, so all 253 Level 1 and 2 requirements now have a
+status: 150 met, 79 not applicable, 20 partial, 4 open. Every met row names its evidence
+(a test, a CI job, a measurement script or a document written from the code), and every
+partial or open row its owner; `scripts/asvs-checklist.test.ts` holds that and that every
+cited file exists.
+
+**Documents ASVS asks for, written from the code** (each statement checked against it;
+two wrong drafts caught that way: sign-in codes are stored as is, not hashed, and the
+API's certificate is Google Trust Services', not Render's own):
+`docs/INPUT_VALIDATION.md` (V2.1), `docs/CRYPTOGRAPHY.md` (V11.1: every key, algorithm and
+certificate, what each key may and may not be used for, and its lifecycle),
+`docs/DATA_AND_LOGGING.md` (V14.1 protection levels; V16.1 the logging inventory),
+`docs/COMPONENTS_AND_LOAD.md` (V15.1: remediation time frames, the advisories as of today,
+costly functions and their limits).
+
+**Measured, not assumed:** TLS on both live hosts (`scripts/tls-check.mjs`, extended to
+offer one suite family at a time): 1.0 and 1.1 refused; on 1.2 only ECDHE with AES-GCM,
+every RSA-key-exchange and every CBC suite refused by the server. The production JWT key
+read from the owner's key file: RSA 2048.
+
+**Tests added:** TRACE refused without echo, a request with both Content-Length and
+Transfer-Encoding refused and the smuggled request never answered, JSON charset on
+success and error (all on a real socket, `http-message.test.ts`); exact security header
+values; an email address never reaches a log line (a marker address in
+`log-hygiene.test.ts`; bite-checked by logging it). **Fixes:** F217 (no-store), F218 (no
+redirects on outbound calls), F219 (a repeated query parameter); each test fails with its
+fix undone.
+
+**Partials owned by me:** V3.5.3 and V14.2.1 (the email sign-in link is a GET with its
+one-time token in the query), V6.6.2 (an older sign-in link stays usable), V7.2.4 (a new
+sign-in doesn't end the device's old session), V16.2.1 and V16.3.1 to V16.3.3 (no
+security-event log naming the account). **The owner's:** the 3072-bit key swap, Render's
+login and log retention, Postgres's unverified certificate and owner role, an outbound
+firewall (P8), and the decisions in `OWNER_ACTIONS.md` D17.
+
+**Next:** the partials owned by me, then P7.3 (MASVS refresh) and P7.4 (the audit report).
+

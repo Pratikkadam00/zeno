@@ -71,7 +71,8 @@ describe("no secret a client sends ever reaches a log line", () => {
       magicCode: "MARK12",
       refresh: "MARK-refresh-token-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       password: "MARK-demo-password-91c2",
-      webhook: "MARK-webhook-secret-7f3a"
+      webhook: "MARK-webhook-secret-7f3a",
+      email: "mark-person@example.com"
     };
     const ip = (n: number) => `192.0.2.${n}`;
     // A server error while a secret is in flight (registered before the first
@@ -82,7 +83,8 @@ describe("no secret a client sends ever reaches a log line", () => {
     await app.inject({ method: "GET", url: "/api/v1/account", remoteAddress: ip(1), headers: { authorization: `Bearer ${secrets.bearer}`, cookie: `session=${secrets.cookie}` } });
     await app.inject({ method: "GET", url: "/api/v1/account", remoteAddress: ip(2), headers: { authorization: `Bearer ${secrets.forgedBearer}` } });
     await app.inject({ method: "GET", url: `/api/v1/auth/verify?token=${secrets.magicToken}`, remoteAddress: ip(3) });
-    await app.inject({ method: "GET", url: `/api/v1/auth/verify?email=someone@example.com&code=${secrets.magicCode}`, remoteAddress: ip(4) });
+    await app.inject({ method: "GET", url: `/api/v1/auth/verify?email=${secrets.email}&code=${secrets.magicCode}`, remoteAddress: ip(4) });
+    await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", remoteAddress: ip(11), payload: { email: secrets.email } });
     await app.inject({ method: "POST", url: "/api/v1/auth/refresh", remoteAddress: ip(5), payload: { refreshToken: secrets.refresh } });
     await app.inject({ method: "POST", url: "/api/v1/auth/demo-login", remoteAddress: ip(6), payload: { email: "demo@zeno.local", password: secrets.password } });
     await app.inject({ method: "POST", url: "/api/v1/auth/demo-login", remoteAddress: ip(7), payload: { email: "demo@zeno.local", password: `${secrets.password}-wrong` } });

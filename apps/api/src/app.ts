@@ -273,6 +273,9 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   // via the JSON envelope's meta.requestId.
   app.addHook("onRequest", async (request, reply) => {
     reply.header("x-request-id", request.id);
+    // Answers carry tokens and a user's data: no cache may keep one (ASVS
+    // V14.3.2, F217). Set first, so every answer has it, errors included.
+    reply.header("cache-control", "no-store");
     markRequestStart();
   });
 
@@ -441,9 +444,17 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     return ok({ deleted: true }, request.id);
   });
 
-  app.get("/api/v1/services", async (request) => {
+  app.get("/api/v1/services", async (request, reply) => {
     // Fastify always parses the query string into an object ({} when empty).
     const rawQuery = request.query as Record<string, unknown>;
+    // A parameter given twice arrives as an array, which String() would join
+    // ("q=net&q=hulu" searched "net,hulu"). Refuse it rather than guess which
+    // one was meant (ASVS V15.3.5, V15.3.7; F219).
+    const repeated = ["q", "limit", "offset"].find((name) => Array.isArray(rawQuery[name]));
+    if (repeated) {
+      reply.code(400);
+      return fail("BAD_REQUEST", `"${repeated}" was given more than once.`, request.id);
+    }
     const query = String(rawQuery.q ?? "").slice(0, 100);
     const limit = clampInt(rawQuery.limit, DEFAULT_SERVICES_LIMIT, 1, MAX_SERVICES_LIMIT);
     const offset = clampInt(rawQuery.offset, 0, 0, Number.MAX_SAFE_INTEGER);

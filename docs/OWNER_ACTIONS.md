@@ -37,6 +37,8 @@ Finding numbers (F…) point to rows in `docs/HARDENING_LOG.md` for the full det
 | — | **Netlify: make the project public.** While it is private, Netlify injects its pre-launch toolbar script (`/.netlify/scripts/hud`) into every page; our script policy blocks its inner script, so every visitor's browser logs a security error (measured 2026-10-04 in a plain browser and in Lighthouse). Netlify's docs: the toolbar "stops appearing when you make the project public" | Netlify → the project's settings (visibility) | Clean console for every visitor; the badge doesn't belong on a public site. I re-measure after. |
 | — | **After the SEO pass deploys (2026-10-05), the launch-week list from SEO.md §10, which code cannot do:** (1) Search Console → URL inspection → *Request indexing* for `/`, `/compare`, `/cancel`, `/blog` and `/features`; (2) claim the name on X, Instagram, LinkedIn, YouTube, Crunchbase and GitHub, each bio linking to zenoapp.in; (3) listings on Product Hunt (when the app ships), AlternativeTo (as an alternative to Rocket Money, Bobby, TrackMySubs), SaaSHub, BetaList; (4) a 30-minute Search Console look each week: queries at positions 5 to 15 are the pages to strengthen. Each listing is a link from a site Google already trusts; zenoapp.in has none yet | search.google.com/search-console; the sites named | SEO.md: "technical SEO is a gate, not an engine". The code side is done and tested; ranking now depends on links and time. |
 | — | **Google Search Console:** the Domain property `zenoapp.in` exists (2026-10-04). Left: **Sitemaps → add** `https://zenoapp.in/sitemap.xml` (the one sitemap covers every page, the blog included), then **Bing Webmaster Tools → Import from Google Search Console**. Data appears after a day or so | search.google.com/search-console; bing.com/webmasters | The sitemap tells Google what to crawl first; the reports show what it indexed and why not (D16 needs that data). |
+| — | **Swap the API's signing key to 3072 bits** (ASVS V11.2.3): in Render → `zeno-api` → Environment, set `JWT_PRIVATE_KEY` to the contents of `zeno-keys\prod\JWT_PRIVATE_KEY_3072.pem` and `JWT_PUBLIC_KEY` to `JWT_PUBLIC_KEY_3072.pem`, save (it redeploys). Delete the old 2048-bit files 15 minutes after | Render | RSA 2048 is about 112 bits of security; ASVS asks for 128 (3072). Nobody is logged out: only 15-minute access tokens use this key, and the app refreshes them. |
+| — | **Render account:** confirm two-step sign-in is on, and list who is in the workspace (ASVS V16.4.2: whoever is there can read the logs and every secret) | Render → Account settings; Team | The logs and keys are only as safe as that login. |
 | — | Confirm **Render's and Netlify's log retention** on your plans are 30 days or less | Render → Logs / plan | The privacy policy says server logs are kept "up to 30 days". |
 | — | Before launch: have the **privacy policy, cookie policy and terms** reviewed by a lawyer | — | They say they are pre-launch drafts. P4.1c made every factual statement in them match the code; legal sufficiency is a lawyer's call. |
 | — | Before shipping iOS: file the annual **encryption self-classification** report (BIS / NSA) | export compliance | The app declares non-exempt encryption (SQLCipher) under the mass-market exemption, which requires it. |
@@ -252,6 +254,23 @@ Writing real steps (D5) is what actually earns rankings for those 470 names.
 - **Then I:** change the label (or the number, if you choose that), with a test, and
   re-run the ledger flows on the emulator. The Calendar's "This month" shows the same
   figure (F197, as the design has it), so it follows your choice too.
+
+### D17 · the ASVS decisions (`docs/ASVS_CHECKLIST.md`, P7.2)
+- **A second factor (V6.3.3): not before launch.** Every sign-in already proves control
+  of the inbox (link or code) or of the Apple or Google account, and the server holds no
+  subscription data to take. Revisit if the server ever holds a user's money data.
+- **An absolute session lifetime (V7.3.2): yes, 1 year.** Today a refresh token renews
+  itself forever while it is used. A yearly email sign-in costs a user almost nothing
+  and bounds how long a stolen phone's session lives.
+- **"Sign out of all devices" (V7.4.5, V7.5.2): yes, after launch.** One button in
+  Settings that ends every session of the account (and, for you, the same as a script).
+  A full list of sessions can wait.
+- **The household share code (V11.5.1): keep 8 characters.** People type it; guessing is
+  rate-limited and a household holds 5 people at most.
+- **Routes the app doesn't use (V15.2.3): switch them off in production** (`/sync`,
+  `/public-api/keys`, `/business/summary`, the open-banking intents): they are attack
+  surface that serves nobody. Turned back on when the app needs them.
+- **Then I:** build what you said yes to, each with its test, and update the checklist.
 
 ---
 

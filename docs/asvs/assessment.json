@@ -1,4 +1,413 @@
 {
+  "V1.1.1": {
+    "status": "met",
+    "note": "Fastify decodes the URL and parses JSON once, before the schema runs; nothing is decoded after validation.",
+    "evidence": [
+      "apps/api/src/app.ts",
+      "apps/api/src/schema-valid.test.ts"
+    ]
+  },
+  "V1.1.2": {
+    "status": "met",
+    "note": "Output is encoded by the thing that emits it: Fastify's JSON serialiser for the API, React for the website, and the JSON-LD writer escapes \"<\" (F165).",
+    "evidence": [
+      "apps/web/components/site/JsonLd.test.tsx",
+      "apps/api/src/app.ts"
+    ]
+  },
+  "V1.2.1": {
+    "status": "met",
+    "note": "Website HTML is rendered by React, which escapes text and attributes; the one raw insertion (JSON-LD) escapes \"<\".",
+    "evidence": [
+      "apps/web/components/site/JsonLd.test.tsx",
+      "apps/web/e2e/every-route.spec.ts"
+    ]
+  },
+  "V1.2.2": {
+    "status": "met",
+    "note": "Request-derived URL parts are encoded (the sign-in token, the RevenueCat account id, which can only be one path segment); catalogue links are https only.",
+    "evidence": [
+      "apps/api/src/outbound.test.ts",
+      "apps/mobile/src/auth/authStore.flows.test.ts",
+      "packages/service-catalog/src/services.test.ts"
+    ]
+  },
+  "V1.2.3": {
+    "status": "met",
+    "note": "JSON is produced by serialisers, never by string building; the website's JSON-LD escapes \"<\" so a value cannot end its script tag.",
+    "evidence": [
+      "apps/web/components/site/JsonLd.test.tsx"
+    ]
+  },
+  "V1.2.4": {
+    "status": "met",
+    "note": "Every SQL statement is parameterised or fixed text, exercised against real Postgres.",
+    "evidence": [
+      "apps/api/src/storage/pg.ts",
+      "apps/api/src/storage/real-pg.test.ts"
+    ]
+  },
+  "V1.2.5": {
+    "status": "na",
+    "note": "No operating-system commands: the API and website run none (no child_process anywhere in their code)."
+  },
+  "V1.2.6": {
+    "status": "na",
+    "note": "No LDAP."
+  },
+  "V1.2.7": {
+    "status": "na",
+    "note": "No XPath."
+  },
+  "V1.2.8": {
+    "status": "na",
+    "note": "No LaTeX."
+  },
+  "V1.2.9": {
+    "status": "met",
+    "note": "No regular expression is built from user input; the few built at run time are assembled from constants.",
+    "evidence": [
+      "packages/shared/src/discovery/email-receipts.ts"
+    ]
+  },
+  "V1.3.1": {
+    "status": "na",
+    "note": "No rich-text (WYSIWYG) input anywhere."
+  },
+  "V1.3.2": {
+    "status": "met",
+    "note": "No eval() or new Function in the code; CodeQL scans every push for code injection.",
+    "evidence": [
+      ".github/workflows/codeql.yml"
+    ]
+  },
+  "V1.3.3": {
+    "status": "met",
+    "note": "Data bound for a risky context is neutralised there: CSV exports prefix formula characters, the coach fences user data and strips its fence tags, crash reports are scrubbed.",
+    "evidence": [
+      "apps/mobile/src/utils/csv-export.test.ts",
+      "apps/api/src/coach.test.ts",
+      "apps/mobile/src/monitoring/scrub-edges.test.ts"
+    ]
+  },
+  "V1.3.4": {
+    "status": "na",
+    "note": "No user-supplied SVG is accepted or shown."
+  },
+  "V1.3.5": {
+    "status": "na",
+    "note": "No user-supplied Markdown, CSS or templates are rendered (the blog's text is ours, in code)."
+  },
+  "V1.3.6": {
+    "status": "met",
+    "note": "Every outbound call is inventoried and goes only to its fixed host; a new call site fails the test until reviewed.",
+    "evidence": [
+      "apps/api/src/outbound.test.ts"
+    ]
+  },
+  "V1.3.7": {
+    "status": "met",
+    "note": "No template is built from user input: the sign-in email is fixed plain text holding only the link and code the server made.",
+    "evidence": [
+      "apps/api/src/routes/auth.ts"
+    ]
+  },
+  "V1.3.8": {
+    "status": "na",
+    "note": "No JNDI (not a Java application)."
+  },
+  "V1.3.9": {
+    "status": "met",
+    "note": "The only cache server (Redis, optional) holds rate-limit counters keyed by IP address or account id, which a client cannot shape into commands.",
+    "evidence": [
+      "apps/api/src/app.ts"
+    ]
+  },
+  "V1.3.10": {
+    "status": "na",
+    "note": "No format-string functions take untrusted input (logs are structured objects)."
+  },
+  "V1.3.11": {
+    "status": "met",
+    "note": "Email goes through Resend's HTTP API as JSON, never raw SMTP; the address is schema-validated, the subject fixed.",
+    "evidence": [
+      "apps/api/src/routes/auth.ts",
+      "apps/api/src/schema-valid.test.ts"
+    ]
+  },
+  "V1.4.1": {
+    "status": "na",
+    "note": "A memory-managed runtime (Node.js) with no native code of our own."
+  },
+  "V1.4.2": {
+    "status": "met",
+    "note": "Numbers are bounded where they arrive: spend 0 to 100 million, vector-clock counts 0 to 2^40, parsed amounts at most $10 million, whole numbers only.",
+    "evidence": [
+      "docs/INPUT_VALIDATION.md",
+      "packages/shared/src/schemas.test.ts",
+      "packages/shared/src/properties.test.ts"
+    ]
+  },
+  "V1.4.3": {
+    "status": "na",
+    "note": "A memory-managed runtime (Node.js) with no native code of our own."
+  },
+  "V1.5.1": {
+    "status": "na",
+    "note": "No XML is parsed anywhere (the RSS feed is written, never read)."
+  },
+  "V1.5.2": {
+    "status": "met",
+    "note": "Only JSON is deserialised, into plain objects checked by schemas; prototype-pollution keys are refused at the parser.",
+    "evidence": [
+      "apps/api/src/fuzz.test.ts",
+      "apps/api/src/schema-valid.test.ts"
+    ]
+  },
+  "V2.1.1": {
+    "status": "met",
+    "note": "Every data item's rule is documented, from the schemas.",
+    "evidence": [
+      "docs/INPUT_VALIDATION.md"
+    ]
+  },
+  "V2.1.2": {
+    "status": "met",
+    "note": "Rules for data that must agree with other data are documented.",
+    "evidence": [
+      "docs/INPUT_VALIDATION.md"
+    ]
+  },
+  "V2.1.3": {
+    "status": "met",
+    "note": "Per-user and global limits are documented with the test that holds each.",
+    "evidence": [
+      "docs/INPUT_VALIDATION.md"
+    ]
+  },
+  "V2.2.1": {
+    "status": "met",
+    "note": "Every input route parses its schema first; values each rule allows and just outside it are sent to every route.",
+    "evidence": [
+      "apps/api/src/schema-valid.test.ts",
+      "apps/api/src/fuzz.test.ts"
+    ]
+  },
+  "V2.2.2": {
+    "status": "met",
+    "note": "Validation happens in the API; the app's own checks are for usability only.",
+    "evidence": [
+      "docs/INPUT_VALIDATION.md",
+      "apps/api/src/schema-valid.test.ts"
+    ]
+  },
+  "V2.2.3": {
+    "status": "met",
+    "note": "Combined data is checked: a household write comes from a member and lands on their own line; a refresh token must be live and unrotated; a provider token's nonce must match.",
+    "evidence": [
+      "apps/api/src/family-spend.test.ts",
+      "apps/api/src/routes/auth-social.test.ts",
+      "apps/api/src/routes/auth.test.ts"
+    ]
+  },
+  "V2.3.1": {
+    "status": "met",
+    "note": "Steps can't be skipped: a session needs a link or code issued for that address, or a provider token with this sign-in's nonce.",
+    "evidence": [
+      "apps/api/src/routes/auth-internals.test.ts",
+      "apps/api/src/routes/auth-social.test.ts"
+    ]
+  },
+  "V2.3.2": {
+    "status": "met",
+    "note": "The documented limits are enforced and tested.",
+    "evidence": [
+      "docs/INPUT_VALIDATION.md",
+      "apps/api/src/family.test.ts",
+      "apps/api/src/routes/auth-scope.test.ts"
+    ]
+  },
+  "V2.3.3": {
+    "status": "met",
+    "note": "Operations that touch storage succeed whole or are put back: a sync change or household change the database refuses is undone in memory, and account deletion says \"deleted\" only once every part is durable (F75).",
+    "evidence": [
+      "apps/api/src/storage/real-pg.test.ts",
+      "apps/api/src/sync.persistence.test.ts"
+    ]
+  },
+  "V2.3.4": {
+    "status": "met",
+    "note": "Capped resources (households per owner, members per household) are checked and changed in one synchronous step in a single process; running one instance is required and warned about at boot.",
+    "evidence": [
+      "apps/api/src/family.test.ts",
+      "apps/api/src/start.test.ts"
+    ]
+  },
+  "V2.4.1": {
+    "status": "met",
+    "note": "Every route has a rate limit; costly ones are tighter (the AI coach: 10 per account per minute; sign-in: 5 or 10 per IP).",
+    "evidence": [
+      "apps/api/src/rate-limits.test.ts"
+    ]
+  },
+  "V3.2.1": {
+    "status": "met",
+    "note": "API answers are JSON with nosniff and a deny-all framing policy; the website serves its own pages only.",
+    "evidence": [
+      "apps/api/src/app.test.ts",
+      "apps/web/next.config.test.ts"
+    ]
+  },
+  "V3.2.2": {
+    "status": "met",
+    "note": "Text is rendered by React as text; the only raw HTML is the escaped JSON-LD and a fixed theme script, allowed by CSP hash.",
+    "evidence": [
+      "apps/web/components/site/JsonLd.test.tsx",
+      "apps/web/e2e/every-route.spec.ts"
+    ]
+  },
+  "V3.3.1": {
+    "status": "na",
+    "note": "No cookies: neither the website nor the API sets one (the theme choice is in localStorage; the API authenticates with bearer tokens)."
+  },
+  "V3.3.2": {
+    "status": "na",
+    "note": "No cookies: neither the website nor the API sets one (the theme choice is in localStorage; the API authenticates with bearer tokens)."
+  },
+  "V3.3.3": {
+    "status": "na",
+    "note": "No cookies: neither the website nor the API sets one (the theme choice is in localStorage; the API authenticates with bearer tokens)."
+  },
+  "V3.3.4": {
+    "status": "na",
+    "note": "No cookies: neither the website nor the API sets one (the theme choice is in localStorage; the API authenticates with bearer tokens)."
+  },
+  "V3.4.1": {
+    "status": "met",
+    "note": "HSTS on every response: the website two years with subdomains and preload; the API one year with subdomains.",
+    "evidence": [
+      "apps/web/next.config.test.ts",
+      "apps/api/src/app.test.ts"
+    ]
+  },
+  "V3.4.2": {
+    "status": "met",
+    "note": "CORS answers only exact origins from the allowlist; a look-alike or a wildcard allows nothing.",
+    "evidence": [
+      "apps/api/src/app.routes.test.ts"
+    ]
+  },
+  "V3.4.3": {
+    "status": "met",
+    "note": "CSP on every response: the website with object-src 'none', base-uri 'self' and per-page script hashes (no unsafe-inline scripts); the API with frame-ancestors 'none'.",
+    "evidence": [
+      "apps/web/next.config.test.ts",
+      "apps/web/e2e/every-route.spec.ts",
+      "apps/api/src/app.test.ts"
+    ]
+  },
+  "V3.4.4": {
+    "status": "met",
+    "note": "nosniff on every response of the website and the API.",
+    "evidence": [
+      "apps/web/next.config.test.ts",
+      "apps/api/src/app.test.ts"
+    ]
+  },
+  "V3.4.5": {
+    "status": "met",
+    "note": "The website sends strict-origin-when-cross-origin; the API no-referrer.",
+    "evidence": [
+      "apps/web/next.config.test.ts",
+      "apps/api/src/app.test.ts"
+    ]
+  },
+  "V3.4.6": {
+    "status": "met",
+    "note": "frame-ancestors 'none' on the website and the API.",
+    "evidence": [
+      "apps/web/next.config.test.ts",
+      "apps/api/src/app.test.ts"
+    ]
+  },
+  "V3.5.1": {
+    "status": "met",
+    "note": "No cookie-based authentication: a request is authorised only by an Authorization header, which another site's page cannot add without a CORS preflight the API refuses.",
+    "evidence": [
+      "apps/api/src/app.routes.test.ts",
+      "apps/api/src/auth-guard.test.ts"
+    ]
+  },
+  "V3.5.2": {
+    "status": "met",
+    "note": "Sensitive routes need the Authorization header, which forces a preflight; a request that avoids the preflight carries no token and gets 401.",
+    "evidence": [
+      "apps/api/src/auth-guard.test.ts"
+    ]
+  },
+  "V3.5.3": {
+    "status": "partial",
+    "note": "State changes use POST or DELETE, except GET /auth/verify, which uses up a sign-in link (the app opens it from the email). No cookies are involved, so another site can't ride it, but it is a GET that changes state.",
+    "evidence": [
+      "apps/api/src/routes/auth.ts"
+    ],
+    "owner": "me"
+  },
+  "V3.5.4": {
+    "status": "met",
+    "note": "The website (zenoapp.in, Netlify) and the API (Render) are separate hosts.",
+    "evidence": [
+      "docs/THREAT_MODEL.md"
+    ]
+  },
+  "V3.5.5": {
+    "status": "na",
+    "note": "No postMessage listeners in the website."
+  },
+  "V3.7.1": {
+    "status": "met",
+    "note": "Only current web technology (React and Next.js); no plugins.",
+    "evidence": [
+      "apps/web/package.json"
+    ]
+  },
+  "V3.7.2": {
+    "status": "met",
+    "note": "The only automatic redirect is www to the apex domain, our own; links to other sites are links the user follows.",
+    "evidence": [
+      "apps/web/next.config.test.ts"
+    ]
+  },
+  "V4.1.1": {
+    "status": "met",
+    "note": "API answers declare application/json; charset=utf-8, errors included; the RSS feed declares utf-8.",
+    "evidence": [
+      "apps/api/src/http-message.test.ts",
+      "apps/web/app/seo.test.tsx"
+    ]
+  },
+  "V4.1.2": {
+    "status": "partial",
+    "note": "The website redirects http to https as it should. The API also answers http with a 301 to https: Render does this for every service and it cannot be switched off there. The app only ever uses the https address.",
+    "evidence": [
+      "apps/mobile/eas.json"
+    ],
+    "owner": "owner (P8: host)"
+  },
+  "V4.1.3": {
+    "status": "met",
+    "note": "Client-written X-Forwarded-For entries are ignored; only the hops the load balancer adds are trusted (whole numbers only).",
+    "evidence": [
+      "apps/api/src/trust-proxy.test.ts"
+    ]
+  },
+  "V4.2.1": {
+    "status": "met",
+    "note": "A request with both Content-Length and Transfer-Encoding is refused with 400 on a real socket, and a smuggled second request is never answered. (Render's load balancer in front is not tested here.)",
+    "evidence": [
+      "apps/api/src/http-message.test.ts"
+    ]
+  },
   "V4.3.1": {
     "status": "na",
     "note": "No GraphQL: the API is REST over Fastify, no GraphQL library is installed (apps/api/package.json)."
@@ -656,6 +1065,576 @@
   "V10.7.3": {
     "status": "na",
     "note": "Zeno is not an OAuth authorisation server or OpenID provider: it issues first-party sessions to its own app only (assessed under V7 and V9)."
+  },
+  "V11.1.1": {
+    "status": "met",
+    "note": "Key policy written: for each key, how it is made, stored, used, rotated and destroyed (NIST SP 800-57 lifecycle); each key used for one purpose only.",
+    "evidence": [
+      "docs/CRYPTOGRAPHY.md"
+    ]
+  },
+  "V11.1.2": {
+    "status": "met",
+    "note": "Inventory of every key, algorithm and certificate, read from the code, with where each key may and may not be used.",
+    "evidence": [
+      "docs/CRYPTOGRAPHY.md"
+    ]
+  },
+  "V11.2.1": {
+    "status": "met",
+    "note": "Only standard implementations: node:crypto (OpenSSL 3) on the server; react-native-quick-crypto (OpenSSL), expo-crypto and SQLCipher 4.7.0 on the phone. Nothing hand-written.",
+    "evidence": [
+      "docs/CRYPTOGRAPHY.md",
+      "apps/api/src/storage/pg.ts",
+      "apps/mobile/src/security/app-lock.ts"
+    ]
+  },
+  "V11.2.2": {
+    "status": "met",
+    "note": "Formats carry their algorithm or version: RS256 in each token header, a key id in each sealed envelope (with a ring of previous keys), a version and iteration count beside each PIN verifier (already migrated once, v2 to v3). A change is a code release, not a setting.",
+    "evidence": [
+      "docs/CRYPTOGRAPHY.md",
+      "apps/api/src/storage/pg.test.ts",
+      "apps/mobile/src/security/app-lock.test.ts"
+    ]
+  },
+  "V11.2.3": {
+    "status": "partial",
+    "note": "Everything is at 128 bits or more except the JWT signing key, RSA 2048 (about 112 bits). A 3072-bit pair is generated and waiting to go into Render.",
+    "evidence": [
+      "docs/CRYPTOGRAPHY.md"
+    ],
+    "owner": "owner (put the 3072-bit pair into Render)"
+  },
+  "V11.3.1": {
+    "status": "met",
+    "note": "No ECB and no RSA encryption anywhere (so no PKCS#1 v1.5 encryption padding). RS256 signatures use PKCS#1 v1.5 signature padding, which is what Apple, Google and our tokens use and is approved for signatures (FIPS 186-5).",
+    "evidence": [
+      "docs/CRYPTOGRAPHY.md"
+    ]
+  },
+  "V11.3.2": {
+    "status": "met",
+    "note": "AES-256-GCM on the server; on the phone SQLCipher's AES-256-CBC with a per-page HMAC-SHA512 (encrypt-then-MAC).",
+    "evidence": [
+      "docs/CRYPTOGRAPHY.md",
+      "apps/api/src/storage/pg.ts"
+    ]
+  },
+  "V11.3.3": {
+    "status": "met",
+    "note": "All encrypted data is authenticated: GCM's tag on the server (a modified envelope does not open), SQLCipher's per-page HMAC on the phone.",
+    "evidence": [
+      "apps/api/src/storage/pg.test.ts",
+      "apps/api/src/storage/pg-gcm.test.ts"
+    ]
+  },
+  "V11.4.1": {
+    "status": "met",
+    "note": "SHA-256 for hashing and HMAC, SHA-512 inside SQLCipher; no MD5 or SHA-1 anywhere.",
+    "evidence": [
+      "docs/CRYPTOGRAPHY.md"
+    ]
+  },
+  "V11.4.2": {
+    "status": "met",
+    "note": "No user passwords exist (sign-in is by email link or code, Apple or Google). The one password-like secret, the app-lock PIN, is stored as PBKDF2-HMAC-SHA256 with 600,000 iterations and a random salt.",
+    "evidence": [
+      "apps/mobile/src/security/app-lock.ts",
+      "apps/mobile/src/security/app-lock.test.ts"
+    ]
+  },
+  "V11.4.3": {
+    "status": "met",
+    "note": "SHA-256 (256-bit output) for signatures and token hashes.",
+    "evidence": [
+      "docs/CRYPTOGRAPHY.md"
+    ]
+  },
+  "V11.4.4": {
+    "status": "met",
+    "note": "Keys from secrets use PBKDF2: the PIN at 600,000 iterations; the phone database key through SQLCipher's PBKDF2-HMAC-SHA512 at 256,000.",
+    "evidence": [
+      "docs/CRYPTOGRAPHY.md",
+      "apps/mobile/src/security/app-lock.ts"
+    ]
+  },
+  "V11.5.1": {
+    "status": "partial",
+    "note": "Secrets are from the CSPRNG: sign-in links and refresh tokens 256 bits, the device database key 244. The household share code is about 40 bits, short so people can type it, and guessing is bounded by a rate limit and the 5-member cap. (The 6-digit sign-in code is a one-time code, bounded under V6.)",
+    "evidence": [
+      "docs/CRYPTOGRAPHY.md",
+      "apps/api/src/family.ts"
+    ],
+    "owner": "owner (decision: share-code length)"
+  },
+  "V11.6.1": {
+    "status": "met",
+    "note": "Keys are generated by OpenSSL (RSA, AES via openssl rand) and the platform CSPRNG on the phone; signatures are RS256 through node:crypto.",
+    "evidence": [
+      "docs/CRYPTOGRAPHY.md"
+    ]
+  },
+  "V12.1.1": {
+    "status": "met",
+    "note": "Measured 2026-10-05 on the API and the website: TLS 1.0 and 1.1 refused, 1.2 and 1.3 accepted, 1.3 chosen when offered.",
+    "evidence": [
+      "scripts/tls-check.mjs"
+    ]
+  },
+  "V12.1.2": {
+    "status": "met",
+    "note": "Measured 2026-10-05 on both hosts with TLS 1.2: ECDHE with AES-GCM accepted (chosen first); every RSA-key-exchange suite (no forward secrecy) and every CBC suite refused by the server. TLS 1.3 has only AEAD suites. (3DES, RC4 and NULL could not be offered: the local OpenSSL lacks them.)",
+    "evidence": [
+      "scripts/tls-check.mjs"
+    ]
+  },
+  "V12.1.3": {
+    "status": "na",
+    "note": "No mutual TLS."
+  },
+  "V12.2.1": {
+    "status": "met",
+    "note": "Every client connection is HTTPS: HSTS on both hosts; the app uses only the https API address. (The API host also answers plain http with a redirect, recorded under V4.1.2.)",
+    "evidence": [
+      "apps/mobile/eas.json",
+      "apps/web/next.config.test.ts",
+      "apps/api/src/app.test.ts"
+    ]
+  },
+  "V12.2.2": {
+    "status": "met",
+    "note": "Publicly trusted certificates (seen 2026-10-05): Google Trust Services for the API (through Render), Let's Encrypt for zenoapp.in (through Netlify).",
+    "evidence": [
+      "docs/CRYPTOGRAPHY.md",
+      "scripts/tls-check.mjs"
+    ]
+  },
+  "V12.3.1": {
+    "status": "met",
+    "note": "Every connection is encrypted: outbound calls are https to fixed hosts; Postgres over TLS (on by default, a typo fails closed to \"verify\"); no SSH or management channel of ours.",
+    "evidence": [
+      "apps/api/src/outbound.test.ts",
+      "apps/api/src/storage/pg.test.ts",
+      "apps/api/src/config.test.ts"
+    ]
+  },
+  "V12.3.2": {
+    "status": "partial",
+    "note": "Every TLS client verifies certificates (Node's default) except the Postgres connection: Render's internal database uses a self-signed certificate it does not support verifying. Traffic stays on Render's private network. Accepted in P0.3.",
+    "evidence": [
+      "apps/api/src/storage/pg.ts",
+      "apps/api/src/storage/pg.test.ts"
+    ],
+    "owner": "owner (P8: host)"
+  },
+  "V12.3.3": {
+    "status": "na",
+    "note": "No internal HTTP services: one API process and its database."
+  },
+  "V12.3.4": {
+    "status": "partial",
+    "note": "The only internal connection, to Postgres, uses Render's self-signed certificate, unverified (see V12.3.2).",
+    "evidence": [
+      "apps/api/src/storage/pg.ts"
+    ],
+    "owner": "owner (P8: host)"
+  },
+  "V13.1.1": {
+    "status": "met",
+    "note": "Every connection is documented (the data-flow diagram), and every outbound call site is inventoried in a test that fails on a new one. No user can make the server call a URL of their choosing.",
+    "evidence": [
+      "docs/THREAT_MODEL.md",
+      "apps/api/src/outbound.test.ts"
+    ]
+  },
+  "V13.2.1": {
+    "status": "met",
+    "note": "Each backend link has its own credential: Postgres (Render-generated), the RevenueCat webhook (a shared secret, compared in constant time), /metrics (its own token), each provider its own key.",
+    "evidence": [
+      "docs/CRYPTOGRAPHY.md",
+      "apps/api/src/webhook.test.ts",
+      "apps/api/src/metrics.test.ts"
+    ]
+  },
+  "V13.2.2": {
+    "status": "partial",
+    "note": "The API connects to Postgres as the database owner Render creates; there is no separate role with only the rights it needs.",
+    "evidence": [
+      "apps/api/src/storage/pg.ts"
+    ],
+    "owner": "owner (P8: host)"
+  },
+  "V13.2.3": {
+    "status": "met",
+    "note": "No default credentials: the database password is generated by Render; secrets are random values the owner made; production refuses to start without its keys.",
+    "evidence": [
+      "apps/api/src/config.test.ts",
+      "apps/api/src/start.test.ts"
+    ]
+  },
+  "V13.2.4": {
+    "status": "met",
+    "note": "The allowlist is in code: each outbound call goes to a fixed host, and the inventory test fails on any new call site until reviewed.",
+    "evidence": [
+      "apps/api/src/outbound.test.ts"
+    ]
+  },
+  "V13.2.5": {
+    "status": "partial",
+    "note": "The allowlist is enforced by the code only (V13.2.4); Render offers no outbound firewall to enforce it at the network.",
+    "evidence": [
+      "apps/api/src/outbound.test.ts"
+    ],
+    "owner": "owner (P8: host)"
+  },
+  "V13.3.1": {
+    "status": "partial",
+    "note": "Secrets live in Render's environment settings and the owner's offline key folder, never in the repository (gitleaks on every commit and the full history). Render is not a key vault, and keys that were pasted into a chat must be rotated.",
+    "evidence": [
+      ".github/workflows/ci.yml",
+      "docs/CRYPTOGRAPHY.md"
+    ],
+    "owner": "owner (rotate exposed keys; P8)"
+  },
+  "V13.3.2": {
+    "status": "met",
+    "note": "Each secret is read only by the process that needs it, and only the owner's Render account can see them; the website build is checked for leaked server secrets.",
+    "evidence": [
+      "scripts/build-secret-scan.mjs",
+      "docs/CRYPTOGRAPHY.md"
+    ]
+  },
+  "V13.4.1": {
+    "status": "met",
+    "note": "No source-control metadata is served: /.git/config is 404 on both hosts (measured 2026-10-05); the API serves no files, the website only its build output.",
+    "evidence": [
+      ".github/workflows/dast.yml"
+    ]
+  },
+  "V13.4.2": {
+    "status": "met",
+    "note": "Production runs with NODE_ENV=production: no debug routes, the website a production build, the logger at info, demo sign-in off unless its password is set.",
+    "evidence": [
+      "apps/api/src/config.test.ts",
+      "apps/api/src/server-options.test.ts"
+    ]
+  },
+  "V13.4.3": {
+    "status": "met",
+    "note": "No directory listings: the API serves no files, and Netlify does not list directories.",
+    "evidence": [
+      ".github/workflows/dast.yml"
+    ]
+  },
+  "V13.4.4": {
+    "status": "met",
+    "note": "TRACE is refused on a real socket and never echoes the request.",
+    "evidence": [
+      "apps/api/src/http-message.test.ts"
+    ]
+  },
+  "V13.4.5": {
+    "status": "met",
+    "note": "No API documentation is served; /metrics needs its token in production and fails closed when the token is unset.",
+    "evidence": [
+      "apps/api/src/metrics.test.ts",
+      "apps/api/src/app.routes.test.ts"
+    ]
+  },
+  "V14.1.1": {
+    "status": "met",
+    "note": "Sensitive data identified and put into four protection levels.",
+    "evidence": [
+      "docs/DATA_AND_LOGGING.md"
+    ]
+  },
+  "V14.1.2": {
+    "status": "met",
+    "note": "Each level has its encryption, integrity, retention, logging and access rules written down.",
+    "evidence": [
+      "docs/DATA_AND_LOGGING.md"
+    ]
+  },
+  "V14.2.1": {
+    "status": "partial",
+    "note": "Sensitive values travel in headers and bodies, except the email sign-in link, which carries a one-time token in its query string (GET /auth/verify). It works once, expires in 10 minutes, and is never logged (F9).",
+    "evidence": [
+      "docs/DATA_AND_LOGGING.md",
+      "apps/api/src/log-hygiene.test.ts"
+    ],
+    "owner": "me"
+  },
+  "V14.2.2": {
+    "status": "met",
+    "note": "Every API answer says Cache-Control: no-store (F217); there is no cache in front of the API, and Redis (if used) holds only rate-limit counters.",
+    "evidence": [
+      "apps/api/src/app.test.ts"
+    ]
+  },
+  "V14.2.3": {
+    "status": "met",
+    "note": "No trackers in the website or the app. Crash reports go to Sentry only when configured, scrubbed of amounts, names, emails and tokens.",
+    "evidence": [
+      "apps/mobile/src/monitoring/scrub-edges.test.ts",
+      "docs/DATA_AND_LOGGING.md"
+    ]
+  },
+  "V14.2.4": {
+    "status": "met",
+    "note": "The rules of each level are implemented and tested: encryption and integrity (GCM, SQLCipher), retention (account deletion leaves no row), logging (no secret or email in any log line).",
+    "evidence": [
+      "apps/api/src/storage/pg.test.ts",
+      "apps/api/src/storage/real-pg.test.ts",
+      "apps/api/src/log-hygiene.test.ts"
+    ]
+  },
+  "V14.3.1": {
+    "status": "met",
+    "note": "Signing out removes the tokens from the keychain; \"Erase this device\" removes the user's data from the phone. The website holds no authenticated data.",
+    "evidence": [
+      "apps/mobile/src/auth/authStore.test.ts",
+      "apps/mobile/src/security/erase-device.test.ts"
+    ]
+  },
+  "V14.3.2": {
+    "status": "met",
+    "note": "Cache-Control: no-store on every API answer, errors included (F217).",
+    "evidence": [
+      "apps/api/src/app.test.ts"
+    ]
+  },
+  "V14.3.3": {
+    "status": "met",
+    "note": "The website's browser storage holds one value, the light or dark theme.",
+    "evidence": [
+      "apps/web/lib/theme.ts"
+    ]
+  },
+  "V15.1.1": {
+    "status": "met",
+    "note": "Remediation time frames written: high and critical before the next deploy (CI blocks), exceptions with a reason and an expiry of at most 3 months, moderate and low reviewed in 30 days.",
+    "evidence": [
+      "docs/COMPONENTS_AND_LOAD.md",
+      "scripts/audit-gate.mjs"
+    ]
+  },
+  "V15.1.2": {
+    "status": "met",
+    "note": "A CycloneDX SBOM of the whole lockfile on every CI run; packages only from the npm registry, pinned by integrity hashes; Actions pinned by commit.",
+    "evidence": [
+      ".github/workflows/ci.yml"
+    ]
+  },
+  "V15.1.3": {
+    "status": "met",
+    "note": "Costly functions listed (the AI coach, sign-in email, provider key fetches, sync) with the limits that protect availability.",
+    "evidence": [
+      "docs/COMPONENTS_AND_LOAD.md"
+    ]
+  },
+  "V15.2.1": {
+    "status": "met",
+    "note": "As of 2026-10-05: no high or critical advisory outside the expiring allowlist; the 4 moderate ones reviewed and recorded, none reaching the API or website at run time.",
+    "evidence": [
+      "docs/COMPONENTS_AND_LOAD.md",
+      ".audit-allowlist.json"
+    ]
+  },
+  "V15.2.2": {
+    "status": "met",
+    "note": "Limits implemented and tested: per-route and per-account rate limits, a 30 s deadline on the coach, 8 s on every outbound call, bounded inputs.",
+    "evidence": [
+      "apps/api/src/rate-limits.test.ts",
+      "apps/api/src/coach.test.ts",
+      "apps/api/src/http.test.ts"
+    ]
+  },
+  "V15.2.3": {
+    "status": "partial",
+    "note": "No test code or samples ship. But production serves routes the app does not use (/sync, /public-api/keys, /business/summary, the open-banking intents) and a Plaid development adapter.",
+    "evidence": [
+      "docs/THREAT_MODEL.md"
+    ],
+    "owner": "owner (decision: remove the unused routes)"
+  },
+  "V15.3.1": {
+    "status": "met",
+    "note": "Handlers build each answer from named fields (for example /account returns only the account id and plan); no stored record is returned whole.",
+    "evidence": [
+      "apps/api/src/app.ts",
+      "apps/api/src/authz-matrix.test.ts"
+    ]
+  },
+  "V15.3.2": {
+    "status": "met",
+    "note": "Outbound calls never follow a redirect: refused, and the target never called, on a real socket (F218).",
+    "evidence": [
+      "apps/api/src/http.test.ts"
+    ]
+  },
+  "V15.3.3": {
+    "status": "met",
+    "note": "Bodies are parsed by schemas that keep only the declared fields; a household member's write lands on their own line whatever the body says.",
+    "evidence": [
+      "apps/api/src/schema-valid.test.ts",
+      "apps/api/src/family-spend.test.ts"
+    ]
+  },
+  "V15.3.4": {
+    "status": "met",
+    "note": "The client IP comes from a bounded number of trusted proxy hops; client-written X-Forwarded-For entries are ignored.",
+    "evidence": [
+      "apps/api/src/trust-proxy.test.ts"
+    ]
+  },
+  "V15.3.5": {
+    "status": "met",
+    "note": "TypeScript in strict mode; inputs are parsed by schemas into exact types; the one route reading its query without a schema refuses a repeated parameter instead of coercing it (F219).",
+    "evidence": [
+      "apps/api/src/http-message.test.ts",
+      "apps/api/src/schema-valid.test.ts"
+    ]
+  },
+  "V15.3.6": {
+    "status": "met",
+    "note": "Prototype-pollution keys are refused at the JSON parser; schemas produce fresh objects.",
+    "evidence": [
+      "apps/api/src/fuzz.test.ts"
+    ]
+  },
+  "V15.3.7": {
+    "status": "met",
+    "note": "Each route reads its parameters from one place (query or body, never merged); a parameter sent twice is refused with 400 (F219).",
+    "evidence": [
+      "apps/api/src/http-message.test.ts"
+    ]
+  },
+  "V16.1.1": {
+    "status": "met",
+    "note": "Logging inventory: each layer, what it logs, the format, where it goes, who can read it, how long it is kept.",
+    "evidence": [
+      "docs/DATA_AND_LOGGING.md"
+    ]
+  },
+  "V16.2.1": {
+    "status": "partial",
+    "note": "Each line has when (UTC time), where (host, route), what (method, path, status) and the client IP and request id, but not the account: who did something is reconstructed from IP and time.",
+    "evidence": [
+      "docs/DATA_AND_LOGGING.md",
+      "apps/api/src/server-options.ts"
+    ],
+    "owner": "me"
+  },
+  "V16.2.2": {
+    "status": "met",
+    "note": "Timestamps are epoch milliseconds (UTC) from the host clock, which Render keeps synchronised.",
+    "evidence": [
+      "apps/api/src/server-options.ts"
+    ]
+  },
+  "V16.2.3": {
+    "status": "met",
+    "note": "Logs go only where the inventory says: stdout (Render), the operator's alert webhook for a 5xx, and Sentry on the phone when configured.",
+    "evidence": [
+      "docs/DATA_AND_LOGGING.md",
+      "apps/api/src/outbound.test.ts"
+    ]
+  },
+  "V16.2.4": {
+    "status": "met",
+    "note": "JSON lines (pino), readable by any log processor.",
+    "evidence": [
+      "apps/api/src/server-options.ts",
+      "apps/api/src/log-hygiene.test.ts"
+    ]
+  },
+  "V16.2.5": {
+    "status": "met",
+    "note": "No secret, token, query string, body or email address is logged: redaction by path, a request serializer that drops the query, tested with markers.",
+    "evidence": [
+      "apps/api/src/log-hygiene.test.ts"
+    ]
+  },
+  "V16.3.1": {
+    "status": "partial",
+    "note": "Every sign-in attempt, success or failure, appears as its request line with route and status, but there is no event naming the account and the method used.",
+    "evidence": [
+      "docs/DATA_AND_LOGGING.md"
+    ],
+    "owner": "me"
+  },
+  "V16.3.2": {
+    "status": "partial",
+    "note": "A refused request (401, 403) appears as its request line with route and status, but without the account or the reason.",
+    "evidence": [
+      "docs/DATA_AND_LOGGING.md"
+    ],
+    "owner": "me"
+  },
+  "V16.3.3": {
+    "status": "partial",
+    "note": "Attempts to get past validation and rate limits show as 400 and 429 request lines; there is no dedicated security-event log.",
+    "evidence": [
+      "docs/DATA_AND_LOGGING.md"
+    ],
+    "owner": "me"
+  },
+  "V16.3.4": {
+    "status": "met",
+    "note": "Unexpected errors are logged at error level with the request id and sent to the alert webhook; an outside service failing (a provider down, a TLS error reaching it) is logged as a warning with the error.",
+    "evidence": [
+      "apps/api/src/log-hygiene.test.ts",
+      "apps/api/src/app.test.ts"
+    ]
+  },
+  "V16.4.1": {
+    "status": "met",
+    "note": "Every log line is a JSON object written by pino, which escapes control characters, so a value cannot start a new line.",
+    "evidence": [
+      "apps/api/src/log-hygiene.test.ts"
+    ]
+  },
+  "V16.4.2": {
+    "status": "partial",
+    "note": "The app only writes to stdout and cannot read or change stored logs. Who can read them is the Render workspace; its members and two-factor sign-in are the owner's to confirm.",
+    "evidence": [
+      "docs/DATA_AND_LOGGING.md"
+    ],
+    "owner": "owner (P8: host)"
+  },
+  "V16.4.3": {
+    "status": "partial",
+    "note": "Logs are held by Render, outside the application, but there is no separate system for analysis and alerting beyond the 5xx webhook.",
+    "evidence": [
+      "docs/DATA_AND_LOGGING.md"
+    ],
+    "owner": "owner (P8: host)"
+  },
+  "V16.5.1": {
+    "status": "met",
+    "note": "Every 4xx and 5xx answer is a fixed message with the request id; no stack, query or internal detail.",
+    "evidence": [
+      "apps/api/src/log-hygiene.test.ts"
+    ]
+  },
+  "V16.5.2": {
+    "status": "met",
+    "note": "Outside failures degrade: the coach falls back to on-device insights, every outbound call has a deadline, the API starts when the database is briefly unreachable, the 5xx alert is bounded.",
+    "evidence": [
+      "apps/api/src/coach.fallback.test.ts",
+      "apps/api/src/start.test.ts",
+      "apps/api/src/http.test.ts"
+    ]
+  },
+  "V16.5.3": {
+    "status": "met",
+    "note": "Failures fail closed: a token that cannot be verified is refused, /metrics without its token refuses, a validation error stops the handler, an exception answers 500 with nothing done after it.",
+    "evidence": [
+      "apps/api/src/auth-guard.test.ts",
+      "apps/api/src/fuzz.test.ts",
+      "apps/api/src/metrics.test.ts"
+    ]
   },
   "V17.1.1": {
     "status": "na",

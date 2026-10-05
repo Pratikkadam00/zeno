@@ -19,5 +19,8 @@ export async function fetchWithTimeout(
   // Respect a caller-supplied signal if one is passed; otherwise install a
   // timeout signal. (No current caller passes one, but this keeps the helper safe.)
   const signal = init.signal ?? AbortSignal.timeout(timeoutMs);
-  return fetch(input, { ...init, signal });
+  // No redirects (ASVS V15.3.2, F218): every host we call answers directly, so
+  // a redirect means something is wrong, and following one would send the
+  // request (its API key included) to a host nobody reviewed.
+  return fetch(input, { ...init, signal, redirect: "error" });
 }
