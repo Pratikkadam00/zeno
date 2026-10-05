@@ -106,7 +106,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P6.2 Stryker on the API (`apps/api/src`), security and money paths first. **Done**: **88.95 %** over the whole API (2,752 of 3,094), floor 88 % in `stryker.api.config.mjs`; the sign-in routes 81.31 % to 84.53 %, the smaller security files 89.03 % to 95.69 %, coach/storage/startup 88.71 % to 92.80 %, the main routes 82.26 % to 83.52 %; **fixes F208-F211** (missing tests; no code was wrong)
   - [x] P6.3 Stryker on the app's logic (`apps/mobile/src`, outside screens and components). **Done**: **89.74 %** (4,566 of 5,088), floor 89 % in `stryker.mobile.config.mjs`; **fixes F212-F214**
   - [x] P6.4 fast-check properties: money math (rounding, minor units), UTC date math (DST, leap days), the email and CSV parsers (never throw, never over-match), the catalog (per-entry invariants), sync (idempotent, ordered). **Done**: 23 properties (24 tests) in four files, bite-checked with 7 deliberate breaks, all caught (the generated-input ones on three repeat runs)
-  - [ ] P6.5 CI: the mutation floor nightly, and on pull requests for changed files
+  - [x] P6.5 CI: the mutation floor nightly, and on pull requests for changed files. **Done** (`.github/workflows/mutation.yml`): nightly, all three suites held to their floors; pull requests, the changed source files scored in the job summary, not enforced (reason below). First nightly result: to be read
   - [ ] P6 gate: the floor enforced in CI and green on GitHub
 - [ ] **P7 — Security verification v2 with evidence**
 - [ ] **P8 — Infrastructure and operations (owner-driven)**
@@ -6009,3 +6009,29 @@ Kiritimati (UTC+14) and Los Angeles.
 
 **Next: P6.5**, the floors in CI: the mutation runs nightly, and on pull requests for the
 files they change.
+
+
+### P6.5 — the mutation floors in CI — 2026-10-05
+
+`.github/workflows/mutation.yml`:
+- **Nightly (02:47 UTC) and on demand:** the shared packages, the API and the app's logic
+  as three parallel jobs, each `npx stryker run <its config>`; the config's `break` fails
+  the job below its floor (92 %, 88 %, 89 %, P6.1-P6.3). Each job writes its per-file
+  table to the job summary (`scripts/mutation-score.mjs`, Stryker's own formula; checked
+  against Stryker's figure on a real report, 88.24 % both) and keeps the report 14 days.
+- **Pull requests that change source** in those three trees: only the changed files
+  (added or modified, tests and helpers left out) are mutated, per suite, through
+  `stryker.pr.config.mjs`, and the score goes in the summary. **Not enforced:** a floor
+  is a whole-suite measure, and a single file can sit under it while its suite is above
+  (the API's `app.ts` is 83.52 % inside an 88.95 % API), so a per-file floor would fail
+  honest pull requests; the nightly run enforces the suites. Checked locally: one file at
+  88.24 % (under the shared floor of 92 %) exits 0 in this mode; an unknown suite name
+  stops with its reason; the changed-file lists over the last four commits came out right
+  (only the app had changed source).
+
+Runner time, estimated from this machine (12 cores, 10 workers: 9, about 20 and 4
+minutes): GitHub's 4-core runner takes roughly three times as long, so the API job has a
+150-minute limit. The first nightly run's real times and scores are the check on that.
+
+**P6 gate** (the floor in CI, green on GitHub): met once the first nightly mutation run is
+green; until then P6 stays open in the tree above.

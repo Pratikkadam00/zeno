@@ -1,0 +1,107 @@
+name: Mutation testing
+
+# P6.5. Stryker changes the code one small edit at a time and re-runs the tests;
+# an edit no test notices is a line the tests don't really check.
+#  - Nightly: all three suites, each held to its floor (`break` in its config:
+#    shared packages 92 %, API 88 %, app logic 89 %). Below a floor the job fails.
+#  - Pull requests: only the source files the pull request changed, scored and
+#    shown in the job summary, never failed on (a floor is a whole-suite measure;
+#    one file can sit under it while its suite is above). See stryker.pr.config.mjs.
+on:
+  schedule:
+    - cron: "47 2 * * *" # 02:47 UTC daily (off the hour; the other nightlies are at 03:17 and later)
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "packages/*/src/**/*.ts"
+      - "apps/api/src/**/*.ts"
+      - "apps/mobile/src/**/*.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  nightly:
+    if: github.event_name != 'pull_request'
+    name: ${{ matrix.suite }} (floor ${{ matrix.floor }})
+    runs-on: ubuntu-24.04 # pinned like ci.yml
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { suite: shared, config: stryker.config.mjs, report: reports/mutation/mutation.json, floor: "92 %" }
+          - { suite: api, config: stryker.api.config.mjs, report: reports/mutation-api/mutation.json, floor: "88 %" }
+          - { suite: mobile, config: stryker.mobile.config.mjs, report: reports/mutation-mobile/mutation.json, floor: "89 %" }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Mutation run (fails below the floor)
+        run: npx stryker run ${{ matrix.config }}
+
+      - name: Score in the job summary
+        if: always()
+        run: |
+          if [ -f "${{ matrix.report }}" ]; then
+            node scripts/mutation-score.mjs "${{ matrix.report }}" "Mutation score: ${{ matrix.suite }} (floor ${{ matrix.floor }})" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mutation-${{ matrix.suite }}
+          path: reports/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  pull-request:
+    if: github.event_name == 'pull_request'
+    name: changed files (reported, not enforced)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Mutate the changed source files of each suite
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          changed() { git diff --name-only --diff-filter=AM "$BASE"...HEAD -- "$@" | grep -E '\.ts$' | grep -vE '\.(test|testutil|d)\.ts$' | paste -sd, - || true; }
+          run_suite() {
+            suite="$1"; files="$2"
+            if [ -z "$files" ]; then echo "$suite: no changed source files"; return 0; fi
+            echo "$suite: $files"
+            STRYKER_SUITE="$suite" STRYKER_FILES="$files" npx stryker run stryker.pr.config.mjs
+            node scripts/mutation-score.mjs reports/mutation-pr/mutation.json "Mutation score of the changed files: $suite" >> "$GITHUB_STEP_SUMMARY"
+            rm -rf reports/mutation-pr
+          }
+          run_suite shared "$(changed 'packages/*/src/**')"
+          run_suite api "$(changed 'apps/api/src/**')"
+          run_suite mobile "$(changed 'apps/mobile/src/**')"
