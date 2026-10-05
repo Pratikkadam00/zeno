@@ -192,5 +192,10 @@ instance/cold-start and isn't shared across replicas. Before real traffic:
 
 ## Reporting a vulnerability
 
-Email **security@zeno.app** (set this up before launch). Do not open public issues
-for security reports.
+Email **security@zenoapp.in**, the address in https://zenoapp.in/.well-known/security.txt
+(RFC 9116). Do not open public issues for security reports. Please include what you
+found, how to reproduce it, and what it affects. Test only against your own account and data, and don't run automated scanners
+against production at a rate that degrades it.
+
+**Status (2026-10-05):** the domain does not receive mail yet (no MX record; F223 in
+`docs/HARDENING_LOG.md`); until the owner sets it up, reports cannot reach us by email.

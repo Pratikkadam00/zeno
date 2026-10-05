@@ -120,6 +120,7 @@ block the soft launch.
 | R29 | Small items: "Rate Zeno" opens Apple's store on Android (F101); what "Export my data" covers (F127, D6); made-up guide addresses log an error line (F199); text typed in the homepage's first 65 ms is lost (F200) | Low | owner (F101, F127); me (F199, F200) | before the store release; P8 | log |
 | R30 | The privacy policy, cookie policy and terms are drafts not reviewed by a lawyer | Medium (legal) | owner | before launch | `OWNER_ACTIONS.md` §1 |
 | R31 | No audit trail of what users change: security events cover sign-in, sign-out and refusals, but a household write or an account deletion is only a request line | Low | me | 2026-10-31 (P8) | Threat model §6 |
+| R32 | The contact addresses receive no mail (no MX record): data requests to `privacy@` and vulnerability reports to `security@` bounce | High (legal) | owner | 2026-10-12, before launch | F223 |
 
 ## 6. Next
 

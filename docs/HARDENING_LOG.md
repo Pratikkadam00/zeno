@@ -110,11 +110,20 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [ ] P6 gate: the floor enforced in CI and green on GitHub
 - [ ] **P7 — Security verification v2 with evidence**
   - [x] P7.1 Threat model: the system and its trust boundaries (data-flow diagram), STRIDE per surface (phone, API, database, website, outside services) and per route (all 40), each threat with its evidence or marked open with an owner. **Done**: `docs/THREAT_MODEL.md`
-  - [ ] P7.2 ASVS 5.0 Level 2 checklist, every control with its evidence (test, CI job or config line) or "open, owned by"; control text taken from OWASP's repository, not memory. **Done 2026-10-05**: all 253 assessed (158 met, 79 N/A, 12 partial, 4 open; every partial and open one is the owner's: host settings (P8) or a decision in `OWNER_ACTIONS.md` D17); **fixes F216 to F222**, plus the security-event log
+  - [x] P7.2 ASVS 5.0 Level 2 checklist, every control with its evidence (test, CI job or config line) or "open, owned by"; control text taken from OWASP's repository, not memory. **Done 2026-10-05**: all 253 assessed (158 met, 79 N/A, 12 partial, 4 open; every partial and open one is the owner's: host settings (P8) or a decision in `OWNER_ACTIONS.md` D17); **fixes F216 to F222**, plus the security-event log
   - [x] P7.3 MASVS checklist refreshed with P4-P6 (every row's evidence re-pointed at a test name). **Done 2026-10-05**: 41 tests named, held by `scripts/masvs-checklist.test.ts`
   - [x] P7.4 `docs/SECURITY_AUDIT_2026-10.md` replacing the July audit; a residual-risk register, each risk with an owner and a date. **Done 2026-10-05**: 31 risks, held by `scripts/security-audit.test.ts`
   - [x] P7 gate: no control marked "believed": each is "tested by …" or "open, owned by …". **Passed 2026-10-05** on GitHub (CI 37320819545 and CodeQL 37320819681, both green on `4f2f10d`): ASVS rows held by `scripts/asvs-checklist.test.ts` (only met, partial, open or N/A; met with evidence that exists, partial and open with an owner), MASVS rows by `scripts/masvs-checklist.test.ts` (every named test exists), residual risks by `scripts/security-audit.test.ts` (owner and date on each)
 - [ ] **P8 — Infrastructure and operations (owner-driven)**
+  - [x] P8.1 (me) Runbooks: signing-key swap without downtime (new: `JWT_PUBLIC_KEY_PREVIOUS`, tested), storage-key and webhook-secret rotation, an exposed secret, the backup and restore drill, uptime alerts (`docs/RUNBOOKS.md`). Done 2026-10-05
+  - [x] P8.2 (me) Uptime check on `/health/ready` (`.github/workflows/uptime.yml`, `scripts/uptime-check.mjs`, tested); off until the owner sets `UPTIME_CHECKS=on`. Done 2026-10-05
+  - [x] P8.3 (me) Disclosure contact: `/.well-known/security.txt` (RFC 9116, tested, served by the production build) and `SECURITY.md` on the real domain. Done 2026-10-05; mail delivery is F223 (owner)
+  - [x] P8.4 (me) DNS measured (CAA, DNSSEC, SPF, DKIM, DMARC, MX); the records to add are in `OWNER_ACTIONS.md`. Done 2026-10-05
+  - [ ] P8.5 (owner) `main` protected (F7), GitHub push protection and Dependabot alerts (F8), exposed keys rotated, the 3072-bit key swap, mail for the contact addresses (F223), CAA, DNSSEC, DMARC `p=reject`
+  - [ ] P8.6 (owner) `zeno-db` on a paid plan before 2026-11-03, then the restore drill (`RUNBOOKS.md` §5)
+  - [ ] P8.7 (owner, then me) Edge rate limiting and WAF (Cloudflare in front of Render), then F3's log check
+  - [ ] P8.8 (owner) A third-party penetration test, booked
+  - [ ] P8.9 (owner, me to draft) Store data-safety forms and the iOS privacy manifest, drafted from the code
 
 ---
 
@@ -335,6 +344,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F220 | **FIXED in P7.2 (ASVS V6.6.2).** Requesting a new sign-in email replaced the code but left the earlier LINK working for the rest of its 10 minutes: an old email in the inbox, forwarded or intercepted, still signed in. A new request now retires the address's earlier link (deleted in memory and, awaited, in Postgres, so a restart can't revive it). `auth.test.ts`: the first link answers 401, the second signs in, another address is untouched; fails on the old code. | Low | me | P7.2 |
 | F221 | **FIXED in P7.2 (ASVS V7.2.4).** Signing in again on the phone replaced the session there but left the previous one alive on the server until its refresh token expired (30 days). The app now revokes the previous refresh token (`/auth/logout`) once the new session is stored; offline, the revoke fails quietly and the sign-in stands. `authStore.flows.test.ts` (magic link and Apple); fails on the old code. | Low | me | P7.2 |
 | F222 | **FIXED in P7.2 (ASVS V3.5.3, V14.2.1).** Using up a sign-in link was `GET /auth/verify?token=…`: a state change on a GET, with a one-time token in a URL, where proxies and histories keep it. It is now `POST /auth/verify` with the token (or email and code) in the body; the GET is removed and answers 404. No released app used the GET (pre-launch); an emulator build from before this commit can't verify links against the new API. 45 test call sites moved to the POST. `http-message.test.ts` fails if a GET is added back. | Low | me | P7.2 |
+| F223 | **OPEN (owner, P8.5): the contact addresses receive no mail.** `zenoapp.in` has no MX record (Google's and Cloudflare's resolvers, 2026-10-05), and with no MX, mail falls back to the A record, Netlify's web servers, which accept none. So `privacy@` (the privacy policy's address for data requests), `legal@` (the terms), `feedback@` (the app's feedback button) and `security@` (security.txt) all bounce. Found while adding the disclosure contact; `SECURITY.md` also named the wrong domain (`zeno.app`), fixed. | High (legal: requests under privacy law go unanswered) | owner | P8.5 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **CLOSED in the P3 gate (2026-10-02): reachable, not a bug.** TalkBack, driven by touches from the emulator's own touchscreen, put its focus on each nested button's exact bounds, separately from its parent: the calendar's "Cancel Figma", the menu's Edit/Pause/Delete, the login's Terms and Privacy links. Original note: on the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -6224,4 +6234,28 @@ holds the register: numbered without gaps, every risk with a severity, an owner 
 or event, every cited finding in this log, every finding the threat model hands over
 present, every cited document existing. Bite-checked: a row without an owner and a
 dropped F14 each fail.
+
+### P8 — my part: runbooks, uptime check, disclosure contact, DNS measured — 2026-10-05
+
+**Measured first (read-only):** `zenoapp.in` has no CAA record (any CA may issue), no
+DNSSEC, DMARC at `p=quarantine` with reports to GoDaddy, Resend's DKIM and SPF on the
+sending subdomain in place, and **no MX record** (F223): every contact address the site,
+the policies and the app give out bounces. The owner's steps for each are in
+`OWNER_ACTIONS.md` §1.
+
+**Key rotation, corrected.** Writing the runbook, I checked my earlier note that swapping
+the JWT key "logs no one out": true, but the app refreshes on a 14-minute timer, not on a
+401, so every request in the next ~15 minutes would have been refused. The API now
+accepts the previous public key while `JWT_PUBLIC_KEY_PREVIOUS` is set
+(`auth-key-rotation.test.ts`: the previous key verifies, a stranger's doesn't; bite-checked),
+and the owner's step and `CRYPTOGRAPHY.md` say to use it.
+
+**Added:** `docs/RUNBOOKS.md` (six procedures); `/.well-known/security.txt` (RFC 9116;
+Expires 180 days after each deploy; tested, and fetched from the production build:
+200, text/plain); `SECURITY.md`'s reporting section on the real domain, without a
+response-time promise (that is the owner's to make); an uptime workflow running
+`scripts/uptime-check.mjs` every 15 minutes (200, "ready", every check "ok", one retry for
+a cold start; 5 tests against a local server, bite-checked; run once against production:
+UP), off until the owner sets `UPTIME_CHECKS=on`, because each check spends free Render
+hours.
 

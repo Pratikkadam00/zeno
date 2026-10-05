@@ -37,5 +37,6 @@ export function siteUrl(path = "/"): string {
 /** Contact addresses derive from the host so they move with the domain. */
 export const CONTACT_EMAIL = {
   privacy: `privacy@${SITE_HOST}`,
-  legal: `legal@${SITE_HOST}`
+  legal: `legal@${SITE_HOST}`,
+  security: `security@${SITE_HOST}`
 } as const;

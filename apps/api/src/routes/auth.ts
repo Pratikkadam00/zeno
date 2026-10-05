@@ -196,6 +196,11 @@ function recordWrongCode(email: string, accountId: string): void {
 }
 const jwksCache = new Map<string, { expiresAt: number; keys: JsonWebKey[] }>();
 const keyPair = loadSigningKeys();
+// Key rotation (P8, docs/RUNBOOKS.md): while JWT_PUBLIC_KEY_PREVIOUS is set, a
+// token signed by the previous key still verifies, so swapping the signing key
+// doesn't refuse every access token already out (they live 15 minutes). Remove
+// it 15 minutes after the swap. Signing always uses the current key.
+const previousPublicKey = normalizePem(process.env.JWT_PUBLIC_KEY_PREVIOUS);
 
 // Replay persisted auth state on boot so a deploy/restart doesn't log everyone
 // out (refresh sessions) or invalidate a magic link mid-flight. Expired records
@@ -726,10 +731,13 @@ export function verifyAccessToken(token: string): VerifiedAccessToken | null {
     if (header.alg !== "RS256") {
       return null;
     }
-    const verifier = createVerify("RSA-SHA256");
-    verifier.update(`${encodedHeader}.${encodedPayload}`);
-    verifier.end();
-    const signatureValid = verifier.verify(keyPair.publicKey, Buffer.from(encodedSignature, "base64url"));
+    const signedBy = (publicKey: string) => {
+      const verifier = createVerify("RSA-SHA256");
+      verifier.update(`${encodedHeader}.${encodedPayload}`);
+      verifier.end();
+      return verifier.verify(publicKey, Buffer.from(encodedSignature, "base64url"));
+    };
+    const signatureValid = signedBy(keyPair.publicKey) || (previousPublicKey !== null && signedBy(previousPublicKey));
     // F88: once the signature is checked, every token does the SAME remaining
     // work (decode, claims, the revocation lookup) and is judged only at the
     // end, so whether a token was ever really issued changes no code path. (The

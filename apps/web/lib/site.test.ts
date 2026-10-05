@@ -38,6 +38,7 @@ describe("web site origin (lib/site)", () => {
     const m = await load("https://example.com");
     expect(m.CONTACT_EMAIL.privacy).toBe("privacy@example.com");
     expect(m.CONTACT_EMAIL.legal).toBe("legal@example.com");
+    expect(m.CONTACT_EMAIL.security).toBe("security@example.com");
   });
 
   it("keeps a port and a subdomain intact (staging origins)", async () => {
