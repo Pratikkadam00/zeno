@@ -37,7 +37,10 @@ export function problems(asvs, assessment) {
   return out;
 }
 
-const cell = (text) => String(text).replace(/\|/g, "\\|").replace(/\s+/g, " ").trim();
+// OWASP's text is Markdown already (its "\*" and "\_" are meant), so backslashes
+// are kept. A "|" would end the table cell: written as an entity, which no
+// backslash before it can undo (CodeQL js/incomplete-sanitization).
+const cell = (text) => String(text).replace(/\|/g, "&#124;").replace(/\s+/g, " ").trim();
 
 export function render(asvs, assessment) {
   const scoped = asvs.filter((r) => r.L === "1" || r.L === "2");

@@ -6163,3 +6163,12 @@ GET removed). ASVS V3.5.3, V6.6.2, V7.2.4 and V14.2.1 move to met: 154 met, 16 p
 security-event log naming the account, the method and the outcome (V16.2.1, V16.3.1 to
 V16.3.3).
 
+**CodeQL red on `3c3c9a3` (read on GitHub, 2026-10-05):** js/incomplete-sanitization in
+`scripts/asvs-checklist.mjs` (added in `c80a9a3`): the Markdown cell escaper wrote `|` as
+`\|` without handling a backslash before it, so a note ending in a backslash could have
+broken the table. Escaping backslashes too would have doubled OWASP's own Markdown
+escapes (`\*`, `\_`), so `|` is now written as the entity `&#124;`, which no backslash
+undoes; the generated file is byte-identical. A test pins it (bite-checked: it fails with
+the old escaper). I had read CI as green from the CI workflow alone; the CodeQL run is a
+separate workflow and is read with it from now on.
+

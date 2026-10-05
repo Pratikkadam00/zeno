@@ -21,6 +21,16 @@ describe("docs/ASVS_CHECKLIST.md", () => {
     expect(asvs.filter((r: { L: string }) => r.L === "1" || r.L === "2")).toHaveLength(253);
   });
 
+  it("a '|' in a note stays inside its cell, even after a backslash; OWASP's own Markdown escapes are kept", () => {
+    const one = asvs.filter((r: { req_id: string }) => r.req_id === "V3.3.1");
+    const row = render(one, { "V3.3.1": { status: "na", note: "a | b and c \\| d" } })
+      .split("\n").find((l: string) => l.startsWith("| **V3.3.1**"))!;
+    // Unescaped pipes are only the table's own: 5 columns, so 6 separators.
+    expect(row.split(/(?<!\\)\|/)).toHaveLength(6);
+    expect(row).toContain("a &#124; b and c \\&#124; d");
+    expect(row).toContain("\\__Host-");
+  });
+
   it("refuses a status outside the four, an owner-less open item, and a missing file", () => {
     const bad = {
       "V1.1.1": { status: "believed", note: "x" },
