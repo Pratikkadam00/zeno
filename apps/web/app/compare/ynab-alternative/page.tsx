@@ -1,21 +1,17 @@
 import { siteUrl } from "@/lib/site";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { ContentShell } from "@/components/site/ContentShell";
 import { JsonLd } from "@/components/site/JsonLd";
 import { ComparisonTable } from "@/components/site/ComparisonTable";
 import { ComparePageCta } from "@/components/site/ComparePageCta";
 
-export const metadata: Metadata = {
-  title: "YNAB alternative — one-time purchase | Zeno",
-  description: "YNAB is $109/year, forever, with no one-time option. Zeno's lifetime plan is a single $79.99 payment — pay once, own it, no renewal.",
-  alternates: { canonical: "/compare/ynab-alternative" },
-  openGraph: {
-    title: "YNAB alternative — one-time purchase | Zeno",
-    description: "YNAB is $109/year forever. Zeno's lifetime plan is a single $79.99 payment.",
-    type: "website",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno subscription manager dashboard" }]
-  }
-};
+export const metadata: Metadata = pageMetadata({
+  title: "YNAB alternative with a one-time purchase",
+  description:
+    "YNAB costs $109 a year, every year, with no one-time option. Zeno's Lifetime plan is a single $79.99 payment: pay once, keep it, and nothing renews.",
+  path: "/compare/ynab-alternative"
+});
 
 export default function YnabComparePage() {
   return (

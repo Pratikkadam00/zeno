@@ -1,21 +1,17 @@
 import { siteUrl } from "@/lib/site";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { ContentShell } from "@/components/site/ContentShell";
 import { JsonLd } from "@/components/site/JsonLd";
 import { ComparisonTable } from "@/components/site/ComparisonTable";
 import { ComparePageCta } from "@/components/site/ComparePageCta";
 
-export const metadata: Metadata = {
-  title: "A subscription tracker without bank login | Zeno",
-  description: "Zeno finds and tracks your subscriptions without ever asking for your bank login — from email receipts and statements you control, encrypted on your device.",
-  alternates: { canonical: "/compare/no-bank-login" },
-  openGraph: {
-    title: "A subscription tracker without bank login | Zeno",
-    description: "Zeno finds and tracks your subscriptions without ever asking for your bank login.",
-    type: "website",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno subscription manager dashboard" }]
-  }
-};
+export const metadata: Metadata = pageMetadata({
+  title: "A subscription tracker without bank login",
+  description:
+    "Zeno finds and tracks your subscriptions without ever asking for your bank login — from email receipts and statements you control, encrypted on your device.",
+  path: "/compare/no-bank-login"
+});
 
 export default function NoBankLoginComparePage() {
   return (

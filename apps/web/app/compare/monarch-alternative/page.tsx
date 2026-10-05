@@ -1,21 +1,17 @@
 import { siteUrl } from "@/lib/site";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { ContentShell } from "@/components/site/ContentShell";
 import { JsonLd } from "@/components/site/JsonLd";
 import { ComparisonTable } from "@/components/site/ComparisonTable";
 import { ComparePageCta } from "@/components/site/ComparePageCta";
 
-export const metadata: Metadata = {
-  title: "Monarch alternative — no bank sync to break | Zeno",
-  description: "Monarch Money's budgeting runs on live bank-account connections. Zeno tracks subscriptions and a monthly budget from statement imports and manual entry — nothing that requires an ongoing bank sync.",
-  alternates: { canonical: "/compare/monarch-alternative" },
-  openGraph: {
-    title: "Monarch alternative — no bank sync to break | Zeno",
-    description: "No live bank connection to maintain or lose data to when it breaks.",
-    type: "website",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno subscription manager dashboard" }]
-  }
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Monarch alternative with no bank sync to break",
+  description:
+    "Monarch Money's budgeting runs on bank connections. Zeno tracks subscriptions and a monthly budget from statement imports and manual entry, with no bank sync.",
+  path: "/compare/monarch-alternative"
+});
 
 export default function MonarchComparePage() {
   return (

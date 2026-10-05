@@ -1,20 +1,16 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { createFamilyVaultSummary, demoFamilyMembers } from "@zeno/shared";
 import { ContentShell } from "@/components/site/ContentShell";
 import styles from "@/components/site/content.module.css";
 
-export const metadata: Metadata = {
-  title: "Family Vault — Shared household subscriptions | Zeno",
-  description: "Family Vault is Zeno's shared view for household subscriptions: member roles, ownership, and renewal accountability for streaming, tools, and family app costs.",
-  alternates: { canonical: "/features/family-vault" },
-  openGraph: {
-    title: "Family Vault — Shared household subscriptions | Zeno",
-    description: "Zeno's shared view for household subscriptions: member roles, ownership, and renewal accountability.",
-    type: "website",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno subscription manager dashboard" }]
-  }
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Family Vault: shared household subscriptions",
+  description:
+    "Family Vault is Zeno's shared view for household subscriptions: member roles, ownership, and renewal accountability for streaming, tools, and family app costs.",
+  path: "/features/family-vault"
+});
 
 export default function FamilyVaultFeaturePage() {
   const summary = createFamilyVaultSummary(demoFamilyMembers, []);

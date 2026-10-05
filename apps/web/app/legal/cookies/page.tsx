@@ -1,20 +1,15 @@
 import { CONTACT_EMAIL, SITE_HOST } from "@/lib/site";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import styles from "../legal.module.css";
 
-export const metadata: Metadata = {
-  title: "Cookie Policy | Zeno",
+export const metadata: Metadata = pageMetadata({
+  title: "Cookie policy",
   description:
     "How the Zeno marketing website uses cookies and local storage — strictly-necessary storage only. No analytics, no ad tracking, no cross-site profiling.",
-  robots: { index: true, follow: true },
-  alternates: { canonical: "/legal/cookies" },
-  openGraph: {
-    title: "Cookie Policy | Zeno",
-    description: "Strictly-necessary storage only. No analytics, no ad tracking.",
-    type: "website"
-  }
-};
+  path: "/legal/cookies"
+});
 
 const sections = [
   ["overview", "1. Overview"],

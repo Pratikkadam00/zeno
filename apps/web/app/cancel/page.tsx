@@ -1,5 +1,6 @@
 import { siteUrl } from "@/lib/site";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { services } from "@zeno/service-catalog";
 import { ContentShell } from "@/components/site/ContentShell";
 import { JsonLd } from "@/components/site/JsonLd";
@@ -7,17 +8,12 @@ import { CancelHubBrowser } from "./CancelHubBrowser";
 
 const SERVICE_COUNT = services.length;
 
-export const metadata: Metadata = {
-  title: `How to cancel any subscription — ${SERVICE_COUNT}+ guides | Zeno`,
-  description: `Step-by-step cancellation guides for ${SERVICE_COUNT}+ services, organized by category. Search or browse to find your subscription and cancel it in a few clicks.`,
-  alternates: { canonical: "/cancel" },
-  openGraph: {
-    title: `How to cancel any subscription — ${SERVICE_COUNT}+ guides | Zeno`,
-    description: `Step-by-step cancellation guides for ${SERVICE_COUNT}+ services, organized by category.`,
-    type: "website",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno subscription manager dashboard" }]
-  }
-};
+export const metadata: Metadata = pageMetadata({
+  title: `How to cancel any subscription: ${SERVICE_COUNT}+ guides`,
+  description:
+    `Step-by-step cancellation guides for ${SERVICE_COUNT}+ services, sorted by category. Find yours, follow the steps, and cancel before the next charge lands.`,
+  path: "/cancel"
+});
 
 export default function CancelHubPage() {
   const hubServices = services.map((service) => ({

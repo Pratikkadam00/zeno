@@ -28,7 +28,7 @@ export const POSTS: Post[] = [
     slug: "how-to-find-all-your-subscriptions",
     title: "How to find every subscription you're paying for",
     description:
-      "Forgotten subscriptions hide in three places: your inbox, your statements and the app stores. Here is how to search each one in about half an hour, without giving anyone your bank login.",
+      "Forgotten subscriptions hide in your inbox, your statements and the app stores. How to search each one in about half an hour, without handing over a bank login.",
     date: "2026-10-04",
     lead:
       "Forgotten subscriptions hide in three places: your inbox, your statements, and the app stores. Here's how to search each one, in about half an hour, without handing anyone your bank login.",
@@ -98,9 +98,9 @@ export const POSTS: Post[] = [
   },
   {
     slug: "free-trials-how-to-stop-paying-for-the-ones-you-forgot",
-    title: "Free trials: how to stop paying for the ones you forgot",
+    title: "Free trials: stop paying for the ones you forgot",
     description:
-      "A free trial converts by default, and the card is already on file. Four habits that keep a trial free: cancel on day one where you can, write the end date where you'll see it, know where it's billed, and watch for the annual plan.",
+      "A free trial turns into a charge by default. Four habits keep it free: cancel early, write down the end date, know who bills you, and watch for the annual plan.",
     date: "2026-10-04",
     lead:
       "A free trial is designed to become a paid plan while you're not looking. Four habits keep it free, and none of them take more than a minute.",
@@ -159,9 +159,9 @@ export const POSTS: Post[] = [
   },
   {
     slug: "why-cancelling-a-subscription-is-harder-than-starting-one",
-    title: "Why cancelling a subscription is harder than starting one",
+    title: "Why cancelling is harder than starting a subscription",
     description:
-      "Starting a subscription takes one tap. Cancelling is designed to take more. The patterns to expect (the hidden link, the retention offer, the pause, the phone-only cancel) and how to get through each of them.",
+      "Starting a subscription takes one tap; cancelling takes more. The hidden link, the retention offer, the pause, the phone-only cancel: how to beat each.",
     date: "2026-10-04",
     lead:
       "Starting a subscription takes one tap. Cancelling is designed to take more. Here are the patterns to expect, and the way through each one.",
@@ -218,14 +218,14 @@ export const POSTS: Post[] = [
       ["All cancellation guides", "/cancel"],
       ["How to cancel Netflix", "/cancel/netflix"],
       ["How to cancel Hulu", "/cancel/hulu"],
-      ["Free trials: how to stop paying for the ones you forgot", "/blog/free-trials-how-to-stop-paying-for-the-ones-you-forgot"]
+      ["Free trials: stop paying for the ones you forgot", "/blog/free-trials-how-to-stop-paying-for-the-ones-you-forgot"]
     ]
   },
   {
     slug: "the-20-minute-subscription-audit",
     title: "A 20-minute subscription audit",
     description:
-      "A checklist for going through everything you pay for: list it, price it per year, mark what you haven't used in three months, cancel with a guide, set reminders for the rest, and repeat each quarter.",
+      "A checklist for all you pay for: list it, price it per year, mark what you haven't used in three months, cancel with a guide, set reminders for the rest.",
     date: "2026-10-04",
     lead:
       "You don't need software to audit your subscriptions. You need a list, twenty minutes, and one honest question per line. Here's the whole routine.",
@@ -287,7 +287,7 @@ export const POSTS: Post[] = [
     ],
     related: [
       ["How to find every subscription you're paying for", "/blog/how-to-find-all-your-subscriptions"],
-      ["Why cancelling a subscription is harder than starting one", "/blog/why-cancelling-a-subscription-is-harder-than-starting-one"],
+      ["Why cancelling is harder than starting a subscription", "/blog/why-cancelling-a-subscription-is-harder-than-starting-one"],
       ["All cancellation guides", "/cancel"]
     ]
   }

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { ORG_ID } from "@/lib/seo";
 import { services } from "@zeno/service-catalog";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, describe, expect, it, vi } from "vitest";
@@ -53,13 +54,13 @@ describe("the blog's posts", () => {
   it("each: its own title, description and canonical, as an article with a social card and a published date", () => {
     for (const { slug, meta } of posts) {
       const post = findPost(slug)!;
-      expect(meta.title).toBe(`${post.title} | Zeno`);
+      expect(meta.title).toEqual({ absolute: `${post.title} | Zeno` });
       expect(meta.description).toBe(post.description);
       expect(meta.alternates?.canonical).toBe(`/blog/${slug}`);
       expect((meta.openGraph as { type?: string }).type).toBe("article");
       expect((meta.openGraph as { publishedTime?: string }).publishedTime).toBe(`${post.date}T00:00:00.000Z`);
     }
-    expect(new Set(posts.map((p) => String(p.meta.title))).size).toBe(posts.length);
+    expect(new Set(posts.map((p) => JSON.stringify(p.meta.title))).size).toBe(posts.length);
     expect(new Set(posts.map((p) => String(p.meta.description))).size).toBe(posts.length);
   });
 
@@ -87,7 +88,9 @@ describe("the blog's posts", () => {
         headline: post.title,
         description: post.description,
         datePublished: `${post.date}T00:00:00.000Z`,
-        author: { "@type": "Organization", name: "Zeno" },
+        // The site's one Organization, by reference (lib/structured-data.ts).
+        author: { "@id": ORG_ID },
+        publisher: { "@id": ORG_ID },
         mainEntityOfPage: { "@id": siteUrl(`/blog/${slug}`) }
       });
       expect(article.wordCount).toBeGreaterThanOrEqual(600);
@@ -121,7 +124,7 @@ describe("edges", () => {
   it("an unknown slug is a 404, with a 'not found' title rather than a made-up post", async () => {
     await expect(BlogPostPage(props("no-such-post"))).rejects.toMatchObject({ digest: expect.stringContaining("404") });
     const meta = await generateMetadata(props("no-such-post"));
-    expect(meta.title).toBe("Post not found — Zeno");
+    expect(meta.title).toEqual({ absolute: "Post not found | Zeno" });
     expect(meta.alternates).toBeUndefined();
   });
 

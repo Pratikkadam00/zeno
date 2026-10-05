@@ -1,5 +1,6 @@
 import { siteUrl } from "@/lib/site";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { CardList } from "@/components/site/CardList";
 import { ContentShell } from "@/components/site/ContentShell";
@@ -9,18 +10,12 @@ import styles from "@/components/site/content.module.css";
 // The hub for the comparison pages: before it, /compare was a 404 and the five
 // pages were reachable only from the footer (measured on the live site,
 // 2026-10-04). A hub gives crawlers and people one path to all of them.
-export const metadata: Metadata = {
-  title: "Compare Zeno with other subscription trackers | Zeno",
+export const metadata: Metadata = pageMetadata({
+  title: "Compare Zeno with other subscription trackers",
   description:
-    "How Zeno compares with Rocket Money, Monarch, YNAB and other subscription trackers and budget apps: no bank login, discovery from receipts and statements you control, encrypted on your device.",
-  alternates: { canonical: "/compare" },
-  openGraph: {
-    title: "Compare Zeno with other subscription trackers | Zeno",
-    description: "No bank login, discovery from receipts and statements you control, encrypted on your device.",
-    type: "website",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno subscription manager dashboard" }]
-  }
-};
+    "How Zeno compares with Rocket Money, Monarch, YNAB and others: no bank login, discovery from receipts and statements you control, encrypted on your device.",
+  path: "/compare"
+});
 
 export const COMPARISONS = [
   { href: "/compare/no-bank-login", name: "A subscription tracker without bank login", note: "What changes when an app never asks for your bank credentials." },

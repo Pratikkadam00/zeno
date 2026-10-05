@@ -1,20 +1,16 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { createBusinessSummary, demoBusinessWorkspace } from "@zeno/shared";
 import { ContentShell } from "@/components/site/ContentShell";
 import styles from "@/components/site/content.module.css";
 
-export const metadata: Metadata = {
-  title: "Business Tier — Team subscription tracking | Zeno",
-  description: "Track company subscriptions, finance seats, renewal load, and team spending with Zeno's Business Tier — without turning your tracker into a bank-data warehouse.",
-  alternates: { canonical: "/features/business" },
-  openGraph: {
-    title: "Business Tier — Team subscription tracking | Zeno",
-    description: "Track company subscriptions, finance seats, renewal load, and team spending with Zeno's Business Tier.",
-    type: "website",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno subscription manager dashboard" }]
-  }
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Business tier: team subscription tracking",
+  description:
+    "Track company subscriptions, finance seats, renewal load, and team spending with Zeno's Business Tier — without turning your tracker into a bank-data warehouse.",
+  path: "/features/business"
+});
 
 export default function BusinessFeaturePage() {
   const summary = createBusinessSummary(demoBusinessWorkspace, []);

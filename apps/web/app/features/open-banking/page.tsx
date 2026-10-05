@@ -1,19 +1,15 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { ContentShell } from "@/components/site/ContentShell";
 import styles from "@/components/site/content.module.css";
 
-export const metadata: Metadata = {
-  title: "Open Banking (planned) — Read-only bank connections | Zeno",
-  description: "Optional read-only bank connections are a planned Zeno feature, not available today. Zeno works fully without connecting a bank, using email receipts and statement imports.",
-  alternates: { canonical: "/features/open-banking" },
-  openGraph: {
-    title: "Open Banking (planned) — Read-only bank connections | Zeno",
-    description: "A planned, optional feature — not available today. Zeno works fully without a bank connection.",
-    type: "website",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno subscription manager dashboard" }]
-  }
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Open banking (planned): read-only bank links",
+  description:
+    "Optional read-only bank connections are planned for Zeno and not available today. Zeno works fully without a bank, from email receipts and statement imports.",
+  path: "/features/open-banking"
+});
 
 export default function OpenBankingFeaturePage() {
   return (

@@ -1,5 +1,6 @@
 import { siteUrl } from "@/lib/site";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { services } from "@zeno/service-catalog";
 import { ContentShell } from "@/components/site/ContentShell";
 import { JsonLd } from "@/components/site/JsonLd";
@@ -8,17 +9,12 @@ import { ComparePageCta } from "@/components/site/ComparePageCta";
 
 const SERVICE_COUNT = services.length;
 
-export const metadata: Metadata = {
-  title: "A budget app that doesn't connect to your bank | Zeno",
-  description: "Zeno tracks subscriptions and a monthly budget from email receipts, statement imports, and manual entry — no bank connection required, and no sync that breaks when your bank changes its login flow.",
-  alternates: { canonical: "/compare/budget-app-no-bank-sync" },
-  openGraph: {
-    title: "A budget app that doesn't connect to your bank | Zeno",
-    description: "Track subscriptions and a monthly budget without a bank connection that can break.",
-    type: "website",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno subscription manager dashboard" }]
-  }
-};
+export const metadata: Metadata = pageMetadata({
+  title: "A budget app that doesn't connect to your bank",
+  description:
+    "Zeno tracks subscriptions and a monthly budget from email receipts, statement imports and manual entry. No bank connection, and no sync that can break.",
+  path: "/compare/budget-app-no-bank-sync"
+});
 
 export default function BudgetAppNoBankSyncComparePage() {
   return (

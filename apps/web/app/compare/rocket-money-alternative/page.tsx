@@ -1,21 +1,17 @@
 import { siteUrl } from "@/lib/site";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { ContentShell } from "@/components/site/ContentShell";
 import { JsonLd } from "@/components/site/JsonLd";
 import { ComparisonTable } from "@/components/site/ComparisonTable";
 import { ComparePageCta } from "@/components/site/ComparePageCta";
 
-export const metadata: Metadata = {
-  title: "Rocket Money alternative without Plaid | Zeno",
-  description: "Rocket Money connects to your accounts through Plaid. Zeno finds and tracks subscriptions from email receipts and statement imports instead — no bank login and no Plaid connection.",
-  alternates: { canonical: "/compare/rocket-money-alternative" },
-  openGraph: {
-    title: "Rocket Money alternative without Plaid | Zeno",
-    description: "Rocket Money connects through Plaid. Zeno doesn't need a bank connection at all.",
-    type: "website",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno subscription manager dashboard" }]
-  }
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Rocket Money alternative, no bank login needed",
+  description:
+    "Rocket Money links your accounts through Plaid. Zeno finds and tracks subscriptions from email receipts and statement imports instead. No bank login required.",
+  path: "/compare/rocket-money-alternative"
+});
 
 export default function RocketMoneyComparePage() {
   return (

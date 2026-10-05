@@ -1,21 +1,15 @@
 import { CONTACT_EMAIL, SITE_HOST } from "@/lib/site";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import styles from "../legal.module.css";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy | Zeno",
+export const metadata: Metadata = pageMetadata({
+  title: "Privacy policy",
   description:
-    "How Zeno handles your data: subscription data is encrypted on-device, optional Gmail read-only access stays local, no bank credentials, and we never sell your data.",
-  robots: { index: true, follow: true },
-  alternates: { canonical: "/legal/privacy" },
-  openGraph: {
-    title: "Privacy Policy | Zeno",
-    description:
-      "How Zeno handles your data: encrypted on-device, no bank login, and never sold.",
-    type: "website"
-  }
-};
+    "How Zeno handles your data: subscription data encrypted on your device, optional read-only Gmail access kept local, no bank credentials, and no selling of data.",
+  path: "/legal/privacy"
+});
 
 const sections = [
   ["overview", "1. Overview"],

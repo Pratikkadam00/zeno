@@ -1,20 +1,15 @@
 import { CONTACT_EMAIL } from "@/lib/site";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import styles from "../legal.module.css";
 
-export const metadata: Metadata = {
-  title: "Terms of Service | Zeno",
+export const metadata: Metadata = pageMetadata({
+  title: "Terms of service",
   description:
     "The terms for using Zeno — a subscription manager that helps you find, track, and cancel subscriptions. Pre-launch terms; finalized at launch.",
-  robots: { index: true, follow: true },
-  alternates: { canonical: "/legal/terms" },
-  openGraph: {
-    title: "Terms of Service | Zeno",
-    description: "The terms for using Zeno, the subscription radar. Pre-launch; finalized at launch.",
-    type: "website"
-  }
-};
+  path: "/legal/terms"
+});
 
 const sections = [
   ["acceptance", "1. Acceptance of these terms"],

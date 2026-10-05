@@ -1,20 +1,16 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { createWidgetSnapshot } from "@zeno/shared";
 import { ContentShell } from "@/components/site/ContentShell";
 import styles from "@/components/site/content.module.css";
 
-export const metadata: Metadata = {
-  title: "Widgets + Watch — Renewals at a glance | Zeno",
-  description: "Zeno's home screen widgets and Apple Watch complications show your next renewal and monthly spend from a compact local snapshot — no raw financial records on the server.",
-  alternates: { canonical: "/features/widgets-watch" },
-  openGraph: {
-    title: "Widgets + Watch — Renewals at a glance | Zeno",
-    description: "Home screen widgets and Apple Watch complications show your next renewal and monthly spend from a compact local snapshot.",
-    type: "website",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno subscription manager dashboard" }]
-  }
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Widgets and Watch: renewals at a glance",
+  description:
+    "Home screen widgets and Apple Watch complications show your next renewal and monthly spend from a small local snapshot, with no raw financial data on a server.",
+  path: "/features/widgets-watch"
+});
 
 export default function WidgetsWatchFeaturePage() {
   const snapshot = createWidgetSnapshot([]);

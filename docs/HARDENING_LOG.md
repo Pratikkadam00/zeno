@@ -5751,3 +5751,53 @@ check at the exact millisecond.
 verification (Apple and Google, 22), our own access-token check (12), the expired-entry
 sweep (18) and the code-guessing limits (7); then `app.ts`, `coach.ts`, `storage/pg.ts`,
 `start.ts`; then the API floor.
+
+
+### SEO pass against the owner's playbook (SEO.md) — 2026-10-05
+
+Asked for before P6.2 continues. Measured first, on the live site (a script reading every
+sitemap URL's HTML, SEO.md §9): 27 pages sampled, 18 descriptions outside 140 to 160
+characters, 26 share images with the same generic alt, 20 pages whose Twitter card fell
+back to the site-wide one, the three legal pages with no share image, two titles over 60
+characters, the homepage title brand-first, no stable `@id`s in the structured data, no
+app schema, no RSS feed, no `llms.txt`, and one fixed June date as every page's lastmod.
+
+**What changed:**
+- `lib/seo.ts` `pageMetadata()`: every page's title (keyword first, "| Zeno" once, at most
+  60), description, self-canonical, and its OWN Open Graph and Twitter cards with an alt
+  that is the page title. All 19 static pages, the 509 guides and the 4 posts use it.
+- New titles and descriptions, each read against what its page says. Two were corrected
+  for truth, not length: the Rocket Money page promised "no Plaid" (optional bank links
+  through Plaid are planned and their code exists), now "No bank login required"; a draft
+  hub description promised help checking that charges stopped, which the guide pages do
+  not give, so it says what they do (cancel before the next charge).
+- The 509 guide descriptions come from `guideDescription()`: the longest honest wording
+  that fits, so every guide is 143 to 160 characters (measured over the catalogue first).
+- `lib/structured-data.ts`: one Organization and one WebSite with stable ids on every
+  page (the logo is now the square app icon, not the wide banner); the homepage adds the
+  app as a FinanceApplication with the five visible prices, each a pre-order (it is not
+  released); posts and the blog reference the Organization by id; the blog index is a
+  Blog with an ItemList. No rating, no review, no invented date.
+- `/blog/feed.xml` (RSS, static, real dates) advertised on `/blog`; `public/llms.txt`.
+- Sitemap lastmod: 2026-10-05, the day every page's title and description changed.
+
+**Held by tests:** `app/seo.test.tsx` checks every page, all 509 guides and every post
+against those limits, the schema prices against the visible bill, the feed against the
+posts, and `llms.txt` against the sitemap, the catalogue size and the prices (and for
+the banned claims). Bite-checked: a Twitter card without its title, a generic alt, a
+161-character description, a guide over 160, a schema price that differs, and a wrong
+count in `llms.txt` each fail it. Then a production build served locally and the same
+audit script over all 533 sitemap URLs: 532 pass every check; the 533rd is the homepage's
+canonical written without its trailing slash, the same URL.
+
+**A coverage side effect, measured:** moving the guide wording into `lib/` (outside the
+website suite's coverage scope) took covered branches with it, and branch coverage fell
+to 88.44 %, under its 88.47 % floor. What was left uncovered on the guide page were
+`?? ""` fallbacks on CSS-module class names, which always exist; the badge lookup now
+has none (same class names rendered): 88.97 %. The floors stay where P4 pinned them
+(the auto-ratchet's higher values were reverted: those floors drifted between runs).
+
+**Not done here, and why:** the playbook's four landing pages (subscription tracker,
+cancel subscriptions, free-trial reminders, budgeting) need about 3,000 words of new copy
+written against what the app really does; they are the next SEO step. The launch-week
+items (indexing requests, profiles, directories) are the owner's, in OWNER_ACTIONS.md.

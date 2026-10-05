@@ -1,9 +1,11 @@
-import { SITE_URL, siteUrl } from "@/lib/site";
+import { SITE_URL } from "@/lib/site";
 import { THEME_SCRIPT } from "@/lib/theme";
 import type { Metadata } from "next";
 import { fontClassNames } from "./fonts";
 import { MotionProvider } from "@/components/site/MotionProvider";
 import { JsonLd } from "@/components/site/JsonLd";
+import { siteGraph } from "@/lib/structured-data";
+import { HOME_DESCRIPTION, HOME_TITLE, pageMetadata } from "@/lib/seo";
 import "./globals.css";
 
 // The Honest Ledger type trio (./fonts.ts): self-hosted files, served from
@@ -11,26 +13,14 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  alternates: { canonical: "/" },
-  title: "Zeno — Know what you pay. Cancel before it charges.",
-  description:
-    "Zeno finds every subscription you pay for — from email receipts and statements you control — warns you before each renewal, and walks you through cancelling. No bank login required. Join the waitlist.",
-  keywords: "subscription manager, cancel subscriptions, subscription tracker app, renewal reminders, free trial tracker",
-  openGraph: {
-    title: "Zeno — Know what you pay. Cancel before it charges.",
-    description:
-      "The honest way to take back your subscriptions: discovery from receipts you control, warnings before every renewal, cancellations that get verified. No bank login required.",
-    url: SITE_URL,
-    siteName: "Zeno",
-    type: "website",
-    locale: "en_US",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno — the honest subscription ledger" }]
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Zeno — Know what you pay.",
-    description: "Find every subscription, get warned before renewals, cancel with a verified guide. No bank login required."
-  }
+  keywords: "subscription tracker, subscription manager, cancel subscriptions, renewal reminders, free trial tracker",
+  // The homepage's own (SEO.md §3): keyword first, brand last. Every other page
+  // sets its complete set through pageMetadata() (lib/seo.ts).
+  ...pageMetadata({
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
+    path: "/"
+  })
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -41,25 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <a href="#main" className="skip-to-content">
           Skip to content
         </a>
-        <JsonLd
-          data={[
-            {
-              "@context": "https://schema.org",
-              "@type": "Organization",
-              name: "Zeno",
-              url: SITE_URL,
-              logo: siteUrl("/og.png"),
-              description:
-                "Zeno is a subscription manager that finds recurring charges from receipts and statements you control, warns you before renewals, and helps you cancel — without your bank login."
-            },
-            {
-              "@context": "https://schema.org",
-              "@type": "WebSite",
-              name: "Zeno",
-              url: SITE_URL
-            }
-          ]}
-        />
+        <JsonLd data={siteGraph()} />
         <MotionProvider>{children}</MotionProvider>
       </body>
     </html>

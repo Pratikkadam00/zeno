@@ -6,6 +6,7 @@ import { LedgerBook, type Sheet } from "@/components/site/LedgerBook";
 import { AnalyticsTeaser, FAQ, FinalCTA, Method, Pricing, Refusal, TheCase, type CaseStats } from "@/components/site/sections";
 import { FAQS } from "@/components/site/faq-data";
 import { JsonLd } from "@/components/site/JsonLd";
+import { appNode } from "@/lib/structured-data";
 import { isPublicAnalyticsEnabled } from "@/lib/analytics-flag";
 
 // Decode the few HTML entities used in the FAQ copy so the JSON-LD carries clean text.
@@ -43,6 +44,7 @@ export default function HomePage() {
 
   return (
     <div>
+      <JsonLd data={appNode()} />
       <JsonLd
         data={{
           "@context": "https://schema.org",

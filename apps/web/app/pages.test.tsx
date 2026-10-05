@@ -75,7 +75,11 @@ describe("the page list itself", () => {
 
 describe("every page", () => {
   it("has a title and a description of its own (no two pages share either)", () => {
-    const titles = rendered.map((r) => String(r.metadata.title ?? ""));
+    // A title is a string or, from pageMetadata (lib/seo.ts), { absolute }.
+    const titles = rendered.map((r) => {
+      const t = r.metadata.title as string | { absolute: string } | undefined;
+      return typeof t === "object" && t ? t.absolute : String(t ?? "");
+    });
     const descriptions = rendered.map((r) => String(r.metadata.description ?? ""));
     for (const [i, r] of rendered.entries()) {
       expect([r.url, titles[i]!.length > 0, descriptions[i]!.length > 0]).toEqual([r.url, true, true]);

@@ -34,9 +34,9 @@ describe("the cancel guides: one per catalog service", () => {
   it("each: its own title, description and canonical, as an article with a social card", () => {
     for (const { slug, meta } of guides) {
       const name = findServiceBySlug(slug)!.name;
-      expect(meta.title).toBe(`How to cancel ${name} — Zeno`);
+      expect(meta.title).toEqual({ absolute: `How to cancel ${name} | Zeno` });
       expect(meta.alternates?.canonical).toBe(`/cancel/${slug}`);
-      expect(meta.openGraph).toMatchObject({ title: meta.title, url: `/cancel/${slug}`, type: "article" });
+      expect(meta.openGraph).toMatchObject({ title: `How to cancel ${name} | Zeno`, url: siteUrl(`/cancel/${slug}`), type: "article" });
       expect(String(meta.description)).toContain(name);
     }
   });
@@ -125,7 +125,7 @@ describe("the cancel guides: one per catalog service", () => {
   // and leave the sitemap; the researched ones are unchanged.
   it("with INDEX_GENERAL_GUIDES off, a general guide is noindex (follow) and out of the sitemap; a researched one is indexed", async () => {
     vi.resetModules();
-    vi.doMock("@/lib/guides", () => ({ INDEX_GENERAL_GUIDES: false }));
+    vi.doMock("@/lib/guides", async (original) => ({ ...(await original<typeof import("@/lib/guides")>()), INDEX_GENERAL_GUIDES: false }));
     const { generateMetadata: meta } = await import("./[slug]/page");
     const { default: sitemap } = await import("../sitemap");
     const general = services.find((s) => isGeneralCancelGuide(s.name, s.cancelGuide))!;
@@ -142,7 +142,7 @@ describe("the cancel guides: one per catalog service", () => {
   it("an unknown slug is a 404, with a 'not found' title rather than a made-up guide", async () => {
     await expect(GuidePage(props("no-such-service"))).rejects.toMatchObject({ digest: expect.stringContaining("404") });
     const meta = await generateMetadata(props("no-such-service"));
-    expect(meta.title).toBe("Cancellation guide not found — Zeno");
+    expect(meta.title).toEqual({ absolute: "Cancellation guide not found | Zeno" });
     expect(meta.alternates).toBeUndefined();
   });
 });

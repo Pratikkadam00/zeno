@@ -1,6 +1,7 @@
 import { siteUrl } from "@/lib/site";
 import { findServiceBySlug, isGeneralCancelGuide, services } from "@zeno/service-catalog";
-import { INDEX_GENERAL_GUIDES } from "@/lib/guides";
+import { INDEX_GENERAL_GUIDES, guideDescription } from "@/lib/guides";
+import { pageMetadata } from "@/lib/seo";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -23,44 +24,32 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const service = findServiceBySlug(slug);
   if (!service) {
     return {
-      title: "Cancellation guide not found — Zeno",
+      title: { absolute: "Cancellation guide not found | Zeno" },
       description: "We could not find a cancellation guide for this service. Browse Zeno's guides to cancel your subscriptions in a few steps."
     };
   }
 
-  const title = `How to cancel ${service.name} — Zeno`;
   // A general guide says so in search results too (F171: 470 of 509 carry the
   // same five steps); the unique thing it offers is the service's own cancel link.
   const general = isGeneralCancelGuide(service.name, service.cancellationGuideSteps);
-  const difficulty = service.cancellationDifficulty.replace("_", " ");
-  const description = general
-    ? `General steps to cancel your ${service.name} subscription (difficulty: ${difficulty}), with a direct link to ${service.name}'s cancellation page. We haven't verified ${service.name}'s exact flow yet.`
-    : `Step-by-step guide to cancel your ${service.name} subscription (difficulty: ${difficulty}), with a direct link to the cancellation page when available.`;
-
-  const path = `/cancel/${slug}`;
-  return {
-    title,
-    description,
-    alternates: { canonical: path },
+  return pageMetadata({
+    title: `How to cancel ${service.name}`,
+    description: guideDescription(service.name, service.cancellationDifficulty.replace("_", " "), general),
+    path: `/cancel/${slug}`,
+    type: "article",
     // D16: general guides stay on the site either way; this decides whether
     // search engines are asked to index them (apps/web/lib/guides.ts).
-    ...(general && !INDEX_GENERAL_GUIDES ? { robots: { index: false, follow: true } } : {}),
-    openGraph: {
-      title,
-      description,
-      url: path,
-      type: "article",
-      images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno subscription manager dashboard" }]
-    },
-    twitter: { card: "summary_large_image", title, description }
-  };
+    ...(general && !INDEX_GENERAL_GUIDES ? { robots: { index: false, follow: true } } : {})
+  });
 }
 
-const DIFFICULTY_BADGE: Record<string, string> = {
-  easy: styles.badgeEasy ?? "",
-  medium: styles.badgeMedium ?? "",
-  hard: styles.badgeHard ?? "",
-  dark_pattern: styles.badgeHard ?? ""
+// Each difficulty's badge class. CSS-module classes always exist, so there is no
+// fallback: the `?? ""` each one carried could never run (an uncoverable branch).
+const DIFFICULTY_BADGE: Record<string, string | undefined> = {
+  easy: styles.badgeEasy,
+  medium: styles.badgeMedium,
+  hard: styles.badgeHard,
+  dark_pattern: styles.badgeHard
 };
 
 export default async function CancellationGuidePage({ params }: { params: Promise<{ slug: string }> }) {
@@ -73,7 +62,7 @@ export default async function CancellationGuidePage({ params }: { params: Promis
   const difficulty = service.cancellationDifficulty;
   const difficultyLabel = difficulty.replace("_", " ");
   const general = isGeneralCancelGuide(service.name, service.cancellationGuideSteps);
-  const badgeClass = DIFFICULTY_BADGE[difficulty] ?? styles.badgeMedium ?? "";
+  const badgeClass = DIFFICULTY_BADGE[difficulty];
 
   // Related guides: other services in the same catalog category (the raw,
   // richer ServiceCategory — streaming/gaming/music/etc — not the coarser
@@ -119,7 +108,7 @@ export default async function CancellationGuidePage({ params }: { params: Promis
           ]
         }}
       />
-      <span className={`${styles.badge} ${badgeClass}`}>Difficulty: {difficultyLabel}</span>
+      <span className={[styles.badge, badgeClass].filter(Boolean).join(" ")}>Difficulty: {difficultyLabel}</span>
 
       {general ? (
         <p>

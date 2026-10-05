@@ -39,18 +39,20 @@ describe("the root layout", () => {
   });
 
   it("Organization and WebSite structured data, on the site's own origin", () => {
-    const blocks = jsonLd(doc);
-    expect(blocks.map((b) => b["@type"])).toEqual(["Organization", "WebSite"]);
-    expect(blocks[0]).toMatchObject({ name: "Zeno", url: SITE_URL, logo: siteUrl("/og.png") });
-    expect(blocks[1]).toMatchObject({ name: "Zeno", url: SITE_URL });
+    // One graph with stable ids (SEO.md §4.1); the logo is the square app icon.
+    const [graph] = jsonLd(doc) as Array<{ "@graph": Array<Record<string, unknown>> }>;
+    expect(graph!["@graph"].map((b) => b["@type"])).toEqual(["Organization", "WebSite"]);
+    expect(graph!["@graph"][0]).toMatchObject({ "@id": `${SITE_URL}/#org`, name: "Zeno", url: SITE_URL, logo: siteUrl("/apple-icon.png") });
+    expect(graph!["@graph"][1]).toMatchObject({ "@id": `${SITE_URL}/#website`, name: "Zeno", url: SITE_URL, publisher: { "@id": `${SITE_URL}/#org` } });
     expect(doc.body.textContent).toContain("child");
   });
 
   it("metadata: the site origin as base, the homepage canonical, a 1200×630 social image", () => {
     expect(String(rootMetadata.metadataBase)).toBe(`${SITE_URL}/`);
     expect(rootMetadata.alternates?.canonical).toBe("/");
-    expect(rootMetadata.openGraph).toMatchObject({ url: SITE_URL, siteName: "Zeno", images: [{ url: "/og.png", width: 1200, height: 630 }] });
-    expect(rootMetadata.twitter).toMatchObject({ card: "summary_large_image" });
+    expect(rootMetadata.title).toEqual({ absolute: "Subscription tracker: know what you pay | Zeno" });
+    expect(rootMetadata.openGraph).toMatchObject({ url: siteUrl("/"), siteName: "Zeno", images: [{ url: "/og.png", width: 1200, height: 630, alt: "Subscription tracker: know what you pay | Zeno" }] });
+    expect(rootMetadata.twitter).toMatchObject({ card: "summary_large_image", title: "Subscription tracker: know what you pay | Zeno" });
   });
 });
 

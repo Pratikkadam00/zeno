@@ -1,0 +1,45 @@
+# Zeno
+
+> Zeno is a subscription tracker for iOS and Android. It finds the subscriptions you pay for in billing receipts from an inbox you connect (read-only) and in bank-statement CSVs you import, warns you before each renewal, and walks you through cancelling. No bank login required.
+
+Status: pre-launch. The iOS and Android apps are not in the App Store or Play Store yet; people can join the waitlist at https://zenoapp.in.
+
+How it works:
+- Discovery: you start a scan of billing receipts in an inbox you connect (read-only), or import a statement CSV from any bank. A scan runs when you tap scan, not in the background. Charges are matched against a catalogue of 509 services. You can also add subscriptions by hand.
+- Reminders: 7 days, 3 days and on the day of each renewal.
+- Cancelling: a step-by-step guide per service, with warnings about known dark patterns. A cancellation is marked verified only once its renewal date passes with no new charge in the receipts or statements you scan or import.
+- Privacy: subscription data is encrypted on the device; the app can be locked with a PIN (plus biometrics where the phone has them). Zeno never asks for bank credentials, and nothing is sold.
+
+Pricing (USD):
+- Free: up to 10 subscriptions, reminders, cancellation guides with verification, insights. No card required.
+- Pro: $3.99 a month or $29.99 a year. Adds unlimited subscriptions, category budgets and envelope budgeting.
+- Lifetime: $79.99 once. Everything in Pro, no renewal.
+- Family: $6.99 a month for up to 5 people.
+
+## Main pages
+
+- [Home](https://zenoapp.in/): what Zeno does, pricing, FAQ, waitlist
+- [Features](https://zenoapp.in/features): what Zeno does today, and what is planned
+- [Compare](https://zenoapp.in/compare): Zeno next to Rocket Money, Monarch and YNAB
+- [A subscription tracker without bank login](https://zenoapp.in/compare/no-bank-login)
+- [A budget app that doesn't connect to your bank](https://zenoapp.in/compare/budget-app-no-bank-sync)
+
+## Cancellation guides
+
+- [How to cancel any subscription](https://zenoapp.in/cancel): guides for 509 services, by category
+- [How to cancel Netflix](https://zenoapp.in/cancel/netflix)
+- [How to cancel Spotify](https://zenoapp.in/cancel/spotify)
+- [How to cancel Disney+](https://zenoapp.in/cancel/disney-plus)
+
+## Guides
+
+- [How to find every subscription you're paying for](https://zenoapp.in/blog/how-to-find-all-your-subscriptions)
+- [Free trials: stop paying for the ones you forgot](https://zenoapp.in/blog/free-trials-how-to-stop-paying-for-the-ones-you-forgot)
+- [Why cancelling is harder than starting a subscription](https://zenoapp.in/blog/why-cancelling-a-subscription-is-harder-than-starting-one)
+- [A 20-minute subscription audit](https://zenoapp.in/blog/the-20-minute-subscription-audit)
+
+## Policies
+
+- [Privacy policy](https://zenoapp.in/legal/privacy)
+- [Terms of service](https://zenoapp.in/legal/terms)
+- [Cookie policy](https://zenoapp.in/legal/cookies)

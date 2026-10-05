@@ -1,20 +1,16 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { listPartnerIntegrations } from "@zeno/shared";
 import { ContentShell } from "@/components/site/ContentShell";
 import styles from "@/components/site/content.module.css";
 
-export const metadata: Metadata = {
-  title: "Partner Integrations | Zeno",
-  description: "Browse Zeno's partner integrations and their review status. Partner manifests define scope and whether user-approved financial export is required.",
-  alternates: { canonical: "/partners" },
-  openGraph: {
-    title: "Partner Integrations | Zeno",
-    description: "Browse Zeno's partner integrations, their review status, scopes, and financial export requirements.",
-    type: "website",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno subscription manager dashboard" }]
-  }
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Partner integrations (planned)",
+  description:
+    "Zeno's planned partner integrations, none available today. Each manifest states its scope and whether a financial export you approve would be required.",
+  path: "/partners"
+});
 
 export default function PartnersPage() {
   const integrations = listPartnerIntegrations();

@@ -1,5 +1,6 @@
 import { siteUrl } from "@/lib/site";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { CardList } from "@/components/site/CardList";
 import { ContentShell } from "@/components/site/ContentShell";
@@ -9,18 +10,12 @@ import styles from "@/components/site/content.module.css";
 // The hub for the feature pages: before it, /features was a 404 (measured on
 // the live site, 2026-10-04). Planned features are labelled as on their own
 // pages (F172), never shown as available.
-export const metadata: Metadata = {
-  title: "Features — what Zeno does, and what's planned | Zeno",
+export const metadata: Metadata = pageMetadata({
+  title: "Features: what Zeno does, and what's planned",
   description:
-    "Zeno's features: subscription discovery from receipts and statements you control, renewal warnings, verified cancellations, Spend Twin and the Family Vault; plus what is planned and not available today.",
-  alternates: { canonical: "/features" },
-  openGraph: {
-    title: "Features — what Zeno does, and what's planned | Zeno",
-    description: "Discovery you control, renewal warnings, verified cancellations, and what's planned.",
-    type: "website",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno subscription manager dashboard" }]
-  }
-};
+    "Find subscriptions from receipts and statements you control, get warned before renewals, cancel with verified guides. Plus what is planned and not here yet.",
+  path: "/features"
+});
 
 export const FEATURES = [
   { href: "/features/spend-twin", name: "Spend Twin", note: "What your subscriptions really cost, as tradeoffs you understand at a glance.", planned: false },

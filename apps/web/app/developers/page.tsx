@@ -1,20 +1,16 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { createPublicApiKeyPreview, type PublicApiKey } from "@zeno/shared";
 import { ContentShell } from "@/components/site/ContentShell";
 import styles from "@/components/site/content.module.css";
 
-export const metadata: Metadata = {
-  title: "Public API for developers | Zeno",
-  description: "Build on Zeno's public API: scoped keys with masked previews, explicit read/write scopes, and a consistent { data, error, meta } response envelope. Your raw financial data stays on your device.",
-  alternates: { canonical: "/developers" },
-  openGraph: {
-    title: "Public API for developers | Zeno",
-    description: "Scoped API keys, masked previews, explicit read/write scopes, and a consistent response envelope.",
-    type: "website",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno subscription manager dashboard" }]
-  }
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Public API for developers",
+  description:
+    "Build on Zeno's public API: scoped keys with masked previews, read and write scopes, and one response envelope. Raw financial data stays on your device.",
+  path: "/developers"
+});
 
 const key: PublicApiKey = {
   id: "key_docs",

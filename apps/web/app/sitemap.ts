@@ -7,7 +7,11 @@ import { POSTS } from "./blog/posts";
 const BASE = SITE_URL;
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const lastModified = new Date("2026-06-13");
+  // A real content date, never the build time (SEO.md §7.1: a build-time date
+  // on every URL teaches Google to ignore lastmod). 2026-10-05: every page's
+  // title and description were rewritten. Give a page its own date when only
+  // its content changes.
+  const lastModified = new Date("2026-10-05");
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${BASE}/`, lastModified, changeFrequency: "weekly", priority: 1 },

@@ -1,5 +1,6 @@
 import { siteUrl } from "@/lib/site";
 import type { Metadata } from "next";
+import { ORG_ID, WEBSITE_ID, pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ContentShell } from "@/components/site/ContentShell";
@@ -19,24 +20,18 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const post = findPost(slug);
   if (!post) {
-    return { title: "Post not found — Zeno", description: "We could not find that post. Browse the Zeno blog for guides on finding, tracking and cancelling subscriptions." };
+    return { title: { absolute: "Post not found | Zeno" }, description: "We could not find that post. Browse the Zeno blog for guides on finding, tracking and cancelling subscriptions." };
   }
-  const title = `${post.title} | Zeno`;
-  const path = `/blog/${slug}`;
-  return {
-    title,
+  const published = `${post.date}T00:00:00.000Z`;
+  return pageMetadata({
+    title: post.title,
     description: post.description,
-    alternates: { canonical: path },
-    openGraph: {
-      title,
-      description: post.description,
-      url: path,
-      type: "article",
-      publishedTime: `${post.date}T00:00:00.000Z`,
-      images: [{ url: "/og.png", width: 1200, height: 630, alt: "Zeno subscription manager dashboard" }]
-    },
-    twitter: { card: "summary_large_image", title, description: post.description }
-  };
+    path: `/blog/${slug}`,
+    type: "article",
+    publishedTime: published,
+    // Not edited since it went up; a later edit adds its own date here and on the page.
+    modifiedTime: published
+  });
 }
 
 export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -63,8 +58,11 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           wordCount: words,
           inLanguage: "en",
           image: siteUrl("/og.png"),
-          author: { "@type": "Organization", name: "Zeno", url: siteUrl("/") },
-          publisher: { "@type": "Organization", name: "Zeno", url: siteUrl("/"), logo: { "@type": "ImageObject", url: siteUrl("/og.png") } },
+          url: siteUrl(`/blog/${slug}`),
+          // The site's one Organization (lib/structured-data.ts), by reference.
+          author: { "@id": ORG_ID },
+          publisher: { "@id": ORG_ID },
+          isPartOf: { "@id": WEBSITE_ID },
           mainEntityOfPage: { "@type": "WebPage", "@id": siteUrl(`/blog/${slug}`) }
         }}
       />
