@@ -1,0 +1,688 @@
+{
+  "V4.3.1": {
+    "status": "na",
+    "note": "No GraphQL: the API is REST over Fastify, no GraphQL library is installed (apps/api/package.json)."
+  },
+  "V4.3.2": {
+    "status": "na",
+    "note": "No GraphQL: the API is REST over Fastify, no GraphQL library is installed (apps/api/package.json)."
+  },
+  "V4.4.1": {
+    "status": "na",
+    "note": "No WebSockets: the API serves HTTP request/response only, no WebSocket library is installed (apps/api/package.json)."
+  },
+  "V4.4.2": {
+    "status": "na",
+    "note": "No WebSockets: the API serves HTTP request/response only, no WebSocket library is installed (apps/api/package.json)."
+  },
+  "V4.4.3": {
+    "status": "na",
+    "note": "No WebSockets: the API serves HTTP request/response only, no WebSocket library is installed (apps/api/package.json)."
+  },
+  "V4.4.4": {
+    "status": "na",
+    "note": "No WebSockets: the API serves HTTP request/response only, no WebSocket library is installed (apps/api/package.json)."
+  },
+  "V5.1.1": {
+    "status": "na",
+    "note": "Neither the API nor the website accepts or serves user files. Statement CSVs are read on the phone and never uploaded (MASVS scope)."
+  },
+  "V5.2.1": {
+    "status": "na",
+    "note": "Neither the API nor the website accepts or serves user files. Statement CSVs are read on the phone and never uploaded (MASVS scope)."
+  },
+  "V5.2.2": {
+    "status": "na",
+    "note": "Neither the API nor the website accepts or serves user files. Statement CSVs are read on the phone and never uploaded (MASVS scope)."
+  },
+  "V5.2.3": {
+    "status": "na",
+    "note": "Neither the API nor the website accepts or serves user files. Statement CSVs are read on the phone and never uploaded (MASVS scope)."
+  },
+  "V5.3.1": {
+    "status": "na",
+    "note": "Neither the API nor the website accepts or serves user files. Statement CSVs are read on the phone and never uploaded (MASVS scope)."
+  },
+  "V5.3.2": {
+    "status": "na",
+    "note": "Neither the API nor the website accepts or serves user files. Statement CSVs are read on the phone and never uploaded (MASVS scope)."
+  },
+  "V5.4.1": {
+    "status": "na",
+    "note": "Neither the API nor the website accepts or serves user files. Statement CSVs are read on the phone and never uploaded (MASVS scope)."
+  },
+  "V5.4.2": {
+    "status": "na",
+    "note": "Neither the API nor the website accepts or serves user files. Statement CSVs are read on the phone and never uploaded (MASVS scope)."
+  },
+  "V5.4.3": {
+    "status": "na",
+    "note": "Neither the API nor the website accepts or serves user files. Statement CSVs are read on the phone and never uploaded (MASVS scope)."
+  },
+  "V6.1.1": {
+    "status": "met",
+    "note": "Rate limits per pathway, the per-address email and code limits, and why the code limit cannot lock a user out (the link still works), are documented and tested.",
+    "evidence": [
+      "docs/AUTH_AND_SESSIONS.md",
+      "apps/api/src/rate-limits.test.ts",
+      "apps/api/src/routes/auth-internals.test.ts",
+      "apps/api/src/routes/auth-scope.test.ts"
+    ]
+  },
+  "V6.1.2": {
+    "status": "na",
+    "note": "No user-chosen passwords, so no list of words to keep out of them."
+  },
+  "V6.1.3": {
+    "status": "met",
+    "note": "All five pathways, their proof, account namespace, controls and strength, in one table.",
+    "evidence": [
+      "docs/AUTH_AND_SESSIONS.md"
+    ]
+  },
+  "V6.2.1": {
+    "status": "na",
+    "note": "No passwords: sign-in is by emailed link or code, or Apple or Google. The demo sign-in's operator-set password is refused in production."
+  },
+  "V6.2.2": {
+    "status": "na",
+    "note": "No passwords: sign-in is by emailed link or code, or Apple or Google. The demo sign-in's operator-set password is refused in production."
+  },
+  "V6.2.3": {
+    "status": "na",
+    "note": "No passwords: sign-in is by emailed link or code, or Apple or Google. The demo sign-in's operator-set password is refused in production."
+  },
+  "V6.2.4": {
+    "status": "na",
+    "note": "No passwords: sign-in is by emailed link or code, or Apple or Google. The demo sign-in's operator-set password is refused in production."
+  },
+  "V6.2.5": {
+    "status": "na",
+    "note": "No passwords: sign-in is by emailed link or code, or Apple or Google. The demo sign-in's operator-set password is refused in production."
+  },
+  "V6.2.6": {
+    "status": "na",
+    "note": "No passwords: sign-in is by emailed link or code, or Apple or Google. The demo sign-in's operator-set password is refused in production."
+  },
+  "V6.2.7": {
+    "status": "na",
+    "note": "No passwords: sign-in is by emailed link or code, or Apple or Google. The demo sign-in's operator-set password is refused in production."
+  },
+  "V6.2.8": {
+    "status": "na",
+    "note": "No passwords: sign-in is by emailed link or code, or Apple or Google. The demo sign-in's operator-set password is refused in production."
+  },
+  "V6.2.9": {
+    "status": "na",
+    "note": "No passwords: sign-in is by emailed link or code, or Apple or Google. The demo sign-in's operator-set password is refused in production."
+  },
+  "V6.2.10": {
+    "status": "na",
+    "note": "No passwords: sign-in is by emailed link or code, or Apple or Google. The demo sign-in's operator-set password is refused in production."
+  },
+  "V6.2.11": {
+    "status": "na",
+    "note": "No passwords: sign-in is by emailed link or code, or Apple or Google. The demo sign-in's operator-set password is refused in production."
+  },
+  "V6.2.12": {
+    "status": "na",
+    "note": "No passwords: sign-in is by emailed link or code, or Apple or Google. The demo sign-in's operator-set password is refused in production."
+  },
+  "V6.3.1": {
+    "status": "met",
+    "note": "As documented: per-IP limits, 5 emails per address per 15 minutes, 10 wrong codes per address per 24 hours.",
+    "evidence": [
+      "apps/api/src/rate-limits.test.ts",
+      "apps/api/src/routes/auth-scope.test.ts",
+      "apps/api/src/routes/auth-internals.test.ts"
+    ]
+  },
+  "V6.3.2": {
+    "status": "met",
+    "note": "No default accounts exist. The demo sign-in is refused in production whatever is configured.",
+    "evidence": [
+      "apps/api/src/routes/auth-prod-guards.test.ts",
+      "apps/api/src/routes/auth.ts"
+    ]
+  },
+  "V6.3.3": {
+    "status": "open",
+    "note": "Every pathway is a single factor (an inbox, or an Apple or Google account). The rationale (the money data lives on the phone behind its own PIN lock; the server holds account, household and billing state) is documented; adding a second factor is a product decision.",
+    "evidence": [
+      "docs/AUTH_AND_SESSIONS.md"
+    ],
+    "owner": "owner (decision)"
+  },
+  "V6.3.4": {
+    "status": "met",
+    "note": "Every route is classified, and a new one fails the matrix until it is; every pathway is documented, with the same session at the end.",
+    "evidence": [
+      "apps/api/src/authz-matrix.test.ts",
+      "docs/AUTH_AND_SESSIONS.md"
+    ]
+  },
+  "V6.4.1": {
+    "status": "met",
+    "note": "Sign-in links (256 random bits) and codes (6 digits from a CSPRNG) expire after 10 minutes and work once; they never become a long-term credential.",
+    "evidence": [
+      "apps/api/src/routes/auth.ts",
+      "apps/api/src/routes/auth-internals.test.ts",
+      "apps/api/src/routes/auth.test.ts"
+    ]
+  },
+  "V6.4.2": {
+    "status": "met",
+    "note": "No password hints or security questions exist anywhere in the sign-in code.",
+    "evidence": [
+      "apps/api/src/routes/auth.ts"
+    ]
+  },
+  "V6.4.3": {
+    "status": "na",
+    "note": "No passwords to reset: a lost session is replaced by a new sign-in link."
+  },
+  "V6.4.4": {
+    "status": "na",
+    "note": "No multi-factor authentication factors to lose."
+  },
+  "V6.5.1": {
+    "status": "met",
+    "note": "A sign-in link and a code each work once.",
+    "evidence": [
+      "apps/api/src/routes/auth-internals.test.ts",
+      "apps/api/src/routes/auth.test.ts"
+    ]
+  },
+  "V6.5.2": {
+    "status": "na",
+    "note": "No lookup secrets (backup codes) exist. (Sign-in link tokens are stored only as a hash.)"
+  },
+  "V6.5.3": {
+    "status": "met",
+    "note": "Codes come from crypto.randomInt, link tokens from crypto.randomBytes(32).",
+    "evidence": [
+      "apps/api/src/routes/auth.ts"
+    ]
+  },
+  "V6.5.4": {
+    "status": "met",
+    "note": "Codes are 6 random digits (about 20 bits), links 256 bits.",
+    "evidence": [
+      "apps/api/src/routes/auth.ts"
+    ]
+  },
+  "V6.5.5": {
+    "status": "met",
+    "note": "Links and codes live 10 minutes.",
+    "evidence": [
+      "apps/api/src/routes/auth.ts",
+      "apps/api/src/routes/auth-internals.test.ts"
+    ]
+  },
+  "V6.6.1": {
+    "status": "na",
+    "note": "No SMS or phone delivery of codes."
+  },
+  "V6.6.2": {
+    "status": "partial",
+    "note": "A code is replaced by the next one requested, and on the phone a link works only for a request made there for the same email. Gap: an earlier LINK stays usable for the rest of its 10 minutes after a newer one is requested.",
+    "evidence": [
+      "apps/api/src/routes/auth-internals.test.ts",
+      "apps/mobile/src/auth/authStore.flows.test.ts"
+    ],
+    "owner": "me"
+  },
+  "V6.6.3": {
+    "status": "met",
+    "note": "Codes: 10 verifications per IP per minute and 10 wrong codes per address per 24 hours. Links carry 256 bits.",
+    "evidence": [
+      "apps/api/src/rate-limits.test.ts",
+      "apps/api/src/routes/auth-internals.test.ts"
+    ]
+  },
+  "V6.8.1": {
+    "status": "met",
+    "note": "Accounts are namespaced by provider (acct_apple_ and acct_google_ plus the provider's user id); a provider's email never selects an account.",
+    "evidence": [
+      "apps/api/src/routes/auth.ts",
+      "docs/AUTH_AND_SESSIONS.md"
+    ]
+  },
+  "V6.8.2": {
+    "status": "met",
+    "note": "Apple and Google tokens are refused unsigned (alg none), with another algorithm, signed by another key, or tampered with.",
+    "evidence": [
+      "apps/api/src/routes/auth-social.test.ts"
+    ]
+  },
+  "V6.8.3": {
+    "status": "na",
+    "note": "No SAML."
+  },
+  "V6.8.4": {
+    "status": "met",
+    "note": "No function requires a stronger or more recent sign-in; the documented assumption is single-factor strength for every pathway.",
+    "evidence": [
+      "docs/AUTH_AND_SESSIONS.md"
+    ]
+  },
+  "V7.1.1": {
+    "status": "met",
+    "note": "Inactivity (30 days) and the absence of an absolute lifetime are documented, the latter as an owner decision (V7.3.2).",
+    "evidence": [
+      "docs/AUTH_AND_SESSIONS.md"
+    ]
+  },
+  "V7.1.2": {
+    "status": "met",
+    "note": "Documented: sessions per account are not capped; each device sign-in is its own session.",
+    "evidence": [
+      "docs/AUTH_AND_SESSIONS.md"
+    ]
+  },
+  "V7.1.3": {
+    "status": "met",
+    "note": "Documented: a session started with Apple or Google is independent of the provider's own session.",
+    "evidence": [
+      "docs/AUTH_AND_SESSIONS.md"
+    ]
+  },
+  "V7.2.1": {
+    "status": "met",
+    "note": "Every token is verified by the API (one guard for all protected routes); the app never decides for itself.",
+    "evidence": [
+      "apps/api/src/auth-guard.test.ts",
+      "apps/api/src/token-path.test.ts"
+    ]
+  },
+  "V7.2.2": {
+    "status": "met",
+    "note": "Sessions are per-sign-in tokens (RS256 access JWTs, random refresh tokens), never static keys.",
+    "evidence": [
+      "apps/api/src/routes/auth.ts"
+    ]
+  },
+  "V7.2.3": {
+    "status": "met",
+    "note": "Refresh tokens are 256 bits from crypto.randomBytes, stored only as a hash.",
+    "evidence": [
+      "apps/api/src/routes/auth.ts"
+    ]
+  },
+  "V7.2.4": {
+    "status": "partial",
+    "note": "Each sign-in issues a new session. Gap: signing in again does not end the device's previous session on the server; it lasts until its refresh token expires or is used.",
+    "evidence": [
+      "apps/api/src/routes/auth.ts"
+    ],
+    "owner": "me"
+  },
+  "V7.3.1": {
+    "status": "met",
+    "note": "A session unused for 30 days ends: its refresh token is refused at 30 days and works the second before.",
+    "evidence": [
+      "apps/api/src/routes/auth-expiry.test.ts",
+      "docs/AUTH_AND_SESSIONS.md"
+    ]
+  },
+  "V7.3.2": {
+    "status": "open",
+    "note": "No absolute lifetime: each refresh starts a new 30 days, so an app in use stays signed in. Documented; whether to cap it (signing users out periodically) is a product decision.",
+    "evidence": [
+      "docs/AUTH_AND_SESSIONS.md"
+    ],
+    "owner": "owner (decision)"
+  },
+  "V7.4.1": {
+    "status": "partial",
+    "note": "Sign-out revokes the refresh token at once. Gap (F77): the access token works until it expires, at most 15 minutes; a per-account revocation time already exists for account deletion.",
+    "evidence": [
+      "apps/api/src/authz-matrix.test.ts",
+      "docs/AUTH_AND_SESSIONS.md"
+    ],
+    "owner": "owner (decision F77)"
+  },
+  "V7.4.2": {
+    "status": "met",
+    "note": "Deleting an account ends every session, link and code of that account, then every access token issued before it.",
+    "evidence": [
+      "apps/api/src/routes/auth-scope.test.ts",
+      "apps/api/src/app.test.ts"
+    ]
+  },
+  "V7.4.3": {
+    "status": "na",
+    "note": "No authentication factor can be changed (no passwords, no MFA settings)."
+  },
+  "V7.4.4": {
+    "status": "met",
+    "note": "The only authenticated surface is the app; sign-out is on its Profile screen.",
+    "evidence": [
+      "apps/mobile/app/profile.tsx"
+    ]
+  },
+  "V7.4.5": {
+    "status": "open",
+    "note": "There are no administrators and no operator tool to end a user's sessions short of deleting the account.",
+    "evidence": [
+      "docs/AUTH_AND_SESSIONS.md"
+    ],
+    "owner": "owner (decision)"
+  },
+  "V7.5.1": {
+    "status": "na",
+    "note": "No account attribute used for sign-in can be changed: there is no email change, phone number or MFA setting."
+  },
+  "V7.5.2": {
+    "status": "open",
+    "note": "Users cannot list or end their other sessions.",
+    "evidence": [
+      "docs/AUTH_AND_SESSIONS.md"
+    ],
+    "owner": "owner (decision)"
+  },
+  "V7.6.1": {
+    "status": "met",
+    "note": "Documented: a Zeno session neither follows nor ends the Apple or Google session.",
+    "evidence": [
+      "docs/AUTH_AND_SESSIONS.md"
+    ]
+  },
+  "V7.6.2": {
+    "status": "met",
+    "note": "A session starts only after the user chooses a pathway and confirms it (opens the link, enters the code, or approves with Apple or Google); the app also requires the age consent first.",
+    "evidence": [
+      "docs/AUTH_AND_SESSIONS.md",
+      "docs/MASVS_CHECKLIST.md"
+    ]
+  },
+  "V8.1.1": {
+    "status": "met",
+    "note": "Function-level (public, own secret, signed in) and data-level rules (own data only; households for members) are documented.",
+    "evidence": [
+      "docs/AUTH_AND_SESSIONS.md",
+      "apps/api/src/authz-matrix.test.ts"
+    ]
+  },
+  "V8.1.2": {
+    "status": "met",
+    "note": "Field-level rule documented: a member changes only their own spend line; there are no other roles.",
+    "evidence": [
+      "docs/AUTH_AND_SESSIONS.md"
+    ]
+  },
+  "V8.2.1": {
+    "status": "met",
+    "note": "Every route's access is pinned; a new route fails the matrix until it is classified.",
+    "evidence": [
+      "apps/api/src/authz-matrix.test.ts"
+    ]
+  },
+  "V8.2.2": {
+    "status": "met",
+    "note": "The account comes from the verified token, never a parameter; a stranger gets 403 on a household with identical bodies, an unknown id 404.",
+    "evidence": [
+      "apps/api/src/authz-matrix.test.ts",
+      "apps/api/src/app.test.ts"
+    ]
+  },
+  "V8.2.3": {
+    "status": "met",
+    "note": "A member's spend write lands on their own line whatever the body says; the member id comes from the token.",
+    "evidence": [
+      "apps/api/src/family-spend.test.ts"
+    ]
+  },
+  "V8.3.1": {
+    "status": "met",
+    "note": "Every decision is made in the API; the app holds no authority.",
+    "evidence": [
+      "apps/api/src/authz-matrix.test.ts",
+      "apps/api/src/auth-guard.test.ts"
+    ]
+  },
+  "V8.4.1": {
+    "status": "met",
+    "note": "Households are the only shared space; every household route checks membership first.",
+    "evidence": [
+      "apps/api/src/authz-matrix.test.ts"
+    ]
+  },
+  "V9.1.1": {
+    "status": "met",
+    "note": "Signatures are checked before claims are used, for our tokens and the providers'.",
+    "evidence": [
+      "apps/api/src/auth-guard.test.ts",
+      "apps/api/src/token-path.test.ts",
+      "apps/api/src/routes/auth-social.test.ts"
+    ]
+  },
+  "V9.1.2": {
+    "status": "met",
+    "note": "RS256 only: alg none, HS256 and a missing key id are refused.",
+    "evidence": [
+      "apps/api/src/routes/auth-social.test.ts",
+      "apps/api/src/auth-guard.test.ts"
+    ]
+  },
+  "V9.1.3": {
+    "status": "met",
+    "note": "Keys come only from our own configured key pair and from Apple's and Google's fixed JWKS URLs, chosen by kid; jku, x5u and jwk headers are never read.",
+    "evidence": [
+      "apps/api/src/routes/auth.ts",
+      "apps/api/src/routes/auth-social.test.ts"
+    ]
+  },
+  "V9.2.1": {
+    "status": "met",
+    "note": "exp to the second, and nbf when present, for our tokens and the providers'.",
+    "evidence": [
+      "apps/api/src/routes/auth-expiry.test.ts",
+      "apps/api/src/routes/auth-nbf.test.ts",
+      "apps/api/src/routes/auth-social.test.ts"
+    ]
+  },
+  "V9.2.2": {
+    "status": "met",
+    "note": "Access tokens need our issuer and audience, which provider ID tokens never carry; refresh tokens are opaque and only accepted by /auth/refresh.",
+    "evidence": [
+      "apps/api/src/routes/auth.ts",
+      "apps/api/src/routes/auth-social.test.ts"
+    ]
+  },
+  "V9.2.3": {
+    "status": "met",
+    "note": "Our audience is checked on every access token; a provider token must carry our client id.",
+    "evidence": [
+      "apps/api/src/routes/auth-social.test.ts",
+      "apps/api/src/auth-guard.test.ts"
+    ]
+  },
+  "V9.2.4": {
+    "status": "met",
+    "note": "Our signing key issues tokens for one audience only (zeno-mobile).",
+    "evidence": [
+      "apps/api/src/routes/auth.ts"
+    ]
+  },
+  "V10.1.1": {
+    "status": "met",
+    "note": "Tokens live only in the app's keychain and travel only to our API (and Gmail's to Google); the website handles none.",
+    "evidence": [
+      "apps/mobile/src/security/secure-store.ts",
+      "docs/MASVS_CHECKLIST.md"
+    ]
+  },
+  "V10.1.2": {
+    "status": "met",
+    "note": "Each sign-in has its own random nonce; the provider gets its SHA-256, the API checks the token carries it (F10).",
+    "evidence": [
+      "apps/api/src/routes/auth-social.test.ts",
+      "apps/mobile/src/auth/authStore.flows.test.ts"
+    ]
+  },
+  "V10.2.1": {
+    "status": "met",
+    "note": "Gmail connect uses the code flow with PKCE (a code_verifier, no client secret).",
+    "evidence": [
+      "apps/mobile/src/discovery/emailScanner.ts",
+      "apps/mobile/app/(tabs)/discover.tsx"
+    ]
+  },
+  "V10.2.2": {
+    "status": "met",
+    "note": "Each provider's tokens are checked against that provider's own issuer, keys and audience: an Apple token is refused on the Google route and the reverse.",
+    "evidence": [
+      "apps/api/src/routes/auth-social.test.ts"
+    ]
+  },
+  "V10.3.1": {
+    "status": "met",
+    "note": "The API accepts only access tokens with its audience.",
+    "evidence": [
+      "apps/api/src/auth-guard.test.ts"
+    ]
+  },
+  "V10.3.2": {
+    "status": "met",
+    "note": "The account (sub) is the basis of every decision; no scope or delegation claims are issued.",
+    "evidence": [
+      "apps/api/src/authz-matrix.test.ts"
+    ]
+  },
+  "V10.3.3": {
+    "status": "met",
+    "note": "Users are identified by sub, an account id derived once and never reassigned, under our single issuer.",
+    "evidence": [
+      "apps/api/src/routes/auth.ts"
+    ]
+  },
+  "V10.3.4": {
+    "status": "na",
+    "note": "No route requires a particular sign-in strength or recency."
+  },
+  "V10.4.1": {
+    "status": "na",
+    "note": "Zeno is not an OAuth authorisation server or OpenID provider: it issues first-party sessions to its own app only (assessed under V7 and V9)."
+  },
+  "V10.4.2": {
+    "status": "na",
+    "note": "Zeno is not an OAuth authorisation server or OpenID provider: it issues first-party sessions to its own app only (assessed under V7 and V9)."
+  },
+  "V10.4.3": {
+    "status": "na",
+    "note": "Zeno is not an OAuth authorisation server or OpenID provider: it issues first-party sessions to its own app only (assessed under V7 and V9)."
+  },
+  "V10.4.4": {
+    "status": "na",
+    "note": "Zeno is not an OAuth authorisation server or OpenID provider: it issues first-party sessions to its own app only (assessed under V7 and V9)."
+  },
+  "V10.4.5": {
+    "status": "na",
+    "note": "Zeno is not an OAuth authorisation server or OpenID provider: it issues first-party sessions to its own app only (assessed under V7 and V9)."
+  },
+  "V10.4.6": {
+    "status": "na",
+    "note": "Zeno is not an OAuth authorisation server or OpenID provider: it issues first-party sessions to its own app only (assessed under V7 and V9)."
+  },
+  "V10.4.7": {
+    "status": "na",
+    "note": "Zeno is not an OAuth authorisation server or OpenID provider: it issues first-party sessions to its own app only (assessed under V7 and V9)."
+  },
+  "V10.4.8": {
+    "status": "na",
+    "note": "Zeno is not an OAuth authorisation server or OpenID provider: it issues first-party sessions to its own app only (assessed under V7 and V9)."
+  },
+  "V10.4.9": {
+    "status": "na",
+    "note": "Zeno is not an OAuth authorisation server or OpenID provider: it issues first-party sessions to its own app only (assessed under V7 and V9)."
+  },
+  "V10.4.10": {
+    "status": "na",
+    "note": "Zeno is not an OAuth authorisation server or OpenID provider: it issues first-party sessions to its own app only (assessed under V7 and V9)."
+  },
+  "V10.4.11": {
+    "status": "na",
+    "note": "Zeno is not an OAuth authorisation server or OpenID provider: it issues first-party sessions to its own app only (assessed under V7 and V9)."
+  },
+  "V10.5.1": {
+    "status": "met",
+    "note": "The ID token's nonce must equal the hash of this sign-in's raw nonce; a replayed or raw nonce is refused.",
+    "evidence": [
+      "apps/api/src/routes/auth-social.test.ts"
+    ]
+  },
+  "V10.5.2": {
+    "status": "met",
+    "note": "Users are identified by the provider's sub, namespaced by provider.",
+    "evidence": [
+      "apps/api/src/routes/auth.ts"
+    ]
+  },
+  "V10.5.3": {
+    "status": "met",
+    "note": "No metadata discovery: issuers and JWKS URLs are fixed in the code.",
+    "evidence": [
+      "apps/api/src/routes/auth.ts"
+    ]
+  },
+  "V10.5.4": {
+    "status": "met",
+    "note": "The ID token's audience must be our configured client id; a wrong or missing audience is refused.",
+    "evidence": [
+      "apps/api/src/routes/auth-social.test.ts"
+    ]
+  },
+  "V10.5.5": {
+    "status": "na",
+    "note": "No OIDC back-channel logout is used."
+  },
+  "V10.6.1": {
+    "status": "na",
+    "note": "Zeno is not an OAuth authorisation server or OpenID provider: it issues first-party sessions to its own app only (assessed under V7 and V9)."
+  },
+  "V10.6.2": {
+    "status": "na",
+    "note": "Zeno is not an OAuth authorisation server or OpenID provider: it issues first-party sessions to its own app only (assessed under V7 and V9)."
+  },
+  "V10.7.1": {
+    "status": "na",
+    "note": "Zeno is not an OAuth authorisation server or OpenID provider: it issues first-party sessions to its own app only (assessed under V7 and V9)."
+  },
+  "V10.7.2": {
+    "status": "na",
+    "note": "Zeno is not an OAuth authorisation server or OpenID provider: it issues first-party sessions to its own app only (assessed under V7 and V9)."
+  },
+  "V10.7.3": {
+    "status": "na",
+    "note": "Zeno is not an OAuth authorisation server or OpenID provider: it issues first-party sessions to its own app only (assessed under V7 and V9)."
+  },
+  "V17.1.1": {
+    "status": "na",
+    "note": "No WebRTC, media or signalling in any part of Zeno."
+  },
+  "V17.2.1": {
+    "status": "na",
+    "note": "No WebRTC, media or signalling in any part of Zeno."
+  },
+  "V17.2.2": {
+    "status": "na",
+    "note": "No WebRTC, media or signalling in any part of Zeno."
+  },
+  "V17.2.3": {
+    "status": "na",
+    "note": "No WebRTC, media or signalling in any part of Zeno."
+  },
+  "V17.2.4": {
+    "status": "na",
+    "note": "No WebRTC, media or signalling in any part of Zeno."
+  },
+  "V17.3.1": {
+    "status": "na",
+    "note": "No WebRTC, media or signalling in any part of Zeno."
+  },
+  "V17.3.2": {
+    "status": "na",
+    "note": "No WebRTC, media or signalling in any part of Zeno."
+  }
+}

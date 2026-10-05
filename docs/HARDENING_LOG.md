@@ -110,7 +110,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [ ] P6 gate: the floor enforced in CI and green on GitHub
 - [ ] **P7 — Security verification v2 with evidence**
   - [x] P7.1 Threat model: the system and its trust boundaries (data-flow diagram), STRIDE per surface (phone, API, database, website, outside services) and per route (all 40), each threat with its evidence or marked open with an owner. **Done**: `docs/THREAT_MODEL.md`
-  - [ ] P7.2 ASVS 5.0 Level 2 checklist, every control with its evidence (test, CI job or config line) or "open, owned by"; control text taken from OWASP's repository, not memory
+  - [ ] P7.2 ASVS 5.0 Level 2 checklist, every control with its evidence (test, CI job or config line) or "open, owned by"; control text taken from OWASP's repository, not memory. **In progress**: 118 of 253 assessed (V4.3, V4.4, V5-V10, V17); **fixes F216**
   - [ ] P7.3 MASVS checklist refreshed with P4-P6 (every row's evidence re-pointed at a test name)
   - [ ] P7.4 `docs/SECURITY_AUDIT_2026-10.md` replacing the July audit; a residual-risk register, each risk with an owner and a date
   - [ ] P7 gate: no control marked "believed": each is "tested by …" or "open, owned by …"
@@ -328,6 +328,7 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F213 | **FIXED in P6.3 (missing tests).** The crash-report scrubbers (what may reach Sentry) could be loosened so that "Rs 499", "12,499.00 INR", a bearer token after two spaces, a long token whose first digit follows letters, emails inside a list, or a log entry's message and parameters went out unscrubbed, and no test noticed. Each case is now tested, with the opposite edge (a count stays a number). | High (user data in a third-party service) | me | P6.3 |
 | F214 | **FIXED in P6.3 (missing tests).** Exchange rates: an HTTP error or a "not success" answer from the rate source, and a zero, negative or non-numeric rate, could all have been accepted unnoticed (a negative rate would turn every converted price negative). Each now gives no rate, as designed (the totals then show what could not be converted). | Medium (money shown to the user) | me | P6.3 |
 | F215 | **FIXED in P6.4 (found by a property test, on CI).** `parseAmountMinor("-0.00")` returned minus zero, not zero (also "$-0.00", "(0.00)", "0.00-"). Harmless where it was used (it is not below zero and prints as 0.00), but a signed zero in money code; now zero. The property passed locally and failed on GitHub with another random draw; that case is now always tried (`examples`), and a plain test pins the five spellings. | Low | me | P6.4 |
+| F216 | **FIXED in P7.2 (found by reading ASVS V9.2.1 against the code).** Neither token check read the "not before" (`nbf`) claim: an Apple or Google identity token, or one of our own, that was not valid yet would have been accepted. Both now refuse a future `nbf` (our tokens carry none; a provider's may). Tested both ways (`auth-social.test.ts`, `auth-nbf.test.ts`); both tests fail on the old code. | Low (no known provider token arrives early) | me | P7.2 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **CLOSED in the P3 gate (2026-10-02): reachable, not a bug.** TalkBack, driven by touches from the emulator's own touchscreen, put its focus on each nested button's exact bounds, separately from its parent: the calendar's "Cancel Figma", the menu's Edit/Pause/Delete, the login's Terms and Privacy links. Original note: on the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -6072,3 +6073,38 @@ app (section 5), which is surface without a user (an owner decision for P7.4); t
 no audit trail of user actions (repudiation, partial); the waitlist has no rate limit of
 its own. Each is carried into the open list, with the open findings F3, F7, F8, F11, F14,
 F77, F90 and F161, the database's expiry and restore drill, edge rate limiting and iOS.
+
+
+### P7.2 — ASVS 5.0 checklist: built, and the first half assessed — 2026-10-05
+
+**The source:** OWASP ASVS 5.0.0 as published in the OWASP/ASVS repository
+(`5.0/docs_en/…flat.json`, CC BY-SA 4.0), vendored as `docs/asvs/asvs-5.0.0-en.flat.json`:
+345 requirements, 253 at Level 1 or 2. `docs/ASVS_CHECKLIST.md` is generated from it and
+`docs/asvs/assessment.json` by `scripts/asvs-checklist.mjs`, so the requirement text is
+OWASP's, never retyped. `scripts/asvs-checklist.test.ts` holds it: statuses only Met,
+Partial, Open, N/A (never "believed"); open and partial name an owner; met names evidence;
+every cited file exists; the file on disk is current; a bad entry is refused (tested).
+
+**The documentation ASVS asks for** (V6.1, V7.1, V8.1): `docs/AUTH_AND_SESSIONS.md`, the
+sign-in pathways, session lifetimes and authorisation rules, written from the code and
+each rule tied to its test. Facts checked on the way: accounts are namespaced per provider
+(an Apple or Google email never selects an account); the 10-wrong-codes limit leaves the
+sign-in link working (so it can't be used to lock a user out; tested, F80); sessions are
+not capped per account; there is no absolute session lifetime.
+
+**Assessed so far (118 of 253):** V4.3, V4.4 (no GraphQL or WebSockets), V5 (no files),
+V6 Authentication, V7 Sessions, V8 Authorisation, V9 Tokens, V10 OAuth/OIDC (as a client
+and resource server; Zeno is not an authorisation server), V17 (no WebRTC). 51 met, 3
+partial, 4 open, 60 not applicable. Tests added to back rows that had none: a refresh token
+works until 30 days and is refused at 30 days (V7.3.1); an Apple token is refused on the
+Google route and the reverse (V10.2.2); a household member's write lands only on their own
+line whatever the body says (V8.2.3). And F216 (nbf), fixed.
+
+**Owner decisions it surfaced** (open): a second factor (V6.3.3); an absolute session
+lifetime (V7.3.2); an operator tool to end a user's sessions (V7.4.5); a list of a user's
+sessions (V7.5.2). **Mine** (partial): an earlier sign-in link stays usable after a newer
+one is requested (V6.6.2); signing in again doesn't end the device's previous session on
+the server (V7.2.4).
+
+**Next in P7.2:** V1 Encoding, V2 Validation, V3 Web frontend, V4.1-4.2, V11 Cryptography,
+V12 TLS, V13 Configuration, V14 Data protection, V15 Secure coding, V16 Logging.

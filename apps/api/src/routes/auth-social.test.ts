@@ -147,7 +147,8 @@ describe("POST /api/v1/auth/apple", () => {
     "HS256": ALG,
     "no kid": ALG,
     "not three parts (long enough to pass the schema)": "JWT must contain header, payload, and signature.",
-    "tampered payload": SIGNATURE
+    "tampered payload": SIGNATURE,
+    "not valid until a minute from now (nbf)": "JWT is not valid yet."
   };
   const rejectCases: Array<[string, (n: string) => string]> = [
     ["expired", (n) => sign(appleClaims(n, { exp: now() - 1 }))],
@@ -164,6 +165,8 @@ describe("POST /api/v1/auth/apple", () => {
     ["HS256", (n) => sign(appleClaims(n), { alg: "HS256", kid: KID })],
     ["no kid", (n) => sign(appleClaims(n), { alg: "RS256" })],
     ["not three parts (long enough to pass the schema)", () => "aaaaaaaaaa.bbbbbbbbbb"],
+    // ASVS V9.2.1: a "not before" in the future is refused; one in the past is fine (below).
+    ["not valid until a minute from now (nbf)", (n) => sign(appleClaims(n, { nbf: now() + 60 }))],
     ["tampered payload", (n) => { const [h, , s] = sign(appleClaims(n)).split("."); return `${h}.${b64(appleClaims(n, { sub: "someone-else" }))}.${s}`; }]
   ];
   for (const [label, make] of rejectCases) {
@@ -180,6 +183,19 @@ describe("POST /api/v1/auth/apple", () => {
       }
     });
   }
+
+  // ASVS V10.2.2: each provider's route takes only that provider's tokens.
+  it("an Apple token is refused on the Google route, and a Google token on the Apple route", async () => {
+    const a = rawNonce();
+    expect((await post("/api/v1/auth/google", { idToken: sign(appleClaims(a)), nonce: a })).statusCode).toBe(401);
+    const g = rawNonce();
+    expect((await post("/api/v1/auth/apple", { identityToken: sign(googleClaims(g)), nonce: g })).statusCode).toBe(401);
+  });
+
+  it("a not-before already passed is accepted", async () => {
+    const n = rawNonce();
+    expect((await post("/api/v1/auth/apple", { identityToken: sign(appleClaims(n, { nbf: now() - 60 })), nonce: n })).statusCode).toBe(200);
+  });
 
   it("an audience array containing ours is accepted", async () => {
     const n = rawNonce();

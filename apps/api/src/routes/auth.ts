@@ -133,6 +133,7 @@ type JwtPayload = {
   exp?: number;
   iat?: number;
   iss?: string;
+  nbf?: number;
   nonce?: string;
   sub?: string;
 };
@@ -720,7 +721,9 @@ export function verifyAccessToken(token: string): VerifiedAccessToken | null {
     const payload = decodeJwtPart<JwtPayload>(encodedPayload);
     const nowSeconds = Math.floor(Date.now() / 1000);
     const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+    // nbf: ours carry none, but a token that does is not valid before it (ASVS V9.2.1).
     const claimsValid = Boolean(payload.sub) && Boolean(payload.exp) && (payload.exp ?? 0) > nowSeconds &&
+      (payload.nbf === undefined || payload.nbf <= nowSeconds) &&
       payload.iss === issuer && audiences.includes(audience);
     // Issued at or before its account was deleted: revoked (F76). A token with
     // no iat is treated as issued at 0, so it fails closed.
@@ -913,6 +916,10 @@ async function verifyRemoteJwt(token: string, options: { audiences: string[]; is
   const nowSeconds = Math.floor(Date.now() / 1000);
   if (!payload.sub || !payload.exp || payload.exp <= nowSeconds) {
     throw new Error("JWT subject or expiry is invalid.");
+  }
+  // A provider token with a "not before" in the future is not valid yet (ASVS V9.2.1).
+  if (payload.nbf !== undefined && payload.nbf > nowSeconds) {
+    throw new Error("JWT is not valid yet.");
   }
 
   const issuers = Array.isArray(options.issuer) ? options.issuer : [options.issuer];
