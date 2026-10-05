@@ -100,7 +100,7 @@ describe("parsing: parseAmountMinor", () => {
       const units = grouped ? whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",") : whole;
       const text = `${negative ? "-" : ""}${prefix}${units}.${String(cents % 100).padStart(2, "0")}`;
       expect(parseAmountMinor(text)).toBe(negative && cents !== 0 ? -cents : cents);
-    }));
+    }), { examples: [[0, "", true, false], [0, "$", true, true]] }); // "-0.00" first failed on CI: always tried now
   });
 
   it("never throws, and gives null or a whole number, for any text at all", () => {

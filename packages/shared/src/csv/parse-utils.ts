@@ -161,5 +161,6 @@ export function parseAmountMinor(input: string | undefined): number | null {
   if (!Number.isFinite(amountMinor) || amountMinor > MAX_PLAUSIBLE_AMOUNT_MINOR) {
     return null;
   }
-  return negative ? -amountMinor : amountMinor;
+  // "-0.00" is zero, not minus zero (found by a property test on CI, P6.4).
+  return negative && amountMinor !== 0 ? -amountMinor : amountMinor;
 }

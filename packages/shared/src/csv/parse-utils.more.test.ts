@@ -241,3 +241,10 @@ describe("parseAmountMinor — junk that must not become a number", () => {
     expect(parseAmountMinor("£9.99/mo")).toBe(999);
   });
 });
+
+describe("parseAmountMinor: a signed zero", () => {
+  // Found by a property test on CI (P6.4): "-0.00" read as minus zero.
+  it("is zero, whatever its sign marker", () => {
+    for (const text of ["-0.00", "$-0.00", "(0.00)", "0.00-", "−0"]) expect(Object.is(parseAmountMinor(text), 0), text).toBe(true);
+  });
+});
