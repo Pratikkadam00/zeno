@@ -62,8 +62,11 @@ export function createFamilyVaultSummary(
   };
 }
 
+// Stryker disable StringLiteral,ObjectLiteral: sample household shown in the demo; a changed sample
+// name or colour changes no behaviour (P6.1).
 export const demoFamilyMembers: FamilyMember[] = [
   { id: "profile_local", name: "You", role: "owner", color: "#2563EB" },
   { id: "family_maya", name: "Maya", role: "adult", color: "#0D9488" },
   { id: "family_avi", name: "Avi", role: "teen", color: "#D97706" }
 ];
+// Stryker restore StringLiteral,ObjectLiteral

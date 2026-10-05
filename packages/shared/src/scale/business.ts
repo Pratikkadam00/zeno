@@ -59,6 +59,8 @@ export function createBusinessSummary(
     excludedCurrencyCount,
     subscriptionCount: active.length,
     renewalCountNext30Days: active.filter((subscription) => {
+      // Stryker disable next-line ConditionalExpression,BlockStatement: equivalent; without the guard
+      // Date.parse(undefined) is NaN, which fails both comparisons below, so no test can tell.
       if (!subscription.nextRenewalDate) {
         return false;
       }
@@ -68,6 +70,8 @@ export function createBusinessSummary(
   };
 }
 
+// Stryker disable StringLiteral,ObjectLiteral: sample data shown in the demo workspace; a changed
+// sample name or seat id changes no behaviour (P6.1). Its plan, limit and seat count are tested.
 export const demoBusinessWorkspace: BusinessWorkspace = {
   id: "biz_zeno_demo",
   name: "Zeno Labs",
@@ -79,3 +83,4 @@ export const demoBusinessWorkspace: BusinessWorkspace = {
     { id: "seat_viewer", emailHash: "hash_viewer", role: "viewer" }
   ]
 };
+// Stryker restore StringLiteral,ObjectLiteral

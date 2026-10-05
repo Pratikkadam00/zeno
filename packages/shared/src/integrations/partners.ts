@@ -14,6 +14,11 @@ export type PartnerIntegrationManifest = {
   exportsFinancialData: boolean;
 };
 
+// Served publicly (GET /api/v1/partners) and shown on the website's /partners page,
+// so each field is a statement to users, pinned in partners.test.ts. "dev_adapter"
+// means code for it exists in this repository; none of these has any yet, so all
+// are "planned" (Sheets and Slack read "dev_adapter" with no code behind them until
+// P6.1, F207).
 export const partnerIntegrationManifests: PartnerIntegrationManifest[] = [
   {
     id: "monarch_money",
@@ -35,7 +40,7 @@ export const partnerIntegrationManifests: PartnerIntegrationManifest[] = [
     id: "google_sheets",
     name: "Google Sheets",
     category: "spreadsheet",
-    status: "dev_adapter",
+    status: "planned",
     requiredScopes: ["spreadsheets.write"],
     exportsFinancialData: true
   },
@@ -43,7 +48,7 @@ export const partnerIntegrationManifests: PartnerIntegrationManifest[] = [
     id: "slack",
     name: "Slack",
     category: "team_chat",
-    status: "dev_adapter",
+    status: "planned",
     requiredScopes: ["chat:write"],
     exportsFinancialData: false
   },

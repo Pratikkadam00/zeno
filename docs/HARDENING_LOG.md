@@ -312,9 +312,9 @@ Netflix (Monthly)" → "Store receipt Netflix"), so a real Netflix App Store rec
 | F200 | **OPEN (Low), measured.** On a wide screen the homepage switches to book mode just after load, and the two modes are different element trees, so the switch remounts every section: text typed before it is lost (measured: the form's input element is replaced). The window is ~65 ms after load at normal speed and ~500 ms with a 4x-slowed CPU, too short for a person; on phones (no book mode) a tap even before hydration works (React replays it: 4 of 4 sent and receipted, measured). It made a CI test flaky (CI 37137561648): the test typed within the window. The test now waits for book mode on desktop (bite check at 4x CPU: without the wait 5 of 5 fail, with it 5 of 5 pass). Making both modes one tree is a design-level change to the book, not done. Two fixes I first tried were measured wrong and dropped: an uncontrolled input and a button disabled until hydration (the phone was never losing text; the disabled button would have blocked React's replay). | Low | me | P5 |
 | F201 | **FIXED in P5.** ~~An ending trial's insight was titled "Trial ends in 0 days" on its last day and "Trial ends in 1 days" the day before; the add screen read "in 0 days" for a renewal today.~~ "Trial ends today", "Trial ends tomorrow", and "today" on the add screen. Tests. | Low (wording) | me | P5 |
 | F202 | **FIXED in P5 ("which today?").** ~~"Today" and "this month" were the UTC date everywhere: countdowns, the renewal roll-forward, the calendar's groups, insights' day counts, the budget's month and its "charged so far", spend history, year in review, the trial guardian, the add screen's "in N days". Near midnight the app was a day off the user's own calendar: at 22:00 on Oct 6 in New York (02:00 UTC on the 7th) a renewal on the 7th read "today" and counted as "charged so far".~~ "Today" is now the user's calendar date as a day label (`todayLabel` in `@zeno/shared`, with `daysFromToday`, `currentMonth`), and every one of those places uses it; renewal dates stay day labels and day arithmetic stays in UTC (§10). Tests at the boundary for each place in New York, Los Angeles, Kolkata and Kiritimati (each fails with the old code), and the whole logic suite passes in Honolulu, Kiritimati and New York. | Medium (dates and money a day off near midnight) | me | P5 |
-| F205 | **OPEN, measured in P6.1 (Stryker).** The input schemas in `packages/shared/src/schemas.ts` score 22 % (19 of 86 mutants killed, by every package and API test). The one that matters for security: the cap of 64 entries on a sync vector clock (a size limit against oversized requests) can be removed, or moved to 63, and no test notices. Most of the other 66 are accepted values (currencies, categories, difficulty levels) that no test sends, so dropping one would reject real input unnoticed. | Medium (an unguarded size limit) | me | P6.1 |
-| F206 | **OPEN, measured in P6.1.** The email-receipt parser (`discovery/email-receipts.ts`) scores 63 %: 72 changes pass every test, among them the confidence score (raising or lowering it), the order results are returned in, the category it guesses, and the rule that drops a direct email without billing words. | Medium (discovery accuracy) | me | P6.1 / P6.4 |
-| F207 | **OPEN, measured in P6.1.** The partner list the public `GET /api/v1/partners` returns is checked only as "an array of 5 or more". Its `exportsFinancialData` flag, which tells a reader whether an integration sends their money data elsewhere, can be flipped on any entry unnoticed. | Low (truthfulness of a public statement) | me | P6.1 |
+| F205 | **FIXED in P6.1: six unused schemas removed, every limit of the two used ones pinned (100 %, 28 of 28).** ~~The input schemas in `packages/shared/src/schemas.ts` score 22 % (19 of 86 mutants killed, by every package and API test). The one that matters for security: the cap of 64 entries on a sync vector clock (a size limit against oversized requests) can be removed, or moved to 63, and no test notices. Most of the other 66 are accepted values (currencies, categories, difficulty levels) that no test sends, so dropping one would reject real input unnoticed.~~ Only the sync pull and push schemas had a user (the API); the sign-in pair was a weaker copy of the API's own (no 254-character email cap). | Medium (an unguarded size limit) | me | P6.1 |
+| F206 | **FIXED in P6.1: the unused detector removed; the app-name extractor the app uses at 85.42 %, every survivor equivalent or a timeout.** ~~The email-receipt parser (`discovery/email-receipts.ts`) scores 63 %: 72 changes pass every test, among them the confidence score (raising or lowering it), the order results are returned in, the category it guesses, and the rule that drops a direct email without billing words.~~ Nothing called that detector: the app's own scanner does that work. | Medium (discovery accuracy) | me | P6.1 / P6.4 |
+| F207 | **FIXED in P6.1: the list is pinned whole (100 %), and two statuses corrected.** ~~The partner list the public `GET /api/v1/partners` returns is checked only as "an array of 5 or more". Its `exportsFinancialData` flag, which tells a reader whether an integration sends their money data elsewhere, can be flipped on any entry unnoticed.~~ Pinning it showed Google Sheets and Slack labelled "dev adapter" (built, in development) with no code for either in the repository; both now read "planned", like the other three. | Low (truthfulness of a public statement) | me | P6.1 |
 | F118 | **FIXED in P3.8d.** ~~Opened at a cold start, the subscription page's edit form showed no name, $0.00 and no date.~~ The form's fields were seeded once by `useState` on the FIRST render. When the page opens before storage has loaded (from a notification or a link at cold start), that render has no subscription yet, so the form held empty values for a subscription that had all three, and Save then refused "$0.00". The form is now filled from the subscription as it is when editing starts. Reproduced in the screen test, where the subscription arrives from storage after the first render, as at a cold start. | Medium | me | P3.8d |
 | F112 | **CLOSED in the P3 gate (2026-10-02): reachable, not a bug.** TalkBack, driven by touches from the emulator's own touchscreen, put its focus on each nested button's exact bounds, separately from its parent: the calendar's "Cancel Figma", the menu's Edit/Pause/Delete, the login's Terms and Privacy links. Original note: on the calendar's day panel, "Cancel <name>" is a button nested INSIDE the row's button. RNTL's name matching counts the nested label as part of the outer row. Whether TalkBack and VoiceOver can reach the inner button at all is platform behaviour I will not state from memory. Settle it in the P3 gate with `uiautomator dump --compressed` and TalkBack. The same pattern is on Discover's results (a checkbox nested inside each row's "Edit" button) and in the subscription page's Android menu (Edit, Pause and Delete nested inside the "Close menu" backdrop button). | to be measured | me | P3 gate |
 | F104 | **OPEN: owner decision.** `expo-screen-capture` adds 3 Android permissions for its screenshot LISTENER, which Zeno doesn't use: `READ_EXTERNAL_STORAGE` (API <= 32), `READ_MEDIA_IMAGES` (API 33) and `DETECT_SCREEN_CAPTURE` (34+). `DETECT_SCREEN_CAPTURE` must stay: blocking it crashed the app at launch on the Android 16 emulator, because the module registers a `ScreenCaptureCallback` in `OnCreate`. A test now forbids blocking it. The two read permissions look removable (on API <= 33 the module registers a media observer and only checks the permission when a screenshot arrives), but that path has never run on a device here: the only installed image is API 36, and an API 33 image is a large download. `READ_MEDIA_IMAGES` may also need a Play Console declaration. Options: (a) download an API 33 image, prove it, and remove both; or (b) keep them and file the declaration. | Low | owner | before Play release |
@@ -5618,3 +5618,54 @@ if CI shows it, it gets a number and a cause.
 
 **Next in P6.1:** kill the survivors that matter (F205 first, then F206, F207, then the
 smaller files) and set the floor at 85 %.
+
+
+### P6.1 — the survivors that mattered — 2026-10-05
+
+Each finding was read in the code before it was judged, and each fix was checked by
+putting the mutations back by hand (scripts in the session scratchpad): every one now
+fails a test. A Stryker run on the three files confirmed it.
+
+- **F205, the input schemas.** Only `syncPullSchema` and `syncPushSchema` are used (the
+  API's sync routes); the other six had no user in the API, the app or the website, and
+  the shared sign-in pair was a weaker copy of the API's own. Removed. A new
+  `schemas.test.ts` pins every limit of the two at its edge: the cursor (64), the page
+  size (1 to 100, default 50, whole numbers), the entity types and operations, the id
+  (1 to 128), the payload (8,192), 100 changes, and the vector clock (64 entries, each
+  name up to 64 characters, each count 0 to 2^40, with its error message). 15 hand
+  mutations, 15 caught.
+- **F206, the email-receipt reader.** The receipt detector, its confidence score and its
+  category guess had no caller: the app's scanner (`emailScanner.ts`) does that work.
+  Removed; the app-name extractor the scanner calls stays. Its cleaner had two parts no
+  input can reach (the captured name never holds a quote, and never more than three
+  words, so a six-peel cap never bites), so they were removed rather than tested, and a
+  `\s+` that could only ever see one space became `\s`. New cases: up to three words,
+  every period marker, folded gaps, every spelling of the store and auto-renew headings,
+  noise only at the front, the two-character minimum at each step, any letter case.
+- **F207, the partner list.** Pinned whole; two statuses corrected (see the finding).
+- **The spending coach** (`coach.ts`, 34 survivors; its insights are the app's coach
+  screen): a new `coach.insights.test.ts` pins each insight whole at its edge. The one
+  that mattered: the rule that decides which currency the totals are in, when no rates
+  are given, could be broken so that ₹500 + $50 read "$550.00" against the dollar
+  benchmark, and no test noticed. 10 hand mutations, 10 caught.
+- **`daysFromToday`:** its only arithmetic tests switch zones, so they skip under
+  Stryker; a case that holds in any zone now covers it there.
+- **Marked, not tested** (Stryker's own "disable" comments, each with its reason): the
+  demo household and demo business workspace (sample names and colours; a change alters
+  no behaviour), and one equivalent mutant in the business summary (without the guard a
+  missing date is NaN, which fails both comparisons anyway).
+
+Measured by Stryker on the three files: `schemas.ts` 100 % (28 of 28), `partners.ts`
+100 % (47 of 47), `email-receipts.ts` 85.42 % (39 killed, 2 timed out, 7 survived; 6 of
+those 7 then caught by the cases above, put back by hand, and the 7th equivalent, so the
+`\s+` became `\s`).
+
+**A coverage side effect, measured:** removing that well-tested dead code dropped branch
+coverage to 99.69 %, under the 99.7 % floor; the uncovered branches left were fallbacks
+no input can reach. One of them, in the app's site host (`config/site.ts`, a `?? ""`
+after `split("/")[0]`), is now a single replace with the same result and no dead branch:
+99.73 %, and the ratchet raised the floor to it.
+
+A full run takes about half an hour here, because most mutants in module-level
+constants (the schemas, lists) rerun every test (Stryker calls them "static"). The full
+score with all of the above, and the 85 % floor, come from the next full run.

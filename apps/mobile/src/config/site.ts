@@ -26,7 +26,9 @@ export function getSiteUrl(): string {
  * under Hermes, so `new URL()` is not used here.
  */
 export function getSiteHost(): string {
-  return getSiteUrl().replace(/^https?:\/\//i, "").split("/")[0] ?? "";
+  // Everything before the first "/" after the scheme. (A split()[0] needed a `?? ""`
+  // fallback for the type checker that no input could reach: one uncoverable branch.)
+  return getSiteUrl().replace(/^https?:\/\//i, "").replace(/\/[\s\S]*$/, "");
 }
 
 /** Absolute URL for a site path. */

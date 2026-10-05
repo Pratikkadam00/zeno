@@ -1,106 +1,15 @@
-import type { BillingCycle, CurrencyCode, SubscriptionCategory } from "../domain";
-
-export type EmailReceiptCandidateInput = {
-  provider: "gmail" | "outlook" | "apple_mail" | "yahoo" | "protonmail" | "imap";
-  sender: string;
-  subject: string;
-  receivedAt: string;
-  snippet?: string;
-};
-
-/** How a subscription is billed. "app_store"/"play_store" are the ones Rocket
- *  Money admits it can't see (the charge comes from Apple/Google, not the app). */
-export type BilledThrough = "app_store" | "play_store" | "direct";
-
-export type EmailReceiptCandidate = {
-  merchant: string;
-  amountMinor: number;
-  currency: CurrencyCode;
-  billingCycle: BillingCycle;
-  category: SubscriptionCategory;
-  sourceProvider: EmailReceiptCandidateInput["provider"];
-  billedThrough: BilledThrough;
-  receivedAt: string;
-  confidence: number;
-};
-
-const billingWords = /\b(receipt|invoice|renewal|subscription|payment|charged|billing|your plan|order)\b/i;
-const amountPattern = /(?:USD|US\$|\$)\s?([0-9]+(?:\.[0-9]{2})?)/i;
-const annualPattern = /\b(annual|yearly|per year|\/year|1 year)\b/i;
-const monthlyPattern = /\b(monthly|per month|\/month|renews every month|1 month)\b/i;
-
-// Apple bills App Store subscriptions from these addresses; Google Play from its own.
-const appleSenderPattern = /(@email\.apple\.com|@itunes\.com|@apple\.com|\bapp\s?store\b)/i;
-const googleSenderPattern = /(googleplay-noreply@google\.com|\bgoogle\s?play\b)/i;
-
-/** Whether a receipt is billed via the App Store / Play Store (Rocket Money's gap)
- *  or directly by the service. Pass any text that includes the sender. */
-export function detectBilledThrough(haystack: string): BilledThrough {
-  if (appleSenderPattern.test(haystack)) return "app_store";
-  if (googleSenderPattern.test(haystack)) return "play_store";
-  return "direct";
-}
-
-export function detectEmailReceiptCandidates(inputs: EmailReceiptCandidateInput[]): EmailReceiptCandidate[] {
-  return inputs
-    .flatMap((input) => {
-      const haystack = `${input.sender} ${input.subject} ${input.snippet ?? ""}`;
-      const billedThrough = detectBilledThrough(`${input.sender} ${input.subject}`);
-
-      // App Store / Play Store mails are always billing receipts even when the
-      // generic billing words are absent — that's exactly the coverage gap.
-      if (billedThrough === "direct" && !billingWords.test(haystack)) {
-        return [];
-      }
-
-      const amountMinor = extractAmountMinor(haystack);
-      if (amountMinor === null) {
-        return [];
-      }
-
-      const merchant = billedThrough === "direct"
-        ? extractMerchant(input.sender, input.subject)
-        : extractStoreAppName(`${input.subject} ${input.snippet ?? ""}`) ?? (billedThrough === "app_store" ? "App Store subscription" : "Play Store subscription");
-
-      const candidate: EmailReceiptCandidate = {
-        merchant,
-        amountMinor,
-        currency: "USD",
-        billingCycle: annualPattern.test(haystack) ? "annual" : monthlyPattern.test(haystack) ? "monthly" : "unknown",
-        category: suggestCategory(`${merchant} ${haystack}`),
-        sourceProvider: input.provider,
-        billedThrough,
-        receivedAt: input.receivedAt,
-        confidence: scoreReceipt(haystack, billedThrough, merchant)
-      };
-
-      return [candidate];
-    })
-    .sort((a, b) => b.confidence - a.confidence);
-}
-
-function extractAmountMinor(value: string): number | null {
-  const match = value.match(amountPattern);
-  if (!match?.[1]) {
-    return null;
-  }
-  return Math.round(Number.parseFloat(match[1]) * 100);
-}
-
-function extractMerchant(sender: string, subject: string): string {
-  const senderName = sender.split("<")[0]?.trim();
-  if (senderName) {
-    return cleanupMerchant(senderName);
-  }
-
-  const subjectLead = subject.split(/receipt|invoice|renewal|payment/i)[0]?.trim();
-  return cleanupMerchant(subjectLead || "Unknown merchant");
-}
+// Reading the real app's name out of an App Store / Play Store receipt, used by the
+// app's email scanner (apps/mobile/src/discovery/emailScanner.ts), which does the
+// rest of the parsing itself. This file once also held a whole receipt detector
+// (amount, cycle, category, a confidence score) that nothing called: the app's
+// scanner is the one that runs. Mutation testing found its scoring and category
+// rules untested; as dead code it was removed instead (P6.1, F206).
 
 // Receipt/biller noise that can precede the real app name in a flattened receipt.
 // "store" on its own: the 3-word window before "(Monthly)" can start mid-heading
 // ("App Store receipt Netflix (Monthly)" captured "Store receipt Netflix").
-const noiseLeadPattern = /^(?:your|the|from|for|receipt|invoice|apple|app\s?store|store|google\s?play|order|item|renewal|auto[- ]?renew(?:able|ing)?)(?:\s+|$)/i;
+// One space after the word: cleanStoreApp folds every gap to a single space first.
+const noiseLeadPattern = /^(?:your|the|from|for|receipt|invoice|apple|app\s?store|store|google\s?play|order|item|renewal|auto[- ]?renew(?:able|ing)?)(?:\s|$)/i;
 const appWord = "[A-Za-z0-9][\\w+&.\\-]*";
 // Words of an app name are separated by spaces/tabs ONLY: with `\s+` a name ran
 // across line breaks and swallowed the line above ("App Store receipt\nNetflix
@@ -108,12 +17,16 @@ const appWord = "[A-Za-z0-9][\\w+&.\\-]*";
 const gap = "[ \\t]+";
 const optGap = "[ \\t]*";
 
+// A captured name is 1-3 `appWord`s joined by spaces/tabs: it never holds a quote or
+// a leading/trailing space, so this only folds the gaps and peels noise words off
+// the front until none is left (each peel shortens it, so it ends). Quote stripping
+// and a six-peel cap used to be here; neither could ever act (P6.1, F206).
 function cleanStoreApp(value: string): string {
-  let result = value.replace(/["'’]/g, "").replace(/\s+/g, " ").trim();
-  for (let i = 0; i < 6; i++) {
-    const next = result.replace(noiseLeadPattern, "").trim();
-    if (next === result) break;
+  let result = value.replace(/\s+/g, " ");
+  let next = result.replace(noiseLeadPattern, "");
+  while (next !== result) {
     result = next;
+    next = result.replace(noiseLeadPattern, "");
   }
   return result;
 }
@@ -134,48 +47,4 @@ export function extractStoreAppName(text: string): string | null {
   const fromAfter = after?.[1] ? cleanStoreApp(after[1]) : "";
   if (fromAfter.length >= 2) return fromAfter;
   return null;
-}
-
-function cleanupMerchant(value: string): string {
-  return value
-    .replace(/["']/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function scoreReceipt(value: string, billedThrough: BilledThrough, merchant: string): number {
-  let score = 0.45;
-  if (/receipt|invoice/i.test(value)) {
-    score += 0.2;
-  }
-  if (/subscription|renewal|billing/i.test(value)) {
-    score += 0.2;
-  }
-  if (monthlyPattern.test(value) || annualPattern.test(value)) {
-    score += 0.15;
-  }
-  // A store receipt whose app name we resolved is a high-confidence subscription;
-  // a store receipt we couldn't name is still worth surfacing, just lower.
-  if (billedThrough !== "direct") {
-    const named = merchant !== "App Store subscription" && merchant !== "Play Store subscription";
-    score = Math.max(score, named ? 0.78 : 0.55);
-  }
-  return Math.min(1, Number(score.toFixed(2)));
-}
-
-function suggestCategory(value: string): SubscriptionCategory {
-  const lower = value.toLowerCase();
-  if (/(openai|chatgpt|claude|anthropic|midjourney|runway|perplexity|elevenlabs|cursor|copilot)/.test(lower)) {
-    return "ai_tools";
-  }
-  if (/(netflix|spotify|hulu|youtube|audible|disney|patreon|max|twitch|hbo)/.test(lower)) {
-    return "entertainment";
-  }
-  if (/(notion|figma|linear|slack|zoom|dropbox|canva|adobe|grammarly|loom)/.test(lower)) {
-    return "productivity";
-  }
-  if (/(headspace|calm|duolingo|fitbod|strava|peloton|myfitnesspal)/.test(lower)) {
-    return "health";
-  }
-  return "other";
 }

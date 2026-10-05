@@ -43,6 +43,16 @@ describe("daysFromToday", () => {
     expect(daysFromToday("2026-10-01T00:00:00.000Z", instant)).toBe(-6);
   });
 
+  // In whatever zone the run is in: "now" is noon on Oct 6 by this machine's clock.
+  // (The zone cases above skip under Stryker; this keeps the arithmetic checked there.)
+  it("counts whole days forward and back from the user's day, in any zone", () => {
+    const noonOct6 = new Date(2026, 9, 6, 12);
+    expect(daysFromToday("2026-10-06T00:00:00.000Z", noonOct6)).toBe(0);
+    expect(daysFromToday("2026-10-09T00:00:00.000Z", noonOct6)).toBe(3);
+    expect(daysFromToday("2026-10-01T00:00:00.000Z", noonOct6)).toBe(-5);
+    expect(daysFromToday("2027-10-06T00:00:00.000Z", noonOct6)).toBe(365);
+  });
+
   it("is NaN for an unreadable date", () => {
     expect(daysFromToday("whenever")).toBeNaN();
     expect(dayLabelOf("whenever")).toBeNaN();
