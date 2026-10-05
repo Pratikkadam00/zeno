@@ -1,3 +1,4 @@
+import { LANDINGS } from "@/lib/landings";
 import { SITE_URL } from "@/lib/site";
 import type { MetadataRoute } from "next";
 import { isGeneralCancelGuide, services } from "@zeno/service-catalog";
@@ -17,6 +18,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/`, lastModified, changeFrequency: "weekly", priority: 1 },
     // The hub for the ~600 cancel/[slug] guides below — the biggest owned SEO
     // asset was previously orphaned with no index page (Phase 4.3).
+    // The landing pages, one buying intent each (lib/landings.ts; SEO.md §7.1: 0.9).
+    ...LANDINGS.map((l) => ({ url: `${BASE}${l.path}`, lastModified, changeFrequency: "monthly" as const, priority: 0.9 })),
     { url: `${BASE}/cancel`, lastModified, changeFrequency: "weekly", priority: 0.8 },
     { url: `${BASE}/blog`, lastModified: new Date(POSTS.map((p) => p.date).sort().at(-1)!), changeFrequency: "weekly", priority: 0.7 },
     // /analytics is deliberately excluded: it's noindex'd (see app/analytics/

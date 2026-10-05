@@ -19,6 +19,10 @@ Pricing (USD):
 ## Main pages
 
 - [Home](https://zenoapp.in/): what Zeno does, pricing, FAQ, waitlist
+- [Subscription tracker](https://zenoapp.in/subscription-tracker): building the full list from receipts and statements
+- [Cancel subscriptions](https://zenoapp.in/cancel-subscriptions): guides, traps marked, and checking the charge stopped
+- [Free trial reminders](https://zenoapp.in/free-trial-reminders): three reminders before a trial converts
+- [Budgeting](https://zenoapp.in/budgeting): one monthly cap built from what renews
 - [Features](https://zenoapp.in/features): what Zeno does today, and what is planned
 - [Compare](https://zenoapp.in/compare): Zeno next to Rocket Money, Monarch and YNAB
 - [A subscription tracker without bank login](https://zenoapp.in/compare/no-bank-login)

@@ -15,6 +15,10 @@ describe("Footer", () => {
     render(<Footer />);
     expect(column("Product")).toEqual([
       ["How it works", "/#how"],
+      ["Subscription tracker", "/subscription-tracker"],
+      ["Cancel subscriptions", "/cancel-subscriptions"],
+      ["Free trial reminders", "/free-trial-reminders"],
+      ["Budgeting", "/budgeting"],
       ["Pricing", "/#pricing"],
       ["Cancellation guides", "/cancel"],
       ["FAQ", "/#faq"],

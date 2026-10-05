@@ -113,7 +113,9 @@ const PAGES = [
   "/blog/how-to-find-all-your-subscriptions",
   "/blog/the-20-minute-subscription-audit",
   "/blog/why-cancelling-a-subscription-is-harder-than-starting-one",
+  "/budgeting",
   "/cancel",
+  "/cancel-subscriptions",
   "/compare",
   "/compare/budget-app-no-bank-sync",
   "/compare/monarch-alternative",
@@ -127,10 +129,12 @@ const PAGES = [
   "/features/open-banking",
   "/features/spend-twin",
   "/features/widgets-watch",
+  "/free-trial-reminders",
   "/legal/cookies",
   "/legal/privacy",
   "/legal/terms",
-  "/partners"
+  "/partners",
+  "/subscription-tracker"
 ];
 // Guides share one template; these cover each difficulty, a long name and a
 // guide with a cancellation link and one without.

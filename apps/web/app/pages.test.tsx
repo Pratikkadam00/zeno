@@ -44,13 +44,15 @@ const ROUTES = new Set(
 );
 
 describe("the page list itself", () => {
-  it("finds every page on disk (24 routes today, the guides as one)", () => {
+  it("finds every page on disk (28 routes today, the guides as one)", () => {
     expect(PAGES.map((p) => p.route)).toEqual([
       "/",
       "/analytics",
       "/blog",
       "/blog/[slug]",
+      "/budgeting",
       "/cancel",
+      "/cancel-subscriptions",
       "/cancel/[slug]",
       "/compare",
       "/compare/budget-app-no-bank-sync",
@@ -65,10 +67,12 @@ describe("the page list itself", () => {
       "/features/open-banking",
       "/features/spend-twin",
       "/features/widgets-watch",
+      "/free-trial-reminders",
       "/legal/cookies",
       "/legal/privacy",
       "/legal/terms",
-      "/partners"
+      "/partners",
+      "/subscription-tracker"
     ]);
   });
 });

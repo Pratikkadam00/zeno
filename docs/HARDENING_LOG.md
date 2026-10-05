@@ -5801,3 +5801,34 @@ has none (same class names rendered): 88.97 %. The floors stay where P4 pinned t
 cancel subscriptions, free-trial reminders, budgeting) need about 3,000 words of new copy
 written against what the app really does; they are the next SEO step. The launch-week
 items (indexing requests, profiles, directories) are the owner's, in OWNER_ACTIONS.md.
+
+### SEO: the four landing pages — 2026-10-05
+
+The playbook's money pages (SEO.md §5.1, §6.1), one buying intent each:
+`/subscription-tracker`, `/cancel-subscriptions`, `/free-trial-reminders`, `/budgeting`.
+Copy is data (`lib/landings.ts`), rendered by one component (`LandingPage.tsx`), so the
+visible FAQ and its FAQPage schema are the same text.
+
+**Every claim was read in the code before it was written** (the list is at the top of
+`landings.ts`): the 7/3/day-of renewal reminders; the trial reminders two days before,
+the day before and on the day, and a tap on one opening that subscription's cancel flow;
+Gmail read-only, more than one account; App Store and Play receipts named by app;
+"pending" until the renewal passes clean, flagged if a charge appears; the free monthly
+cap with the forecast and recap, category budgets and envelopes on Pro; the prices.
+Claims dropped after checking: a yearly total (the app shows none), trials found by an
+email scan (the scanner does not detect them, so the page says you add them), and "watches
+your receipts" (it reads only what you scan or import). Competitors are named only with
+what the site already states (Monarch connects to bank accounts; YNAB is $109 a year).
+
+**Held by `app/landings.test.tsx`:** 700 to 1,000 words each (measured 717 to 744); no
+paragraph shared with another landing page, the homepage FAQ or any post; no exclamation
+mark, no em dash, no stock phrase ("seamless", "unlock", "whether you're" and the like),
+none of the banned claims; every plan price exact; FAQ schema equal to the visible FAQ;
+one h1; links only to pages in the sitemap. `seo.test.tsx` covers their titles and
+descriptions with the other pages.
+
+**Wired in:** sitemap at priority 0.9, a footer link to each (every page links to them),
+each blog post's link list leads with its landing page, and `llms.txt` lists them.
+Checked in Chrome on the production build at desktop and phone width: no console error,
+no sideways scroll. The FAQ questions first rendered in body type, indistinguishable
+from their answers; they now have their own heading style (`.faqQ`).

@@ -7,6 +7,10 @@ import styles from "../../app/home.module.css";
 export function Footer() {
   const productLinks: [string, string][] = [
     ["How it works", "/#how"],
+    ["Subscription tracker", "/subscription-tracker"],
+    ["Cancel subscriptions", "/cancel-subscriptions"],
+    ["Free trial reminders", "/free-trial-reminders"],
+    ["Budgeting", "/budgeting"],
     ["Pricing", "/#pricing"],
     ["Cancellation guides", "/cancel"],
     ["FAQ", "/#faq"]

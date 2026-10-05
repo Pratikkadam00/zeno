@@ -91,6 +91,8 @@ export const POSTS: Post[] = [
       }
     ],
     related: [
+      // The landing page this post leads to (SEO.md §5.2: content links to its money page).
+      ["A subscription tracker with no bank login", "/subscription-tracker"],
       ["All cancellation guides", "/cancel"],
       ["A subscription tracker without bank login", "/compare/no-bank-login"],
       ["A 20-minute subscription audit", "/blog/the-20-minute-subscription-audit"]
@@ -152,6 +154,8 @@ export const POSTS: Post[] = [
       }
     ],
     related: [
+      // The landing page this post leads to (SEO.md §5.2: content links to its money page).
+      ["Free trial reminders before you're charged", "/free-trial-reminders"],
       ["How to find every subscription you're paying for", "/blog/how-to-find-all-your-subscriptions"],
       ["How to cancel Netflix", "/cancel/netflix"],
       ["How to cancel Disney+", "/cancel/disney-plus"]
@@ -215,6 +219,8 @@ export const POSTS: Post[] = [
       }
     ],
     related: [
+      // The landing page this post leads to (SEO.md §5.2: content links to its money page).
+      ["Cancel subscriptions and confirm they stopped", "/cancel-subscriptions"],
       ["All cancellation guides", "/cancel"],
       ["How to cancel Netflix", "/cancel/netflix"],
       ["How to cancel Hulu", "/cancel/hulu"],
@@ -286,6 +292,8 @@ export const POSTS: Post[] = [
       }
     ],
     related: [
+      // The landing page this post leads to (SEO.md §5.2: content links to its money page).
+      ["Budgeting around what renews", "/budgeting"],
       ["How to find every subscription you're paying for", "/blog/how-to-find-all-your-subscriptions"],
       ["Why cancelling is harder than starting a subscription", "/blog/why-cancelling-a-subscription-is-harder-than-starting-one"],
       ["All cancellation guides", "/cancel"]
