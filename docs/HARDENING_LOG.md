@@ -111,7 +111,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
 - [ ] **P7 — Security verification v2 with evidence**
   - [x] P7.1 Threat model: the system and its trust boundaries (data-flow diagram), STRIDE per surface (phone, API, database, website, outside services) and per route (all 40), each threat with its evidence or marked open with an owner. **Done**: `docs/THREAT_MODEL.md`
   - [ ] P7.2 ASVS 5.0 Level 2 checklist, every control with its evidence (test, CI job or config line) or "open, owned by"; control text taken from OWASP's repository, not memory. **Done 2026-10-05**: all 253 assessed (158 met, 79 N/A, 12 partial, 4 open; every partial and open one is the owner's: host settings (P8) or a decision in `OWNER_ACTIONS.md` D17); **fixes F216 to F222**, plus the security-event log
-  - [ ] P7.3 MASVS checklist refreshed with P4-P6 (every row's evidence re-pointed at a test name)
+  - [x] P7.3 MASVS checklist refreshed with P4-P6 (every row's evidence re-pointed at a test name). **Done 2026-10-05**: 41 tests named, held by `scripts/masvs-checklist.test.ts`
   - [ ] P7.4 `docs/SECURITY_AUDIT_2026-10.md` replacing the July audit; a residual-risk register, each risk with an owner and a date
   - [ ] P7 gate: no control marked "believed": each is "tested by …" or "open, owned by …"
 - [ ] **P8 — Infrastructure and operations (owner-driven)**
@@ -6187,4 +6187,20 @@ are met: 158 met, 12 partial, 4 open, and no partial or open item is mine.
 
 **P7.2 is done.** Next: P7.3 (MASVS refresh), P7.4 (audit report and residual-risk
 register), then the P7 gate.
+
+### P7.3 — MASVS checklist: every row points at its tests — 2026-10-05
+
+`docs/MASVS_CHECKLIST.md` now has a Tests column: for each of the 24 MASVS v2.1.0
+controls, the tests that hold it, by file and exact test name (41 in all), beside what was
+seen on the device in P3. Updated for P4 to P7.2: the sign-in fixes F220 to F222 (AUTH-1),
+the TLS measurement (NETWORK-1), the 4 allowlisted advisories and the remediation time
+frames (CODE-3), mutation testing of the app's logic, the crypto inventory. No status
+changed. Wording corrected on the way: `OWNER_ACTIONS.md` D12 holds my recommendations,
+not the owner's decisions, so each such row says "D12 recommends …; the owner decides".
+
+`scripts/masvs-checklist.test.ts` keeps it true: every quoted test name must exist in the
+code word for word, and every cited file must exist. Bite-checked: renaming one quoted
+test and one cited path in the document fails both checks.
+
+**Next:** P7.4, the audit report and residual-risk register, then the P7 gate.
 
