@@ -109,6 +109,11 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P6.5 CI: the mutation floor nightly, and on pull requests for changed files. **Done** (`.github/workflows/mutation.yml`): nightly, all three suites held to their floors; pull requests, the changed source files scored in the job summary, not enforced (reason below). First nightly result: to be read
   - [ ] P6 gate: the floor enforced in CI and green on GitHub
 - [ ] **P7 — Security verification v2 with evidence**
+  - [x] P7.1 Threat model: the system and its trust boundaries (data-flow diagram), STRIDE per surface (phone, API, database, website, outside services) and per route (all 40), each threat with its evidence or marked open with an owner. **Done**: `docs/THREAT_MODEL.md`
+  - [ ] P7.2 ASVS 5.0 Level 2 checklist, every control with its evidence (test, CI job or config line) or "open, owned by"; control text taken from OWASP's repository, not memory
+  - [ ] P7.3 MASVS checklist refreshed with P4-P6 (every row's evidence re-pointed at a test name)
+  - [ ] P7.4 `docs/SECURITY_AUDIT_2026-10.md` replacing the July audit; a residual-risk register, each risk with an owner and a date
+  - [ ] P7 gate: no control marked "believed": each is "tested by …" or "open, owned by …"
 - [ ] **P8 — Infrastructure and operations (owner-driven)**
 
 ---
@@ -6046,3 +6051,24 @@ only a non-zero one. The failing case is pinned two ways: the property always tr
 first (fast-check's `examples`), and a plain test covers five spellings of a signed zero.
 Both fail on the old line and pass on the new. This is what P6.4 is for: an example test
 asks about the cases its author thought of, a property asks about all of them.
+
+
+### P7.1 — the threat model — 2026-10-05
+
+`docs/THREAT_MODEL.md`. Read in the code that day, not taken from older docs: which API
+routes the app calls (it never calls sync, the public-API key preview, the business
+summary or the open-banking intents), where the push token goes (the keychain only),
+where email content goes (Google to the phone only), which outside services each part
+talks to. Then STRIDE for the phone, the API, the database, the website and the outside
+services, and a row for every one of the 40 routes (access, limit, whether the app calls
+it, the main threat). Every mitigation names a test file, CI job or config line; a
+script checked that each of the 37 files cited exists (the 37th, the October audit, is
+P7.4's). Claims checked in the code before they were written: every SQL statement is
+parameterised or fixed text; readiness answers status only; sign-in codes allow 10
+failures per address per 24 hours; the privacy policy names the AI provider.
+
+**What it turned up that no finding had said:** four route groups have no caller in the
+app (section 5), which is surface without a user (an owner decision for P7.4); there is
+no audit trail of user actions (repudiation, partial); the waitlist has no rate limit of
+its own. Each is carried into the open list, with the open findings F3, F7, F8, F11, F14,
+F77, F90 and F161, the database's expiry and restore drill, edge rate limiting and iOS.
