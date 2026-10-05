@@ -113,7 +113,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [ ] P7.2 ASVS 5.0 Level 2 checklist, every control with its evidence (test, CI job or config line) or "open, owned by"; control text taken from OWASP's repository, not memory. **Done 2026-10-05**: all 253 assessed (158 met, 79 N/A, 12 partial, 4 open; every partial and open one is the owner's: host settings (P8) or a decision in `OWNER_ACTIONS.md` D17); **fixes F216 to F222**, plus the security-event log
   - [x] P7.3 MASVS checklist refreshed with P4-P6 (every row's evidence re-pointed at a test name). **Done 2026-10-05**: 41 tests named, held by `scripts/masvs-checklist.test.ts`
   - [x] P7.4 `docs/SECURITY_AUDIT_2026-10.md` replacing the July audit; a residual-risk register, each risk with an owner and a date. **Done 2026-10-05**: 31 risks, held by `scripts/security-audit.test.ts`
-  - [ ] P7 gate: no control marked "believed": each is "tested by …" or "open, owned by …"
+  - [x] P7 gate: no control marked "believed": each is "tested by …" or "open, owned by …". **Passed 2026-10-05** on GitHub (CI 37320819545 and CodeQL 37320819681, both green on `4f2f10d`): ASVS rows held by `scripts/asvs-checklist.test.ts` (only met, partial, open or N/A; met with evidence that exists, partial and open with an owner), MASVS rows by `scripts/masvs-checklist.test.ts` (every named test exists), residual risks by `scripts/security-audit.test.ts` (owner and date on each)
 - [ ] **P8 — Infrastructure and operations (owner-driven)**
 
 ---
