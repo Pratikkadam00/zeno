@@ -14,6 +14,7 @@ import { billingConfigured, deleteEntitlementForUser, fetchEntitlement, getCache
 import { deleteUserSyncData, pullChanges, pushChanges, type EncryptedChange } from "./sync";
 import { createHousehold, getHousehold, joinHousehold, removeMember, removeUserFromAllHouseholds, setMemberSpend, type Household } from "./family";
 import { coachConfigured, coachModel, generateCoaching } from "./coach";
+import { securityEvent } from "./security-events";
 import { registerAuthGuard } from "./auth-guard";
 import { markRequestStart, recordProductEvent, recordRequest, renderMetrics } from "./metrics";
 import { fetchWithTimeout } from "./http";
@@ -289,6 +290,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       reply.statusCode,
       reply.elapsedTime
     );
+    const security = securityEvent(request.routeOptions?.url ?? "unmatched", reply.statusCode, request.signedInAccount ?? request.userId);
+    if (security) request.log.info({ security }, "security event");
   });
 
   // Security headers (HSTS, nosniff, frame-deny, referrer policy, etc.). This is

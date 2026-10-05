@@ -11,7 +11,7 @@ is the public promise; this is how the code keeps it.
 |---|---|---|---|---|---|---|
 | **S: secret** | signing and storage keys, webhook and metrics secrets, provider API keys; access, refresh and sign-in tokens; the Gmail OAuth token; the PIN | at rest: keys only in Render's environment and the owner's key folder; tokens hashed (SHA-256) where the server stores them; on the phone only in Keychain / Keystore | tokens are signed (RS256) or looked up by hash | tokens: 15 minutes (access), 30 days (refresh), 10 minutes (sign-in link and code); keys: `docs/CRYPTOGRAPHY.md` | **never**: redacted by path, query strings dropped, tested with markers (`apps/api/src/log-hygiene.test.ts`) | the process that uses it; keys: the owner |
 | **P1: personal financial** | the subscription list, amounts, renewal dates, budgets; a stored Plaid access token (development only) | on the phone in SQLCipher (`docs/CRYPTOGRAPHY.md`); a Plaid token sealed with AES-256-GCM; TLS in transit | SQLCipher's per-page HMAC; GCM's tag | on the phone until the user deletes it; nothing on the server (the app never calls `/sync`) | never logged; error reports scrubbed of amounts and names (`apps/mobile/src/monitoring/scrub-edges.test.ts`) | the user's own device; a coach request sends names, categories and amounts to the AI provider, and the privacy policy names it |
-| **P2: personal** | email address, account id, household names and monthly totals, waitlist emails | TLS in transit; at rest, Postgres on Render (any disk encryption is Render's; not verified by us) | Postgres constraints | until the account is deleted (then erased, tested in `apps/api/src/storage/real-pg.test.ts`); waitlist: until launch plus a reasonable period | never logged (tested with a marker address in `log-hygiene.test.ts`); account ids are not logged today | the user; household members see the household's names and totals |
+| **P2: personal** | email address, account id, household names and monthly totals, waitlist emails | TLS in transit; at rest, Postgres on Render (any disk encryption is Render's; not verified by us) | Postgres constraints | until the account is deleted (then erased, tested in `apps/api/src/storage/real-pg.test.ts`); waitlist: until launch plus a reasonable period | email: never logged (tested with a marker address in `log-hygiene.test.ts`); the pseudonymous account id is logged in security events only | the user; household members see the household's names and totals |
 | **Public** | the website, the service catalogue, cancellation guides | TLS | — | — | — | everyone |
 
 Encoded is not protected: no level relies on base64 or similar to hide a value.
@@ -37,8 +37,12 @@ also redacted by path if a future serializer adds them), query strings, email ad
 subscription data. A log value cannot break a line or forge an entry: every line is a JSON
 object written by pino, which escapes control characters (ASVS V16.4.1).
 
-**Security events.** A sign-in attempt, a refresh, a refused token or a refused household
-write appears as its request line, with its route and status (200, 400, 401, 403, 429).
-There is no dedicated security-event log naming the account, the method or the reason: an
-investigation can reconstruct who did what only from IP, time and request id. That is
-recorded as partial (V16.2.1, V16.3.1 to V16.3.3), owner me.
+**Security events** (`apps/api/src/security-events.ts`, since P7.2). Besides its request
+line, each of these requests writes one `"security event"` line: a sign-in (with its
+method: email link or code, Apple, Google, demo), a refresh, a sign-out, a sign-in email
+request, and any request refused with 400 (`input.refused`), 401
+(`access.unauthenticated`), 403 (`access.forbidden`) or 429 (`rate_limited`). Each names
+the event, the outcome, the route, the status, and the account when one is known (the
+account signed in, or the one whose token the request carried), next to pino's time,
+request id and client IP. The account is the pseudonymous `acct_` id, never the email.
+Held by `apps/api/src/security-events.test.ts` under the production logger options.

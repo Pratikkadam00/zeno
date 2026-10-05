@@ -110,7 +110,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [ ] P6 gate: the floor enforced in CI and green on GitHub
 - [ ] **P7 — Security verification v2 with evidence**
   - [x] P7.1 Threat model: the system and its trust boundaries (data-flow diagram), STRIDE per surface (phone, API, database, website, outside services) and per route (all 40), each threat with its evidence or marked open with an owner. **Done**: `docs/THREAT_MODEL.md`
-  - [ ] P7.2 ASVS 5.0 Level 2 checklist, every control with its evidence (test, CI job or config line) or "open, owned by"; control text taken from OWASP's repository, not memory. **All 253 assessed** (154 met, 79 N/A, 16 partial, 4 open, each open or partial with its owner); **fixes F216 to F222**. Partials owned by me left: the security-event log (V16.2.1, V16.3.1-3)
+  - [ ] P7.2 ASVS 5.0 Level 2 checklist, every control with its evidence (test, CI job or config line) or "open, owned by"; control text taken from OWASP's repository, not memory. **Done 2026-10-05**: all 253 assessed (158 met, 79 N/A, 12 partial, 4 open; every partial and open one is the owner's: host settings (P8) or a decision in `OWNER_ACTIONS.md` D17); **fixes F216 to F222**, plus the security-event log
   - [ ] P7.3 MASVS checklist refreshed with P4-P6 (every row's evidence re-pointed at a test name)
   - [ ] P7.4 `docs/SECURITY_AUDIT_2026-10.md` replacing the July audit; a residual-risk register, each risk with an owner and a date
   - [ ] P7 gate: no control marked "believed": each is "tested by …" or "open, owned by …"
@@ -6171,4 +6171,20 @@ escapes (`\*`, `\_`), so `|` is now written as the entity `&#124;`, which no bac
 undoes; the generated file is byte-identical. A test pins it (bite-checked: it fails with
 the old escaper). I had read CI as green from the CI workflow alone; the CodeQL run is a
 separate workflow and is read with it from now on.
+
+### P7.2 — the security-event log; P7.2 done — 2026-10-05
+
+Every sign-in (with its method), refresh, sign-out and sign-in email request, and every
+request refused with 400, 401, 403 or 429, now writes a `"security event"` log line of
+its own: event, outcome, route, status, and the account when known (the pseudonymous
+`acct_` id, never the email), beside pino's UTC time, request id and client IP
+(`apps/api/src/security-events.ts`; the sign-in routes record the account they signed
+in). `security-events.test.ts` runs it under the production logger options and checks
+the exact events of a real sign-in, a failed one, a refresh, a sign-out, a 400, a 401
+and a 429, and that the email never appears; bite-checked twice (no hook: both flows
+fail; no account recorded: the sign-in flow fails). ASVS V16.2.1 and V16.3.1 to V16.3.3
+are met: 158 met, 12 partial, 4 open, and no partial or open item is mine.
+
+**P7.2 is done.** Next: P7.3 (MASVS refresh), P7.4 (audit report and residual-risk
+register), then the P7 gate.
 

@@ -1517,13 +1517,12 @@
     ]
   },
   "V16.2.1": {
-    "status": "partial",
-    "note": "Each line has when (UTC time), where (host, route), what (method, path, status) and the client IP and request id, but not the account: who did something is reconstructed from IP and time.",
+    "status": "met",
+    "note": "Every line has when (UTC time), where (host, route) and what (method, path, status), with the client IP and request id; security events add who (the pseudonymous account id) and the outcome.",
     "evidence": [
-      "docs/DATA_AND_LOGGING.md",
-      "apps/api/src/server-options.ts"
-    ],
-    "owner": "me"
+      "apps/api/src/security-events.test.ts",
+      "docs/DATA_AND_LOGGING.md"
+    ]
   },
   "V16.2.2": {
     "status": "met",
@@ -1556,28 +1555,28 @@
     ]
   },
   "V16.3.1": {
-    "status": "partial",
-    "note": "Every sign-in attempt, success or failure, appears as its request line with route and status, but there is no event naming the account and the method used.",
+    "status": "met",
+    "note": "Every sign-in, success or failure, is a security event naming the method (email link or code, Apple, Google, demo), the outcome and, on success, the account; refreshes and sign-outs too.",
     "evidence": [
+      "apps/api/src/security-events.test.ts",
       "docs/DATA_AND_LOGGING.md"
-    ],
-    "owner": "me"
+    ]
   },
   "V16.3.2": {
-    "status": "partial",
-    "note": "A refused request (401, 403) appears as its request line with route and status, but without the account or the reason.",
+    "status": "met",
+    "note": "Every refused request is a security event: 401 (no valid token) and 403 (not allowed), with the account when the request carried one.",
     "evidence": [
+      "apps/api/src/security-events.test.ts",
       "docs/DATA_AND_LOGGING.md"
-    ],
-    "owner": "me"
+    ]
   },
   "V16.3.3": {
-    "status": "partial",
-    "note": "Attempts to get past validation and rate limits show as 400 and 429 request lines; there is no dedicated security-event log.",
+    "status": "met",
+    "note": "Attempts to get past validation (400) and rate limits (429) are security events of their own, as are sign-in failures.",
     "evidence": [
+      "apps/api/src/security-events.test.ts",
       "docs/DATA_AND_LOGGING.md"
-    ],
-    "owner": "me"
+    ]
   },
   "V16.3.4": {
     "status": "met",

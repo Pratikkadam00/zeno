@@ -1,5 +1,5 @@
 import { fail, ok } from "@zeno/shared";
-import type { FastifyPluginAsync, FastifyReply } from "fastify";
+import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import { createHash, createPublicKey, createSign, createVerify, generateKeyPairSync, randomBytes, randomInt, randomUUID, timingSafeEqual, type JsonWebKey } from "node:crypto";
 import { z } from "zod";
 import { fetchWithTimeout } from "../http";
@@ -391,7 +391,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       return fail("UNAUTHORIZED", "Invalid or expired magic link.", request.id);
     }
 
-    return ok(await issueSession(record.accountId, record.email, "magic_link"), request.id);
+    return ok(await signIn(request, record.accountId, record.email, "magic_link"), request.id);
   });
 
   app.post("/auth/apple", verifyLimit, async (request, reply) => {
@@ -410,7 +410,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     // Only the VERIFIED token's email (F23): a client-sent email was signed into
     // our own access token as if Apple had vouched for it.
     const email = normalizeEmail(verified.email ?? `apple-${stableId(subject)}@privaterelay.appleid.com`);
-    return ok(await issueSession(accountIdForSubject("apple", subject), email, "apple"), request.id);
+    return ok(await signIn(request, accountIdForSubject("apple", subject), email, "apple"), request.id);
   });
 
   app.post("/auth/google", verifyLimit, async (request, reply) => {
@@ -437,7 +437,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     const subject = verified?.subject ?? subjectToken;
     // Only the VERIFIED token's email (F23).
     const email = normalizeEmail(verified?.email ?? `google-${stableId(subject)}@accounts.google.local`);
-    return ok(await issueSession(accountIdForSubject("google", subject), email, "google"), request.id);
+    return ok(await signIn(request, accountIdForSubject("google", subject), email, "google"), request.id);
   });
 
   app.post("/auth/refresh", verifyLimit, async (request, reply) => {
@@ -457,7 +457,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     // Await durability: the rotation (old token marked dead) must land before we
     // hand out the new session, or a restart could resurrect the old token.
     await kvPersistAwait("auth_refresh", hashToken(parsed.data.refreshToken), session);
-    return ok(await issueSession(session.accountId, session.email, session.provider), request.id);
+    return ok(await signIn(request, session.accountId, session.email, session.provider), request.id);
   });
 
   app.post("/auth/demo-login", requestLimit, async (request, reply) => {
@@ -479,7 +479,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       return fail("UNAUTHORIZED", "Invalid demo account credentials.", request.id);
     }
 
-    return ok(await issueSession(accountIdForEmail(expectedEmail), expectedEmail, "demo"), request.id);
+    return ok(await signIn(request, accountIdForEmail(expectedEmail), expectedEmail, "demo"), request.id);
   });
 
   app.post("/auth/logout", requestLimit, async (request) => {
@@ -519,7 +519,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       return fail("UNAUTHORIZED", "Invalid or expired magic link code.", request.id);
     }
 
-    return ok(await issueSession(record.accountId, record.email, "magic_link"), request.id);
+    return ok(await signIn(request, record.accountId, record.email, "magic_link"), request.id);
   });
 };
 
@@ -666,6 +666,13 @@ function consumeLegacyCode(email: string, code: string): MagicLinkRecord | null 
   kvDelete("auth_legacy", normalized);
   kvDelete("auth_magic", record.tokenHash);
   return record;
+}
+
+// Issues the session and records which account it is for, so the request's
+// security event names it (security-events.ts).
+async function signIn(request: FastifyRequest, accountId: string, email: string, provider: AuthProvider): Promise<AuthSession> {
+  request.signedInAccount = accountId;
+  return issueSession(accountId, email, provider);
 }
 
 async function issueSession(accountId: string, email: string, provider: AuthProvider): Promise<AuthSession> {

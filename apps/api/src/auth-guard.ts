@@ -7,6 +7,9 @@ declare module "fastify" {
     // Set by the auth guard once a valid access token is verified. Present on
     // every PROTECTED route handler; never trust a client-supplied id instead.
     userId?: string;
+    // Set by a sign-in route to the account it signed in, for the security
+    // event (security-events.ts); never read for authorisation.
+    signedInAccount?: string;
   }
 }
 
