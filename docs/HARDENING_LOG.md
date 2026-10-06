@@ -86,7 +86,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] FX.5 F94 and F106: three measured attempts each, neither reproduced; closed as not reproduced (not claimed fixed), P5 keeps watching
   - [x] FX.6 F163: pause periods recorded (migration v2); history skips only the months inside a pause; verified as a real upgrade on the emulator; F164 found
   - [x] FX.7 F164: Insights' monthly chart read by a screen reader, each month with its amount (verified with TalkBack)
-  - [ ] then the owner-only file (everything that needs the owner, nothing else)
+  - [x] then the owner-only file (everything that needs the owner, nothing else): `docs/OWNER_ACTIONS.md`
 - [x] **P4 — Website component tests, Playwright, CSP, DAST** (gate passed 2026-10-03; evidence in the "P4 gate" entry)
   - [x] P4.1 component and page tests (vitest + jsdom + Testing Library), split into steps; each adds a floor
     - [x] P4.1a the test setup, and the shared components (`components/ui/**` was dead code, removed); **fixes F165, F167, F168, F169**; F166 found (green: CI 37032423384, CodeQL 37032423356 on `62faef2`)
@@ -101,14 +101,14 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P4.5 DAST: OWASP ZAP baseline against `next start` and the API, nightly; no medium+ alerts. **Done**: three scans nightly, gated by `scripts/zap-gate.mjs`; first run's two Mediums resolved (a guide step read as SQL, reworded; `style-src 'unsafe-inline'` accepted by alertRef until 2027-03-31 with measured reasons) (green: DAST 37104160285, CI 37104160223, CodeQL 37104160276 on `36f1bb0`)
   - [x] P4 gate: Playwright green in CI; CSP without `'unsafe-inline'` scripts (or a written reason); axe clean on every route (all 509 guides too, light and dark: 1,018 views, 0 violations)
 - [x] **P5 — Mobile end-to-end (Maestro on the emulator)** (watch for F94 and F106, closed as not reproduced in FX.5). **Done**: 13 flows and the 17-screen accessibility-tree audit, green on the local emulator and on GitHub's (green: Mobile end-to-end 37205579950, CI 37205579972, CodeQL 37205579957 on `5dbddd7`); fixes F178, F184, F185, F188-F190, F192-F198, F201, F202; F191, F199, F200 logged
-- [ ] **P6 — Mutation + property-based testing**
+- [x] **P6 — Mutation + property-based testing** (gate passed 2026-10-06: mutation run 37493074226 on GitHub, all three floors met)
   - [x] P6.1 Stryker on the shared packages (`packages/shared`, `packages/service-catalog`): measure the mutation score, kill the survivors that matter, floor at 85 %. **Done**: 82.35 % to **92.44 %**, floor set at 92 % in `stryker.config.mjs`; **fixes F205, F206, F207** (green: CI 37254557059, CodeQL 37254557078 on `f2ec20d`)
   - [x] P6.2 Stryker on the API (`apps/api/src`), security and money paths first. **Done**: **88.95 %** over the whole API (2,752 of 3,094), floor 88 % in `stryker.api.config.mjs`; the sign-in routes 81.31 % to 84.53 %, the smaller security files 89.03 % to 95.69 %, coach/storage/startup 88.71 % to 92.80 %, the main routes 82.26 % to 83.52 %; **fixes F208-F211** (missing tests; no code was wrong)
   - [x] P6.3 Stryker on the app's logic (`apps/mobile/src`, outside screens and components). **Done**: **89.74 %** (4,566 of 5,088), floor 89 % in `stryker.mobile.config.mjs`; **fixes F212-F214**
   - [x] P6.4 fast-check properties: money math (rounding, minor units), UTC date math (DST, leap days), the email and CSV parsers (never throw, never over-match), the catalog (per-entry invariants), sync (idempotent, ordered). **Done**: 23 properties (24 tests) in four files, bite-checked with 7 deliberate breaks, all caught (the generated-input ones on three repeat runs)
   - [x] P6.5 CI: the mutation floor nightly, and on pull requests for changed files. **Done** (`.github/workflows/mutation.yml`): nightly, all three suites held to their floors; pull requests, the changed source files scored in the job summary, not enforced (reason below). First nightly result: to be read
-  - [ ] P6 gate: the floor enforced in CI and green on GitHub
-- [ ] **P7 — Security verification v2 with evidence**
+  - [x] P6 gate: the floor enforced in CI and green on GitHub. **Passed 2026-10-06** (run 37493074226 on `de7267c`: shared ≥ 92 %, API ≥ 88 %, app logic ≥ 89 %)
+- [x] **P7 — Security verification v2 with evidence** (gate passed 2026-10-05, read on GitHub)
   - [x] P7.1 Threat model: the system and its trust boundaries (data-flow diagram), STRIDE per surface (phone, API, database, website, outside services) and per route (all 40), each threat with its evidence or marked open with an owner. **Done**: `docs/THREAT_MODEL.md`
   - [x] P7.2 ASVS 5.0 Level 2 checklist, every control with its evidence (test, CI job or config line) or "open, owned by"; control text taken from OWASP's repository, not memory. **Done 2026-10-05**: all 253 assessed (158 met, 79 N/A, 12 partial, 4 open; every partial and open one is the owner's: host settings (P8) or a decision in `OWNER_ACTIONS.md` D17); **fixes F216 to F222**, plus the security-event log
   - [x] P7.3 MASVS checklist refreshed with P4-P6 (every row's evidence re-pointed at a test name). **Done 2026-10-05**: 41 tests named, held by `scripts/masvs-checklist.test.ts`
