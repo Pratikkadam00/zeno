@@ -40,7 +40,10 @@ object written by pino, which escapes control characters (ASVS V16.4.1).
 **Security events** (`apps/api/src/security-events.ts`, since P7.2). Besides its request
 line, each of these requests writes one `"security event"` line: a sign-in (with its
 method: email link or code, Apple, Google, demo), a refresh, a sign-out, a sign-in email
-request, and any request refused with 400 (`input.refused`), 401
+request, every successful change to a user's data (the audit trail: `data.household_created`,
+`data.household_joined`, `data.household_spend_changed` and `data.household_left` with the
+household id, `data.account_deleted`, and for the routes the app doesn't use yet
+`data.bank_connected` and `data.synced`), and any request refused with 400 (`input.refused`), 401
 (`access.unauthenticated`), 403 (`access.forbidden`) or 429 (`rate_limited`). Each names
 the event, the outcome, the route, the status, and the account when one is known (the
 account signed in, or the one whose token the request carried), next to pino's time,

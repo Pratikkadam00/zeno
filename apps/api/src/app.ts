@@ -290,7 +290,11 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       reply.statusCode,
       reply.elapsedTime
     );
-    const security = securityEvent(request.routeOptions?.url ?? "unmatched", reply.statusCode, request.signedInAccount ?? request.userId);
+    const householdId = (request.params as { householdId?: unknown } | undefined)?.householdId;
+    const security = securityEvent(request.routeOptions?.url ?? "unmatched", reply.statusCode, request.signedInAccount ?? request.userId, {
+      httpMethod: request.method,
+      ...(typeof householdId === "string" ? { householdId } : {})
+    });
     if (security) request.log.info({ security }, "security event");
   });
 

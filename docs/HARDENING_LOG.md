@@ -6297,3 +6297,15 @@ iOS build. `scripts/store-data-safety.test.ts` fails if the app gains a product 
 draft doesn't name, if bank connection reaches release builds, or if a cited file goes
 (bite-checked with an added event).
 
+### R31 closed — an audit trail of data changes — 2026-10-06
+
+The residual-risk register's R31 (mine): a household write or an account deletion was
+only a request line. Each successful change to a user's data now writes a security event
+of its own, `data.household_created`, `data.household_joined`,
+`data.household_spend_changed`, `data.household_left` (with the household id),
+`data.account_deleted` (and `data.bank_connected`, `data.synced` for routes the app
+doesn't use yet), naming the account; a refused change stays a refusal event, and reading
+makes none. `security-events.test.ts` drives a real sign-in, household create, spend
+change, leave and account deletion under the production logger and checks the four exact
+events; bite-checked (the lookup disabled: the test fails). API suite 622/622.
+

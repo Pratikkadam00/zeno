@@ -73,6 +73,38 @@ describe("security events", () => {
     expect(byEvent("auth.sign_out").at(-1)).toEqual({ event: "auth.sign_out", outcome: "failure", route: "/api/v1/auth/logout", status: 429 });
   });
 
+  // The audit trail (R31): each successful change to a user's data names the
+  // account, and the household it touched.
+  it("household create, spend change, leave and account deletion: one audit event each, with the account", async () => {
+    const { app, events } = await appWithCapturedLogs();
+    const sent = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", remoteAddress: "192.0.2.60", payload: { email: "audit@example.com" } });
+    const token = decodeURIComponent((sent.json().data.devLink as string).split("token=")[1] ?? "");
+    const session = (await app.inject({ method: "POST", url: "/api/v1/auth/verify", remoteAddress: "192.0.2.61", payload: { token } })).json().data as { accountId: string; accessToken: string };
+    const headers = { authorization: `Bearer ${session.accessToken}` };
+    const created = await app.inject({ method: "POST", url: "/api/v1/family/create", remoteAddress: "192.0.2.62", headers, payload: { ownerName: "Asha", monthlySpendMinor: 4599, currency: "INR" } });
+    const householdId = created.json().data.household.id as string;
+    const spend = await app.inject({ method: "POST", url: `/api/v1/family/${householdId}/spend`, remoteAddress: "192.0.2.63", headers, payload: { monthlySpendMinor: 5000, currency: "INR" } });
+    const left = await app.inject({ method: "POST", url: `/api/v1/family/${householdId}/leave`, remoteAddress: "192.0.2.64", headers });
+    const deleted = await app.inject({ method: "DELETE", url: "/api/v1/account", remoteAddress: "192.0.2.65", headers });
+    await app.close();
+    expect([created.statusCode, spend.statusCode, left.statusCode, deleted.statusCode]).toEqual([200, 200, 200, 200]);
+
+    const audit = events().map((l) => l.security!).filter((e) => String(e.event).startsWith("data."));
+    const account = session.accountId;
+    expect(audit).toEqual([
+      { event: "data.household_created", outcome: "success", route: "/api/v1/family/create", status: 200, account },
+      { event: "data.household_spend_changed", outcome: "success", route: "/api/v1/family/:householdId/spend", status: 200, account, household: householdId },
+      { event: "data.household_left", outcome: "success", route: "/api/v1/family/:householdId/leave", status: 200, account, household: householdId },
+      { event: "data.account_deleted", outcome: "success", route: "/api/v1/account", status: 200, account }
+    ]);
+  });
+
+  it("a refused change is a refusal, not an audit entry; reading data makes none", () => {
+    expect(securityEvent("/api/v1/family/:householdId/spend", 403, "acct_x", { httpMethod: "POST", householdId: "hh_1" })).toEqual({ event: "access.forbidden", outcome: "failure", route: "/api/v1/family/:householdId/spend", status: 403, account: "acct_x" });
+    expect(securityEvent("/api/v1/family/:householdId", 200, "acct_x", { httpMethod: "GET", householdId: "hh_1" })).toBeNull();
+    expect(securityEvent("/api/v1/account", 200, "acct_x", { httpMethod: "GET" })).toBeNull();
+  });
+
   it("a request that is neither security-relevant nor refused makes no event", () => {
     expect(securityEvent("/api/v1/services", 200, undefined)).toBeNull();
     expect(securityEvent("/api/v1/account", 200, "acct_x")).toBeNull();
