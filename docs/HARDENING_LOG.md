@@ -6309,3 +6309,20 @@ makes none. `security-events.test.ts` drives a real sign-in, household create, s
 change, leave and account deletion under the production logger and checks the four exact
 events; bite-checked (the lookup disabled: the test fails). API suite 622/622.
 
+### The first nightly mutation run failed: a CI guard, not a score — 2026-10-06
+
+The scheduled run (09:25 UTC, `e8364a1`) failed the shared and API suites within a
+minute; mobile passed. Job logs need a GitHub login, so the workflow now turns the end of
+Stryker's output into an annotation on failure (readable through the public API) and runs
+on any change to itself or the mutation setup. The re-run showed the cause: Stryker's
+initial test run failed one test, the real-Postgres suite's guard "in CI this suite runs
+against a real Postgres SERVER", because `CI` is set on GitHub and the mutation job has no
+Postgres service (locally `CI` is unset, so every local run passed). Adding the service
+would be wrong: Stryker runs four test processes at once, and one shared database would
+let them overwrite each other's rows, while each process's own PGlite is isolated. So the
+guard now applies in CI except under Stryker (`STRYKER_MUTATOR_WORKER`, the marker the
+time-zone setup already uses). Checked both ways locally: with `CI=1` a normal run still
+fails the guard against PGlite; under the marker it passes; and full Stryker dry runs of
+the API (621 tests) and shared (1,172) suites with `CI=1` succeed. The P6 gate is read
+from the next run on GitHub.
+

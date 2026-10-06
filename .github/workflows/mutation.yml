@@ -11,12 +11,15 @@ on:
   schedule:
     - cron: "47 2 * * *" # 02:47 UTC daily (off the hour; the other nightlies are at 03:17 and later)
   workflow_dispatch:
-  # A change to this workflow runs it at once, instead of waiting for the
-  # schedule (which GitHub runs hours late here).
+  # A change to this workflow or to the mutation setup runs it at once, instead
+  # of waiting for the schedule (which GitHub runs hours late here).
   push:
     branches: [main]
     paths:
       - ".github/workflows/mutation.yml"
+      - "stryker*.config.mjs"
+      - "vitest.mutation.config.ts"
+      - "vitest.tz-setup.ts"
   pull_request:
     paths:
       - "packages/*/src/**/*.ts"

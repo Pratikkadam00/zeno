@@ -118,7 +118,10 @@ describe(`real Postgres (${process.env.TEST_DATABASE_URL ? "server" : "PGlite"})
   it("in CI this suite runs against a real Postgres SERVER, not the embedded PGlite (so a green CI run proves it)", async () => {
     const [row] = await db.query<{ version: string }>("SELECT version()");
     const version = row?.version ?? "";
-    if (process.env.CI) {
+    // Mutation runs are the exception: Stryker runs several test processes at
+    // once, and one shared server would let them trample each other's rows, so
+    // each keeps its own PGlite (2026-10-06: this guard failed the first nightly).
+    if (process.env.CI && !process.env.STRYKER_MUTATOR_WORKER) {
       expect(db.kind).toBe("server");
       expect(version).toMatch(/^PostgreSQL \d+/);
       expect(version).not.toContain("PGlite");
