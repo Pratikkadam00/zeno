@@ -123,7 +123,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [ ] P8.6 (owner) `zeno-db` on a paid plan before 2026-11-03, then the restore drill (`RUNBOOKS.md` §5)
   - [ ] P8.7 (owner, then me) Edge rate limiting and WAF (Cloudflare in front of Render), then F3's log check
   - [ ] P8.8 (owner) A third-party penetration test, booked
-  - [ ] P8.9 (owner, me to draft) Store data-safety forms and the iOS privacy manifest, drafted from the code
+  - [~] P8.9 (owner, me to draft) Store data-safety forms and the iOS privacy manifest, drafted from the code. **Play draft done 2026-10-06** (`docs/STORE_DATA_SAFETY.md`, held by `scripts/store-data-safety.test.ts`); the owner submits it. The iOS privacy manifest needs an iOS build
 
 ---
 
@@ -6281,4 +6281,19 @@ sole maintainer as 1.2.1, the project's own repository, published 2026-09-30 (se
 fixes are exempt from the 7-day cooldown). Updated in the lockfile only (one package,
 integrity matching the registry); audit gate PASS and every gate green locally. Fixed
 before the next deploy, as `docs/COMPONENTS_AND_LOAD.md` requires for high advisories.
+
+### P8.9 — the Play data-safety draft, from the code — 2026-10-06
+
+`docs/STORE_DATA_SAFETY.md`: every kind of data the release build sends off the phone,
+where it goes and the file that sends it, then a draft answer per Play data type
+(collected, shared, optional, purpose). Read from the code, not assumed: Plaid is
+development-only (`__DEV__`), the product events carry no identifier and the server keeps
+only counters, Sentry is inert without a build-time DSN (none set), Gmail content never
+reaches our API. Open for the owner: each SDK vendor's own guidance, whether the
+anonymous product events need a setting, a web link for deletion requests (none exists,
+and its address needs F223's mail), the IP addresses in request logs, and the iOS
+privacy manifest, which is not configured and can't be produced or checked without an
+iOS build. `scripts/store-data-safety.test.ts` fails if the app gains a product event the
+draft doesn't name, if bank connection reaches release builds, or if a cited file goes
+(bite-checked with an added event).
 
