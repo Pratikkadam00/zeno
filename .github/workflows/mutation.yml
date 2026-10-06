@@ -11,6 +11,12 @@ on:
   schedule:
     - cron: "47 2 * * *" # 02:47 UTC daily (off the hour; the other nightlies are at 03:17 and later)
   workflow_dispatch:
+  # A change to this workflow runs it at once, instead of waiting for the
+  # schedule (which GitHub runs hours late here).
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/mutation.yml"
   pull_request:
     paths:
       - "packages/*/src/**/*.ts"
@@ -51,7 +57,21 @@ jobs:
         run: npm ci
 
       - name: Mutation run (fails below the floor)
-        run: npx stryker run ${{ matrix.config }}
+        env:
+          NO_COLOR: "1"
+          FORCE_COLOR: "0"
+        run: |
+          set -o pipefail
+          npx stryker run ${{ matrix.config }} 2>&1 | tee stryker-output.log
+
+      # Job logs need a GitHub login to read; annotations don't. On a failure, the
+      # end of Stryker's output becomes one annotation, so the cause can be read
+      # through the public API (2026-10-06: the first nightly failed with no detail).
+      - name: Failure detail as an annotation
+        if: failure()
+        run: |
+          detail=$(tail -n 40 stryker-output.log | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')
+          echo "::error title=Stryker ${{ matrix.suite }}::${detail}"
 
       - name: Score in the job summary
         if: always()
