@@ -6272,3 +6272,13 @@ The same delay holds the **P6 gate**: the mutation workflow is registered and ac
 but its 02:47 slot had produced no run by 05:22. Expected late this morning, going by
 the other nightlies; read it then. (Running it by hand needs the owner's GitHub login.)
 
+**CI red on `fb92d50`, read on GitHub (2026-10-06):** the blocking dependency audit
+stopped on a high advisory published overnight, GHSA-68fv-2mgg-jv7q in `source-map-js`
+1.2.1 (event-loop denial of service from crafted source-map offsets), reached through
+postcss and Tailwind (the website's build) and Vitest's coverage. The gate worked as
+designed: nothing deployed with it. 1.2.2 fixes it; checked before taking it: the same
+sole maintainer as 1.2.1, the project's own repository, published 2026-09-30 (security
+fixes are exempt from the 7-day cooldown). Updated in the lockfile only (one package,
+integrity matching the registry); audit gate PASS and every gate green locally. Fixed
+before the next deploy, as `docs/COMPONENTS_AND_LOAD.md` requires for high advisories.
+
