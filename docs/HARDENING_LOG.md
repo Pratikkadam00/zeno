@@ -6326,3 +6326,21 @@ fails the guard against PGlite; under the marker it passes; and full Stryker dry
 the API (621 tests) and shared (1,172) suites with `CI=1` succeed. The P6 gate is read
 from the next run on GitHub.
 
+### P6 gate passed; two more advisories fixed — 2026-10-06
+
+**The P6 gate, read on GitHub:** mutation run 37493074226 on `de7267c` (after the guard
+fix above), every suite at or above its floor: shared packages (floor 92 %, 30 min), API
+(floor 88 %, 55 min), app logic (floor 89 %, 13 min). Each job's exit status is the floor
+check (`break` in its config), so success means the floor held.
+
+**CI red on `de7267c`:** the blocking audit stopped two advisories published today:
+`sharp` < 0.35.5, GHSA-wq5f-xc86-pv6w (high, librsvg in its bundled libvips; reaches the
+website at run time through Next.js), and `shell-quote` 1.8.4 to 1.10.0,
+GHSA-pqg4-j6r4-53mv (critical, command injection in `quote()`; reaches only React
+Native's developer tools, not the app). Updated in the lockfile only: sharp 0.35.5 (its
+author, released 2026-09-27) with its platform binaries and libvips 1.3.4, and
+shell-quote 1.12.0 (its maintainers, 2026-10-02; npm took the newest in range rather
+than the minimum fix 1.11.0, and it is inside the 7-day cooldown, accepted because it is
+the same maintainers and the fix is needed now). Nothing else in the lockfile changed.
+Audit gate PASS; every gate green locally.
+
