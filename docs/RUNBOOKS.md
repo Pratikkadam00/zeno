@@ -78,11 +78,22 @@ then after every major change to storage:
 5. Delete the dump and the local database; write the date, the row counts and the time
    it took in `docs/HARDENING_LOG.md`.
 
-## 6. Turn on uptime alerts
+## 6. Uptime alerts
 
-`.github/workflows/uptime.yml` checks `/api/v1/health/ready` every 15 minutes (one retry
-for a waking free instance) and fails the run, which GitHub emails, when the API or its
-database is down. It is off by default because each check wakes a sleeping free instance
-and spends the workspace's free hours. To turn it on: GitHub → Settings → Secrets and
-variables → Actions → Variables → New repository variable `UPTIME_CHECKS` = `on`. Run it
-by hand any time: Actions → Uptime → Run workflow. Held by `scripts/uptime-check.test.ts`.
+**Use an outside monitor for alerts, not GitHub's schedule.** GitHub runs scheduled
+workflows on a best-effort basis, and on this repository it is far off: on 2026-10-05/06
+the 15-minute uptime schedule fired twice in about 11 hours, and the nightly jobs ran 6
+to 7 hours after their slot. An alert that late is no alert.
+
+1. **The alert:** a free external monitor (for example UptimeRobot or Better Stack; check
+   their current free tier) checking `https://zeno-api-5dwv.onrender.com/api/v1/health/ready`
+   every 5 minutes, alerting by email when it is not 200 or the body lacks
+   `"status":"ready"`. Each check wakes a sleeping free Render instance, so in practice
+   this keeps it awake and spends the workspace's free hours (750 a month, shared with
+   every free service, the old `zeno` service included): do it once `zeno-api` is on a
+   paid plan, or after deleting the old service.
+2. **The manual check:** `.github/workflows/uptime.yml` runs `scripts/uptime-check.mjs`
+   (200, "ready", every check "ok"; one retry for a waking instance): Actions → Uptime →
+   Run workflow, or locally `node scripts/uptime-check.mjs`. Its schedule only runs if the
+   repository variable `UPTIME_CHECKS` is `on`, and is a backstop at best. Held by
+   `scripts/uptime-check.test.ts`.

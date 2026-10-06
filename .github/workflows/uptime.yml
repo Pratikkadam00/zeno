@@ -1,9 +1,11 @@
 name: Uptime
 
-# P8: every 15 minutes, is the production API up and its database reachable?
+# P8: is the production API up and its database reachable? A manual check and a
+# backstop: GitHub's schedule is best-effort (here it fired twice in ~11 hours), so
+# the real alert is an outside monitor (docs/RUNBOOKS.md section 6).
 # (scripts/uptime-check.mjs: /api/v1/health/ready must answer 200, "ready", every
 # check "ok"; one retry after 30 s covers a free instance waking up.) A failed
-# run is GitHub's alert: it emails whoever last changed this schedule.
+# scheduled run is emailed to whoever last changed this schedule.
 #
 # OFF until the owner turns it on, because each check wakes a sleeping free
 # Render instance and spends the workspace's free instance hours: set the

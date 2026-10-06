@@ -116,7 +116,7 @@ Legend: `[x]` done and verified · `[~]` in progress · `[ ]` not started · `[!
   - [x] P7 gate: no control marked "believed": each is "tested by …" or "open, owned by …". **Passed 2026-10-05** on GitHub (CI 37320819545 and CodeQL 37320819681, both green on `4f2f10d`): ASVS rows held by `scripts/asvs-checklist.test.ts` (only met, partial, open or N/A; met with evidence that exists, partial and open with an owner), MASVS rows by `scripts/masvs-checklist.test.ts` (every named test exists), residual risks by `scripts/security-audit.test.ts` (owner and date on each)
 - [ ] **P8 — Infrastructure and operations (owner-driven)**
   - [x] P8.1 (me) Runbooks: signing-key swap without downtime (new: `JWT_PUBLIC_KEY_PREVIOUS`, tested), storage-key and webhook-secret rotation, an exposed secret, the backup and restore drill, uptime alerts (`docs/RUNBOOKS.md`). Done 2026-10-05
-  - [x] P8.2 (me) Uptime check on `/health/ready` (`.github/workflows/uptime.yml`, `scripts/uptime-check.mjs`, tested); off until the owner sets `UPTIME_CHECKS=on`. Done 2026-10-05
+  - [x] P8.2 (me) Uptime check on `/health/ready` (`.github/workflows/uptime.yml`, `scripts/uptime-check.mjs`, tested), a manual check and backstop; the alert itself is an outside monitor (owner, `RUNBOOKS.md` §6), because GitHub's schedule fired twice in ~11 hours here. Done 2026-10-05, corrected 2026-10-06
   - [x] P8.3 (me) Disclosure contact: `/.well-known/security.txt` (RFC 9116, tested, served by the production build) and `SECURITY.md` on the real domain. Done 2026-10-05; mail delivery is F223 (owner)
   - [x] P8.4 (me) DNS measured (CAA, DNSSEC, SPF, DKIM, DMARC, MX); the records to add are in `OWNER_ACTIONS.md`. Done 2026-10-05
   - [ ] P8.5 (owner) `main` protected (F7), GitHub push protection and Dependabot alerts (F8), exposed keys rotated, the 3072-bit key swap, mail for the contact addresses (F223), CAA, DNSSEC, DMARC `p=reject`
@@ -6258,4 +6258,17 @@ response-time promise (that is the owner's to make); an uptime workflow running
 a cold start; 5 tests against a local server, bite-checked; run once against production:
 UP), off until the owner sets `UPTIME_CHECKS=on`, because each check spends free Render
 hours.
+
+### P8.2 corrected; the P6 gate is waiting on GitHub's scheduler — 2026-10-06
+
+Read on GitHub at 05:22 UTC: the uptime workflow's 15-minute schedule fired **twice in
+about 11 hours** (both skipped, as designed while off), and the nightly fuzz and DAST
+runs land 6 to 7 hours after their slots (03:17 slot, run at 10:34). GitHub's schedule is
+best-effort, so it cannot be an alert. The runbook (§6) and the owner action now say: the
+alert is an outside monitor on `/api/v1/health/ready`; the workflow stays as a manual
+check and backstop.
+
+The same delay holds the **P6 gate**: the mutation workflow is registered and active,
+but its 02:47 slot had produced no run by 05:22. Expected late this morning, going by
+the other nightlies; read it then. (Running it by hand needs the owner's GitHub login.)
 
