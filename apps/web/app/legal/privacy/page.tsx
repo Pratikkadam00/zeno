@@ -4,27 +4,36 @@ import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import styles from "../legal.module.css";
 
+// W2 (docs/WEB_PLAN.md). Every statement here is one the code makes true:
+// what the app sends and to whom is docs/STORE_DATA_SAFETY.md (from the
+// release build), how long things are kept is docs/DATA_AND_LOGGING.md, the
+// providers are the ones configured in apps/api and apps/web. The operator is
+// "Zeno", the name the product trades under (D18). app/truthfulness.test.tsx
+// and app/legal/legal-agreement.test.tsx pin the facts that can drift.
 export const metadata: Metadata = pageMetadata({
   title: "Privacy policy",
   description:
-    "How Zeno handles your data: subscription data encrypted on your device, optional read-only Gmail access kept local, no bank credentials, and no selling of data.",
+    "What Zeno holds about you and why, what stays on your phone, who processes data for us, how long each thing is kept, and your rights and how to use them.",
   path: "/legal/privacy"
 });
 
 const sections = [
-  ["overview", "1. Overview"],
-  ["data-we-collect", "2. Data we collect"],
-  ["how-we-use", "3. How we use your data"],
-  ["on-device", "4. On-device storage & encryption"],
-  ["gmail", "5. Optional Gmail access"],
-  ["third-parties", "6. Third parties & service providers"],
-  ["retention", "7. Data retention"],
-  ["your-rights", "8. Your rights & choices"],
-  ["children", "9. Children's privacy"],
-  ["security", "10. Security"],
-  ["waitlist", "11. Waitlist & pre-launch"],
-  ["changes", "12. Changes to this policy"],
-  ["contact", "13. Contact us"]
+  ["who", "1. Who is responsible"],
+  ["summary", "2. The short version"],
+  ["phone", "3. What stays on your phone"],
+  ["collect", "4. What we hold, and why"],
+  ["bases", "5. The legal grounds"],
+  ["retention", "6. How long we keep things"],
+  ["gmail", "7. The Gmail connection"],
+  ["coach", "8. The AI spend coach"],
+  ["providers", "9. Who processes data for us"],
+  ["transfers", "10. Where data goes"],
+  ["rights", "11. Your rights, and how to use them"],
+  ["regions", "12. If you are in the EU or UK, California, or India"],
+  ["children", "13. Children"],
+  ["security", "14. Security"],
+  ["changes", "15. Changes to this policy"],
+  ["contact", "16. Contact"]
 ];
 
 export default function PrivacyPage() {
@@ -32,22 +41,13 @@ export default function PrivacyPage() {
     <>
       <p className={styles.eyebrow}>Legal</p>
       <h1 className={styles.title}>Privacy Policy</h1>
-      <p className={styles.updated}>Last updated: October 4, 2026</p>
+      <p className={styles.updated}>Last updated: October 8, 2026</p>
       <hr className={styles.rule} />
 
       <p className={styles.lede}>
-        Zeno is built on a simple idea: you should be able to understand and control your
-        recurring spending without handing over your bank login or your privacy. This policy
-        explains what we collect, why, and the choices you have.
+        This policy says what Zeno holds about you, why, for how long, who else touches it, and what you can do about it. It covers the
+        website at {SITE_HOST}, the waitlist, and the Zeno app for iOS and Android.
       </p>
-
-      <div className={styles.note}>
-        <strong>Pre-launch notice.</strong> Zeno is not yet publicly available. We are
-        currently collecting a waitlist. Today, the only personal data we hold from most people
-        is the email address you give us to join. The app-related practices below describe how
-        Zeno will operate at launch, and this policy will be finalized and re-published before
-        the app becomes available.
-      </div>
 
       <nav className={styles.toc} aria-label="Table of contents">
         <p className={styles.tocHeading}>On this page</p>
@@ -60,225 +60,205 @@ export default function PrivacyPage() {
         </ul>
       </nav>
 
-      <h2 id="overview">1. Overview</h2>
+      <h2 id="who">1. Who is responsible</h2>
       <p>
-        This Privacy Policy applies to the Zeno marketing website ({SITE_HOST}), the Zeno waitlist,
-        and the Zeno mobile application once it launches (together, the &ldquo;Service&rdquo;).
-        Zeno is operated by the Zeno team (&ldquo;Zeno,&rdquo; &ldquo;we,&rdquo;
-        &ldquo;us&rdquo;). By using the Service you agree to the practices described here.
-      </p>
-      <p>
-        Our guiding principles are straightforward: we collect the minimum we need, we keep your
-        sensitive financial data encrypted on your device rather than on our servers, we never
-        require your bank login, and <strong>we do not sell your personal data</strong>.
+        Zeno, the name the service is operated under, decides what personal data the service holds and why, and is responsible for it (the
+        &ldquo;controller&rdquo; in European law, the &ldquo;data fiduciary&rdquo; in Indian law). Questions, requests and complaints go to{" "}
+        <a href={`mailto:${CONTACT_EMAIL.privacy}`}>{CONTACT_EMAIL.privacy}</a>, which the person responsible for data reads.
       </p>
 
-      <h2 id="data-we-collect">2. Data we collect</h2>
-      <h3>Waitlist data</h3>
-      <p>
-        When you join the waitlist, we record your <strong>email address</strong> and the date and
-        time you signed up, in a private spreadsheet only we can open (stored by Google; see
-        section 6). That is all we need to email you about availability.
-      </p>
-      <h3>In-app subscription data</h3>
-      <p>
-        Inside the app, Zeno builds a picture of your recurring charges: service names,
-        amounts, billing cadence, renewal dates, free-trial end dates, and the notes or tags you
-        add. This <strong>subscription data is stored encrypted on your device</strong> and is
-        not uploaded to Zeno servers.
-      </p>
-      <h3>Account & contact data</h3>
-      <p>
-        If you create a paid Zeno plan at launch, we (or our app-store billing partners) will
-        process the information needed to manage that subscription, such as your store account
-        identifier and plan status. We do not receive or store your full payment card numbers.
-      </p>
-      <h3>Family sharing data</h3>
-      <p>
-        If you create or join a <strong>Family (household) plan</strong>, we store your household
-        membership and the combined spend totals needed to show a shared view to members. Each
-        member&rsquo;s individual subscription details stay encrypted on their own device. The
-        shared view is built from aggregated totals, not from other members&rsquo; raw lists.
-      </p>
-      <h3>Diagnostics</h3>
-      <p>
-        To keep the app working, we may use crash reporting and anonymized, aggregated diagnostics
-        (for example which screens load slowly or where the app crashes). These are configured to
-        avoid identifying you personally and never include your subscription contents.{" "}
-        <strong>Crash reporting is currently inert</strong> and only activates if we enable it with
-        a monitoring provider (see Section 6). We do not run website analytics. The app sends
-        anonymous counts of a few product events (an import finishing from CSV or email, a share card
-        being made, the free plan&rsquo;s limit being reached, and which plan a purchase was), with
-        no account, device identifier, or subscription content attached, so we can tell whether
-        those features work.
-      </p>
-      <h3>What we do not collect</h3>
+      <h2 id="summary">2. The short version</h2>
       <ul>
-        <li>
-          <strong>No bank credentials.</strong> Zeno never asks for, sees, or stores your
-          online-banking username, password, or login. A bank connection is not currently offered;
-          if Zeno ever adds one it would be entirely optional and handled by a regulated
-          account-aggregation provider (such as Plaid) that authenticates you directly. Zeno would
-          receive only the transaction information needed to detect subscriptions, never your
-          credentials.
-        </li>
-        <li>
-          <strong>No full payment card data.</strong> Billing is handled by the app stores.
-        </li>
-        <li>
-          <strong>No sale of data.</strong> We do not sell, rent, or trade your personal
-          information, and we do not use it for third-party advertising.
-        </li>
+        <li>Your subscription list, notes, renewal dates and the receipts the app reads stay on your phone, encrypted. Our servers never receive them.</li>
+        <li>We never ask for a bank login, and no bank-data aggregator is involved.</li>
+        <li>Our servers hold an email address and an account id if you sign in, a display name and a monthly total if you join a household, and the counts of four product events. That is the list.</li>
+        <li>The AI coach is off until you turn it on. When you use it, a summary of your subscriptions goes to the AI provider with your question, and nothing is stored.</li>
+        <li>Nothing is sold, rented or used for advertising. The website runs no analytics and sets no cookies.</li>
       </ul>
 
-      <h2 id="how-we-use">3. How we use your data</h2>
-      <p>We use the limited data we hold only to:</p>
-      <ul>
-        <li>email you about waitlist status, launch availability, and important Service updates;</li>
-        <li>operate core app features: detecting subscriptions, sending renewal and trial warnings, and guiding cancellations;</li>
-        <li>provide and manage any paid Zeno plan you choose;</li>
-        <li>diagnose crashes, fix bugs, and improve performance using aggregated diagnostics;</li>
-        <li>protect the Service against fraud, abuse, and security threats; and</li>
-        <li>comply with our legal obligations.</li>
-      </ul>
+      <h2 id="phone">3. What stays on your phone</h2>
       <p>
-        We process this data because it is necessary to provide a Service you requested, because
-        you have consented (for example to Gmail access or the AI spend coach), or because we
-        have a legitimate interest in keeping the Service secure and reliable.
+        The app writes your subscription list (service names, amounts, billing cycles, renewal and trial dates, categories, notes and tags),
+        the budgets you set, your reminder settings, and the connection to any inbox you add into an encrypted store on the device. That store
+        is protected by the phone&rsquo;s own secure keystore and, if you turn it on, a PIN and biometrics. Receipts and statements are read on the phone.
+        None of this is uploaded to us. Because we do not hold it, we cannot read it, and a breach of our servers cannot expose it. If you lose
+        the phone without a backup, we cannot restore it either; the app can export the list as a file whenever you like.
       </p>
 
-      <h2 id="on-device">4. On-device storage & encryption</h2>
-      <p>
-        Your subscription data lives on your phone. It is written to an{" "}
-        <strong>encrypted on-device store</strong>, protected by your device&rsquo;s secure
-        keystore and, where you enable it, a biometric or passcode lock. Because this data is not
-        held on Zeno servers, no Zeno employee can read your subscription list, and a breach of
-        our infrastructure cannot expose it.
-      </p>
-
-      <h2 id="gmail">5. Optional Gmail access</h2>
-      <p>
-        To help you discover subscriptions you may have forgotten, Zeno can offer{" "}
-        <strong>optional, read-only access to your email</strong> (for example a Gmail inbox).
-        This is strictly opt-in and works as follows:
-      </p>
+      <h2 id="collect">4. What we hold, and why</h2>
+      <p>What follows is everything our servers or our providers receive from the website or the app, and the reason for each.</p>
       <ul>
-        <li>access is <strong>read-only</strong>: Zeno can scan for receipts and renewal notices, but cannot send, delete, or modify your mail;</li>
-        <li>scanning happens <strong>locally on your device</strong> to identify subscription-related messages; the contents of your inbox are not uploaded to Zeno servers;</li>
-        <li>you can <strong>disconnect at any time</strong> from within the app or your Google account settings, which revokes Zeno&rsquo;s access; and</li>
-        <li>we only use this access to surface subscriptions to you, never for advertising or profiling.</li>
-      </ul>
-      <p>
-        Zeno&rsquo;s use of information received from Google APIs will adhere to the Google API
-        Services User Data Policy, including its Limited Use requirements.
-      </p>
-
-      <h2 id="third-parties">6. Third parties & service providers</h2>
-      <p>
-        We share data only with providers that help us run the Service, and only as needed. We use
-        each provider only when the related feature is enabled. They currently include:
-      </p>
-      <ul>
-        <li><strong>Email delivery</strong>: <strong>Resend</strong>, to send waitlist and sign-in emails;</li>
-        <li><strong>Hosting and infrastructure</strong>: <strong>Netlify</strong>, to serve the website (including the waitlist form), and <strong>Render</strong>, to run the API and its database;</li>
-        <li><strong>Waitlist storage</strong>: <strong>Google</strong> (Google Sheets, through Google Apps Script), where your waitlist email address and sign-up time are kept;</li>
-        <li><strong>App stores and billing</strong>: <strong>Apple App Store</strong> and <strong>Google Play</strong> for distribution, and <strong>RevenueCat</strong> to manage paid-plan entitlements;</li>
         <li>
-          <strong>AI coaching provider</strong>: <strong>Anthropic</strong> (Claude) or{" "}
-          <strong>Groq</strong>, whichever we have configured. Only if you turn on the
-          optional AI spend coach and grant consent, a summary of your subscriptions (service
-          names, amounts, categories, and the in-app insights, but not your name, email, bank
-          data, or any subscription discovered from your email) is sent to generate suggestions and
-          return them to you;
+          <strong>Waitlist:</strong> when you join, we record your email address and the date and time you signed up, to tell you when the app is available. Kept in a private
+          spreadsheet (section 9).
         </li>
         <li>
-          <strong>Crash reporting</strong>: <strong>Sentry</strong>, only if we enable it; it is
-          inert until then and never receives your subscription contents;
+          <strong>Account:</strong> if you sign in, your email address, or the identity token Apple or Google gives us (which carries your
+          email and an id), and an account id we make. Used to sign you in and to tie a paid plan and a household to you. Sign-in tokens are
+          stored only as hashes.
         </li>
         <li>
-          <strong>Bank-connection aggregator</strong> (such as <strong>Plaid</strong>): a{" "}
-          <strong>planned, optional</strong> integration that is <strong>not currently
-          available</strong>. If we ship it and you opt in, it would retrieve transactions solely
-          for subscription detection, and never your banking credentials.
+          <strong>Household (Family plan):</strong> the display name you enter and your monthly subscription total with its currency, so the
+          household&rsquo;s other members can see them. Not the subscriptions behind the total.
+        </li>
+        <li>
+          <strong>Purchases:</strong> which plan you bought and whether it is active, through Apple, Google and RevenueCat (section 9). We never
+          see your card.
+        </li>
+        <li>
+          <strong>The AI coach:</strong> only after you turn it on, the names, categories and monthly amounts of your subscriptions, the
+          app&rsquo;s insights about them, and your question, passed to the AI provider to generate an answer and not stored by us (section 8).
+        </li>
+        <li>
+          <strong>Four product events:</strong> an import finishing from CSV or email, a share card being made, the free plan&rsquo;s limit being
+          reached, and which plan a purchase was. Sent without an account id or device id; the server keeps only counts, so that we can tell
+          whether those features work.
+        </li>
+        <li>
+          <strong>Server logs:</strong> for each request to our servers, the time, the path without its query string, the client&rsquo;s IP
+          address, the result and how long it took, and for security events (a sign-in, a sign-out, a refused request) the account id. Never an
+          email address, a token, or any subscription data; tests enforce that. Used to keep the service running and to detect abuse.
+        </li>
+        <li>
+          <strong>Crash reports:</strong> none today. The app is built without a crash-reporting key. If we turn reporting on, it will carry a
+          stack trace scrubbed of amounts, names, emails and tokens, and this policy will say so first.
         </li>
       </ul>
       <p>
-        These providers are bound to use the data only to perform services for us. Some of them are
-        located in the <strong>United States</strong>; where your data is transferred
-        internationally, we rely on appropriate safeguards such as the European Commission&rsquo;s
-        Standard Contractual Clauses where applicable. We may also disclose information if required
-        by law or to protect the rights and safety of users and the public.
+        We do not collect: bank credentials, card numbers, your contacts, your location, advertising identifiers, or your inbox beyond what the
+        app reads on the phone (section 7). The website runs no analytics and sets no cookies (<Link href="/legal/cookies">cookie policy</Link>).
       </p>
 
-      <h2 id="retention">7. Data retention</h2>
-      <p>
-        We keep <strong>waitlist emails</strong> until launch and for a reasonable period
-        afterward to invite you in, or until you ask us to remove you. <strong>On-device
-        subscription data</strong> remains on your device until you delete it or uninstall the
-        app. Diagnostic data is retained only as long as needed to investigate issues and is
-        then deleted or further aggregated.
-      </p>
-      <p>
-        On the server side, we retain your <strong>account record</strong> (such as your store
-        account identifier, plan status, and any household membership) until you delete your
-        account, after which it is erased. <strong>Sign-in (magic-link) tokens</strong> are
-        short-lived and expire after 10 minutes. Operational <strong>server logs</strong>{" "}
-        are retained for up to 30 days and then deleted.
-      </p>
-
-      <h2 id="your-rights">8. Your rights & choices</h2>
-      <p>
-        Depending on where you live, you may have the right to access, correct, export, or delete
-        your personal data, and to object to or restrict certain processing. You can:
-      </p>
+      <h2 id="bases">5. The legal grounds</h2>
       <ul>
-        <li>unsubscribe from waitlist emails using the link in any email;</li>
-        <li>delete on-device data directly in the app, or by uninstalling it;</li>
-        <li>disconnect optional Gmail access at any time; and</li>
-        <li>
-          ask us to access or delete the data we hold by emailing{" "}
-          <a href={`mailto:${CONTACT_EMAIL.privacy}`}>{CONTACT_EMAIL.privacy}</a>.
-        </li>
+        <li><strong>To provide the service you asked for</strong> (a contract with you): the account, sign-in, households, purchases, the waitlist mail you asked for.</li>
+        <li><strong>Your consent</strong>, which you can withdraw at any time in the app: the Gmail connection, the AI coach, joining a household.</li>
+        <li><strong>Our legitimate interest</strong> in keeping the service secure and knowing whether it works: server logs, security events, the four product counts. You can object (section 11).</li>
+        <li><strong>A legal obligation</strong>, where one applies: tax records of purchases are the stores&rsquo;; a lawful request from an authority is handled as section 9 says.</li>
       </ul>
-      <p>We will not discriminate against you for exercising any of these rights.</p>
 
-      <h2 id="children">9. Children&rsquo;s privacy</h2>
+      <h2 id="retention">6. How long we keep things</h2>
+      <ul>
+        <li><strong>Waitlist email:</strong> until the app has launched and you have been told, plus a short period after; sooner if you ask.</li>
+        <li><strong>Account:</strong> until you delete it in the app, or ask us to. Deletion erases the account, its sign-in tokens, its household membership and its purchase link on our side; it takes effect at once and is tested.</li>
+        <li><strong>Sign-in tokens:</strong> an access token lasts 15 minutes and a refresh token 30 days of inactivity; sign-in links and codes expire after 10 minutes.</li>
+        <li><strong>Household:</strong> your name and total until you leave or the household is deleted; a household is deleted when its last member leaves.</li>
+        <li><strong>AI coach requests:</strong> not stored by us. The provider&rsquo;s own retention is in section 9.</li>
+        <li><strong>Product counts:</strong> counts only, with nothing personal in them, kept as long as we need the figures.</li>
+        <li><strong>Server logs:</strong> up to 30 days.</li>
+        <li><strong>Purchase records:</strong> Apple, Google and RevenueCat keep them under their own policies; we hold only the plan status while your account exists.</li>
+      </ul>
+
+      <h2 id="gmail">7. The Gmail connection</h2>
       <p>
-        Zeno is not directed to children. The Service is intended for users who are at least 16
-        years old (or 13 where permitted by local law with appropriate consent). We do not
-        knowingly collect personal data from children under these ages. If you believe a child
-        has provided us data, contact{" "}
-        <a href={`mailto:${CONTACT_EMAIL.privacy}`}>{CONTACT_EMAIL.privacy}</a> and we will delete it.
+        Discovery from email is optional. If you connect a Gmail inbox, the app asks Google for read-only access, and Google gives the app a
+        token that is stored in the phone&rsquo;s secure keystore, never on our servers. A scan runs only when you tap scan: the app reads
+        billing receipts and renewal notices on the phone to find subscriptions, and reads nothing else. It cannot send, delete or change your
+        mail. Nothing from your inbox is sent to us or to anyone. You can disconnect in the app, or revoke the access from your Google account
+        at any time.
+      </p>
+      <p>
+        Zeno&rsquo;s use of information received from Google APIs adheres to the Google API Services User Data Policy, including its Limited
+        Use requirements. That information is used only to show you your subscriptions, and never for advertising. It is not transferred to
+        others except as needed to provide that feature, to comply with the law, or as part of a merger or acquisition with notice to you.
       </p>
 
-      <h2 id="security">10. Security</h2>
+      <h2 id="coach">8. The AI spend coach</h2>
       <p>
-        We take security seriously. Sensitive subscription data is{" "}
-        <strong>encrypted on-device</strong> and can be protected with a{" "}
-        <strong>biometric or passcode lock</strong>. Data in transit between the app and any Zeno
-        service is encrypted using industry-standard transport security. No system is perfectly
-        secure, but our architecture is deliberately designed so the most sensitive data never
-        leaves your device.
+        The coach is off until you turn it on with its consent switch. When you ask it a question, the app sends our server the names,
+        categories and monthly amounts of your subscriptions, the app&rsquo;s own insights, your budget cap if you set one, and your
+        question. The server passes them to the AI provider in section 9 and returns the answer. We do not store the request or the answer.
+        Nothing discovered from your inbox, and not your name, email or any bank data, is included. Turn the switch off and nothing more is
+        sent.
       </p>
 
-      <h2 id="waitlist">11. Waitlist & pre-launch</h2>
+      <h2 id="providers">9. Who processes data for us</h2>
+      <p>These providers handle data on our instructions, each only for the purpose named, and each is used only when the feature that needs it is in use.</p>
+      <ul>
+        <li><strong>Render</strong> (United States): runs our server and its database. Holds the account, household and product-count data in section 4, and the server logs.</li>
+        <li><strong>Netlify</strong> (United States): serves the website, including the waitlist form.</li>
+        <li><strong>Google</strong> (United States): the waitlist spreadsheet (Google Sheets, through Google Apps Script); Google Play for the Android app and its billing; Gmail, if you connect an inbox, under your own Google account.</li>
+        <li><strong>Apple</strong> (United States): the App Store for the iOS app and its billing, and Sign in with Apple if you use it.</li>
+        <li><strong>RevenueCat</strong> (United States): checks purchases with the stores and tells the app which plan is active. Receives the purchase and your account id, or its own anonymous id if you are signed out.</li>
+        <li><strong>Resend</strong> (United States): delivers waitlist and sign-in emails. Receives your email address and the message.</li>
+        <li><strong>The AI provider</strong> for the coach: <strong>Anthropic (Claude) or Groq</strong>, both in the United States, whichever we have configured (Groq today). Receives what section 8 lists, under that provider&rsquo;s service agreement and data-processing terms.</li>
+        <li><strong>Sentry</strong> (United States): crash reporting, not in use today; this policy changes before it is.</li>
+      </ul>
       <p>
-        While Zeno is in pre-launch, the waitlist is the primary way we interact with you. We use
-        your email only to keep you informed about availability and launch. We will not add you
-        to unrelated marketing without your consent, and you can leave the waitlist at any time.
+        We do not sell, rent or trade personal data, and we do not share it for advertising. We disclose data outside this list only if the
+        law requires it, to protect someone&rsquo;s safety, or to enforce our terms, and we tell you where we lawfully can.
       </p>
 
-      <h2 id="changes">12. Changes to this policy</h2>
+      <h2 id="transfers">10. Where data goes</h2>
       <p>
-        We may update this Privacy Policy as the Service evolves, and we will publish a finalized
-        version before the app launches. When we make material changes we will update the
-        &ldquo;Last updated&rdquo; date above and, where appropriate, notify you by email.
+        Our server and every provider above are in the United States. If you are in the European Economic Area, the United Kingdom,
+        Switzerland or India, the data in section 4 is therefore transferred there. For transfers from the EEA, the UK and Switzerland we rely
+        on the European Commission&rsquo;s standard contractual clauses (and the UK addendum) with each provider, or on an adequacy decision
+        where one covers the provider. Your subscription data is not transferred anywhere, because it never leaves your phone.
       </p>
 
-      <h2 id="contact">13. Contact us</h2>
+      <h2 id="rights">11. Your rights, and how to use them</h2>
+      <p>Wherever you live, you can:</p>
+      <ul>
+        <li><strong>See</strong> what we hold about you, and get a copy.</li>
+        <li><strong>Correct</strong> it.</li>
+        <li><strong>Delete</strong> it: delete your account in the app (Settings), which erases it at once; or email us.</li>
+        <li><strong>Export</strong> your subscription list from the app (Settings, &ldquo;Export my data&rdquo;) as a file you can open anywhere.</li>
+        <li><strong>Withdraw consent</strong> for the Gmail connection, the coach or a household, in the app, at any time.</li>
+        <li><strong>Object</strong> to processing based on our legitimate interests, and ask us to stop.</li>
+        <li><strong>Leave the waitlist</strong> by replying to any waitlist email or writing to us.</li>
+      </ul>
       <p>
-        Questions about your privacy or this policy? Email us at{" "}
-        <a href={`mailto:${CONTACT_EMAIL.privacy}`}>{CONTACT_EMAIL.privacy}</a> and we will get back to you.
+        To use a right we cannot offer in the app, email <a href={`mailto:${CONTACT_EMAIL.privacy}`}>{CONTACT_EMAIL.privacy}</a> from the address
+        on your account, so that we know the request is yours. We answer within the time the law where you live allows, which is usually one
+        month. We will not treat you differently for using a right.
+      </p>
+
+      <h2 id="regions">12. If you are in the EU or UK, California, or India</h2>
+      <p>
+        <strong>European Union, EEA and United Kingdom.</strong> The grounds in section 5 are the GDPR&rsquo;s. You also have the right to
+        restrict processing and to data portability, and the right to complain to your data-protection authority; we would rather hear from
+        you first.
+      </p>
+      <p>
+        <strong>California.</strong> We do not sell or share personal information as the CCPA defines those terms, and we do not use it for
+        targeted advertising, so there is nothing to opt out of. You have the rights in section 11, including to know, delete and correct, and
+        the right not to be discriminated against for using them. An authorised agent may act for you with your written permission.
+      </p>
+      <p>
+        <strong>India.</strong> Under the Digital Personal Data Protection Act, you have the right to access, correct and erase your personal
+        data, to withdraw consent, to nominate someone to act for you, and to have a grievance heard. {CONTACT_EMAIL.privacy} is the address
+        for grievances. If you are not satisfied with our answer, you may approach the Data Protection Board of India.
+      </p>
+
+      <h2 id="children">13. Children</h2>
+      <p>
+        The service is not for children. We do not knowingly hold an account for anyone under 18, or under 16 where the law that applies lets a
+        younger person agree (see the <Link href="/legal/terms">terms</Link>). If you believe a child has an account, write to us and we will
+        delete it.
+      </p>
+
+      <h2 id="security">14. Security</h2>
+      <p>
+        Data on the phone is encrypted with a key in the device&rsquo;s secure keystore; the app can be locked with a PIN and biometrics,
+        hides its screens while locked, and is excluded from device backups. Every connection uses TLS. On the server, sign-in tokens are
+        stored only as hashes, secrets live only in the server&rsquo;s environment, and logs are tested to contain no personal data. The
+        server and the app are checked against the OWASP application and mobile security standards, and we publish a security.txt file for
+        researchers. No system is perfectly secure; if we learn of a breach that affects you, we will tell you and any authority the law
+        requires, without undue delay.
+      </p>
+
+      <h2 id="changes">15. Changes to this policy</h2>
+      <p>
+        When this policy changes, the date at the top changes with it. For a change that affects what we hold or why, we tell you in the app
+        or by email before it takes effect, and where the law requires your consent, we ask for it.
+      </p>
+
+      <h2 id="contact">16. Contact</h2>
+      <p>
+        Data and privacy: <a href={`mailto:${CONTACT_EMAIL.privacy}`}>{CONTACT_EMAIL.privacy}</a>. Security:{" "}
+        <a href={`mailto:${CONTACT_EMAIL.security}`}>{CONTACT_EMAIL.security}</a>. Anything else:{" "}
+        <a href={`mailto:${CONTACT_EMAIL.feedback}`}>{CONTACT_EMAIL.feedback}</a>.
       </p>
 
       <div className={styles.crosslinks}>

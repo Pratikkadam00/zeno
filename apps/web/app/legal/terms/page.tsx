@@ -1,30 +1,39 @@
-import { CONTACT_EMAIL } from "@/lib/site";
+import { CONTACT_EMAIL, SITE_HOST } from "@/lib/site";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import styles from "../legal.module.css";
 
+// W2 (docs/WEB_PLAN.md). Written for a reader, with the content a lawyer
+// expects. The operator is "Zeno", the name the product trades under (D18);
+// the governing law is India's, with consumers keeping the protection of
+// their own country's law (D19). The plan list and prices are the ones the
+// pricing section and the app sell (app/legal/legal-agreement.test.tsx pins
+// them). The lawyer's review (OWNER_GUIDE step 13) is the final check.
 export const metadata: Metadata = pageMetadata({
   title: "Terms of service",
   description:
-    "The terms for using Zeno, a subscription manager that helps you find, track, and cancel subscriptions. Pre-launch terms, finalised at launch.",
+    "The terms for using Zeno: what the service is, your account, the plans and prices, billing through the app stores, your rights, and the law that applies.",
   path: "/legal/terms"
 });
 
 const sections = [
-  ["acceptance", "1. Acceptance of these terms"],
-  ["service", "2. Description of the Service"],
-  ["pre-launch", "3. Waitlist & pre-launch"],
-  ["eligibility", "4. Eligibility"],
+  ["who", "1. Who we are and what these terms cover"],
+  ["service", "2. What Zeno does"],
+  ["account", "3. Your account"],
+  ["age", "4. Age"],
   ["acceptable-use", "5. Acceptable use"],
-  ["plans", "6. Plans & billing"],
-  ["your-subscriptions", "7. Your own subscriptions & cancellations"],
-  ["disclaimers", "8. Disclaimers"],
-  ["liability", "9. Limitation of liability"],
-  ["termination", "10. Termination"],
-  ["changes", "11. Changes to these terms"],
-  ["governing-law", "12. Governing law"],
-  ["contact", "13. Contact us"]
+  ["plans", "6. Plans, prices and billing"],
+  ["cancel", "7. Cancelling a plan and refunds"],
+  ["your-subscriptions", "8. Your own subscriptions"],
+  ["coach", "9. The AI spend coach"],
+  ["licence", "10. Licence and intellectual property"],
+  ["stores", "11. Apple and Google"],
+  ["changes-to-service", "12. Changes to the service, and ending it"],
+  ["liability", "13. Warranties and liability"],
+  ["law", "14. Governing law and disputes"],
+  ["changes", "15. Changes to these terms"],
+  ["contact", "16. Contact"]
 ];
 
 export default function TermsPage() {
@@ -32,22 +41,14 @@ export default function TermsPage() {
     <>
       <p className={styles.eyebrow}>Legal</p>
       <h1 className={styles.title}>Terms of Service</h1>
-      <p className={styles.updated}>Last updated: June 13, 2026</p>
+      <p className={styles.updated}>Last updated: October 8, 2026</p>
       <hr className={styles.rule} />
 
       <p className={styles.lede}>
-        These Terms of Service (&ldquo;Terms&rdquo;) govern your use of the Zeno website, the Zeno
-        waitlist, and the Zeno mobile app (together, the &ldquo;Service&rdquo;). Please read them
-        carefully: by using the Service you agree to them.
+        These terms are the agreement between you and Zeno for the website at {SITE_HOST}, the waitlist, and the Zeno app for iOS and
+        Android. They are written to be read. If anything is unclear, write to{" "}
+        <a href={`mailto:${CONTACT_EMAIL.legal}`}>{CONTACT_EMAIL.legal}</a> before you rely on it.
       </p>
-
-      <div className={styles.note}>
-        <strong>Pre-launch notice.</strong> Zeno is not yet generally available; we are currently
-        operating a waitlist. These Terms cover your use of the website and waitlist today, and
-        describe the terms that will apply to the app. The final Terms governing the launched app
-        (including plan pricing and billing details) will be published before the app becomes
-        available and will supersede this draft.
-      </div>
 
       <nav className={styles.toc} aria-label="Table of contents">
         <p className={styles.tocHeading}>On this page</p>
@@ -60,137 +61,187 @@ export default function TermsPage() {
         </ul>
       </nav>
 
-      <h2 id="acceptance">1. Acceptance of these terms</h2>
+      <h2 id="who">1. Who we are and what these terms cover</h2>
       <p>
-        By accessing the website, joining the waitlist, or using the Zeno app, you agree to be
-        bound by these Terms and by our{" "}
-        <Link href="/legal/privacy">Privacy Policy</Link>. If you do not agree, please do not use
-        the Service. If you are using the Service on behalf of an organization, you represent that
-        you are authorized to accept these Terms on its behalf.
+        Zeno is the name the service is operated under (&ldquo;Zeno&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;). The service is the website at{" "}
+        {SITE_HOST}, the waitlist on it, and the Zeno app (together, the &ldquo;Service&rdquo;). By joining the waitlist, creating an account,
+        or using the app, you agree to these terms and to the <Link href="/legal/privacy">privacy policy</Link>, which explains what data the
+        Service holds and why. If you do not agree, do not use the Service.
+      </p>
+      <p>
+        Until the app is in the App Store and Google Play, the website and the waitlist are the only parts of the Service you can use. The
+        sections about the app apply from the day it is available.
       </p>
 
-      <h2 id="service">2. Description of the Service</h2>
+      <h2 id="service">2. What Zeno does</h2>
       <p>
-        Zeno is a subscription manager. It helps you <strong>find</strong> recurring charges you
-        may have forgotten, <strong>warns you before renewals</strong> and free-trial conversions,
-        and <strong>helps you cancel</strong> what you no longer want. Zeno does this without
-        requiring your bank login, and your subscription data is stored encrypted on your device.
+        Zeno helps you find the subscriptions you pay for, warns you before each one renews or a free trial converts, and walks you through
+        cancelling the ones you no longer want. It finds subscriptions in billing receipts from an inbox you connect, in statement files you
+        import, and in entries you add yourself. It never asks for your bank login. Your subscription list is stored encrypted on your phone.
       </p>
       <p>
-        Zeno is a tool to help you stay informed and act. It does not control your relationships
-        with the companies you subscribe to, and it cannot guarantee a particular outcome with any
-        merchant.
+        Zeno is a tool for keeping informed and acting. It does not cancel anything on your behalf, it has no relationship with the
+        companies you subscribe to, and it cannot promise a particular outcome with any of them.
       </p>
 
-      <h2 id="pre-launch">3. Waitlist & pre-launch</h2>
+      <h2 id="account">3. Your account</h2>
       <p>
-        The waitlist lets you register interest and be notified when Zeno is available. Joining the
-        waitlist does not guarantee access, a launch date, or any particular feature or price. We
-        may change, delay, or discontinue planned features before launch.
+        The app works without an account for tracking, reminders and cancellation guides. An account is needed for the Family plan and for the
+        AI spend coach, and is created by signing in with an email link or code, or with your Apple or Google account. Keep the inbox and
+        the devices you sign in with secure: whoever controls them controls the account. One account per person. You can delete your account
+        from inside the app at any time; the server then erases what it holds about you (section 6 of the privacy policy says what that is).
       </p>
 
-      <h2 id="eligibility">4. Eligibility</h2>
+      <h2 id="age">4. Age</h2>
       <p>
-        You must be at least 16 years old (or 13 where permitted by local law with appropriate
-        consent) to use the Service, and you must be able to form a binding contract. You agree to
-        provide accurate information and to keep your account secure.
+        You must be at least 18 years old to create an account or buy a plan. Where the law that applies to you lets a younger person agree
+        to terms like these and to the processing of their data, that age applies instead, but never below 16. We do not knowingly hold an
+        account for anyone younger; if you believe we do, write to {CONTACT_EMAIL.privacy} and we will remove it.
       </p>
 
       <h2 id="acceptable-use">5. Acceptable use</h2>
       <p>You agree not to:</p>
       <ul>
-        <li>use the Service for any unlawful, fraudulent, or harmful purpose;</li>
-        <li>attempt to access accounts or data that are not yours, or to breach our security;</li>
-        <li>reverse engineer, scrape, or interfere with the Service except as permitted by law;</li>
-        <li>use the Service to infringe anyone&rsquo;s rights or to send spam or malware; or</li>
-        <li>misuse waitlist sign-ups, including submitting addresses that are not yours.</li>
+        <li>use the Service for anything unlawful, fraudulent or harmful;</li>
+        <li>try to reach accounts, households or data that are not yours, or to get around the Service&rsquo;s security;</li>
+        <li>send the Service deliberately malformed or excessive requests, or interfere with it for other people;</li>
+        <li>copy the cancellation catalogue or other content of the Service for a competing product;</li>
+        <li>join the waitlist with an address that is not yours, or create accounts for other people.</li>
       </ul>
-
-      <h2 id="plans">6. Plans & billing</h2>
       <p>
-        At launch, Zeno expects to offer the following tiers. Final names, features, and prices
-        will be confirmed at launch:
+        You may study how the app and website behave, and you may report what you find to {CONTACT_EMAIL.security}; we welcome that and
+        say so in the site&rsquo;s security.txt file.
       </p>
+
+      <h2 id="plans">6. Plans, prices and billing</h2>
+      <p>These are the plans, in US dollars. The same figures appear on the pricing section of the home page and in the app.</p>
       <ul>
-        <li><strong>Free</strong>: core subscription tracking and renewal reminders;</li>
-        <li><strong>Pro</strong>: unlimited subscriptions, category budgets and envelope budgeting;</li>
-        <li><strong>Family</strong>: Pro features shared across a household of up to five people;</li>
-        <li><strong>Lifetime</strong>: Pro, for a single payment with no renewal.</li>
+        <li>
+          <strong>Free</strong>: up to 10 subscriptions, with the renewal reminders, the cancellation guides with verification, and the insights.
+          No card required. It stays free.
+        </li>
+        <li>
+          <strong>Pro</strong>: $3.99 a month, or $29.99 a year. Everything in Free, plus unlimited subscriptions, category budgets and envelope
+          budgeting.
+        </li>
+        <li>
+          <strong>Lifetime</strong>: $79.99, once. Everything in Pro, with no renewal.
+        </li>
+        <li>
+          <strong>Family</strong>: $6.99 a month for a household of up to five people. Everything in Pro for each member, plus the shared Family
+          Vault.
+        </li>
       </ul>
       <p>
-        Paid plans will be <strong>billed through the Apple App Store or Google Play</strong> at
-        launch, subject to those stores&rsquo; terms. Subscriptions to a paid Zeno plan renew
-        automatically unless cancelled, and you manage or cancel them through your app-store
-        account. Refunds are handled according to the applicable app store&rsquo;s policies.
+        Plans are sold and billed by Apple (through the App Store) or Google (through Google Play), under their terms as well as these. Taxes
+        may be added by the store according to where you are. A monthly or yearly plan renews automatically at the end of each period at the
+        price then shown in the store, until you cancel it. We do not see or hold your card details; the stores handle payment.
+      </p>
+      <p>
+        If a price changes, the store tells you before the next renewal, and where the store&rsquo;s rules require it, asks you to agree. Any
+        promotion, such as a free period for people on the waitlist, is described on the website when it is offered, and its conditions are
+        the ones stated there.
       </p>
 
-      <h2 id="your-subscriptions">7. Your own subscriptions & cancellations</h2>
+      <h2 id="cancel">7. Cancelling a plan and refunds</h2>
       <p>
-        Zeno helps you find and cancel <em>your own</em> third-party subscriptions, but{" "}
-        <strong>you remain responsible for them</strong>. Where Zeno provides cancellation guides
-        or one-tap actions, it is assisting you: you are the one cancelling, and you are
-        responsible for confirming that a cancellation succeeded and for any charges that occur.
-        Renewal dates, trial windows, and amounts shown in Zeno are estimates based on available
-        information and may not always be exact.
+        You cancel a monthly or yearly plan in your App Store or Google Play account settings, not inside the app, and it stays active until
+        the end of the period you have paid for. Refunds are requested from the store you bought from, under its refund rules; we will help
+        where we can.
       </p>
       <p>
-        Zeno does not provide financial, tax, accounting, or legal advice. The information in the
-        app is for general guidance only; decisions about your money are yours.
+        If you live in the European Union, the United Kingdom, or another place that gives consumers a right to withdraw from a purchase of
+        digital content within 14 days, that right is yours and is exercised through the store. Nothing in these terms takes away a right
+        that consumer law gives you where you live.
       </p>
 
-      <h2 id="disclaimers">8. Disclaimers</h2>
+      <h2 id="your-subscriptions">8. Your own subscriptions</h2>
       <p>
-        The Service is provided <strong>&ldquo;as is&rdquo; and &ldquo;as available&rdquo;</strong>{" "}
-        without warranties of any kind, whether express or implied, including warranties of
-        merchantability, fitness for a particular purpose, and non-infringement. We do not warrant
-        that the Service will be uninterrupted, error-free, or that every subscription will be
-        detected or every cancellation completed.
+        The subscriptions Zeno tracks are contracts between you and other companies, and they remain your responsibility. The cancellation
+        guides describe steps that worked when they were written; companies change their pages, and a guide can be out of date. You are the
+        one cancelling, and you are responsible for checking that a cancellation took effect. Zeno marks a cancellation verified only when its
+        renewal date passes with no new charge in the receipts or statements you scan or import, so that check is only as complete as the data
+        you give it.
       </p>
       <p>
-        Some features, including the AI spend coach, generate suggestions automatically. Anything
-        the coach produces is <strong>general information, not financial advice</strong>; it may be
-        incomplete or inaccurate, and you should review it before acting on it.
-      </p>
-
-      <h2 id="liability">9. Limitation of liability</h2>
-      <p>
-        To the maximum extent permitted by law, Zeno and its team will not be liable for any
-        indirect, incidental, special, consequential, or punitive damages, or for any loss of
-        profits, savings, data, or goodwill, arising out of or related to your use of the Service.
-        To the extent liability cannot be excluded, our total liability is limited to the greater
-        of the amount you paid us for the Service in the twelve months before the claim, or USD 50.
-        Some jurisdictions do not allow certain limitations, so some of these may not apply to you.
+        Renewal dates, trial end dates and amounts are read from receipts, statements and the catalogue, and can be wrong or late. Zeno gives
+        no financial, tax, accounting or legal advice. Decisions about your money are yours.
       </p>
 
-      <h2 id="termination">10. Termination</h2>
+      <h2 id="coach">9. The AI spend coach</h2>
       <p>
-        You may stop using the Service at any time, leave the waitlist, or delete the app. We may
-        suspend or terminate access if you breach these Terms or to protect the Service or other
-        users. Provisions that by their nature should survive termination, such as disclaimers and
-        limitations of liability, will survive.
+        The coach is optional and off until you turn it on. When you ask it a question, a summary of your subscriptions (names, categories,
+        amounts, and the app&rsquo;s own insights) is sent with your question to the AI provider named in the privacy policy, and its answer
+        is returned to you. The answer is generated text: it can be incomplete or wrong, it is general information and not advice, and you
+        should check it before acting on it. We do not store your questions or the answers.
       </p>
 
-      <h2 id="changes">11. Changes to these terms</h2>
+      <h2 id="licence">10. Licence and intellectual property</h2>
       <p>
-        We may update these Terms as the Service develops, and we will publish finalized Terms
-        before the app launches. When changes are material we will update the
-        &ldquo;Last updated&rdquo; date and, where appropriate, notify you. Continued use of the
-        Service after changes take effect means you accept the updated Terms.
+        We give you a personal, non-transferable licence to use the app on devices you own or control, for your own subscriptions, under these
+        terms and the store&rsquo;s rules. The app, the website, the catalogue, the guides and the names and marks are ours or our licensors&rsquo;
+        and stay so. Your subscription data is yours; we claim nothing in it. If you send us feedback, we may use it to improve the Service
+        without owing you anything for it.
       </p>
 
-      <h2 id="governing-law">12. Governing law</h2>
+      <h2 id="stores">11. Apple and Google</h2>
       <p>
-        These Terms are governed by the laws of the jurisdiction in which Zeno is established,
-        without regard to its conflict-of-laws rules, and the courts located there will have
-        jurisdiction over disputes, except where local consumer-protection law gives you the right
-        to bring a claim where you live. The specific governing law and venue will be confirmed in
-        the finalized Terms published at launch.
+        These terms are between you and Zeno, not Apple or Google, and Zeno alone is responsible for the app and its content. Apple and Google
+        have no obligation to maintain or support the app. If the app fails to conform to a warranty you are owed, you may tell the store, which
+        may refund the price you paid; beyond that, the store has no other warranty obligation for the app, and any other claim is ours to
+        handle. Zeno, not the store, handles any claim about the app, including product liability, a claim that it fails to meet a legal
+        requirement, consumer-protection claims, and a claim that it infringes someone&rsquo;s intellectual property.
+      </p>
+      <p>
+        You confirm that you are not in a country under a United States government embargo or designated a &ldquo;terrorist supporting&rdquo;
+        country, and not on a United States government list of prohibited or restricted parties. You must comply with any third-party terms
+        that apply when you use the app. Apple and its subsidiaries are third-party beneficiaries of these terms for the iOS app and may
+        enforce them against you. The same applies to Google for the Android app, to the extent its terms require it.
       </p>
 
-      <h2 id="contact">13. Contact us</h2>
+      <h2 id="changes-to-service">12. Changes to the service, and ending it</h2>
       <p>
-        Questions about these Terms? Email us at{" "}
-        <a href={`mailto:${CONTACT_EMAIL.legal}`}>{CONTACT_EMAIL.legal}</a>.
+        We may add, change or remove features, and we say on the <Link href="/roadmap">roadmap</Link> what is planned and not promised. Joining
+        the waitlist does not guarantee access, a launch date or a price. You can stop using the Service, leave the waitlist, or delete your
+        account at any time. We may suspend or end your access if you break these terms or to protect the Service or other people, and we will
+        tell you why unless the law prevents it. If we ever discontinue the app, we will give notice on the website and in the app where we can,
+        and your data on the phone stays yours to export.
+      </p>
+
+      <h2 id="liability">13. Warranties and liability</h2>
+      <p>
+        The Service is provided as is and as available. We do not promise that it will be uninterrupted or free of errors, that every
+        subscription will be found, or that every cancellation will go through. To the extent the law allows, we exclude implied warranties
+        and are not liable for indirect or consequential loss, or for loss of profit, savings, data or goodwill arising from the Service. Where
+        liability cannot be excluded, our total liability to you for all claims together is limited to the greater of the amount you paid for
+        the Service in the twelve months before the claim or USD 50.
+      </p>
+      <p>
+        Nothing in these terms limits liability for death or personal injury caused by negligence, for fraud, or for anything else that cannot
+        be limited under the law that applies to you, and nothing in them removes rights that consumer law gives you.
+      </p>
+
+      <h2 id="law">14. Governing law and disputes</h2>
+      <p>
+        These terms are governed by the laws of India, and the courts of India have jurisdiction over disputes about them. If you are a consumer
+        living elsewhere, you keep the protection of the mandatory consumer law of the country where you live, and you may bring a claim in the
+        courts of that country. Before either of us goes to court, we ask you to write to {CONTACT_EMAIL.legal} so that we can try to put
+        things right directly.
+      </p>
+
+      <h2 id="changes">15. Changes to these terms</h2>
+      <p>
+        We may change these terms as the Service changes. For a material change, we give at least 14 days&rsquo; notice before it takes effect,
+        by email to the address on your account where we have one, and in the app or on the website. The date at the top of this page says when
+        they last changed. If you keep using the Service after a change takes effect, the changed terms apply; if you do not agree with a
+        change, stop using the Service or delete your account before that date.
+      </p>
+
+      <h2 id="contact">16. Contact</h2>
+      <p>
+        Questions about these terms: <a href={`mailto:${CONTACT_EMAIL.legal}`}>{CONTACT_EMAIL.legal}</a>. Questions about your data:{" "}
+        <a href={`mailto:${CONTACT_EMAIL.privacy}`}>{CONTACT_EMAIL.privacy}</a>. Security reports:{" "}
+        <a href={`mailto:${CONTACT_EMAIL.security}`}>{CONTACT_EMAIL.security}</a>.
       </p>
 
       <div className={styles.crosslinks}>

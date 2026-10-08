@@ -7,7 +7,7 @@ import styles from "../legal.module.css";
 export const metadata: Metadata = pageMetadata({
   title: "Cookie policy",
   description:
-    "How the Zeno marketing website uses cookies and local storage: strictly necessary storage only. No analytics, no ad tracking, no cross-site profiling.",
+    "How the Zeno website uses cookies and browser storage: no cookies, one stored item (your theme choice). No analytics, no ad tracking, no cross-site profiling.",
   path: "/legal/cookies"
 });
 
@@ -28,7 +28,7 @@ export default function CookiesPage() {
     <>
       <p className={styles.eyebrow}>Legal</p>
       <h1 className={styles.title}>Cookie Policy</h1>
-      <p className={styles.updated}>Last updated: October 2, 2026</p>
+      <p className={styles.updated}>Last updated: October 8, 2026</p>
       <hr className={styles.rule} />
 
       <p className={styles.lede}>
@@ -37,11 +37,6 @@ export default function CookiesPage() {
         not run analytics, and we do not track you across the web or serve ads.
       </p>
 
-      <div className={styles.note}>
-        <strong>Pre-launch notice.</strong> While Zeno is in pre-launch, this site mainly exists to
-        explain the product and collect waitlist sign-ups, so it needs no cookies. This
-        policy will be reviewed and finalized before the app launches.
-      </div>
 
       <nav className={styles.toc} aria-label="Table of contents">
         <p className={styles.tocHeading}>On this page</p>
@@ -118,8 +113,8 @@ export default function CookiesPage() {
 
       <h2 id="changes">8. Changes to this policy</h2>
       <p>
-        We may update this Cookie Policy as the site evolves, and we will finalize it before launch.
-        Material changes will be reflected in the &ldquo;Last updated&rdquo; date above.
+        We may update this Cookie Policy as the site changes. If we ever add cookies or analytics, the change is made here
+        first, and your consent is asked for where the law requires it. Material changes will be reflected in the &ldquo;Last updated&rdquo; date above.
       </p>
 
       <h2 id="contact">9. Contact us</h2>
