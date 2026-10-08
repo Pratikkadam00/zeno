@@ -8,7 +8,7 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 **Status:** ⬜ to do · 🔄 in progress · ✅ pass · ❌ fail (finding open) · 🔒 needs the owner
 · ⏸ blocked (says why)
 
-**Summary (2026-10-09):** 69 checks. 47 done; 1 failed and waiting on the owner (W6.4, F227); 9 need the owner (🔒); 1 blocked on the owner's mail set-up (⏸); the rest are mine (W7, W8.3, W8.6, W5.9 in December).
+**Summary (2026-10-09):** 69 checks. 48 done; 1 failed and waiting on the owner (W6.4, F227); 9 need the owner (🔒); 1 blocked on the owner's mail set-up (⏸); the rest are mine (W7, W8.3, W8.6, W5.9 in December).
 
 ---
 
@@ -100,7 +100,7 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 
 | ID | Check | Status | Evidence / finding |
 |---|---|---|---|
-| W7.1 | Spell check in CI with a project dictionary | ⬜ | |
+| W7.1 | Spell check in CI with a project dictionary | ✅ | `cspell.json` (British English, 27 project words, entities ignored) and a CI step over the website's sources and llms.txt; 67 files, 0 issues; bite-checked ('subscripton' and 'chargse' caught, 'colour' accepted) |
 | W7.2 | Visual baselines, every template, light and dark, phone and desktop | ⬜ | = U2.6 |
 | W7.3 | Firefox project | ⬜ | = U5.7 |
 | W7.4 | WebKit project | ⬜ | = U5.8 |

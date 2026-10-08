@@ -59,6 +59,12 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # W7.1: the website's copy, spelled (British English; cspell.json holds
+      # the project's own words). Pinned by version, not installed: nothing
+      # else in the repository needs it.
+      - name: Spelling (website copy)
+        run: npx --yes cspell@10.3.6 "apps/web/app/**/*.{ts,tsx}" "apps/web/components/**/*.{ts,tsx}" "apps/web/lib/**/*.ts" "apps/web/public/llms.txt" --no-progress
+
       - name: Test
         run: npm test
 
