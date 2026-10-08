@@ -45,7 +45,12 @@ jobs:
         working-directory: apps/web
         env:
           VISUAL: "1"
-        run: npx playwright test --project=visual-desktop --project=visual-mobile ${{ inputs.mode == 'update' && '--update-snapshots' || '' }}
+          # The input reaches the shell through the environment, never through a ${{ }} in the script (semgrep: run-shell-injection).
+          MODE: ${{ inputs.mode }}
+        run: |
+          flag=""
+          if [ "$MODE" = "update" ]; then flag="--update-snapshots"; fi
+          npx playwright test --project=visual-desktop --project=visual-mobile $flag
 
       - name: Upload the baselines (update) or the diffs (check)
         if: always()

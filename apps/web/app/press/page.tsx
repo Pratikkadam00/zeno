@@ -79,6 +79,7 @@ export default function PressPage() {
         {PICTURES.map(([name, href, note]) => (
           <li key={href}>
             <span>
+              {/* nosemgrep: javascript.react.security.audit.react-href-var.react-href-var -- every href is a literal path in the PICTURES table above, never user input */}
               <a href={href}>{name}</a>: {note}
             </span>
           </li>
