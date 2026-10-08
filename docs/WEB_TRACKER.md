@@ -135,6 +135,8 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 
 ## Log
 
+**2026-10-09, late:** the first CI runs with four browsers found two things the local gates could not: a layout shift on the privacy page when swapped fonts arrived on Linux (fonts now display optional) and Firefox stalling on navigations (two retries for that engine). The spell check and semgrep then caught two of my own slips in the new files (two words; a workflow input in a run script). W7.2 scaffolded for the owner's Linux baselines; the press kit written; browser storage measured on the live site.
+
 **2026-10-09 (W7):** keyboard-only, 200 % zoom and forced-colours tests (F228 found and fixed); the suite in Firefox and in WebKit, the latter through a TLS front because WebKit upgrades insecure requests even to 127.0.0.1; a CodeQL warning on the link checker fixed (origin compared whole, not as a prefix).
 
 **2026-10-09 (W6):** Lighthouse measured on the live site (95 to 100 performance, 100 accessibility and SEO, 92 best practices from F227 alone); the vitals budgets made hard; the Nu HTML checker found the Netlify toolbar script after `</html>` on every page (F227, owner); a nightly link check (538 internal links, all 200); caching for the pictures; a print stylesheet with a browser test.
