@@ -8,7 +8,7 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 **Status:** ⬜ to do · 🔄 in progress · ✅ pass · ❌ fail (finding open) · 🔒 needs the owner
 · ⏸ blocked (says why)
 
-**Summary (2026-10-08):** 69 checks. 0 done; 11 need the owner (🔒); 1 blocked on the owner's mail set-up (⏸); the rest are mine.
+**Summary (2026-10-08, evening):** 69 checks. 11 done (W1.1 to W1.11); 11 need the owner (🔒); 1 blocked on the owner's mail set-up (⏸); the rest are mine.
 
 ---
 
@@ -16,18 +16,18 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 
 | ID | Check | Status | Evidence / finding |
 |---|---|---|---|
-| W1.1 | Copy lint test written: em dashes, banned phrases, placeholders, sentence length, first heading; fails on today's site (bite check) | ⬜ | |
-| W1.2 | Home: hero rewritten | ⬜ | |
-| W1.3 | Home: the four sections (case, method, refusal, bill) rewritten as plain sections | ⬜ | |
-| W1.4 | Home: pricing copy rewritten; every plan line matches the app and the store products | ⬜ | |
-| W1.5 | Home: FAQ rewritten; answers checked against the app | ⬜ | |
-| W1.6 | Footer tagline and footer copy rewritten (every page) | ⬜ | |
-| W1.7 | The five compare pages rewritten; competitor facts re-checked with the date | ⬜ | |
-| W1.8 | Features hub, cancel hub, blog index, 404 rewritten | ⬜ | |
-| W1.9 | Landing pages: light pass | ⬜ | |
-| W1.10 | Blog posts: light pass | ⬜ | |
-| W1.11 | Truthfulness rail extended to the rewritten copy | ⬜ | |
-| W1.12 | Copy lint green on GitHub; every page read aloud once, nothing template-like | ⬜ | |
+| W1.1 | Copy lint test written: em dashes, banned phrases, placeholders, sentence length, first heading; fails on today's site (bite check) | ✅ | `apps/web/app/copy-lint.test.tsx`, 22 tests; on the 2026-10-08 site 10 rules failed (dashes on 19 pages, 'take back' on 533, 'the honest way', 'we mean it', 'who refuse', 'THE CASE', 2 long sentences, 4 weak h1s) |
+| W1.2 | Home: hero rewritten | ✅ | `Hero.tsx`; lint green; `Hero.test.tsx` |
+| W1.3 | Home: the four sections (case, method, refusal, bill) rewritten as plain sections | ✅ | `sections.tsx` (catalogue, how it works, bank login); labels in `page.tsx` and `pen.tsx`; `sections.test.tsx` |
+| W1.4 | Home: pricing copy rewritten; every plan line matches the app and the store products | ✅ | `sections.tsx` PLANS; prices pinned by `seo.test.tsx` to the app's offers |
+| W1.5 | Home: FAQ rewritten; answers checked against the app | ✅ | `faq-data.ts`; `layout-and-home.test.tsx` (FAQPage JSON-LD) |
+| W1.6 | Footer tagline and footer copy rewritten (every page) | ✅ | `Footer.tsx`, `ComparePageCta.tsx`; lint green on all 537 pages |
+| W1.7 | The five compare pages rewritten; competitor facts re-checked with the date | ✅ | 5 pages; YNAB $109/yr and Monarch $99.99/yr read from their pricing pages on 2026-10-08; an unverifiable Monarch CSV claim removed; `truthfulness.test.tsx` |
+| W1.8 | Features hub, cancel hub, blog index, 404 rewritten | ✅ | cancel hub lead rewritten; features hub, blog index and 404 pass the lint unchanged |
+| W1.9 | Landing pages: light pass | ✅ | pass the lint unchanged (already in the voice) |
+| W1.10 | Blog posts: light pass | ✅ | pass the lint unchanged |
+| W1.11 | Truthfulness rail extended to the rewritten copy | ✅ | `truthfulness.test.tsx` pins updated to the new sentences (reminders, F166 wording, guides, privacy events, Monarch) |
+| W1.12 | Copy lint green on GitHub; every page read aloud once, nothing template-like | 🔄 | gates run locally; waiting for GitHub |
 
 ## W2 · Legal
 
@@ -50,7 +50,7 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 | W3.1 | About page | ⬜ | needs W2.1 for the entity line |
 | W3.2 | Contact page with the four addresses | ⏸ | F223: the addresses bounce until the owner sets up mail |
 | W3.3 | D20: the six planned-feature pages folded into one Roadmap page (recommended) or kept | 🔒 | owner decision |
-| W3.4 | Sample ledger dates computed from today; catalogue date computed; competitor-price dates with a 90-day test | ⬜ | |
+| W3.4 | Sample ledger dates computed from today; catalogue date computed; competitor-price dates with a 90-day test | 🔄 | sample ledger now relative ('renews in 19 days'); catalogue cite says counted at build; competitor dates re-read 2026-10-08; the 90-day test still to write |
 | W3.5 | Footer: entity line, computed year | ⬜ | needs W2.1 |
 | W3.6 | Byline and updated date on every post | ⬜ | |
 | W3.7 | Test: every sitemap page has 150+ words of its own and a next step | ⬜ | |
@@ -127,9 +127,13 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 
 | # | Finding | Severity | Status |
 |---|---|---|---|
-| — | none recorded yet (the baseline's defects become findings as each phase reaches them) | | |
+| F224 | Dates typed into the site went stale: the sample ledger renewed in July and August while it was October; the catalogue was cited as July 2026; competitor prices 'verified July 2026' | Medium (trust) | Fixed 2026-10-08: relative days, computed cite, prices re-read with the date; the 90-day test is W3.8 |
+| F225 | The Terms described Pro as 'advanced discovery, deeper insights, and cancellation guides' and listed a Business tier for sale; the pricing sells Pro as unlimited subscriptions plus two budgeting features, guides free, and no Business plan | High (a contract term contradicting the price list) | Fixed 2026-10-08 in the plan list; the test that the legal pages agree with the pricing is W2.7 |
+| F226 | The site's own voice: 227 em dashes, a courtroom metaphor on the home page, self-praise ('the honest way', 'priced like we mean it') | Medium (reads as template or machine-written) | Fixed 2026-10-08 (W1); locked by the copy lint |
 
 ## Log
+
+**2026-10-08, evening:** W1 done except the GitHub read. The lint was written first and failed on the old site on 10 of its rules (the bite check); the home page, compare pages, feature pages, cancel hub, legal pages and the shared call to action were rewritten until it passed; 13 tests that pinned the old sentences were updated. Three findings: F224 stale dates, F225 Terms against pricing, F226 the voice itself.
 
 **2026-10-08:** plan and tracker written from a measured baseline: 227 em dashes, the
 home page's trial-metaphor copy, stale July dates in the sample ledger and catalogue
