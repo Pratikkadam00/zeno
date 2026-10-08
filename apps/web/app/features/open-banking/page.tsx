@@ -16,7 +16,7 @@ export default function OpenBankingFeaturePage() {
     <ContentShell
       eyebrow="Planned · not available today"
       title="Read-only bank connections (planned)"
-      lead="This is a feature we're considering, not one you can use today. If Zeno adds optional bank connections, they would be read-only OAuth adapters (Plaid or MX) that see transactions, never your login credentials — and the app would keep working fully without them. Everything Zeno does today runs on email receipts and statement imports you control, with no bank connection required."
+      lead="This is a feature we're considering, not one you can use today. If Zeno adds optional bank connections, they would be read-only OAuth adapters (Plaid or MX) that see transactions, never your login credentials. The app would keep working fully without them. Everything Zeno does today runs on email receipts and statement imports you control, with no bank connection required."
     >
       <p className={styles.lead}>How it would work, if we ship it:</p>
       <ol className={styles.steps}>

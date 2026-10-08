@@ -8,7 +8,7 @@ import styles from "@/components/site/content.module.css";
 export const metadata: Metadata = pageMetadata({
   title: "Business tier: team subscription tracking",
   description:
-    "Track company subscriptions, finance seats, renewal load, and team spending with Zeno's Business Tier — without turning your tracker into a bank-data warehouse.",
+    "Track company subscriptions, finance seats, renewal load, and team spending with Zeno's Business Tier, without turning your tracker into a bank-data warehouse.",
   path: "/features/business"
 });
 

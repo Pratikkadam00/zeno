@@ -120,7 +120,7 @@ describe("claims pinned to the code that makes them true", () => {
     for (const days of [7, 3, 0]) expect(service).toMatch(new RegExp(`daysBefore: ${days},\\s*\\n\\s*title: \`[^\`]*\`,\\s*\\n\\s*body: \`\\$\\{amount\\}`));
     expect(service).toContain("getNineAmTriggerDate(renewalDate, plan.daysBefore)");
     expect(service).toContain("shiftOutOfQuietHours(baseTrigger, quietHours)");
-    expect(page("/").text).toContain("Seven days out, three days out, and the morning of. Every reminder carries the amount due, with quiet hours respected.");
+    expect(page("/").text).toContain("Seven days out, three days out, and the morning of. Every reminder carries the amount due, and quiet hours are respected.");
   });
 
   it("F166: 'verified' means the renewal date passed with no charge recorded since the request — and the site says exactly that", () => {
@@ -128,15 +128,15 @@ describe("claims pinned to the code that makes them true", () => {
     expect(store).toContain("const stillCharged = !Number.isNaN(chargedMs) && chargedMs >= requestedMs;");
     expect(store).toContain('status: stillCharged ? "attention" : "cancelled"');
     const home = page("/").text;
-    expect(home).toContain("nothing is marked cancelled until the renewal date passes with no new charge in your receipts or statements, and a charge that shows up anyway gets flagged");
-    expect(home).toContain("IN THE APP, A CANCELLATION IS MARKED VERIFIED ONLY ONCE ITS RENEWAL DATE PASSES WITH NO NEW CHARGE IN THE RECEIPTS OR STATEMENTS YOU SCAN OR IMPORT.");
+    expect(home).toContain("nothing is marked cancelled until the renewal date passes with no new charge in your receipts or statements. A charge that turns up anyway is flagged");
+    expect(home).toContain("IN THE APP, A CANCELLATION COUNTS AS VERIFIED ONLY WHEN ITS RENEWAL DATE PASSES WITH NO NEW CHARGE IN THE RECEIPTS OR STATEMENTS YOU SCAN OR IMPORT.");
   });
 
   it("guides: the site no longer says every service has its own written steps (39 of 509 do; the rest carry general steps)", () => {
     const general = (name: string) => [`Go to ${name} and sign in`, "Open Account, Profile, or Settings"];
     const written = services.filter((s) => s.cancelGuide.slice(0, 2).join("|") !== general(s.name).join("|"));
     expect(written.length).toBeLessThan(services.length);
-    expect(page("/").text).toContain("each with a cancellation guide to follow");
+    expect(page("/").text).toContain("each with its own guide to follow");
   });
 
   it("the app lock is optional (off until the user turns it on), and the FAQ says 'you can lock'", () => {
@@ -162,7 +162,7 @@ describe("claims pinned to the code that makes them true", () => {
   it("privacy policy: the product events it lists are exactly the ones the server accepts", () => {
     expect(Object.keys(PRODUCT_EVENT_LABELS).sort()).toEqual(["free_cap_hit", "import_completed", "paywall_purchase_completed", "share_card_generated"]);
     const privacy = page("/legal/privacy").text;
-    for (const words of ["an import finishing (CSV or email)", "a share card being made", "the free plan’s limit being reached", "which plan a purchase was"]) {
+    for (const words of ["an import finishing from CSV or email", "a share card being made", "the free plan’s limit being reached", "which plan a purchase was"]) {
       expect(privacy).toContain(words);
     }
     // The app sends them with no Authorization header.
@@ -195,10 +195,11 @@ describe("claims pinned to the code that makes them true", () => {
     expect(cookies).not.toMatch(/consent controls|remember your cookie preference/);
   });
 
-  it("competitors: Monarch is not said to require a bank connection (its help center documents manual accounts and CSV upload)", () => {
+  it("competitors: Monarch is not said to require a bank connection, only that its automatic tracking runs on linked accounts (its pricing page, read 2026-10-08)", () => {
     const monarch = page("/compare/monarch-alternative").text;
     expect(monarch).not.toMatch(/connection required\s*No\s*Yes/i);
-    expect(monarch).toContain("manual accounts");
+    expect(monarch).toContain("Automatic tracking runs on linked accounts");
+    expect(monarch).toContain("$99.99/yr");
   });
 
   it("the sample analytics dashboard says sample data, never 'Live'", () => {

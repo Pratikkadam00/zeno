@@ -7,7 +7,7 @@ import styles from "../legal.module.css";
 export const metadata: Metadata = pageMetadata({
   title: "Terms of service",
   description:
-    "The terms for using Zeno — a subscription manager that helps you find, track, and cancel subscriptions. Pre-launch terms; finalized at launch.",
+    "The terms for using Zeno, a subscription manager that helps you find, track, and cancel subscriptions. Pre-launch terms, finalised at launch.",
   path: "/legal/terms"
 });
 
@@ -38,14 +38,14 @@ export default function TermsPage() {
       <p className={styles.lede}>
         These Terms of Service (&ldquo;Terms&rdquo;) govern your use of the Zeno website, the Zeno
         waitlist, and the Zeno mobile app (together, the &ldquo;Service&rdquo;). Please read them
-        carefully — by using the Service you agree to them.
+        carefully: by using the Service you agree to them.
       </p>
 
       <div className={styles.note}>
         <strong>Pre-launch notice.</strong> Zeno is not yet generally available; we are currently
         operating a waitlist. These Terms cover your use of the website and waitlist today, and
         describe the terms that will apply to the app. The final Terms governing the launched app
-        — including plan pricing and billing details — will be published before the app becomes
+        (including plan pricing and billing details) will be published before the app becomes
         available and will supersede this draft.
       </div>
 
@@ -112,10 +112,10 @@ export default function TermsPage() {
         will be confirmed at launch:
       </p>
       <ul>
-        <li><strong>Free</strong> — core subscription tracking and renewal reminders;</li>
-        <li><strong>Pro</strong> — advanced discovery, deeper insights, and cancellation guides;</li>
-        <li><strong>Family</strong> — Pro features shared across a household;</li>
-        <li><strong>Business</strong> — tools for teams managing recurring spend.</li>
+        <li><strong>Free</strong>: core subscription tracking and renewal reminders;</li>
+        <li><strong>Pro</strong>: unlimited subscriptions, category budgets and envelope budgeting;</li>
+        <li><strong>Family</strong>: Pro features shared across a household of up to five people;</li>
+        <li><strong>Lifetime</strong>: Pro, for a single payment with no renewal.</li>
       </ul>
       <p>
         Paid plans will be <strong>billed through the Apple App Store or Google Play</strong> at
@@ -128,7 +128,7 @@ export default function TermsPage() {
       <p>
         Zeno helps you find and cancel <em>your own</em> third-party subscriptions, but{" "}
         <strong>you remain responsible for them</strong>. Where Zeno provides cancellation guides
-        or one-tap actions, it is assisting you — you are the one cancelling, and you are
+        or one-tap actions, it is assisting you: you are the one cancelling, and you are
         responsible for confirming that a cancellation succeeded and for any charges that occur.
         Renewal dates, trial windows, and amounts shown in Zeno are estimates based on available
         information and may not always be exact.
@@ -147,7 +147,7 @@ export default function TermsPage() {
         detected or every cancellation completed.
       </p>
       <p>
-        Some features — including the AI spend coach — generate suggestions automatically. Anything
+        Some features, including the AI spend coach, generate suggestions automatically. Anything
         the coach produces is <strong>general information, not financial advice</strong>; it may be
         incomplete or inaccurate, and you should review it before acting on it.
       </p>
@@ -166,8 +166,8 @@ export default function TermsPage() {
       <p>
         You may stop using the Service at any time, leave the waitlist, or delete the app. We may
         suspend or terminate access if you breach these Terms or to protect the Service or other
-        users. Provisions that by their nature should survive termination — such as disclaimers and
-        limitations of liability — will survive.
+        users. Provisions that by their nature should survive termination, such as disclaimers and
+        limitations of liability, will survive.
       </p>
 
       <h2 id="changes">11. Changes to these terms</h2>

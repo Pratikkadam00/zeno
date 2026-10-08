@@ -18,7 +18,7 @@ export default function YnabComparePage() {
     <ContentShell
       eyebrow="YNAB alternative"
       title="A YNAB alternative you pay for once"
-      lead="YNAB is $109 a year (or $14.99/month) — every year, for as long as you use it. There's no one-time purchase option, so a five-year YNAB user has paid roughly $545. Zeno's lifetime plan is a single $79.99 payment: pay once, keep using it, no renewal."
+      lead="YNAB is $109 a year, or $14.99 a month, for as long as you use it. There is no one-time purchase option, so five years of YNAB costs $545. Zeno's Lifetime plan is a single $79.99 payment: pay once, keep using it, no renewal."
     >
       <JsonLd
         data={{
@@ -36,23 +36,23 @@ export default function YnabComparePage() {
         rows={[
           { feature: "Annual subscription", zeno: "$29.99/yr", competitor: "$109/yr (YNAB's own pricing page)" },
           { feature: "Monthly subscription", zeno: "$3.99/mo", competitor: "$14.99/mo" },
-          { feature: "One-time / lifetime option", zeno: "Yes — $79.99, once, ever", competitor: "None — subscription-only" },
+          { feature: "One-time / lifetime option", zeno: "Yes. $79.99, once", competitor: "None. Subscription only" },
           { feature: "Bank connection required", zeno: "No", competitor: "Optional, but central to YNAB's live-sync workflow" }
         ]}
       />
 
       <p>
-        This isn&rsquo;t a knock on YNAB&rsquo;s budgeting method, which plenty of people genuinely like. It&rsquo;s about the
-        pricing model: a subscription that never ends versus a purchase that does. If you want the ongoing cost to actually stop,
-        that&rsquo;s a one-time payment, not a cheaper recurring one.
+        This is not a criticism of YNAB&rsquo;s budgeting method, which plenty of people like. It is about the pricing model: a
+        subscription that never ends against a purchase that does. If you want the ongoing cost to stop, that takes a one-time
+        payment, not a cheaper recurring one.
       </p>
 
       <p style={{ fontSize: "0.85rem", color: "var(--ink-2)" }}>
-        Competitor pricing verified from YNAB&rsquo;s public pricing page in July 2026. Prices can change — check their
+        Competitor pricing read from YNAB&rsquo;s public pricing page on 8 October 2026. Prices can change; check their
         site for the current figure.
       </p>
 
-      <ComparePageCta title="Pay once for subscription tracking and budgeting — not every year" />
+      <ComparePageCta title="Pay once for subscription tracking and budgeting, not every year" />
     </ContentShell>
   );
 }

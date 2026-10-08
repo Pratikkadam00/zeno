@@ -21,10 +21,10 @@ import { LEDGER_EVENT, SAMPLE_SUBS } from "./sample-ledger";
 import styles from "../../app/home.module.css";
 
 const SPY = [
-  ["case", "01", "THE CASE"],
-  ["how", "02", "THE METHOD"],
-  ["refusal", "03", "THE REFUSAL"],
-  ["pricing", "04", "THE BILL"],
+  ["case", "01", "THE CATALOGUE"],
+  ["how", "02", "HOW IT WORKS"],
+  ["refusal", "03", "BANK LOGIN"],
+  ["pricing", "04", "PRICING"],
   ["faq", "05", "QUESTIONS"]
 ] as const;
 

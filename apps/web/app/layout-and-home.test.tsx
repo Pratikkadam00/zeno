@@ -64,7 +64,7 @@ describe("the homepage", () => {
     const items = faq.mainEntity as { name: string; acceptedAnswer: { text: string } }[];
     expect(items.map((i) => i.name)).toEqual(FAQS.map((f) => f.q.replace(/&rsquo;/g, "’")));
     for (const item of items) expect(item.acceptedAnswer.text).not.toMatch(/&[a-z]+;/);
-    expect(items[1]!.acceptedAnswer.text).toContain("that’s the point");
+    expect(items[1]!.acceptedAnswer.text).toContain("It never asks for bank credentials");
   });
 
   it("The Case's figures come from the catalog itself", () => {

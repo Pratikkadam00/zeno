@@ -26,7 +26,7 @@ export default function CancelHubPage() {
     <ContentShell
       eyebrow="Cancellation guides"
       title={`How to cancel ${SERVICE_COUNT}+ subscriptions`}
-      lead="Search or browse by category to find step-by-step instructions for the service you want to cancel — including a direct link to their cancellation page when one exists."
+      lead="Search or browse by category to find step-by-step instructions for the service you want to cancel, with a direct link to its cancellation page when one exists."
     >
       <JsonLd
         data={{

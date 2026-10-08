@@ -33,13 +33,13 @@ export default function HomePage() {
   // detected post-hydration it leafs them as page-turn sheets instead.
   const sheets: Sheet[] = [
     { id: "cover", label: "COVER", node: <Hero /> },
-    { id: "case", label: "THE CASE", node: <TheCase stats={stats} /> },
-    { id: "how", label: "THE METHOD", node: <Method /> },
-    { id: "refusal", label: "THE REFUSAL", node: <Refusal /> },
+    { id: "case", label: "THE CATALOGUE", node: <TheCase stats={stats} /> },
+    { id: "how", label: "HOW IT WORKS", node: <Method /> },
+    { id: "refusal", label: "BANK LOGIN", node: <Refusal /> },
     ...(showAnalytics ? [{ id: "back-office", label: "THE BACK OFFICE", node: <AnalyticsTeaser /> }] : []),
-    { id: "pricing", label: "THE BILL", node: <Pricing /> },
+    { id: "pricing", label: "PRICING", node: <Pricing /> },
     { id: "faq", label: "QUESTIONS", node: <FAQ faqs={FAQS} /> },
-    { id: "waitlist", label: "THE CLOSE", node: <FinalCTA /> }
+    { id: "waitlist", label: "WAITLIST", node: <FinalCTA /> }
   ];
 
   return (

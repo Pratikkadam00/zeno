@@ -42,7 +42,7 @@ export default function PrivacyPage() {
       </p>
 
       <div className={styles.note}>
-        <strong>Pre-launch notice.</strong> Zeno is not yet publicly available — we are
+        <strong>Pre-launch notice.</strong> Zeno is not yet publicly available. We are
         currently collecting a waitlist. Today, the only personal data we hold from most people
         is the email address you give us to join. The app-related practices below describe how
         Zeno will operate at launch, and this policy will be finalized and re-published before
@@ -82,7 +82,7 @@ export default function PrivacyPage() {
       </p>
       <h3>In-app subscription data</h3>
       <p>
-        Inside the app, Zeno builds a picture of your recurring charges — service names,
+        Inside the app, Zeno builds a picture of your recurring charges: service names,
         amounts, billing cadence, renewal dates, free-trial end dates, and the notes or tags you
         add. This <strong>subscription data is stored encrypted on your device</strong> and is
         not uploaded to Zeno servers.
@@ -97,18 +97,18 @@ export default function PrivacyPage() {
       <p>
         If you create or join a <strong>Family (household) plan</strong>, we store your household
         membership and the combined spend totals needed to show a shared view to members. Each
-        member&rsquo;s individual subscription details stay encrypted on their own device — the
+        member&rsquo;s individual subscription details stay encrypted on their own device. The
         shared view is built from aggregated totals, not from other members&rsquo; raw lists.
       </p>
       <h3>Diagnostics</h3>
       <p>
         To keep the app working, we may use crash reporting and anonymized, aggregated diagnostics
-        — for example which screens load slowly or where the app crashes. These are configured to
+        (for example which screens load slowly or where the app crashes). These are configured to
         avoid identifying you personally and never include your subscription contents.{" "}
         <strong>Crash reporting is currently inert</strong> and only activates if we enable it with
         a monitoring provider (see Section 6). We do not run website analytics. The app sends
-        anonymous counts of a few product events — an import finishing (CSV or email), a share card
-        being made, the free plan&rsquo;s limit being reached, and which plan a purchase was — with
+        anonymous counts of a few product events (an import finishing from CSV or email, a share card
+        being made, the free plan&rsquo;s limit being reached, and which plan a purchase was), with
         no account, device identifier, or subscription content attached, so we can tell whether
         those features work.
       </p>
@@ -118,7 +118,7 @@ export default function PrivacyPage() {
           <strong>No bank credentials.</strong> Zeno never asks for, sees, or stores your
           online-banking username, password, or login. A bank connection is not currently offered;
           if Zeno ever adds one it would be entirely optional and handled by a regulated
-          account-aggregation provider (such as Plaid) that authenticates you directly — Zeno would
+          account-aggregation provider (such as Plaid) that authenticates you directly. Zeno would
           receive only the transaction information needed to detect subscriptions, never your
           credentials.
         </li>
@@ -135,7 +135,7 @@ export default function PrivacyPage() {
       <p>We use the limited data we hold only to:</p>
       <ul>
         <li>email you about waitlist status, launch availability, and important Service updates;</li>
-        <li>operate core app features — detecting subscriptions, sending renewal and trial warnings, and guiding cancellations;</li>
+        <li>operate core app features: detecting subscriptions, sending renewal and trial warnings, and guiding cancellations;</li>
         <li>provide and manage any paid Zeno plan you choose;</li>
         <li>diagnose crashes, fix bugs, and improve performance using aggregated diagnostics;</li>
         <li>protect the Service against fraud, abuse, and security threats; and</li>
@@ -163,10 +163,10 @@ export default function PrivacyPage() {
         This is strictly opt-in and works as follows:
       </p>
       <ul>
-        <li>access is <strong>read-only</strong> — Zeno can scan for receipts and renewal notices, but cannot send, delete, or modify your mail;</li>
+        <li>access is <strong>read-only</strong>: Zeno can scan for receipts and renewal notices, but cannot send, delete, or modify your mail;</li>
         <li>scanning happens <strong>locally on your device</strong> to identify subscription-related messages; the contents of your inbox are not uploaded to Zeno servers;</li>
         <li>you can <strong>disconnect at any time</strong> from within the app or your Google account settings, which revokes Zeno&rsquo;s access; and</li>
-        <li>we only use this access to surface subscriptions to you — never for advertising or profiling.</li>
+        <li>we only use this access to surface subscriptions to you, never for advertising or profiling.</li>
       </ul>
       <p>
         Zeno&rsquo;s use of information received from Google APIs will adhere to the Google API
@@ -179,24 +179,24 @@ export default function PrivacyPage() {
         each provider only when the related feature is enabled. They currently include:
       </p>
       <ul>
-        <li><strong>Email delivery</strong> — <strong>Resend</strong>, to send waitlist and sign-in emails;</li>
-        <li><strong>Hosting &amp; infrastructure</strong> — <strong>Netlify</strong>, to serve the website (including the waitlist form), and <strong>Render</strong>, to run the API and its database;</li>
-        <li><strong>Waitlist storage</strong> — <strong>Google</strong> (Google Sheets, through Google Apps Script), where your waitlist email address and sign-up time are kept;</li>
-        <li><strong>App stores &amp; billing</strong> — <strong>Apple App Store</strong> and <strong>Google Play</strong> for distribution, and <strong>RevenueCat</strong> to manage paid-plan entitlements;</li>
+        <li><strong>Email delivery</strong>: <strong>Resend</strong>, to send waitlist and sign-in emails;</li>
+        <li><strong>Hosting and infrastructure</strong>: <strong>Netlify</strong>, to serve the website (including the waitlist form), and <strong>Render</strong>, to run the API and its database;</li>
+        <li><strong>Waitlist storage</strong>: <strong>Google</strong> (Google Sheets, through Google Apps Script), where your waitlist email address and sign-up time are kept;</li>
+        <li><strong>App stores and billing</strong>: <strong>Apple App Store</strong> and <strong>Google Play</strong> for distribution, and <strong>RevenueCat</strong> to manage paid-plan entitlements;</li>
         <li>
-          <strong>AI coaching provider</strong> — <strong>Anthropic</strong> (Claude) or{" "}
+          <strong>AI coaching provider</strong>: <strong>Anthropic</strong> (Claude) or{" "}
           <strong>Groq</strong>, whichever we have configured. Only if you turn on the
           optional AI spend coach and grant consent, a summary of your subscriptions (service
-          names, amounts, categories, and the in-app insights — but not your name, email, bank
+          names, amounts, categories, and the in-app insights, but not your name, email, bank
           data, or any subscription discovered from your email) is sent to generate suggestions and
           return them to you;
         </li>
         <li>
-          <strong>Crash reporting</strong> — <strong>Sentry</strong>, only if we enable it; it is
+          <strong>Crash reporting</strong>: <strong>Sentry</strong>, only if we enable it; it is
           inert until then and never receives your subscription contents;
         </li>
         <li>
-          <strong>Bank-connection aggregator</strong> (such as <strong>Plaid</strong>) — a{" "}
+          <strong>Bank-connection aggregator</strong> (such as <strong>Plaid</strong>): a{" "}
           <strong>planned, optional</strong> integration that is <strong>not currently
           available</strong>. If we ship it and you opt in, it would retrieve transactions solely
           for subscription detection, and never your banking credentials.
@@ -270,7 +270,7 @@ export default function PrivacyPage() {
 
       <h2 id="changes">12. Changes to this policy</h2>
       <p>
-        We may update this Privacy Policy as the Service evolves — and we will publish a finalized
+        We may update this Privacy Policy as the Service evolves, and we will publish a finalized
         version before the app launches. When we make material changes we will update the
         &ldquo;Last updated&rdquo; date above and, where appropriate, notify you by email.
       </p>

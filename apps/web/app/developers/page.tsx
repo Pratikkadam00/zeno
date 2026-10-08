@@ -27,7 +27,7 @@ export default function DevelopersPage() {
     <ContentShell
       eyebrow="Developers · Planned · not available today"
       title="Public API"
-      lead="A public API is planned, not available today. As designed, it uses scoped keys, masked previews, and explicit read/write scopes, and your raw financial data stays on your device — it would not be exposed through the API. The key below is an example."
+      lead="A public API is planned, not available today. As designed, it uses scoped keys, masked previews, and explicit read/write scopes, and your raw financial data stays on your device. It would not be exposed through the API. The key below is an example."
     >
       <ul className={styles.list}>
         <li>

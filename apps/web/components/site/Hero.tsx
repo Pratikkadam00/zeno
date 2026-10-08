@@ -90,7 +90,7 @@ function FlowLogLine({ line }: { line: FlowLine }) {
               {line.q}
               <i aria-hidden="true" />
             </span>{" "}
-            <span className={styles.flDcl}>— DECLINED</span>
+            <span className={styles.flDcl}>· DECLINED</span>
           </>
         ) : (
           line.t
@@ -173,12 +173,12 @@ export function Hero() {
   const finishCancelled = (name: string, next: string[]) => {
     setPhase((p) => ({ ...p, [name]: "cancelled" }));
     const t = totalsAfter(next);
-    say(`${name} cancelled — verifying next statement. Monthly total ${t.total} dollars, ${t.yearly} dollars a year back.`);
+    say(`${name} cancelled, verifying next statement. Monthly total ${t.total} dollars, ${t.yearly} dollars a year back.`);
     later(
       name,
       () => {
         setPhase((p) => (p[name] ? { ...p, [name]: "verified" } : p));
-        say(`${name} verified cancelled — no new charge at renewal.`);
+        say(`${name} verified cancelled, no new charge at renewal.`);
       },
       4200
     );
@@ -261,8 +261,8 @@ export function Hero() {
               </span>
             </h1>
             <p className={`${styles.heroSub} ${styles.heroPrint}`} style={dvar(0.34)}>
-              Zeno is the honest way to take back your subscriptions — discovery from receipts and statements you control, a warning before every renewal,
-              and cancellations that aren&rsquo;t marked done until the renewal date passes with no new charge.
+              Zeno finds your subscriptions in the receipts and statements you already have, warns you before each renewal, and marks a cancellation done
+              only when the renewal date passes with no new charge. No bank login required.
             </p>
             <div className={`${styles.heroFormWrap} ${styles.heroPrint}`} style={dvar(0.46)}>
               <WaitlistForm />
@@ -275,7 +275,7 @@ export function Hero() {
           </div>
 
           {/* The audit — try it on this sample ledger */}
-          <div className={`${styles.audit} ${styles.heroPrint}`} style={dvar(0.25)} role="group" aria-label="Sample ledger — flip a switch to walk the real cancel flow">
+          <div className={`${styles.audit} ${styles.heroPrint}`} style={dvar(0.25)} role="group" aria-label="Sample ledger: flip a switch to walk through a cancel flow">
             <div className={styles.auditHead}>
               <span className={styles.auditTitle}>YOUR LEDGER · SAMPLE</span>
               <span className={styles.auditTitle}>{SAMPLE_SUBS.length - cancelled.length} BILLING</span>
@@ -301,10 +301,10 @@ export function Hero() {
                         {off ? (
                           <span className={styles.auditVerified}>
                             {ph === "verified"
-                              ? "VERIFIED CANCELLED — NO NEW CHARGE AT RENEWAL"
+                              ? "VERIFIED CANCELLED · NO NEW CHARGE AT RENEWAL"
                               : ph === "running"
                                 ? "RUNNING THE CANCEL FLOW…"
-                                : "CANCELLED — VERIFYING NEXT STATEMENT"}
+                                : "CANCELLED · VERIFYING NEXT STATEMENT"}
                           </span>
                         ) : (
                           s.meta
@@ -343,7 +343,7 @@ export function Hero() {
               </div>
             </div>
             <p className={`${styles.auditNote} ${styles.heroPrint}`} style={dvar(1)}>
-              SAMPLE LEDGER — FLIP A SWITCH OFF TO WALK A CANCEL FLOW, TRAPS INCLUDED. IN THE APP, A CANCELLATION IS MARKED VERIFIED ONLY ONCE ITS
+              SAMPLE LEDGER. FLIP A SWITCH OFF TO SEE THE CANCEL FLOW, TRAPS INCLUDED. IN THE APP, A CANCELLATION COUNTS AS VERIFIED ONLY WHEN ITS
               RENEWAL DATE PASSES WITH NO NEW CHARGE IN THE RECEIPTS OR STATEMENTS YOU SCAN OR IMPORT.
             </p>
           </div>

@@ -14,7 +14,7 @@ describe("TheCase", () => {
     expect(within(section).getByText("509")).toBeTruthy();
     expect(within(section).getByText("61")).toBeTruthy();
     expect(section.querySelector("blockquote")!.textContent).toBe("“Open Plans”");
-    expect(within(section).getByText("STEP 1 OF CANCELLING ADOBE CC — VERBATIM FROM OUR GUIDE")).toBeTruthy();
+    expect(within(section).getByText("STEP 1 OF CANCELLING ADOBE CC, QUOTED FROM OUR GUIDE")).toBeTruthy();
   });
 
   it("no documented example: a description of the patterns, cited to the catalog, never an invented quote", () => {
@@ -29,9 +29,9 @@ describe("Method", () => {
     withMotion(<Method />);
     const section = document.getElementById("how")!;
     expect(within(section).getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
-      "Discover — on your command",
-      "Warn — before it charges",
-      "Cancel — and verify"
+      "Discover, when you tap scan",
+      "Warn, before it charges",
+      "Cancel, then verify"
     ]);
     expect([...section.querySelectorAll("span")].map((s) => s.textContent).filter((t) => /^\d\d$/.test(t!))).toEqual(["01", "02", "03"]);
   });
@@ -75,7 +75,7 @@ describe("Pricing", () => {
     // Only Pro is set apart, and only by a drawn edge: no badge text.
     expect(rows.map((r) => r.className.includes("planRowFeatured"))).toEqual([false, true, false, false]);
     expect(within(rows[0]!).getAllByRole("listitem").map((li) => li.textContent)).toContain("Track up to 10 subscriptions");
-    expect(within(section).getByText(/Prices in USD, billed via the App Store \/ Google Play\./)).toBeTruthy();
+    expect(within(section).getByText(/Prices in USD, billed by the App Store or Google Play\./)).toBeTruthy();
   });
 });
 

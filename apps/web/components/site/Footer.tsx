@@ -72,8 +72,8 @@ export function Footer() {
               zeno
             </Link>
             <p className={styles.footerBlurb}>
-              The honest way to take back your subscriptions. Discovery from receipts you control, warnings before every renewal, cancellations that get
-              verified. No bank login required.
+              Zeno finds your subscriptions in receipts and statements you control, warns you before every renewal, and verifies each cancellation. No
+              bank login required.
             </p>
           </div>
           {cols.map((c) => (

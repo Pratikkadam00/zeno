@@ -56,7 +56,7 @@ const guideOverrides: Record<string, string[]> = {
     "Click your profile icon top right",
     "Select Account",
     "Under Membership, click Cancel Membership",
-    "Confirm cancellation - stays active until billing date"
+    "Confirm cancellation: stays active until billing date"
   ],
   spotify: [
     "Go to spotify.com/account",
@@ -68,9 +68,9 @@ const guideOverrides: Record<string, string[]> = {
   "amazon-prime": [
     "Go to amazon.com/mc/pipelines/cancellation",
     "Click End Trial or Cancel Membership",
-    "Amazon will show retention offers - click Continue to Cancel each time",
+    "Amazon will show retention offers: click Continue to Cancel each time",
     "Select a cancellation reason",
-    "Click Cancel Prime - ignore any final offers",
+    "Click Cancel Prime: ignore any final offers",
     "You will receive a confirmation email"
   ],
   "chatgpt-plus": [
@@ -95,10 +95,10 @@ const guideOverrides: Record<string, string[]> = {
   "adobe-creative-cloud": [
     "Go to account.adobe.com/plans",
     "Click Manage Plan next to Creative Cloud",
-    "Click Cancel Plan - Adobe will offer discounts, decline them all",
+    "Click Cancel Plan: Adobe will offer discounts, decline them all",
     "Choose a cancellation reason in the dropdown",
     "WARNING: If in first year, Adobe charges an early termination fee of 50% of remaining contract",
-    "Click Continue to confirm - check your email for confirmation"
+    "Click Continue to confirm: check your email for confirmation"
   ],
   "xbox-game-pass-ultimate": [
     "Go to account.microsoft.com/services",
@@ -112,12 +112,12 @@ const guideOverrides: Record<string, string[]> = {
     "Click your profile icon, then Account",
     "Under Subscription, select your Disney+ plan",
     "Click Cancel Subscription and complete the short survey",
-    "Confirm - access continues until the end of the billing period"
+    "Confirm: access continues until the end of the billing period"
   ],
   hulu: [
     "Go to secure.hulu.com/account",
     "Scroll to Your Subscription and click Cancel",
-    "Hulu offers to pause instead - choose Continue to Cancel",
+    "Hulu offers to pause instead: choose Continue to Cancel",
     "Pick a reason and click Cancel",
     "You keep access until the current period ends"
   ],
@@ -145,7 +145,7 @@ const guideOverrides: Record<string, string[]> = {
     "Go to peacocktv.com and sign in",
     "Click your account, then Plans & Payment",
     "Click Change or Cancel Plan, then Cancel Plan",
-    "Confirm - access continues until the renewal date"
+    "Confirm: access continues until the renewal date"
   ],
   "paramount-plus": [
     "Go to paramountplus.com and sign in",
@@ -170,7 +170,7 @@ const guideOverrides: Record<string, string[]> = {
   "github-copilot": [
     "Go to github.com/settings/copilot",
     "Under your Copilot plan, click Cancel Copilot",
-    "Confirm - access continues until the end of the billing cycle"
+    "Confirm: access continues until the end of the billing cycle"
   ],
   "cursor-pro": [
     "Go to cursor.com and sign in",
@@ -182,31 +182,31 @@ const guideOverrides: Record<string, string[]> = {
     "Go to account.grammarly.com and sign in",
     "Open the Subscription tab",
     "Click Cancel Subscription and decline the offers",
-    "Select a reason and confirm - Premium stays active until the period ends"
+    "Select a reason and confirm: Premium stays active until the period ends"
   ],
   notion: [
     "Go to notion.so and open Settings",
     "Click Plans (or Billing) in the sidebar",
     "Click Change Plan, then Downgrade to Free / Cancel",
-    "Confirm - paid features remain until the cycle ends"
+    "Confirm: paid features remain until the cycle ends"
   ],
   figma: [
     "Open figma.com, click your account, then Settings",
     "Go to the Billing tab for your team",
     "Lower the seats to zero or click Cancel Plan",
-    "Confirm - note Figma bills annually by default"
+    "Confirm: note Figma bills annually by default"
   ],
   "canva-pro": [
     "Go to canva.com, click your account, then Settings",
     "Open Billing & plans",
     "Click your plan, then Cancel subscription",
-    "Decline the discount offer and confirm - Pro continues until renewal"
+    "Decline the discount offer and confirm: Pro continues until renewal"
   ],
   "dropbox-plus": [
     "Go to dropbox.com/account/billing",
     "Click Cancel plan under your plan",
-    "Dropbox offers a discount - choose Continue to cancel",
-    "Pick a reason and confirm - access continues until the period ends"
+    "Dropbox offers a discount: choose Continue to cancel",
+    "Pick a reason and confirm: access continues until the period ends"
   ],
   "microsoft-365": [
     "Go to account.microsoft.com/services",
@@ -218,7 +218,7 @@ const guideOverrides: Record<string, string[]> = {
     "Go to admin.google.com, then Billing, then Subscriptions",
     "Select your Workspace subscription",
     "Click Cancel Subscription",
-    "Confirm - note any commitment terms on annual plans"
+    "Confirm: note any commitment terms on annual plans"
   ],
   "1password": [
     "Go to your account at start.1password.com",
@@ -229,7 +229,7 @@ const guideOverrides: Record<string, string[]> = {
   nordvpn: [
     "Go to my.nordaccount.com and sign in",
     "Open Billing, then Subscriptions",
-    "Turn off Auto-renewal (there is no instant cancel - disabling auto-renew stops future charges)",
+    "Turn off Auto-renewal (there is no instant cancel: disabling auto-renew stops future charges)",
     "If within 30 days, request a refund via live chat",
     "Confirm"
   ],
@@ -244,7 +244,7 @@ const guideOverrides: Record<string, string[]> = {
     "Go to your workspace, then Settings & administration, then Billing",
     "Open the plan settings and choose to cancel / downgrade",
     "Switch the workspace to the Free plan",
-    "Confirm - Slack credits unused time on annual plans"
+    "Confirm: Slack credits unused time on annual plans"
   ],
   "zoom-pro": [
     "Go to zoom.us/billing and sign in",
@@ -254,9 +254,9 @@ const guideOverrides: Record<string, string[]> = {
   ],
   audible: [
     "Go to audible.com and hover your name, then Account Details",
-    "Click Cancel membership (use desktop web - the app hides this)",
-    "Audible offers to pause or take 3 free months - decline and Continue to cancel",
-    "Select a reason and confirm - you keep books you already own"
+    "Click Cancel membership (use desktop web: the app hides this)",
+    "Audible offers to pause or take 3 free months: decline and Continue to cancel",
+    "Select a reason and confirm: you keep books you already own"
   ],
   "apple-music": [
     "On iPhone open Settings and tap your name, then Subscriptions",
@@ -274,13 +274,13 @@ const guideOverrides: Record<string, string[]> = {
     "Go to onepeloton.com and sign in (use the web, not the app)",
     "Open your account, then Subscriptions / Membership",
     "Click Manage, then Cancel Membership",
-    "Confirm - separate App and All-Access memberships are cancelled separately"
+    "Confirm: separate App and All-Access memberships are cancelled separately"
   ],
   headspace: [
     "Go to headspace.com and log in (web, not the app store)",
     "Open your account / Subscription settings",
     "Click Turn off auto-renew / Cancel subscription",
-    "Confirm - access continues until the period ends"
+    "Confirm: access continues until the period ends"
   ],
   calm: [
     "Cancel where you subscribed: iPhone Settings then Subscriptions, or Google Play",
@@ -292,13 +292,13 @@ const guideOverrides: Record<string, string[]> = {
     "Go to masterclass.com and sign in",
     "Open Settings, then the Account / Subscription tab",
     "Click Cancel Subscription (annual plans bill yearly)",
-    "Confirm - access continues until the term ends"
+    "Confirm: access continues until the term ends"
   ],
   skillshare: [
     "Go to skillshare.com and sign in",
     "Open Account Settings, then the Membership / Payments tab",
     "Click Cancel Membership",
-    "Confirm - Premium stays active until the period ends"
+    "Confirm: Premium stays active until the period ends"
   ]
 };
 

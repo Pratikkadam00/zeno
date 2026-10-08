@@ -104,6 +104,6 @@ test.describe("the cancel hub and a guide", () => {
     await page.getByRole("contentinfo").getByRole("link", { name: "Pricing" }).click();
     await expect(page).toHaveURL(/\/#pricing$/);
     if (isMobile) await expect(page.locator("#pricing")).toBeInViewport();
-    else await expect(page.locator("nav[aria-label='Ledger pages'] span").last()).toHaveText("THE BILL");
+    else await expect(page.locator("nav[aria-label='Ledger pages'] span").last()).toHaveText("PRICING");
   });
 });

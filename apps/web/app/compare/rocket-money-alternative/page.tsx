@@ -18,7 +18,7 @@ export default function RocketMoneyComparePage() {
     <ContentShell
       eyebrow="Rocket Money alternative"
       title="A Rocket Money alternative that doesn't use Plaid"
-      lead="Rocket Money links your accounts through Plaid, the same bank-data aggregator used by many finance apps — your credentials go to Plaid, and Rocket Money reads the transactions back. Zeno takes a different path: it never asks for a bank connection at all."
+      lead="Rocket Money links your accounts through Plaid, the bank-data aggregator many finance apps use. Your credentials go to Plaid, and Rocket Money reads the transactions back. Zeno does not ask for a bank connection at all."
     >
       <JsonLd
         data={{
@@ -34,7 +34,7 @@ export default function RocketMoneyComparePage() {
       <ComparisonTable
         competitorName="Rocket Money"
         rows={[
-          { feature: "Bank connection method", zeno: "None required — email/statement import or manual entry", competitor: "Plaid (per Rocket Money's own help center)" },
+          { feature: "Bank connection method", zeno: "None required. Email or statement import, or manual entry", competitor: "Plaid (per Rocket Money's own help center)" },
           { feature: "Sees your bank login", zeno: "Never", competitor: "Passed to Plaid, not stored by Rocket Money directly" },
           { feature: "One-time purchase option", zeno: "Yes", competitor: "Subscription-only" },
           { feature: "Where your subscription data lives", zeno: "Encrypted on your device", competitor: "Synced to their servers" }
@@ -42,10 +42,9 @@ export default function RocketMoneyComparePage() {
       />
 
       <p>
-        This isn&rsquo;t a claim that Plaid itself is unsafe — it&rsquo;s a well-established aggregator used across the industry.
-        It&rsquo;s that Zeno doesn&rsquo;t need it: the same subscription-finding job (catching a forgotten renewal, a price hike,
-        a free trial about to convert) works from data you already have — a bank statement export or an email receipt — without
-        adding a bank-credential step at all.
+        This is not a claim that Plaid is unsafe. It is a well-established aggregator used across the industry. Zeno simply does
+        not need it. Catching a forgotten renewal, a price rise or a trial about to convert works from data you already have: a
+        statement export or an email receipt. No bank-credential step is added.
       </p>
 
       <ComparePageCta title="Find and cancel subscriptions without linking a bank account" />

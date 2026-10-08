@@ -8,7 +8,7 @@ export function ComparePageCta({ title }: { title: string }) {
   return (
     <div className={styles.ctaRow}>
       <p className={styles.ctaTitle}>{title}</p>
-      <p className={styles.ctaSub}>Zeno is pre-launch — join the waitlist and we&rsquo;ll email you the moment it&rsquo;s available.</p>
+      <p className={styles.ctaSub}>Zeno is pre-launch. Join the waitlist and we&rsquo;ll email you the moment it&rsquo;s available.</p>
       <div className={styles.ctaForm}>
         <WaitlistForm compact />
       </div>

@@ -32,7 +32,7 @@ describe("ComparePageCta", () => {
   it("the page's own title, the pre-launch line, and the compact waitlist form (no store links: there are none yet)", () => {
     render(<ComparePageCta title="Try Zeno instead" />);
     expect(screen.getByText("Try Zeno instead")).toBeTruthy();
-    expect(screen.getByText(/Zeno is pre-launch/).textContent).toContain("join the waitlist");
+    expect(screen.getByText(/Zeno is pre-launch/).textContent).toContain("Join the waitlist");
     expect(screen.getByRole("button").textContent).toBe("Join waitlist→");
     expect(screen.queryByRole("link")).toBeNull();
   });

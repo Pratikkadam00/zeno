@@ -21,7 +21,7 @@ export default function SpendTwinFeaturePage() {
     >
       <p>
         In the mobile app this stays local-first and uses the encrypted subscription ledger as its
-        source — your numbers are computed on-device, never shipped to a server.
+        source: your numbers are computed on the phone, never sent to a server.
       </p>
 
       <div className={styles.backRow}>

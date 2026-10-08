@@ -7,7 +7,7 @@ import styles from "../legal.module.css";
 export const metadata: Metadata = pageMetadata({
   title: "Cookie policy",
   description:
-    "How the Zeno marketing website uses cookies and local storage — strictly-necessary storage only. No analytics, no ad tracking, no cross-site profiling.",
+    "How the Zeno marketing website uses cookies and local storage: strictly necessary storage only. No analytics, no ad tracking, no cross-site profiling.",
   path: "/legal/cookies"
 });
 
@@ -64,8 +64,8 @@ export default function CookiesPage() {
 
       <h2 id="what-are-cookies">2. What cookies & local storage are</h2>
       <p>
-        Cookies are small text files a website can store in your browser. Related technologies —
-        such as <strong>local storage</strong> and <strong>session storage</strong> — let a site
+        Cookies are small text files a website can store in your browser. Related technologies,
+        such as <strong>local storage</strong> and <strong>session storage</strong>, let a site
         remember small pieces of information between page loads. They can be
         &ldquo;essential&rdquo; (needed for the site to function) or
         &ldquo;optional&rdquo; (used for things like analytics that you can decline).
@@ -84,8 +84,8 @@ export default function CookiesPage() {
       <p>
         Zeno does <strong>not</strong> run analytics on this website. There is no page-view
         tracking, product analytics, session recording, or browser fingerprinting. If we ever
-        introduce privacy-respecting analytics, we will update this policy first — and obtain your
-        consent where the law requires it — before turning anything on.
+        introduce privacy-respecting analytics, we will update this policy first, and obtain your
+        consent where the law requires it, before turning anything on.
       </p>
 
       <h2 id="no-ads">5. No ad tracking</h2>
@@ -99,7 +99,7 @@ export default function CookiesPage() {
       <p>You are in control. You can:</p>
       <ul>
         <li>
-          block or delete cookies through your browser settings — most browsers let you clear
+          block or delete cookies through your browser settings. Most browsers let you clear
           existing cookies and refuse new ones; and
         </li>
         <li>use private/incognito browsing to limit what is stored between sessions.</li>

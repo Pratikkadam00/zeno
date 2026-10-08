@@ -111,7 +111,7 @@ describe("structured data (SEO.md §4)", () => {
   it("the app's prices are exactly the ones the homepage shows, every one a pre-order, and no rating or review", () => {
     const pricing = FAQS.find((f) => f.q === "What will it cost?")!.a;
     for (const offer of APP_OFFERS) {
-      if (offer.price === "0") expect(pricing).toContain("Free forever");
+      if (offer.price === "0") expect(pricing).toContain("Free, for up to 10 subscriptions");
       else expect(pricing, offer.name).toContain(`$${offer.price}`);
     }
     const node = appNode();

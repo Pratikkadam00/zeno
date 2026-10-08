@@ -36,42 +36,42 @@ export function TheCase({ stats }: { stats: CaseStats }) {
   return (
     <section id="case" className={styles.section}>
       <div className={styles.container}>
-        <PenHead>THE CASE · FROM OUR OWN CATALOG</PenHead>
-        <WordsIn className={styles.h2} text={"The subscription industry\ncounts on you not counting."} />
+        <PenHead>FROM OUR OWN CATALOGUE</PenHead>
+        <WordsIn className={styles.h2} text={"Cancelling is designed to be hard.\nWe wrote down how hard."} />
         <PrintIn delay={0.18}>
           <p className={styles.lead}>
-            We index how subscriptions actually get cancelled. The record isn&rsquo;t flattering — and every figure below is computed from that catalog, not
-            invented for a landing page.
+            We keep a catalogue of how subscriptions get cancelled, service by service. Every figure below is counted from that catalogue when this page is
+            built, not typed in.
           </p>
         </PrintIn>
         <div className={styles.exhibits}>
           <PrintIn>
-            <span className={styles.exhibitKick}>EXHIBIT A</span>
+            <span className={styles.exhibitKick}>SERVICES</span>
             <div className={styles.exhibitVal}>
               <Odometer value={stats.total} />
             </div>
-            <p className={styles.exhibitBody}>Services indexed in Zeno&rsquo;s cancellation catalog — each with a cancellation guide to follow.</p>
-            <cite className={styles.exhibitCite}>ZENO CANCELLATION CATALOG · JULY 2026</cite>
+            <p className={styles.exhibitBody}>Services in Zeno&rsquo;s cancellation catalogue, each with its own guide to follow.</p>
+            <cite className={styles.exhibitCite}>ZENO CANCELLATION CATALOGUE · COUNTED WHEN THIS PAGE WAS BUILT</cite>
           </PrintIn>
           <PrintIn delay={0.12}>
-            <span className={styles.exhibitKick}>EXHIBIT B</span>
+            <span className={styles.exhibitKick}>RATED HARD</span>
             <div className={styles.exhibitVal}>
               <Odometer value={stats.hardCount} />
             </div>
             <p className={styles.exhibitBody}>
-              Of them rate their cancellation <em>hard</em> — or use documented dark patterns to keep you paying.
+              Of them are rated <em>hard</em> to cancel, or use documented dark patterns to keep you paying.
             </p>
-            <cite className={styles.exhibitCite}>DIFFICULTY RATINGS, SAME CATALOG</cite>
+            <cite className={styles.exhibitCite}>DIFFICULTY RATINGS FROM THE SAME CATALOGUE</cite>
           </PrintIn>
           <PrintIn delay={0.24}>
-            <span className={styles.exhibitKick}>EXHIBIT C</span>
+            <span className={styles.exhibitKick}>A FIRST STEP</span>
             {stats.quote ? (
               <>
                 <blockquote className={styles.exhibitQuote}>
                   <DrawBar delay={0.24} />
                   &ldquo;{stats.quote.step}&rdquo;
                 </blockquote>
-                <cite className={styles.exhibitCite}>STEP 1 OF CANCELLING {stats.quote.service.toUpperCase()} — VERBATIM FROM OUR GUIDE</cite>
+                <cite className={styles.exhibitCite}>STEP 1 OF CANCELLING {stats.quote.service.toUpperCase()}, QUOTED FROM OUR GUIDE</cite>
               </>
             ) : (
               <>
@@ -92,16 +92,16 @@ export function TheCase({ stats }: { stats: CaseStats }) {
 /* ── The method — how the audit works ────────────────────────────────── */
 const METHOD = [
   {
-    t: "Discover — on your command",
-    b: "Scan email receipts in an inbox you connect, or import a bank-statement CSV you export yourself. Zeno reads them on your device and scans only when you tap scan — no background collection, no bank login."
+    t: "Discover, when you tap scan",
+    b: "Scan the receipts in an inbox you connect, or import a bank-statement file you export yourself. Zeno reads them on your phone, and only when you tap scan. No background collection, no bank login."
   },
   {
-    t: "Warn — before it charges",
-    b: "Seven days out, three days out, and the morning of. Every reminder carries the amount due, with quiet hours respected."
+    t: "Warn, before it charges",
+    b: "Seven days out, three days out, and the morning of. Every reminder carries the amount due, and quiet hours are respected."
   },
   {
-    t: "Cancel — and verify",
-    b: "One tap opens the service's cancellation guide, dark-pattern traps flagged. Then Zeno keeps watching: nothing is marked cancelled until the renewal date passes with no new charge in your receipts or statements, and a charge that shows up anyway gets flagged."
+    t: "Cancel, then verify",
+    b: "One tap opens the service's cancellation guide with its known traps marked. Then Zeno keeps watching: nothing is marked cancelled until the renewal date passes with no new charge in your receipts or statements. A charge that turns up anyway is flagged."
   }
 ];
 
@@ -109,8 +109,8 @@ export function Method() {
   return (
     <section id="how" className={`${styles.section} ${styles.desk}`}>
       <div className={styles.container}>
-        <PenHead>THE METHOD</PenHead>
-        <WordsIn className={styles.h2} text="An audit, not an app tour." />
+        <PenHead>HOW IT WORKS</PenHead>
+        <WordsIn className={styles.h2} text="Three steps. Each one starts when you say so." />
         <StaggerGroup className={styles.methodGrid}>
           {METHOD.map((s, i) => (
             <m.div key={s.t} className={`${styles.methodRule} ${REVEAL_CLASS}`} variants={staggerChild}>
@@ -135,12 +135,12 @@ export function Refusal() {
       <div className={styles.container}>
         <div className={styles.refusalGrid}>
           <div>
-            <PenHead>THE REFUSAL</PenHead>
-            <WordsIn className={styles.h2} text="Built for people who refuse to hand a bank login to an app." />
+            <PenHead>BANK LOGIN</PenHead>
+            <WordsIn className={styles.h2} text="Your bank login stays with you." />
             <PrintIn delay={0.18}>
               <p className={styles.lead}>
-                Most subscription apps start by asking for your bank credentials. Zeno is built on refusing to — discovery works from receipts and statements
-                you already control.
+                Most subscription apps begin by asking for your bank credentials. Zeno does not ask. Discovery works from receipts and statements you
+                already have.
               </p>
             </PrintIn>
             <PrintIn delay={0.28}>
@@ -174,7 +174,7 @@ export function AnalyticsTeaser() {
             <PenHead>THE BACK OFFICE</PenHead>
             <WordsIn className={styles.h2} text="Spending, made legible." />
             <PrintIn delay={0.18}>
-              <p className={styles.lead}>Behind Zeno is a real analytics engine. Explore the interactive dashboard — shown with sample data, and labeled that way.</p>
+              <p className={styles.lead}>Behind Zeno is a real analytics engine. Explore the interactive dashboard, shown with sample data and labelled that way.</p>
             </PrintIn>
             <PrintIn delay={0.28}>
               <div style={{ marginTop: 28 }}>
@@ -221,7 +221,7 @@ type Plan = {
 const PLANS: Plan[] = [
   {
     name: "Free",
-    blurb: "Enough to stop the bleeding — and it stays free.",
+    blurb: "Enough to find and stop the charges you forgot. It stays free.",
     meta: "No card required",
     features: ["Track up to 10 subscriptions", "7 / 3 / day-of renewal reminders", "Cancellation guides + verification", "Insights, encrypted on device"],
     price: { free: true },
@@ -230,22 +230,22 @@ const PLANS: Plan[] = [
   {
     name: "Pro",
     featured: true,
-    blurb: "The full ledger. Everything in Free stays free — Pro adds exactly three things.",
+    blurb: "The full ledger. Everything in Free, plus three features.",
     features: ["Unlimited subscriptions", "Category budgets", "Envelope budgeting", "Everything in Free, included"],
     price: { to: 2.5, unit: " /mo" },
     billed: "Billed $29.99/yr · or $3.99 monthly"
   },
   {
     name: "Lifetime",
-    blurb: "Pay once, own it forever. We're a subscription app that will sell you a way out of subscriptions.",
-    meta: "YNAB charges $109 every year. This is once.",
-    features: ["Everything in Pro", "One payment — yours forever", "No recurring charge, ever"],
+    blurb: "Pay once and keep it. A subscription app that will sell you a way out of subscriptions.",
+    meta: "One payment, no renewal",
+    features: ["Everything in Pro", "One payment, yours for good", "No recurring charge, ever"],
     price: { to: 79.99, unit: " once" },
     billed: "One payment · yours forever"
   },
   {
     name: "Family",
-    blurb: "One household ledger, up to five people — members share totals, never their lists.",
+    blurb: "One household ledger for up to five people. Members share totals, not their lists.",
     meta: "Up to 5 members · ~$1.40 / person / mo",
     features: ["Up to 5 members", "Shared family vault", "Per-member spend totals", "Everything in Pro"],
     price: { to: 6.99, unit: " /mo" },
@@ -257,12 +257,12 @@ export function Pricing() {
   return (
     <section id="pricing" className={`${styles.section} ${styles.desk}`}>
       <div className={styles.container}>
-        <PenHead>THE HONEST BILL</PenHead>
-        <WordsIn className={styles.h2} text="Priced like we mean it." />
+        <PenHead>PRICING</PenHead>
+        <WordsIn className={styles.h2} text="Four plans, stated plainly." />
         <PrintIn delay={0.18}>
           <p className={styles.lead}>
-            Free is genuinely useful, Pro gates exactly three features, and Lifetime exists because we&rsquo;re not ironic about recurring charges. No trial
-            countdowns, no guilt copy, no &ldquo;most popular&rdquo; theater.
+            Free covers the basics and stays free. Pro adds three features. Lifetime is a single payment, because a subscription app should offer a way
+            out of subscriptions. There is no trial countdown and no badge telling you which plan to pick.
           </p>
         </PrintIn>
         <div className={styles.pricingList}>
@@ -303,8 +303,8 @@ export function Pricing() {
         </div>
         <PrintIn delay={0.1}>
           <p className={styles.priceFootnote}>
-            Founding-waitlist members get Pro free for 3 months at launch. Cancel anytime from your App Store or Google Play account — no call, no form.
-            Prices in USD, billed via the App Store / Google Play.
+            Founding-waitlist members get Pro free for 3 months at launch. Cancel any time from your App Store or Google Play account. No call, no form.
+            Prices in USD, billed by the App Store or Google Play.
           </p>
         </PrintIn>
       </div>
@@ -319,7 +319,7 @@ export function FAQ({ faqs }: { faqs: ReadonlyArray<{ q: string; a: string }> })
     <section id="faq" className={styles.section}>
       <div className={styles.container} style={{ maxWidth: 820 }}>
         <PenHead>QUESTIONS</PenHead>
-        <WordsIn className={styles.h2} text="Asked and answered." />
+        <WordsIn className={styles.h2} text="Questions people ask us." />
         <PrintIn delay={0.18}>
           <div className={styles.faqList}>
             {faqs.map((f, i) => (

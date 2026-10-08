@@ -20,22 +20,22 @@ test.describe("book mode (wide screen, fine pointer, motion allowed)", () => {
   test("the pager and the keys turn pages, and the address follows", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("button", { name: "Next page" }).click();
-    await expect(pagerLabel(page)).toHaveText("THE CASE");
+    await expect(pagerLabel(page)).toHaveText("THE CATALOGUE");
     await expect(page).toHaveURL(/#case$/);
     await page.keyboard.press("End");
-    await expect(pagerLabel(page)).toHaveText("THE CLOSE");
+    await expect(pagerLabel(page)).toHaveText("WAITLIST");
     await expect(page.getByRole("button", { name: "Next page" })).toBeDisabled();
     await page.keyboard.press("Home");
     await expect(pagerLabel(page)).toHaveText("COVER");
     await page.keyboard.press("ArrowRight");
-    await expect(pagerLabel(page)).toHaveText("THE CASE");
+    await expect(pagerLabel(page)).toHaveText("THE CATALOGUE");
     await page.keyboard.press("ArrowLeft");
     await expect(pagerLabel(page)).toHaveText("COVER");
   });
 
   test("a page's own address opens the book at that page", async ({ page }) => {
     await page.goto("/#pricing");
-    await expect(pagerLabel(page)).toHaveText("THE BILL");
+    await expect(pagerLabel(page)).toHaveText("PRICING");
   });
 
   test("dragging the right edge of the page turns it", async ({ page }) => {
@@ -48,14 +48,14 @@ test.describe("book mode (wide screen, fine pointer, motion allowed)", () => {
     await page.mouse.down();
     for (let x = box.x + box.width - 20; x > box.x + box.width * 0.3; x -= 40) await page.mouse.move(x, y);
     await page.mouse.up();
-    await expect(pagerLabel(page)).toHaveText("THE CASE");
+    await expect(pagerLabel(page)).toHaveText("THE CATALOGUE");
   });
 
   test("the nav's section links turn the book to that section", async ({ page }) => {
     await page.goto("/");
     await expect(pagerLabel(page)).toHaveText("COVER");
     await page.getByRole("navigation").first().getByRole("link", { name: "Pricing" }).click();
-    await expect(pagerLabel(page)).toHaveText("THE BILL");
+    await expect(pagerLabel(page)).toHaveText("PRICING");
     await page.getByRole("navigation").first().getByRole("link", { name: "FAQ" }).click();
     await expect(pagerLabel(page)).toHaveText("QUESTIONS");
   });
@@ -107,7 +107,7 @@ test.describe("without JavaScript", () => {
       );
     }
     expect(hidden).toEqual([]);
-    await expect(page.getByText("Priced like we mean it.")).toBeVisible();
+    await expect(page.getByText("Four plans, stated plainly.")).toBeVisible();
     await expect(page.locator("#waitlist").getByRole("button", { name: /Join the waitlist/ })).toBeVisible();
   });
 });

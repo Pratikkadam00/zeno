@@ -56,16 +56,16 @@ describe("Hero, cancelling a sample row (reduced motion: no flow, totals jump)",
     expect(total()).toBe(`$${money(SAMPLE_BASE - netflix.amt)}`);
     expect(yearly()).toBe(`+$${money(netflix.amt * 12)}`);
     expect(within(ledger()).getByText(`${SAMPLE_SUBS.length - 1} BILLING`)).toBeTruthy();
-    expect(within(ledger()).getByText("CANCELLED — VERIFYING NEXT STATEMENT")).toBeTruthy();
+    expect(within(ledger()).getByText("CANCELLED · VERIFYING NEXT STATEMENT")).toBeTruthy();
     expect(announced()).toBe(
-      `${netflix.n} cancelled — verifying next statement. Monthly total ${money(SAMPLE_BASE - netflix.amt)} dollars, ${money(netflix.amt * 12)} dollars a year back.`
+      `${netflix.n} cancelled, verifying next statement. Monthly total ${money(SAMPLE_BASE - netflix.amt)} dollars, ${money(netflix.amt * 12)} dollars a year back.`
     );
     expect(events.at(-1)).toEqual(SAMPLE_SUBS.map((_, i) => i === 0));
     advance(4199);
     expect(within(ledger()).queryByText(/^VERIFIED CANCELLED/)).toBeNull();
     advance(1);
-    expect(within(ledger()).getByText("VERIFIED CANCELLED — NO NEW CHARGE AT RENEWAL")).toBeTruthy();
-    expect(announced()).toBe(`${netflix.n} verified cancelled — no new charge at renewal.`);
+    expect(within(ledger()).getByText("VERIFIED CANCELLED · NO NEW CHARGE AT RENEWAL")).toBeTruthy();
+    expect(announced()).toBe(`${netflix.n} verified cancelled, no new charge at renewal.`);
     window.removeEventListener(LEDGER_EVENT, onLedger);
   });
 
@@ -116,11 +116,11 @@ describe("Hero, cancelling with motion: the inline cancel flow", () => {
     const traps = lines().filter((l) => l.className.includes("flTrap"));
     expect(traps).toHaveLength(flow.filter((l) => l.c === "trap").length);
     for (const trap of traps) {
-      expect(trap.textContent).toContain("— DECLINED");
+      expect(trap.textContent).toContain("· DECLINED");
       expect(trap.className).toContain("flDx");
     }
     advance(1);
-    expect(within(ledger()).getByText("CANCELLED — VERIFYING NEXT STATEMENT")).toBeTruthy();
+    expect(within(ledger()).getByText("CANCELLED · VERIFYING NEXT STATEMENT")).toBeTruthy();
     expect(total()).not.toBe(`$${money(SAMPLE_BASE)}`);
     advance(1400);
     expect(ledger().querySelector(".aLog")!.className).not.toContain("aLogOpen");
@@ -128,7 +128,7 @@ describe("Hero, cancelling with motion: the inline cancel flow", () => {
     expect(ledger().querySelector(".aLog")).toBeNull();
     expect((sw(adobe.n) as HTMLButtonElement).disabled).toBe(false);
     advance(4200);
-    expect(within(ledger()).getByText("VERIFIED CANCELLED — NO NEW CHARGE AT RENEWAL")).toBeTruthy();
+    expect(within(ledger()).getByText("VERIFIED CANCELLED · NO NEW CHARGE AT RENEWAL")).toBeTruthy();
     // The tweened total has landed exactly.
     expect(total()).toBe(`$${money(SAMPLE_BASE - adobe.amt)}`);
     expect(yearly()).toBe(`+$${money(adobe.amt * 12)}`);
