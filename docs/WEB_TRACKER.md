@@ -8,7 +8,7 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 **Status:** ⬜ to do · 🔄 in progress · ✅ pass · ❌ fail (finding open) · 🔒 needs the owner
 · ⏸ blocked (says why)
 
-**Summary (2026-10-08, evening):** 69 checks. 11 done (W1.1 to W1.11); 11 need the owner (🔒); 1 blocked on the owner's mail set-up (⏸); the rest are mine.
+**Summary (2026-10-08, evening):** 69 checks. 12 done (W1 complete); 11 need the owner (🔒); 1 blocked on the owner's mail set-up (⏸); the rest are mine.
 
 ---
 
@@ -27,7 +27,7 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 | W1.9 | Landing pages: light pass | ✅ | pass the lint unchanged (already in the voice) |
 | W1.10 | Blog posts: light pass | ✅ | pass the lint unchanged |
 | W1.11 | Truthfulness rail extended to the rewritten copy | ✅ | `truthfulness.test.tsx` pins updated to the new sentences (reminders, F166 wording, guides, privacy events, Monarch) |
-| W1.12 | Copy lint green on GitHub; every page read aloud once, nothing template-like | 🔄 | gates run locally; waiting for GitHub |
+| W1.12 | Copy lint green on GitHub; every page read aloud once, nothing template-like | ✅ | GitHub: every check green for 6fb0c9f (CI, CodeQL, gitleaks, semgrep, ZAP); every page's rendered text was read during the rewrite; the owner's own read is welcome |
 
 ## W2 · Legal
 
