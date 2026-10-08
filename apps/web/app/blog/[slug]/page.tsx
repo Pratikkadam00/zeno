@@ -29,8 +29,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     path: `/blog/${slug}`,
     type: "article",
     publishedTime: published,
-    // Not edited since it went up; a later edit adds its own date here and on the page.
-    modifiedTime: published
+    // W3.6: an edit that changes what the post says sets `updated` on the post.
+    modifiedTime: `${post.updated ?? post.date}T00:00:00.000Z`
   });
 }
 
@@ -43,10 +43,11 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
   const words = postWords(post);
   const published = `${post.date}T00:00:00.000Z`;
+  const modified = `${post.updated ?? post.date}T00:00:00.000Z`;
   const others = POSTS.filter((p) => p.slug !== slug);
 
   return (
-    <ContentShell eyebrow={`Zeno blog · ${dateLabel(post.date)} · ${readingMinutes(post)} min read`} title={post.title} lead={fillFigures(post.lead)}>
+    <ContentShell eyebrow={`By Zeno · ${dateLabel(post.date)}${post.updated ? ` · updated ${dateLabel(post.updated)}` : ""} · ${readingMinutes(post)} min read`} title={post.title} lead={fillFigures(post.lead)}>
       <JsonLd
         data={{
           "@context": "https://schema.org",
@@ -54,7 +55,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           headline: post.title,
           description: post.description,
           datePublished: published,
-          dateModified: published,
+          dateModified: modified,
           wordCount: words,
           inLanguage: "en",
           image: siteUrl("/og.png"),

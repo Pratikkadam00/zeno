@@ -1,7 +1,9 @@
 import { siteUrl } from "@/lib/site";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
 import { ContentShell } from "@/components/site/ContentShell";
+import styles from "@/components/site/content.module.css";
 import { JsonLd } from "@/components/site/JsonLd";
 import { ComparisonTable } from "@/components/site/ComparisonTable";
 import { ComparePageCta } from "@/components/site/ComparePageCta";
@@ -52,6 +54,18 @@ export default function MonarchComparePage() {
         site for the current figure.
       </p>
 
+      <h2>Related</h2>
+      <ul className={styles.list}>
+        <li>
+          <Link href="/compare">All comparisons</Link>
+        </li>
+        <li>
+          <Link href="/budgeting">Budgeting without bank sync</Link>
+        </li>
+        <li>
+          <Link href="/compare/ynab-alternative">A YNAB alternative you pay for once</Link>
+        </li>
+      </ul>
       <ComparePageCta title="Track subscriptions and a budget without a live bank connection" />
     </ContentShell>
   );

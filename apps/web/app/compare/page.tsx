@@ -42,6 +42,12 @@ export default function ComparePage() {
           ]
         }}
       />
+      <p>
+        Each comparison states what the other app does from its own public pages, with the date it was read, and what Zeno does from the
+        code that makes it true. Prices are quoted as published and can change; the page says when it last checked. None of these pages
+        claims the other app is unsafe. The difference is the bank connection: those apps are built around one, and Zeno is built to work
+        without one, from receipts and statements you already have.
+      </p>
       <CardList cards={COMPARISONS.map((c) => ({ href: c.href, title: c.name, description: c.note, cta: "See the comparison" }))} />
       <div className={styles.backRow}>
         <Link href="/">← Back to Zeno</Link>

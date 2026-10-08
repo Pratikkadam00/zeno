@@ -47,6 +47,7 @@ describe("the page list itself", () => {
   it("finds every page on disk (28 routes today, the guides as one)", () => {
     expect(PAGES.map((p) => p.route)).toEqual([
       "/",
+      "/about",
       "/analytics",
       "/blog",
       "/blog/[slug]",
@@ -60,18 +61,14 @@ describe("the page list itself", () => {
       "/compare/no-bank-login",
       "/compare/rocket-money-alternative",
       "/compare/ynab-alternative",
-      "/developers",
       "/features",
-      "/features/business",
       "/features/family-vault",
-      "/features/open-banking",
       "/features/spend-twin",
-      "/features/widgets-watch",
       "/free-trial-reminders",
       "/legal/cookies",
       "/legal/privacy",
       "/legal/terms",
-      "/partners",
+      "/roadmap",
       "/subscription-tracker"
     ]);
   });

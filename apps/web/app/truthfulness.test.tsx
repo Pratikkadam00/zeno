@@ -146,11 +146,12 @@ describe("claims pinned to the code that makes them true", () => {
 
   it("features the app shows as 'Coming soon' or 'Preview only' are marked 'not available today' on the site", () => {
     const pairs: [string, string][] = [
-      ["apps/mobile/app/business.tsx", "/features/business"],
-      ["apps/mobile/app/public-api.tsx", "/developers"],
-      ["apps/mobile/app/partners.tsx", "/partners"],
-      ["apps/mobile/app/widgets.tsx", "/features/widgets-watch"],
-      ["apps/mobile/app/open-banking.tsx", "/features/open-banking"]
+      // D20: the five pages became one roadmap page; every one of these screens is on it.
+      ["apps/mobile/app/business.tsx", "/roadmap"],
+      ["apps/mobile/app/public-api.tsx", "/roadmap"],
+      ["apps/mobile/app/partners.tsx", "/roadmap"],
+      ["apps/mobile/app/widgets.tsx", "/roadmap"],
+      ["apps/mobile/app/open-banking.tsx", "/roadmap"]
     ];
     for (const [screen, url] of pairs) {
       const unavailable = /ComingSoon|NotInThisBuild|Preview only|not available/i.test(source(screen));

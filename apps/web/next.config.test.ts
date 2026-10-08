@@ -148,14 +148,17 @@ describe("the sample analytics page (F184)", () => {
 describe("www -> apex redirect", () => {
   it("permanently redirects the www host to the canonical origin, keeping the path", async () => {
     const config = await load({ NODE_ENV: "production", NEXT_PUBLIC_SITE_URL: "https://example.com" });
-    expect(await config.redirects!()).toEqual([
-      {
-        source: "/:path*",
-        has: [{ type: "host", value: "www.example.com" }],
-        destination: "https://example.com/:path*",
-        permanent: true
-      }
-    ]);
+    const [www, ...folded] = await config.redirects!();
+    expect(www).toEqual({
+      source: "/:path*",
+      has: [{ type: "host", value: "www.example.com" }],
+      destination: "https://example.com/:path*",
+      permanent: true
+    });
+    // D20 (2026-10-08): the five planned-feature pages folded into /roadmap; each old address redirects for good.
+    expect(folded).toEqual(
+      ["/features/widgets-watch", "/features/open-banking", "/features/business", "/developers", "/partners"].map((source) => ({ source, destination: "/roadmap", permanent: true }))
+    );
   });
 
   it("defaults to the production domain when no site URL is configured", async () => {

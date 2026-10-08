@@ -117,7 +117,15 @@ const nextConfig: NextConfig = {
         has: [{ type: "host", value: `www.${SITE_HOST}` }],
         destination: `${SITE_URL}/:path*`,
         permanent: true
-      }
+      },
+      // D20 (2026-10-08): the five "planned, not available today" pages were
+      // folded into one roadmap page. Their addresses were in the sitemap and
+      // may be indexed or linked, so each one redirects for good.
+      ...["/features/widgets-watch", "/features/open-banking", "/features/business", "/developers", "/partners"].map((source) => ({
+        source,
+        destination: "/roadmap",
+        permanent: true
+      }))
     ];
   }
 };

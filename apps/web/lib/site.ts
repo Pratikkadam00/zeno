@@ -38,5 +38,6 @@ export function siteUrl(path = "/"): string {
 export const CONTACT_EMAIL = {
   privacy: `privacy@${SITE_HOST}`,
   legal: `legal@${SITE_HOST}`,
-  security: `security@${SITE_HOST}`
+  security: `security@${SITE_HOST}`,
+  feedback: `feedback@${SITE_HOST}`
 } as const;

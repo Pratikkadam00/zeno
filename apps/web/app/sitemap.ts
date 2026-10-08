@@ -25,14 +25,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // /analytics is deliberately excluded: it's noindex'd (see app/analytics/
     // layout.tsx's robots metadata) and, by default, 404s in production unless
     // SHOW_PUBLIC_ANALYTICS=1 — a sitemap should never list a noindex'd URL.
-    { url: `${BASE}/developers`, lastModified, changeFrequency: "monthly", priority: 0.5 },
-    { url: `${BASE}/partners`, lastModified, changeFrequency: "monthly", priority: 0.5 },
+    // D20 (2026-10-08): one roadmap page replaced five planned-feature pages; /about is new.
+    { url: `${BASE}/roadmap`, lastModified: new Date("2026-10-08"), changeFrequency: "monthly", priority: 0.5 },
+    { url: `${BASE}/about`, lastModified: new Date("2026-10-08"), changeFrequency: "yearly", priority: 0.5 },
     { url: `${BASE}/features`, lastModified, changeFrequency: "monthly", priority: 0.6 },
-    { url: `${BASE}/features/business`, lastModified, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/features/family-vault`, lastModified, changeFrequency: "monthly", priority: 0.6 },
-    { url: `${BASE}/features/open-banking`, lastModified, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/features/spend-twin`, lastModified, changeFrequency: "monthly", priority: 0.6 },
-    { url: `${BASE}/features/widgets-watch`, lastModified, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/legal/privacy`, lastModified, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/legal/terms`, lastModified, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/legal/cookies`, lastModified, changeFrequency: "yearly", priority: 0.3 },

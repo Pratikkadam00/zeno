@@ -108,6 +108,7 @@ test("the sitemap lists the site's pages and all 509 guides", () => {
 // The pages that aren't guides, one test each, so a failure names its page.
 const PAGES = [
   "/",
+  "/about",
   "/blog",
   "/blog/free-trials-how-to-stop-paying-for-the-ones-you-forgot",
   "/blog/how-to-find-all-your-subscriptions",
@@ -122,18 +123,14 @@ const PAGES = [
   "/compare/no-bank-login",
   "/compare/rocket-money-alternative",
   "/compare/ynab-alternative",
-  "/developers",
   "/features",
-  "/features/business",
   "/features/family-vault",
-  "/features/open-banking",
   "/features/spend-twin",
-  "/features/widgets-watch",
   "/free-trial-reminders",
   "/legal/cookies",
   "/legal/privacy",
   "/legal/terms",
-  "/partners",
+  "/roadmap",
   "/subscription-tracker"
 ];
 // Guides share one template; these cover each difficulty, a long name and a
@@ -243,4 +240,17 @@ test("all 509 guides answer 200 with the security headers and their own script p
     );
   }
   expect(bad).toEqual([]);
+});
+
+// D20 (2026-10-08): the five "planned, not available today" pages became one
+// roadmap page. Their addresses were in the sitemap for four days and may be
+// linked from outside, so each redirects for good, in one hop.
+test("the five folded feature addresses redirect to /roadmap for good", async ({ baseURL }) => {
+  for (const path of ["/features/widgets-watch", "/features/open-banking", "/features/business", "/developers", "/partners"]) {
+    const res = await fetch(`${baseURL}${path}`, { redirect: "manual" });
+    expect([path, res.status]).toEqual([path, 308]);
+    expect([path, new URL(res.headers.get("location")!, baseURL).pathname]).toEqual([path, "/roadmap"]);
+  }
+  const landed = await fetch(`${baseURL}/roadmap`);
+  expect(landed.status).toBe(200);
 });

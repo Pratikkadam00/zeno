@@ -34,14 +34,11 @@ describe("Footer", () => {
     expect(column("Features")).toEqual([
       ["Family Vault", "/features/family-vault"],
       ["Spend Twin", "/features/spend-twin"],
-      ["Widgets & Watch", "/features/widgets-watch"],
-      ["Open banking (planned)", "/features/open-banking"],
-      ["Business", "/features/business"]
+      ["Roadmap", "/roadmap"]
     ]);
     expect(column("Company")).toEqual([
+      ["About", "/about"],
       ["Blog", "/blog"],
-      ["Developers", "/developers"],
-      ["Partners", "/partners"],
       ["Privacy policy", "/legal/privacy"],
       ["Terms of service", "/legal/terms"],
       ["Cookie policy", "/legal/cookies"]

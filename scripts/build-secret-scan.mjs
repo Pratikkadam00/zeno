@@ -11,7 +11,7 @@
 // variable and the file.
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { readdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -123,7 +123,8 @@ export function repositoryNames() {
   const relevant = files.filter(
     (f) => /\.(c|m)?[jt]sx?$/.test(f) || f === "render.yaml" || /(^|\/)\.env[^/]*example[^/]*$/.test(f) || f.startsWith(".github/")
   );
-  return namesIn(relevant.map((f) => readFileSync(join(ROOT, f), "utf8")));
+  // A tracked file deleted in the working tree (mid-change, before `git add`) is not a source of names.
+  return namesIn(relevant.filter((f) => existsSync(join(ROOT, f))).map((f) => readFileSync(join(ROOT, f), "utf8")));
 }
 
 function main() {

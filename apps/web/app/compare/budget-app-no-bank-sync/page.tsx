@@ -1,8 +1,10 @@
 import { siteUrl } from "@/lib/site";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
 import { services } from "@zeno/service-catalog";
 import { ContentShell } from "@/components/site/ContentShell";
+import styles from "@/components/site/content.module.css";
 import { JsonLd } from "@/components/site/JsonLd";
 import { ComparisonTable } from "@/components/site/ComparisonTable";
 import { ComparePageCta } from "@/components/site/ComparePageCta";
@@ -49,6 +51,18 @@ export default function BudgetAppNoBankSyncComparePage() {
         manually. There is no bank connection to maintain, re-authenticate, or lose data to when it breaks.
       </p>
 
+      <h2>Related</h2>
+      <ul className={styles.list}>
+        <li>
+          <Link href="/budgeting">Budgeting without bank sync, in detail</Link>
+        </li>
+        <li>
+          <Link href="/compare/no-bank-login">A subscription tracker without bank login</Link>
+        </li>
+        <li>
+          <Link href="/blog/how-to-find-all-your-subscriptions">How to find every subscription you&rsquo;re paying for</Link>
+        </li>
+      </ul>
       <ComparePageCta title="Budget without a bank connection that can break" />
     </ContentShell>
   );

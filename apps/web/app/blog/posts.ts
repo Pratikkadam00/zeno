@@ -18,6 +18,8 @@ export type Post = {
   description: string;
   /** ISO date, the day it was published. */
   date: string;
+  /** ISO date of the last edit that changed what the post says; shown and sent to search engines (W3.6). */
+  updated?: string;
   lead: string;
   sections: PostSection[];
   related: [label: string, href: string][];
