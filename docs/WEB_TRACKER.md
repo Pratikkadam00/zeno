@@ -8,7 +8,7 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 **Status:** ⬜ to do · 🔄 in progress · ✅ pass · ❌ fail (finding open) · 🔒 needs the owner
 · ⏸ blocked (says why)
 
-**Summary (2026-10-08, evening):** 69 checks. 12 done (W1 complete); 11 need the owner (🔒); 1 blocked on the owner's mail set-up (⏸); the rest are mine.
+**Summary (2026-10-08, night):** 69 checks. 26 done (W1 complete; W3 all but the contact page; W2 all but the browser measurement and the lawyer); 9 need the owner (🔒); 1 blocked on the owner's mail set-up (⏸); the rest are mine.
 
 ---
 
@@ -33,28 +33,28 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 
 | ID | Check | Status | Evidence / finding |
 |---|---|---|---|
-| W2.1 | D18: the legal entity (name, form, country, address) | 🔒 | owner decision |
-| W2.2 | D19: governing law and venue | 🔒 | owner decision |
-| W2.3 | Terms rewritten to the plan's list; billing section equals the pricing table | ⬜ | after W2.1, W2.2 |
-| W2.4 | Apple's required EULA clauses and Google Play terms present | ⬜ | |
-| W2.5 | Privacy policy rewritten: controller, purposes with bases, retention per category, providers with location, transfers, rights with deadline, EU/UK and California, children | ⬜ | |
-| W2.6 | Cookie policy checked against what the site actually stores (measured in a browser) | ⬜ | |
-| W2.7 | Test: legal pages agree with the pricing table, the provider list in code, and the data-safety draft | ⬜ | |
-| W2.8 | Test: no "draft", "to be confirmed", "at launch" in the legal pages; dates set by content | ⬜ | |
+| W2.1 | D18: the legal entity (name, form, country, address) | ✅ | D18 decided by the owner 2026-10-08: the name Zeno, no address; written into the Terms, the privacy policy and /about |
+| W2.2 | D19: governing law and venue | ✅ | D19: India, with consumers keeping their own country's protection (the owner left the wording to me, 2026-10-08); Terms §14; the lawyer confirms (W2.9) |
+| W2.3 | Terms rewritten to the plan's list; billing section equals the pricing table | ✅ | `app/legal/terms/page.tsx`, 16 sections; plan list and prices pinned to the pricing section by `legal-agreement.test.tsx` |
+| W2.4 | Apple's required EULA clauses and Google Play terms present | ✅ | Terms §11 (Apple's minimum EULA terms: no Apple obligation, warranty refund, claims, export compliance, third-party beneficiary; Google likewise) |
+| W2.5 | Privacy policy rewritten: controller, purposes with bases, retention per category, providers with location, transfers, rights with deadline, EU/UK and California, children | ✅ | `app/legal/privacy/page.tsx`, 16 sections; retention from the API's constants, providers from the code, data items from `docs/STORE_DATA_SAFETY.md` |
+| W2.6 | Cookie policy checked against what the site actually stores (measured in a browser) | 🔄 | the text is true to the code (`truthfulness.test.tsx`: no cookie API used, one localStorage key); the browser measurement of what is stored is W7 |
+| W2.7 | Test: legal pages agree with the pricing table, the provider list in code, and the data-safety draft | ✅ | `app/legal/legal-agreement.test.tsx`, 14 tests: plans, prices, household size, token lifetimes, providers, the coach stores nothing, export and deletion, data-safety list |
+| W2.8 | Test: no "draft", "to be confirmed", "at launch" in the legal pages; dates set by content | ✅ | same test: no 'draft', 'to be confirmed', 'finalised at launch', 'pre-launch notice'; bite-checked (a 'draft' inserted in the Terms failed it); dates set 2026-10-08 |
 | W2.9 | Lawyer's review | 🔒 | OWNER_GUIDE step 13 |
 
 ## W3 · Pages
 
 | ID | Check | Status | Evidence / finding |
 |---|---|---|---|
-| W3.1 | About page | ⬜ | needs W2.1 for the entity line |
+| W3.1 | About page | ✅ | `app/about/page.tsx` (who, why, how built, how paid for, what it is not, reach us) |
 | W3.2 | Contact page with the four addresses | ⏸ | F223: the addresses bounce until the owner sets up mail |
-| W3.3 | D20: the six planned-feature pages folded into one Roadmap page (recommended) or kept | 🔒 | owner decision |
-| W3.4 | Sample ledger dates computed from today; catalogue date computed; competitor-price dates with a 90-day test | 🔄 | sample ledger now relative ('renews in 19 days'); catalogue cite says counted at build; competitor dates re-read 2026-10-08; the 90-day test still to write |
-| W3.5 | Footer: entity line, computed year | ⬜ | needs W2.1 |
-| W3.6 | Byline and updated date on every post | ⬜ | |
-| W3.7 | Test: every sitemap page has 150+ words of its own and a next step | ⬜ | |
-| W3.8 | Test: no date on the site older than 90 days except publication dates | ⬜ | |
+| W3.3 | D20: the six planned-feature pages folded into one Roadmap page (recommended) or kept | ✅ | D20 recommended and taken: `app/roadmap/page.tsx`; the five addresses 308 to /roadmap (`next.config.ts`; `every-route.spec.ts` checks each) |
+| W3.4 | Sample ledger dates computed from today; catalogue date computed; competitor-price dates with a 90-day test | ✅ | relative days in the sample ledger; catalogue cite computed; competitor dates re-read 2026-10-08; `app/dates.test.tsx` fails on any typed date older than 90 days |
+| W3.5 | Footer: entity line, computed year | ✅ | year computed (`Footer.tsx`); the entity line is the name Zeno, nothing more (D18) |
+| W3.6 | Byline and updated date on every post | ✅ | `blog/[slug]/page.tsx`: 'By Zeno · date · updated date · read time'; `updated` on a post sets dateModified |
+| W3.7 | Test: every sitemap page has 150+ words of its own and a next step | ✅ | `app/substance.test.tsx`: 150 words of its own, one h1, a link onward on every page; guides held at the measured floor of 49 words |
+| W3.8 | Test: no date on the site older than 90 days except publication dates | ✅ | `app/dates.test.tsx` (90 days; publication dates exempt; no future dates; at most 6 typed dates on the site) |
 
 ## W4 · Blog and images
 
@@ -132,6 +132,8 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 | F226 | The site's own voice: 227 em dashes, a courtroom metaphor on the home page, self-praise ('the honest way', 'priced like we mean it') | Medium (reads as template or machine-written) | Fixed 2026-10-08 (W1); locked by the copy lint |
 
 ## Log
+
+**2026-10-08, night:** W3 and W2. The five placeholder pages became /roadmap with permanent redirects; /about written; Family Vault and Spend Twin written from the server's and app's rules; the features hub and compare pages filled out; bylines; three new tests (dates, substance, legal agreement). The Terms and privacy policy rewritten in full with Zeno as the operator and India's law; the cookie policy's draft notes removed.
 
 **2026-10-08, evening:** W1 done except the GitHub read. The lint was written first and failed on the old site on 10 of its rules (the bite check); the home page, compare pages, feature pages, cancel hub, legal pages and the shared call to action were rewritten until it passed; 13 tests that pinned the old sentences were updated. Three findings: F224 stale dates, F225 Terms against pricing, F226 the voice itself.
 

@@ -277,6 +277,7 @@ Writing real steps (D5) is what actually earns rankings for those 470 names.
 - **Then I:** build what you said yes to, each with its test, and update the checklist.
 
 ### D18 · the legal entity behind Zeno (`docs/WEB_PLAN.md` W2)
+**Decided 2026-10-08 (owner): the name Zeno, no address, no personal data on the site. Done: Terms, privacy policy, /about, footer.**
 - **Today:** the Terms say "the Zeno team", name no company, country or address; the
   privacy policy names no data controller. A reader cannot tell who they are contracting
   with, and a privacy law requires the controller's identity.
@@ -288,6 +289,7 @@ Writing real steps (D5) is what actually earns rankings for those 470 names.
   footer, with one source of truth in `apps/web/lib/site.ts`.
 
 ### D19 · governing law and venue
+**Decided 2026-10-08: the owner left it to me; written as India's law and courts, with consumers elsewhere keeping their own country's protection (Terms §14). The lawyer confirms.**
 - **Today:** "the laws of the jurisdiction in which Zeno is established … confirmed at
   launch". That is not a term.
 - **Recommendation:** the law and courts of the country from D18, with the standard carve-out
@@ -295,6 +297,7 @@ Writing real steps (D5) is what actually earns rankings for those 470 names.
   step 13) confirms it; I draft it.
 
 ### D20 · the six "planned, not available today" pages
+**Decided 2026-10-08: the owner said "do the best"; the recommendation was taken. /roadmap replaces the five pages; each old address redirects for good.**
 - **Today:** Widgets + Watch, Open Banking, Business, Developers, Partners and most of the
   Features hub each hold one paragraph and a mock-up. Honest, and thin.
 - **Recommendation: fold them into one Roadmap page** that lists what is planned, in
@@ -304,6 +307,7 @@ Writing real steps (D5) is what actually earns rankings for those 470 names.
   which costs time on features that do not exist.
 
 ### D21 · waitlist double opt-in
+**Deferred 2026-10-08 (owner): "confirmation email will do later". Left on the list.**
 - **Today:** an address typed into the form goes straight onto the list. Nobody proves
   they own it; a typo or a prank lands on the list and gets launch mail.
 - **Recommendation: yes.** A confirmation email through Resend with one link; the address
