@@ -133,6 +133,10 @@ jobs:
       # fetched from another host, axe clean at WCAG 2.2 AA. Runs against
       # `next start` over the build above. Uses the runner's installed Google
       # Chrome (channel "chrome"), so no browser is downloaded.
+      # W7.3, W7.4: Firefox and WebKit are Playwright's own builds; Chrome is the image's.
+      - name: Install Firefox and WebKit for Playwright
+        run: npx playwright install --with-deps firefox webkit
+
       - name: Website end-to-end (Playwright, installed Chrome)
         working-directory: apps/web
         run: npx playwright test

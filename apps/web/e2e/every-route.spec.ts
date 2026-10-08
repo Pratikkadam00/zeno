@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page, type Response } from "@playwright/test";
+import { expect, test, type APIRequestContext, type Page, type Response } from "@playwright/test";
 import { governedInlineScripts, hashSource } from "../../../scripts/csp-script-hashes.mjs";
 
 // Every route the site serves, taken from its own sitemap.xml (so a new page
@@ -38,8 +38,11 @@ function scriptPolicyProblems(html: string): string[] {
   return policy === expected ? [] : [`policy ${policy.slice(0, 60)}… is not the page's own scripts`];
 }
 
-async function sitemapPaths(baseURL: string): Promise<string[]> {
-  const xml = await (await fetch(`${baseURL}/sitemap.xml`)).text();
+// Through Playwright's request context, not Node's fetch: the WebKit project's
+// base URL is the self-signed TLS front (playwright.config.ts), which the
+// context is told to trust and Node is not.
+async function sitemapPaths(request: APIRequestContext): Promise<string[]> {
+  const xml = await (await request.get("/sitemap.xml")).text();
   return [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]!).pathname);
 }
 
@@ -95,8 +98,8 @@ async function axe(page: Page) {
 }
 
 let routes: string[] = [];
-test.beforeAll(async ({ baseURL }) => {
-  routes = await sitemapPaths(baseURL!);
+test.beforeAll(async ({ request }) => {
+  routes = await sitemapPaths(request);
 });
 
 test("the sitemap lists the site's pages and all 509 guides", () => {
@@ -201,7 +204,7 @@ test("an injected inline script is blocked; the page's own still run (P4.3)", as
   });
   await page.goto("/", { waitUntil: "networkidle" });
   expect(await page.evaluate(() => (window as { __injected?: boolean }).__injected)).toBeUndefined();
-  expect(errors.some((e) => e.includes("Content Security Policy"))).toBe(true);
+  expect(errors.some((e) => /content[- ]security[- ]policy/i.test(e)), "a CSP message in the console (Chrome: 'Content Security Policy', Firefox: 'Content-Security-Policy')").toBe(true);
   expect(await scriptsRan(page)).toEqual({ themeScript: true, hydrated: true });
 });
 
@@ -249,12 +252,12 @@ test("all 509 guides answer 200 with the security headers and their own script p
 // D20 (2026-10-08): the five "planned, not available today" pages became one
 // roadmap page. Their addresses were in the sitemap for four days and may be
 // linked from outside, so each redirects for good, in one hop.
-test("the five folded feature addresses redirect to /roadmap for good", async ({ baseURL }) => {
+test("the five folded feature addresses redirect to /roadmap for good", async ({ request, baseURL }) => {
   for (const path of ["/features/widgets-watch", "/features/open-banking", "/features/business", "/developers", "/partners"]) {
-    const res = await fetch(`${baseURL}${path}`, { redirect: "manual" });
-    expect([path, res.status]).toEqual([path, 308]);
-    expect([path, new URL(res.headers.get("location")!, baseURL).pathname]).toEqual([path, "/roadmap"]);
+    const res = await request.get(path, { maxRedirects: 0 });
+    expect([path, res.status()]).toEqual([path, 308]);
+    expect([path, new URL(res.headers()["location"]!, baseURL).pathname]).toEqual([path, "/roadmap"]);
   }
-  const landed = await fetch(`${baseURL}/roadmap`);
-  expect(landed.status).toBe(200);
+  const landed = await request.get("/roadmap");
+  expect(landed.status()).toBe(200);
 });

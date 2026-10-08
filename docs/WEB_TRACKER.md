@@ -8,7 +8,7 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 **Status:** ⬜ to do · 🔄 in progress · ✅ pass · ❌ fail (finding open) · 🔒 needs the owner
 · ⏸ blocked (says why)
 
-**Summary (2026-10-09):** 69 checks. 48 done; 1 failed and waiting on the owner (W6.4, F227); 9 need the owner (🔒); 1 blocked on the owner's mail set-up (⏸); the rest are mine (W7, W8.3, W8.6, W5.9 in December).
+**Summary (2026-10-09):** 69 checks. 53 done; 1 failed and waiting on the owner (W6.4, F227); 9 need the owner (🔒); 1 blocked on the owner's mail set-up (⏸); the rest are mine (W7, W8.3, W8.6, W5.9 in December).
 
 ---
 
@@ -102,11 +102,11 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 |---|---|---|---|
 | W7.1 | Spell check in CI with a project dictionary | ✅ | `cspell.json` (British English, 27 project words, entities ignored) and a CI step over the website's sources and llms.txt; 67 files, 0 issues; bite-checked ('subscripton' and 'chargse' caught, 'colour' accepted) |
 | W7.2 | Visual baselines, every template, light and dark, phone and desktop | ⬜ | = U2.6 |
-| W7.3 | Firefox project | ⬜ | = U5.7 |
-| W7.4 | WebKit project | ⬜ | = U5.8 |
-| W7.5 | Keyboard-only through every page | ⬜ | = U3.8 |
-| W7.6 | 200 % zoom | ⬜ | = U3.9 |
-| W7.7 | Forced colours | ⬜ | = U3.13 |
+| W7.3 | Firefox project | ✅ | Playwright project `firefox` (Playwright's build, installed in CI): the whole suite, 2026-10-09 locally; one test's wording widened (Firefox says 'Content-Security-Policy') and one Firefox habit allowed for (focus stays on the last control instead of wrapping) |
+| W7.4 | WebKit project | ✅ | Playwright project `webkit` through a self-signed TLS front (`e2e/tls-proxy.mjs`): WebKit honours upgrade-insecure-requests for 127.0.0.1, Chrome and Firefox exempt it; 185 passed, 15 skipped by design (keyboard and forced colours). Found and fixed: nav links shorter than 24 px in WebKit (axe target-size) |
+| W7.5 | Keyboard-only through every page | ✅ | `e2e/keyboard.spec.ts`, 10 templates: first Tab is the skip link and Enter lands on main; every focusable control from main onward reached in document order; every one shows focus; no trap (the sequence reaches the footer's last link) |
+| W7.6 | 200 % zoom | ✅ | `e2e/zoom.spec.ts`, 10 templates at a 640-px viewport drawn 2×: no sideways scroll, no heading, paragraph, link or button outside the viewport, no nowrap text cut off |
+| W7.7 | Forced colours | ✅ | `e2e/forced-colors.spec.ts`, 4 templates with forced colours active: every button, switch and input keeps an edge, nothing but pictures opts out, the heading stays; F228 found and fixed |
 | W7.8 | Waitlist end to end: the row lands in the sheet; what the sign-up sees | 🔒 | needs read access to the owner's sheet |
 | W7.9 | Theme toggle; external links `rel="noopener"` in a new tab | ⬜ | |
 
@@ -131,8 +131,11 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 | F225 | The Terms described Pro as 'advanced discovery, deeper insights, and cancellation guides' and listed a Business tier for sale; the pricing sells Pro as unlimited subscriptions plus two budgeting features, guides free, and no Business plan | High (a contract term contradicting the price list) | Fixed 2026-10-08 in the plan list; the test that the legal pages agree with the pricing is W2.7 |
 | F226 | The site's own voice: 227 em dashes, a courtroom metaphor on the home page, self-praise ('the honest way', 'priced like we mean it') | Medium (reads as template or machine-written) | Fixed 2026-10-08 (W1); locked by the copy lint |
 | F227 | Netlify appends its toolbar script after `</html>` on every page (even with the project public): invalid HTML, and a script the site's own policy blocks, so a console error for every visitor | Medium (trust, validity) | Owner: turn the HUD off in Netlify's settings (`docs/OWNER_ACTIONS.md`); W6.4 stays ❌ until then |
+| F228 | In forced-colours mode (Windows High Contrast) the hero's five switches, the page-turn buttons, the FAQ buttons and the phone menu button had no visible edge: drawn by background colour alone, which the mode removes | Medium (accessibility, WCAG 1.4.11) | Fixed 2026-10-09: `@media (forced-colors: active)` in `globals.css` gives every control a system-colour border and a Highlight focus ring; `e2e/forced-colors.spec.ts` |
 
 ## Log
+
+**2026-10-09 (W7):** keyboard-only, 200 % zoom and forced-colours tests (F228 found and fixed); the suite in Firefox and in WebKit, the latter through a TLS front because WebKit upgrades insecure requests even to 127.0.0.1; a CodeQL warning on the link checker fixed (origin compared whole, not as a prefix).
 
 **2026-10-09 (W6):** Lighthouse measured on the live site (95 to 100 performance, 100 accessibility and SEO, 92 best practices from F227 alone); the vitals budgets made hard; the Nu HTML checker found the Netlify toolbar script after `</html>` on every page (F227, owner); a nightly link check (538 internal links, all 200); caching for the pictures; a print stylesheet with a browser test.
 

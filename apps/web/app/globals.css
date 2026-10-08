@@ -301,3 +301,27 @@ html:not(.js) .zn-reveal {
     page-break-after: avoid;
   }
 }
+
+/* ── Forced colours (W7.7, F228): the system paints the colours; the site keeps the edges ──
+   Custom controls drawn with background alone (the hero's switches, the pager)
+   vanish in Windows High Contrast. A border in the system's control colour
+   keeps every control findable. */
+@media (forced-colors: active) {
+  button,
+  [role="switch"],
+  [role="button"],
+  input,
+  select,
+  textarea {
+    border: 1px solid ButtonText !important;
+  }
+  [role="switch"][aria-checked="true"] {
+    border-color: Highlight !important;
+  }
+  a:focus-visible,
+  button:focus-visible,
+  [role="switch"]:focus-visible {
+    outline: 2px solid Highlight !important;
+    outline-offset: 2px;
+  }
+}

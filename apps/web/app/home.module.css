@@ -272,6 +272,10 @@
 }
 .navLink {
   position: relative;
+  /* WCAG 2.5.8 and axe target-size: at least 24 px tall in every engine (WebKit laid the inline link out shorter). */
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
   padding: 8px 12px;
   font-family: var(--font-mono), monospace;
   font-size: 11.5px;

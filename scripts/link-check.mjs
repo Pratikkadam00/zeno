@@ -27,7 +27,8 @@ for (const page of pages) {
     const href = m[1].replace(/&amp;/g, "&");
     if (href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) continue;
     const abs = new URL(href, page).href.split("#")[0];
-    const map = abs.startsWith(ORIGIN) ? internal : external;
+    // The origin compared whole, not as a prefix: "https://zenoapp.in.example" is not us (CodeQL, 2026-10-08).
+    const map = new URL(abs).origin === ORIGIN ? internal : external;
     if (!map.has(abs)) map.set(abs, []);
     map.get(abs).push(page.replace(ORIGIN, ""));
   }
