@@ -1,5 +1,5 @@
 import { siteUrl } from "@/lib/site";
-import { POSTS } from "../posts";
+import { POSTS, fillFigures } from "../posts";
 
 // RSS 2.0 of the blog (SEO.md §7.3), built from the same POSTS the index, the
 // post pages and the sitemap read, with each post's real publish date.
@@ -17,11 +17,11 @@ export function GET(): Response {
       const url = siteUrl(`/blog/${post.slug}`);
       return [
         "    <item>",
-        `      <title>${xml(post.title)}</title>`,
+        `      <title>${xml(fillFigures(post.title))}</title>`,
         `      <link>${url}</link>`,
         `      <guid isPermaLink="true">${url}</guid>`,
         `      <pubDate>${rfc822(post.date)}</pubDate>`,
-        `      <description>${xml(post.description)}</description>`,
+        `      <description>${xml(fillFigures(post.description))}</description>`,
         "    </item>"
       ].join("\n");
     })

@@ -51,7 +51,8 @@ function expectSeo(route: string, m: Metadata) {
   expect(tw.title, route).toBe(title);
   expect(tw.description, route).toBe(description);
   for (const images of [og.images, tw.images] as Array<Array<{ url: string; alt: string }>>) {
-    expect(images, route).toEqual([expect.objectContaining({ url: "/og.png", alt: title })]);
+    // W4: a page's own share card (/og/<slug>.png) or the site-wide one (/og.png).
+    expect(images, route).toEqual([expect.objectContaining({ url: expect.stringMatching(/^\/og(\/[a-z0-9-]+)?\.png$/), alt: title })]);
   }
 }
 

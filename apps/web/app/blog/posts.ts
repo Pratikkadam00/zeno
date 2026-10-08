@@ -3,10 +3,16 @@
 // (the truthfulness rail in app/truthfulness.test.tsx and blog.test.tsx runs
 // over every post). Two tokens are filled from the catalog at render time so a
 // number here can never go stale: {SERVICE_COUNT} and {HARD_COUNT}.
-import { serviceRecords } from "@zeno/service-catalog";
+import { serviceRecords, services } from "@zeno/service-catalog";
+import { MORE_POSTS } from "./posts-2026-10";
+
+/** A picture drawn in code (scripts/site-art.ts): `art` names the drawing; the alt says what it shows. */
+export type Picture = { art: string; alt: string; caption?: string };
 
 export type PostSection = {
   heading?: string;
+  /** A figure shown after the heading, before the paragraphs. */
+  figure?: Picture;
   paragraphs: string[];
   list?: string[];
   ordered?: boolean;
@@ -21,17 +27,19 @@ export type Post = {
   /** ISO date of the last edit that changed what the post says; shown and sent to search engines (W3.6). */
   updated?: string;
   lead: string;
+  hero: Picture;
   sections: PostSection[];
   related: [label: string, href: string][];
 };
 
-export const POSTS: Post[] = [
+const FIRST_POSTS: Post[] = [
   {
     slug: "how-to-find-all-your-subscriptions",
     title: "How to find every subscription you're paying for",
     description:
       "Forgotten subscriptions hide in your inbox, your statements and the app stores. How to search each one in about half an hour, without handing over a bank login.",
     date: "2026-10-04",
+    hero: { art: "find-three-places", alt: "Three cards side by side: an inbox with receipts highlighted, a phone showing the app store's subscriptions screen, and a bank statement with Netflix, Spotify and iCloud+ picked out of ordinary spending." },
     lead:
       "Forgotten subscriptions hide in three places: your inbox, your statements, and the app stores. Here's how to search each one, in about half an hour, without handing anyone your bank login.",
     sections: [
@@ -43,6 +51,7 @@ export const POSTS: Post[] = [
       },
       {
         heading: "1. Your inbox, searched properly",
+        figure: { art: "gmail-search", alt: "A Gmail search box containing subject:(receipt OR invoice OR renewal OR \"your subscription\") newer_than:1y, with four matching emails beneath it from Netflix, Adobe, Spotify and Apple, each with its amount.", caption: "The search, and what it brings back" },
         paragraphs: [
           "Almost every paid service emails a receipt, and almost nobody reads them. In Gmail, paste this into the search box:",
           "subject:(receipt OR invoice OR renewal OR \"your subscription\") newer_than:1y",
@@ -106,6 +115,7 @@ export const POSTS: Post[] = [
     description:
       "A free trial turns into a charge by default. Four habits keep it free: cancel early, write down the end date, know who bills you, and watch for the annual plan.",
     date: "2026-10-04",
+    hero: { art: "trial-calendar", alt: "A four-week calendar with a free trial shaded green from day 4, reminder ticks on days 11, 15 and 18, and day 18 marked in red: it charges." },
     lead:
       "A free trial is designed to become a paid plan while you're not looking. Four habits keep it free, and none of them take more than a minute.",
     sections: [
@@ -131,6 +141,7 @@ export const POSTS: Post[] = [
       },
       {
         heading: "Know where it's billed",
+        figure: { art: "trial-timeline", alt: "Two cards: billed by the service, so you cancel on its account page and deleting the app changes nothing; billed by Apple or Google, so you cancel in the store's subscriptions screen and the website cannot touch it.", caption: "Who bills you decides where you cancel" },
         paragraphs: [
           "A trial started inside an iPhone or Android app is billed by Apple or Google. Cancelling your account on the service's website doesn't touch it, and neither does deleting the app. It has to be cancelled in the store: on an iPhone under Settings, your name, Subscriptions; on Android in the Play Store under Payments & subscriptions.",
           "This is the single most common way a \"cancelled\" trial keeps charging. When you sign up, notice whether you're paying the service or the store, and write that down with the end date."
@@ -169,6 +180,7 @@ export const POSTS: Post[] = [
     description:
       "Starting a subscription takes one tap; cancelling takes more. The hidden link, the retention offer, the pause, the phone-only cancel: how to beat each.",
     date: "2026-10-04",
+    hero: { art: "cancel-maze", alt: "Six boxes in a row: Account, Manage plan, then three red offers (50% off, pause instead, are you sure?) and finally the green Cancel membership button." },
     lead:
       "Starting a subscription takes one tap. Cancelling is designed to take more. Here are the patterns to expect, and the way through each one.",
     sections: [
@@ -215,6 +227,7 @@ export const POSTS: Post[] = [
       },
       {
         heading: "Why this is worth knowing",
+        figure: { art: "difficulty-bars", alt: "A bar chart of the catalogue's cancellation ratings: most services medium, about a quarter easy, a handful hard, and a few dark pattern.", caption: "How the catalogue rates cancellation, counted when the picture was drawn" },
         paragraphs: [
           "Once you can name the pattern, it loses most of its power. The offer is just an offer. The pause is just a delay. The hidden link is a link, and someone has already found it for you. Go in with the direct link, decline what you don't want, and keep the proof."
         ]
@@ -235,6 +248,7 @@ export const POSTS: Post[] = [
     description:
       "A checklist for all you pay for: list it, price it per year, mark what you haven't used in three months, cancel with a guide, set reminders for the rest.",
     date: "2026-10-04",
+    hero: { art: "audit-clock", alt: "A clock face divided into four coloured segments for the audit's parts: build the list (0 to 10 minutes), price per year (10 to 14), one question per line (14 to 17), cancel and set reminders (17 to 20)." },
     lead:
       "You don't need software to audit your subscriptions. You need a list, twenty minutes, and one honest question per line. Here's the whole routine.",
     sections: [
@@ -253,6 +267,7 @@ export const POSTS: Post[] = [
       },
       {
         heading: "Minute 10 to 14: price everything per year",
+        figure: { art: "audit-sheet", alt: "An audit sheet with six subscriptions, their monthly and yearly prices and when each was last used; three unused for months are marked in red and add up to $935.64 a year.", caption: "The sheet after minute 14" },
         paragraphs: [
           "Monthly prices are designed to feel small. Multiply each by twelve and write that number next to it. Then add the column. The total is usually the moment the audit starts to feel worth doing.",
           "Zeno's ledger shows this as committed per month and the yearly figure beside it, so the total is always in view rather than something you work out once and forget."
@@ -303,6 +318,9 @@ export const POSTS: Post[] = [
   }
 ];
 
+// Newest first on the index: posts-2026-10.ts holds the later ones.
+export const POSTS: Post[] = [...MORE_POSTS, ...FIRST_POSTS];
+
 export function findPost(slug: string): Post | undefined {
   return POSTS.find((post) => post.slug === slug);
 }
@@ -316,8 +334,30 @@ export function postText(post: Post): string {
 const SERVICE_COUNT = serviceRecords.length;
 const HARD_COUNT = serviceRecords.filter((s) => s.cancellationDifficulty === "hard" || s.cancellationDifficulty === "dark_pattern").length;
 
+const PRICES = services.map((s) => s.defaultMonthlyPrice).filter((p): p is number => p != null).sort((a, b) => a - b);
+const count = (d: string) => serviceRecords.filter((s) => s.cancellationDifficulty === d).length;
+/** Every figure a post may quote, from the catalogue, never typed in. */
+export const FIGURES: Record<string, string> = {
+  SERVICE_COUNT: String(SERVICE_COUNT),
+  HARD_COUNT: String(HARD_COUNT),
+  EASY_COUNT: String(count("easy")),
+  MEDIUM_COUNT: String(count("medium")),
+  HARD_ONLY_COUNT: String(count("hard")),
+  DARK_COUNT: String(count("dark_pattern")),
+  HARD_PCT: String(Math.round((HARD_COUNT / SERVICE_COUNT) * 100)),
+  EASY_PCT: String(Math.round((count("easy") / SERVICE_COUNT) * 100)),
+  PRICED_COUNT: String(PRICES.length),
+  MEDIAN_PRICE: String(PRICES[Math.floor(PRICES.length / 2)]),
+  MEAN_PRICE: (PRICES.reduce((a, b) => a + b, 0) / PRICES.length).toFixed(2),
+  MIN_PRICE: String(PRICES[0]),
+  MAX_PRICE: String(PRICES[PRICES.length - 1]),
+  UNDER_5_COUNT: String(PRICES.filter((p) => p < 5).length),
+  UNDER_10_COUNT: String(PRICES.filter((p) => p < 10).length),
+  OVER_50_COUNT: String(PRICES.filter((p) => p >= 50).length)
+};
+
 export function fillFigures(text: string): string {
-  return text.replaceAll("{SERVICE_COUNT}", String(SERVICE_COUNT)).replaceAll("{HARD_COUNT}", String(HARD_COUNT));
+  return text.replace(/\{([A-Z_0-9]+)\}/g, (m, k: string) => FIGURES[k] ?? m);
 }
 
 /** Words as rendered (figures filled in). */

@@ -54,8 +54,8 @@ describe("the blog's posts", () => {
   it("each: its own title, description and canonical, as an article with a social card and a published date", () => {
     for (const { slug, meta } of posts) {
       const post = findPost(slug)!;
-      expect(meta.title).toEqual({ absolute: `${post.title} | Zeno` });
-      expect(meta.description).toBe(post.description);
+      expect(meta.title).toEqual({ absolute: `${fillFigures(post.title)} | Zeno` });
+      expect(meta.description).toBe(fillFigures(post.description));
       expect(meta.alternates?.canonical).toBe(`/blog/${slug}`);
       expect((meta.openGraph as { type?: string }).type).toBe("article");
       expect((meta.openGraph as { publishedTime?: string }).publishedTime).toBe(`${post.date}T00:00:00.000Z`);
@@ -68,7 +68,7 @@ describe("the blog's posts", () => {
     for (const { slug, doc } of posts) {
       const post = findPost(slug)!;
       const text = doc.querySelector("main")!.textContent ?? "";
-      expect(doc.querySelector("h1")!.textContent).toBe(post.title);
+      expect(doc.querySelector("h1")!.textContent).toBe(fillFigures(post.title));
       expect(text).toContain(fillFigures(post.lead));
       for (const section of post.sections) {
         if (section.heading) expect([slug, [...doc.querySelectorAll("h2")].map((h) => h.textContent)]).toEqual([slug, expect.arrayContaining([section.heading])]);
@@ -85,8 +85,8 @@ describe("the blog's posts", () => {
       const blocks = jsonLd(doc);
       const article = blocks.find((b) => b["@type"] === "BlogPosting") as Record<string, unknown>;
       expect(article).toMatchObject({
-        headline: post.title,
-        description: post.description,
+        headline: fillFigures(post.title),
+        description: fillFigures(post.description),
         datePublished: `${post.date}T00:00:00.000Z`,
         // The site's one Organization, by reference (lib/structured-data.ts).
         author: { "@id": ORG_ID },
@@ -150,7 +150,7 @@ describe("the blog index", () => {
     expect(links).toEqual(sorted);
     const text = doc.querySelector("main")!.textContent ?? "";
     for (const post of POSTS) {
-      expect(text).toContain(post.description);
+      expect(text).toContain(fillFigures(post.description));
       expect(text).toContain(`${readingMinutes(post)} min read`);
     }
     expect([...doc.querySelectorAll("time")].map((t) => t.getAttribute("dateTime"))).toEqual(sorted.map((href) => POSTS.find((p) => `/blog/${p.slug}` === href)!.date));

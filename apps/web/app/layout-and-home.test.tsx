@@ -51,7 +51,7 @@ describe("the root layout", () => {
     expect(String(rootMetadata.metadataBase)).toBe(`${SITE_URL}/`);
     expect(rootMetadata.alternates?.canonical).toBe("/");
     expect(rootMetadata.title).toEqual({ absolute: "Subscription tracker: know what you pay | Zeno" });
-    expect(rootMetadata.openGraph).toMatchObject({ url: siteUrl("/"), siteName: "Zeno", images: [{ url: "/og.png", width: 1200, height: 630, alt: "Subscription tracker: know what you pay | Zeno" }] });
+    expect(rootMetadata.openGraph).toMatchObject({ url: siteUrl("/"), siteName: "Zeno", images: [{ url: "/og/home.png", width: 1200, height: 630, alt: "Subscription tracker: know what you pay | Zeno" }] });
     expect(rootMetadata.twitter).toMatchObject({ card: "summary_large_image", title: "Subscription tracker: know what you pay | Zeno" });
   });
 });

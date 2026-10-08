@@ -365,3 +365,36 @@
   from { transform: scaleX(0); }
   to { transform: scaleX(1); }
 }
+
+/* ── Pictures (W4): drawn in code, rendered to WebP, shown at the column's width ── */
+.figure {
+  margin: 28px 0 30px;
+}
+.figure img,
+.hero img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--rule-strong);
+  border-radius: 12px;
+  background: var(--card);
+}
+.hero {
+  margin: 0 0 28px;
+}
+.figure figcaption {
+  margin-top: 10px;
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.cardList .cardThumb {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid var(--rule);
+  margin-bottom: 6px;
+}

@@ -6,7 +6,7 @@ import { CardList } from "@/components/site/CardList";
 import { ContentShell } from "@/components/site/ContentShell";
 import { JsonLd } from "@/components/site/JsonLd";
 import styles from "@/components/site/content.module.css";
-import { POSTS, dateLabel, readingMinutes } from "./posts";
+import { POSTS, dateLabel, readingMinutes, fillFigures } from "./posts";
 
 export const metadata: Metadata = pageMetadata({
   title: "Subscription guides: find, track and cancel",
@@ -35,7 +35,7 @@ export default function BlogIndexPage() {
           publisher: { "@id": ORG_ID },
           mainEntity: {
             "@type": "ItemList",
-            itemListElement: posts.map((post, i) => ({ "@type": "ListItem", position: i + 1, url: siteUrl(`/blog/${post.slug}`), name: post.title }))
+            itemListElement: posts.map((post, i) => ({ "@type": "ListItem", position: i + 1, url: siteUrl(`/blog/${post.slug}`), name: fillFigures(post.title) }))
           }
         }}
       />
@@ -52,8 +52,9 @@ export default function BlogIndexPage() {
       <CardList
         cards={posts.map((post) => ({
           href: `/blog/${post.slug}`,
-          title: post.title,
-          description: post.description,
+          title: fillFigures(post.title),
+          description: fillFigures(post.description),
+          image: { src: `/art/${post.hero.art}-600.webp`, alt: post.hero.alt },
           meta: (
             <>
               <time dateTime={post.date}>{dateLabel(post.date)}</time> · {readingMinutes(post)} min read

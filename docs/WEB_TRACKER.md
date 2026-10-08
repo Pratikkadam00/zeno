@@ -8,7 +8,7 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 **Status:** ⬜ to do · 🔄 in progress · ✅ pass · ❌ fail (finding open) · 🔒 needs the owner
 · ⏸ blocked (says why)
 
-**Summary (2026-10-08, night):** 69 checks. 26 done (W1 complete; W3 all but the contact page; W2 all but the browser measurement and the lawyer); 9 need the owner (🔒); 1 blocked on the owner's mail set-up (⏸); the rest are mine.
+**Summary (2026-10-09):** 69 checks. 34 done (W1 and W4 complete; W3 all but the contact page; W2 all but the browser measurement and the lawyer); 9 need the owner (🔒); 1 blocked on the owner's mail set-up (⏸); the rest are mine.
 
 ---
 
@@ -60,14 +60,14 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 
 | ID | Check | Status | Evidence / finding |
 |---|---|---|---|
-| W4.1 | Image pipeline: SVG source → WebP at two sizes with sharp; a script and a test | ⬜ | |
-| W4.2 | Hero and one figure for each of the four posts, drawn in code, alt text | ⬜ | |
-| W4.3 | Per-post OG images generated | ⬜ | |
-| W4.4 | OG images for the home, landing and compare pages | ⬜ | |
-| W4.5 | Four new posts written from catalogue data, dates spread | ⬜ | |
-| W4.6 | Reading time, author, updated date on posts | ⬜ | |
-| W4.7 | RSS feed validates (W3C validator result saved) | ⬜ | |
-| W4.8 | Test: every post has a hero and a figure under 120 KB with alt text; every page its own OG image | ⬜ | |
+| W4.1 | Image pipeline: SVG source → WebP at two sizes with sharp; a script and a test | ✅ | `scripts/site-art.ts`: SVG drawn in code, palette read from `globals.css`, sharp renders WebP at 1200 and 600 wide; sources committed beside the renders; `app/art.test.tsx` |
+| W4.2 | Hero and one figure for each of the four posts, drawn in code, alt text | ✅ | 8 posts × (hero + figure), 16 drawings; data figures computed from the catalogue; every alt text 10+ words (tested) |
+| W4.3 | Per-post OG images generated | ✅ | `public/og/blog-<slug>.png` for every post, title filled from the catalogue figures; 1200 × 630 (tested) |
+| W4.4 | OG images for the home, landing and compare pages | ✅ | 21 pages in `lib/og-pages.ts` (home, 4 landings, features ×3, roadmap, about, compare ×6, cancel hub, blog, legal ×3); card title = the page's h1 (tested); `lib/seo.ts` picks the page's card |
+| W4.5 | Four new posts written from catalogue data, dates spread | ✅ | `app/blog/posts-2026-10.ts`: hardest to cancel, what a subscription costs, easy or hard by category, website or app store; figures as {TOKEN}s and service lists built from the catalogue; dated 2026-10-08 (a future date is a lie the dates test refuses) |
+| W4.6 | Reading time, author, updated date on posts | ✅ | 'By Zeno · date · updated · N min read' (W3.6); `updated` sets dateModified |
+| W4.7 | RSS feed validates (W3C validator result saved) | ✅ | W3C feed validator on the live feed, 2026-10-08: valid, 0 errors, 0 warnings (`docs/web-evidence/feed-validation-2026-10-08.txt`); the W4 posts use the same template |
+| W4.8 | Test: every post has a hero and a figure under 120 KB with alt text; every page its own OG image | ✅ | `app/art.test.tsx`: hero + figure per post, WebP < 120 KB at both widths with SVG source, no external reference in any SVG, every page and post has its own 1200 × 630 card |
 
 ## W5 · SEO
 
@@ -132,6 +132,8 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 | F226 | The site's own voice: 227 em dashes, a courtroom metaphor on the home page, self-praise ('the honest way', 'priced like we mean it') | Medium (reads as template or machine-written) | Fixed 2026-10-08 (W1); locked by the copy lint |
 
 ## Log
+
+**2026-10-09:** W4. Sixteen pictures drawn in code (`scripts/site-art.ts`) and rendered to WebP, a share card per page from one table of titles held equal to the pages' h1s, heroes and figures on all eight posts, four new posts written from the catalogue's data with every figure a token filled at render, and the feed validated at the W3C.
 
 **2026-10-08, night:** W3 and W2. The five placeholder pages became /roadmap with permanent redirects; /about written; Family Vault and Spend Twin written from the server's and app's rules; the features hub and compare pages filled out; bylines; three new tests (dates, substance, legal agreement). The Terms and privacy policy rewritten in full with Zeno as the operator and India's law; the cookie policy's draft notes removed.
 

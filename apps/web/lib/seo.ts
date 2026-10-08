@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SITE_URL, siteUrl } from "./site";
+import { ogImageFor } from "./og-pages";
 
 // One place that builds a page's search and share metadata (SEO.md §3), so every
 // indexable page has the same complete set: a self-canonical URL, Open Graph AND
@@ -19,6 +20,11 @@ export const HOME_DESCRIPTION =
   "Zeno finds your subscriptions in receipts and statements you control, warns you before each renewal, and walks you through cancelling. No bank login required.";
 
 export const OG_IMAGE = { url: "/og.png", width: 1200, height: 630 } as const;
+
+/** The page's own share card (W4, scripts/site-art.ts) when it has one, else the site-wide one. */
+export function ogImage(path: string) {
+  return { ...OG_IMAGE, url: ogImageFor(path) ?? OG_IMAGE.url };
+}
 
 /** Stable ids of the site's one entity graph (SEO.md §4.1). */
 export const ORG_ID = `${SITE_URL}/#org`;
@@ -47,7 +53,7 @@ type PageMeta = {
 export function pageMetadata(page: PageMeta): Metadata {
   const title = fullTitle(page.title);
   const url = siteUrl(page.path);
-  const images = [{ ...OG_IMAGE, alt: title }];
+  const images = [{ ...ogImage(page.path), alt: title }];
   return {
     // absolute: the root layout sets no template, and the suffix is already here.
     title: { absolute: title },

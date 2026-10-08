@@ -1,0 +1,5 @@
+W3C Feed Validation Service, 2026-10-08, https://zenoapp.in/blog/feed.xml (as deployed that day)
+validity: true
+errorcount: 0
+warningcount: 0
+query: https://validator.w3.org/feed/check.cgi?url=https%3A%2F%2Fzenoapp.in%2Fblog%2Ffeed.xml&output=soap12

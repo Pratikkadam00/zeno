@@ -7,6 +7,7 @@ import { ContentShell } from "@/components/site/ContentShell";
 import { JsonLd } from "@/components/site/JsonLd";
 import styles from "@/components/site/content.module.css";
 import hubStyles from "../../cancel/cancel-hub.module.css";
+import { Picture } from "@/components/site/Picture";
 import { POSTS, dateLabel, fillFigures, findPost, postWords, readingMinutes } from "../posts";
 
 // Only the posts in posts.ts exist (as the cancel guides: F183).
@@ -24,8 +25,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   }
   const published = `${post.date}T00:00:00.000Z`;
   return pageMetadata({
-    title: post.title,
-    description: post.description,
+    title: fillFigures(post.title),
+    description: fillFigures(post.description),
     path: `/blog/${slug}`,
     type: "article",
     publishedTime: published,
@@ -47,18 +48,19 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   const others = POSTS.filter((p) => p.slug !== slug);
 
   return (
-    <ContentShell eyebrow={`By Zeno · ${dateLabel(post.date)}${post.updated ? ` · updated ${dateLabel(post.updated)}` : ""} · ${readingMinutes(post)} min read`} title={post.title} lead={fillFigures(post.lead)}>
+    <ContentShell eyebrow={`By Zeno · ${dateLabel(post.date)}${post.updated ? ` · updated ${dateLabel(post.updated)}` : ""} · ${readingMinutes(post)} min read`} title={fillFigures(post.title)} lead={fillFigures(post.lead)}>
+      <Picture picture={post.hero} kind="hero" priority />
       <JsonLd
         data={{
           "@context": "https://schema.org",
           "@type": "BlogPosting",
-          headline: post.title,
-          description: post.description,
+          headline: fillFigures(post.title),
+          description: fillFigures(post.description),
           datePublished: published,
           dateModified: modified,
           wordCount: words,
           inLanguage: "en",
-          image: siteUrl("/og.png"),
+          image: siteUrl(`/art/${post.hero.art}.webp`),
           url: siteUrl(`/blog/${slug}`),
           // The site's one Organization (lib/structured-data.ts), by reference.
           author: { "@id": ORG_ID },
@@ -74,7 +76,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           itemListElement: [
             { "@type": "ListItem", position: 1, name: "Home", item: siteUrl("/") },
             { "@type": "ListItem", position: 2, name: "Blog", item: siteUrl("/blog") },
-            { "@type": "ListItem", position: 3, name: post.title, item: siteUrl(`/blog/${slug}`) }
+            { "@type": "ListItem", position: 3, name: fillFigures(post.title), item: siteUrl(`/blog/${slug}`) }
           ]
         }}
       />
@@ -82,6 +84,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       {post.sections.map((section, i) => (
         <section key={section.heading ?? i}>
           {section.heading ? <h2>{section.heading}</h2> : null}
+          {section.figure ? <Picture picture={section.figure} kind="figure" /> : null}
           {section.paragraphs.map((paragraph) => (
             <p key={paragraph}>{fillFigures(paragraph)}</p>
           ))}

@@ -10,6 +10,8 @@ export type Card = {
   meta?: ReactNode;
   /** The call to action at the foot of the card ("Read the post"). */
   cta: string;
+  /** A thumbnail above the title (W4: the post's hero at 600 wide). */
+  image?: { src: string; alt: string };
 };
 
 /**
@@ -24,6 +26,7 @@ export function CardList({ cards }: { cards: Card[] }) {
       {cards.map((card) => (
         <li key={card.href}>
           <Link href={card.href} className={styles.cardLink}>
+            {card.image ? <img className={styles.cardThumb} src={card.image.src} alt={card.image.alt} width={600} height={338} loading="lazy" decoding="async" /> : null}
             {card.meta ? <span className={styles.cardMeta}>{card.meta}</span> : null}
             <span className={styles.cardTitle}>{card.title}</span>
             <span className={styles.cardText}>{card.description}</span>
