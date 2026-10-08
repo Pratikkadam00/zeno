@@ -8,9 +8,9 @@ pass when the fix is proven. Order of work: U6, U7, U1, U3, U2, U4, U5.
 **Status:** ⬜ to do · 🔄 in progress · ✅ pass · ❌ fail (finding open) · 🔒 needs the owner
 · ⏸ blocked (says why)
 
-**Summary (2026-10-07):** 82 checks. 7 were already proven before this plan (P3, P5)
+**Summary (2026-10-08):** 100 checks (18 added in the 2026-10-08 review). 7 were already proven before this plan (P3, P5)
 and are carried in as baseline, marked ✅ with their original evidence (the U6 ones are
-re-run on the current build). 0 new checks done yet; 6 need the owner (🔒).
+re-run on the current build). 0 new checks done yet; 7 need the owner (🔒).
 
 ---
 
@@ -34,6 +34,14 @@ re-run on the current build). 0 new checks done yet; 6 need the owner (🔒).
 | U6.14 | Locked app hidden from accessibility services | ✅ baseline | F105 (device); re-run ⬜ |
 | U6.15 | Data on the phone unreadable without the key (rooted read) | ✅ baseline | F16 (device); re-run ⬜ |
 | U6.16 | No backup of app data | ✅ baseline | P3.9 (`allowBackup=false`); re-run ⬜ |
+| U6.17 | Gmail: consent screen asks read-only only; disconnect revokes at Google | ⬜ | |
+| U6.18 | Gmail: token never in logs, exports or crash reports; a scan reads only what the UI says | ⬜ | |
+| U6.19 | Biometrics: wrong finger refused; disabled or re-enrolled falls back to the PIN, never opens | ⬜ | |
+| U6.20 | Biometrics: the lockout applies to biometric attempts too | ⬜ | |
+| U6.21 | Exported CSV: location, readers, cache after sharing, contents | ⬜ | |
+| U6.22 | Purchases: shown price equals the store's; a cancelled purchase changes nothing; restore is per account; no "free" without a trial | 🔒 | needs a Play licensed test account |
+| U6.23 | Push token never leaves the phone | ⬜ | |
+| U6.24 | Privacy promises on screen traced to the code that makes them true | ⬜ | |
 
 ## U7 · The attacker's view: can anything be lost?
 
@@ -62,6 +70,10 @@ re-run on the current build). 0 new checks done yet; 6 need the owner (🔒).
 | U7.21 | Secrets · built website re-scanned | ⬜ | |
 | U7.22 | Website · waitlist spam | ⬜ | |
 | U7.23 | Verdicts added to the residual-risk register | ⬜ | |
+| U7.24 | Users' Gmail · token storage; connect bound to the signed-in account | ⬜ | |
+| U7.25 | Users' Gmail · crafted receipt emails against the scanner | ⬜ | |
+| U7.26 | Trust · a fake Zeno: how real mail and the real app are told apart | ⬜ | |
+| U7.27 | Account · deleting or taking over someone else's; lock-out by wrong codes; recycled email address (known gap) | ⬜ | |
 
 ## U1 · Every screen, every state
 
@@ -74,6 +86,7 @@ re-run on the current build). 0 new checks done yet; 6 need the owner (🔒).
 | U1.5 | Server errors | ⬜ | |
 | U1.6 | Long names and amounts; emoji; non-Latin text | ⬜ | |
 | U1.7 | All six currencies' formatting | ⬜ | |
+| U1.8 | Every screen: no placeholder text, "undefined" or raw keys; locale formats; every link where its label says | ⬜ | |
 
 ## U3 · Accessibility, measured
 
@@ -89,6 +102,9 @@ re-run on the current build). 0 new checks done yet; 6 need the owner (🔒).
 | U3.8 | Website: keyboard only through every page | ⬜ | |
 | U3.9 | Website: 200 % zoom | ⬜ | |
 | U3.10 | Website: screen-reader landmarks and headings | ⬜ | |
+| U3.11 | Nothing conveyed by colour alone (colour-vision simulation) | ⬜ | |
+| U3.12 | System bold-text and high-contrast settings | ⬜ | |
+| U3.13 | Website: forced-colours mode | ⬜ | |
 
 ## U2 · How it looks: visual baselines
 
@@ -117,6 +133,8 @@ re-run on the current build). 0 new checks done yet; 6 need the owner (🔒).
 | U4.8 | 1,000 subscriptions: speed and memory | ⬜ | |
 | U4.9 | Upgrade from the previous release with data on the phone | ⬜ | |
 | U4.10 | A call or notification mid-flow | ⬜ | |
+| U4.11 | Phone almost out of storage: database writes fail safely | ⬜ | |
+| U4.12 | Low memory, battery saver | ⬜ | |
 
 ## U5 · Devices
 
@@ -140,6 +158,12 @@ re-run on the current build). 0 new checks done yet; 6 need the owner (🔒).
 | — | none yet | | |
 
 ## Log
+
+**2026-10-08:** reviewed against the app's features; 18 checks added that the first
+version missed: the Gmail connection (the most sensitive thing the app touches),
+biometric unlock, the exported file, real purchase flows, the push token, on-screen
+privacy promises, a fake-Zeno attack, account takeover through a recycled address, low
+storage and memory, colour-only information, forced colours, and copy correctness.
 
 **2026-10-07:** plan and tracker written from a measured baseline (screens, tests, flows,
 audit scope, device coverage, website projects, the AI limits in the code).

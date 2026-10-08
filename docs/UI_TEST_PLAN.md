@@ -25,7 +25,7 @@ remains the check on my own work.
 | Screen behaviour | jest tests for **all 27 screens** (22 files under `apps/mobile/src/__screens__`, the rest in `src/security`), held at 100 % lines | They run in a simulated renderer: nothing about how a screen **looks** |
 | End-to-end | **13 Maestro flows** on an Android emulator (onboarding, sign-in gate, add, cancel guide, app lock, family, coach consent, notifications blocked, CSV import, calendar, insights, dark mode), nightly on GitHub | Happy paths mostly; one device (Pixel, Android 16) |
 | Accessibility | An audit that every control has a name for TalkBack, on **17 of 27 screens** | Not checked: contrast, touch-target size, large fonts, focus order, the other 10 screens |
-| On-device security (P3) | Storage encrypted (rooted check), no backups, screenshots of the lock blocked, locked app hidden from accessibility, overlays hidden while locked | Not checked: notifications on the lock screen, overlay attacks (tapjacking), task hijacking, keyboard learning, clipboard, logcat |
+| On-device security (P3) | Storage encrypted (rooted check), no backups, screenshots of the lock blocked, locked app hidden from accessibility, overlays hidden while locked | Not checked: notifications on the lock screen, overlay attacks (tapjacking), task hijacking, keyboard learning, clipboard, logcat, the Gmail connection end to end, biometrics, the exported file, real purchase flows |
 | Visual | **Nothing** compares screens against a known-good picture, in the app or on the website | Any layout break ships unseen |
 | Devices | One emulator image (API 36); the app supports Android 7.0 (API 24) up | No small phone, tablet, old Android, real device; **iOS never run** |
 | Website | 335 Playwright tests: every page, security headers, script policy, axe, dark mode, desktop and phone sizes | Chrome only; no visual baselines; keyboard-only and 200 % zoom untested |
@@ -42,7 +42,9 @@ in CI, or evidence files in `docs/ui-evidence/` where it runs on a device.
 
 For each of the 27 screens: empty, one item, many items (the free cap of 10; 200),
 loading, offline, server error, very long names and amounts, emoji and non-Latin text,
-every currency (USD, EUR, GBP, INR, CAD, AUD) with its formatting. jest first (fast,
+every currency (USD, EUR, GBP, INR, CAD, AUD) with its formatting. Also, on every screen: every
+piece of text is real copy (no placeholder, no "undefined", no raw key), dates and
+currency follow the phone's locale, and every link and button leads where its label says. jest first (fast,
 in CI), then the screens that change shape on the emulator.
 **Gate:** a state matrix in the tracker, every cell tested.
 
@@ -62,14 +64,16 @@ The audit extended to all 27 screens, plus: every touch target at least 48 dp; t
 contrast at least 4.5:1 (computed from the theme's colour tokens, light and dark); every
 screen usable at font scale 2.0 without cut-off text; TalkBack journeys for the five core
 tasks (onboard, add, find a renewal, cancel guide, lock and unlock); reduce-motion
-respected. Website: keyboard-only through every page, 200 % zoom, screen reader landmarks.
+respected; nothing conveyed by colour alone (the colour-vision simulators on the emulator);
+the system's bold-text and high-contrast settings. Website: keyboard-only through every
+page, 200 % zoom, screen reader landmarks, the browser's own forced-colours mode.
 **Gate:** each criterion is a script or test with its output saved.
 
 ### U4 · Robustness: conditions real people hit
 
 No network, slow network (2G profile), the API down or answering garbage, airplane mode
 in the middle of sign-in; the app backgrounded, killed by the system and restored
-(process death), force-stopped; the clock and time zone changed (renewal dates must not
+(process death), force-stopped; the phone almost out of storage (writes to the database fail), low memory, battery saver; the clock and time zone changed (renewal dates must not
 move); the language and number format changed; 1,000 subscriptions (speed, memory);
 upgrading from the previous release with data on the phone (the database migrates, the
 PIN still works); a phone call or notification arriving mid-flow.
@@ -96,6 +100,12 @@ Android phone; and iOS needs a Mac or an EAS cloud build plus an iPhone (owner d
 | Deep links from another app with hostile parameters | `adb am start` with every route and malformed, oversized and injected values |
 | No developer menu, no stack trace on screen, in release | shake, the dev-menu key, a forced error |
 | Recents thumbnail, screenshots, screen recording | re-run the P3 checks on the current build |
+| **Gmail connection**: the consent screen asks for read-only only; disconnecting revokes the token at Google; the token never appears in logs, exports or crash reports; a scan reads nothing but what the UI says it reads | Google's permissions page after connecting; Google's "third-party access" page after disconnecting; logcat and a crash report during a scan |
+| **Biometric unlock**: a wrong finger or face is refused; biometrics disabled or re-enrolled falls back to the PIN, never to "open"; the lockout applies to biometrics too | emulator fingerprint commands (`adb -e emu finger touch`), enrolment changed between launches |
+| **Exported CSV file**: where it lands, who can read it, whether it stays in the cache after sharing, and what it contains (notes are personal data) | share, then list the app's cache and the share target's copy; open the file |
+| **Purchase screens**: the price shown equals the store's price; a cancelled purchase leaves the plan unchanged; "Restore purchases" restores only this account's; the paywall never says "free" when the store has no trial (F134) | Play Billing's test cards on the emulator with a licensed test account (needs the owner's Play Console setup) |
+| **The push token** stays on the phone: never sent to our API or shown | logcat and the API's request log during notification setup |
+| **Privacy promises on screen match the code**: "No bank login required", "scans only when you tap", "nothing is sent" on the coach consent | each sentence found on the device and traced to the code that makes it true (the truthfulness rail, extended to the app) |
 
 **Gate:** every row has its evidence; a failure becomes a finding and a fix.
 
@@ -115,6 +125,9 @@ production users), and the release APK on the emulator.
 | **Hosting** (Render hours, uptime) | floods of requests, slow requests, large bodies | the limits per route and globally; the request timeout; the body cap; edge limiting (owner, P8.7) |
 | **Secrets** | keys in the APK, the website's build, logs, error messages, the git history | re-scan the release APK and the built site; gitleaks; the log-hygiene tests |
 | **The website** | waitlist spam, script injection, defacement | the waitlist route's validation; the script policy; DAST |
+| **Users' Gmail** | a stolen Gmail token from the phone; a sign-in link that connects someone else's inbox; the scanner tricked by a crafted email (prompt-injection-style receipts) | the token's storage (keychain, device-only); the connect flow bound to the signed-in account; crafted receipt emails against the parser (it must never run anything, only read amounts) |
+| **Users' trust: a fake Zeno** | a look-alike app or website collecting sign-ins; our sign-in email imitated | what our real emails and app can be told apart by (sender domain with DMARC at reject, the app's signing key); a note in the FAQ |
+| **The account itself** | taking over an account through the email address (a changed or recycled address), deleting someone else's account, locking a user out by spamming wrong codes | account deletion needs the caller's own token (tested); the wrong-code budget leaves the link working (F80); recycled-address takeover is a **known gap** (sign-in is by email control): record it with its owner |
 
 **Gate:** a written verdict per row (closed with its evidence, or an open risk with its
 owner and cost), added to the residual-risk register in `SECURITY_AUDIT_2026-10.md`.
