@@ -276,6 +276,40 @@ Writing real steps (D5) is what actually earns rankings for those 470 names.
   surface that serves nobody. Turned back on when the app needs them.
 - **Then I:** build what you said yes to, each with its test, and update the checklist.
 
+### D18 · the legal entity behind Zeno (`docs/WEB_PLAN.md` W2)
+- **Today:** the Terms say "the Zeno team", name no company, country or address; the
+  privacy policy names no data controller. A reader cannot tell who they are contracting
+  with, and a privacy law requires the controller's identity.
+- **Decide:** the exact legal name (you as an individual trading as Zeno, or a company),
+  the country, and a postal address that can appear on the site (a registered-agent or
+  mailbox address is fine). If you plan to form a company before launch, say so and the
+  pages carry a placeholder test that fails until the name is in.
+- **Then I:** write the entity into the Terms, the privacy policy, the About page and the
+  footer, with one source of truth in `apps/web/lib/site.ts`.
+
+### D19 · governing law and venue
+- **Today:** "the laws of the jurisdiction in which Zeno is established … confirmed at
+  launch". That is not a term.
+- **Recommendation:** the law and courts of the country from D18, with the standard carve-out
+  that consumers keep the protection of their own country's law. A lawyer (OWNER_GUIDE
+  step 13) confirms it; I draft it.
+
+### D20 · the six "planned, not available today" pages
+- **Today:** Widgets + Watch, Open Banking, Business, Developers, Partners and most of the
+  Features hub each hold one paragraph and a mock-up. Honest, and thin.
+- **Recommendation: fold them into one Roadmap page** that lists what is planned, in
+  order, with one line each, and redirect the six addresses to it (no link breaks). One
+  real page reads better than six empty ones, and Google does not count six thin pages
+  against a new domain. The alternative is to keep them and write each up to a real page,
+  which costs time on features that do not exist.
+
+### D21 · waitlist double opt-in
+- **Today:** an address typed into the form goes straight onto the list. Nobody proves
+  they own it; a typo or a prank lands on the list and gets launch mail.
+- **Recommendation: yes.** A confirmation email through Resend with one link; the address
+  joins the list only when the link is opened. It costs a template and one route, and it
+  is what a mailing law expects (consent that can be shown per address).
+
 ---
 
 ## 3. Tests only you can run
