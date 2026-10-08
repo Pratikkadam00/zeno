@@ -149,7 +149,8 @@ export const MORE_POSTS: Post[] = [
     related: [
       ["A 20-minute subscription audit", "/blog/the-20-minute-subscription-audit"],
       ["Budgeting around what renews", "/budgeting"],
-      ["The subscription tracker, in detail", "/subscription-tracker"]
+      ["The subscription tracker, in detail", "/subscription-tracker"],
+      ["All cancellation guides", "/cancel"]
     ]
   },
   {
@@ -207,6 +208,7 @@ export const MORE_POSTS: Post[] = [
     related: [
       ["The services hardest to cancel", "/blog/the-services-hardest-to-cancel"],
       ["All cancellation guides", "/cancel"],
+      ["Cancel subscriptions, with the charge checked", "/cancel-subscriptions"],
       ["How to find every subscription you're paying for", "/blog/how-to-find-all-your-subscriptions"]
     ]
   },

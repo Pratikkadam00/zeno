@@ -81,8 +81,9 @@ export default function RoadmapPage() {
 
       <h2>What is in the app today</h2>
       <p>
-        The <Link href="/features">features page</Link> lists what the app does now. If something here matters to you, say so when you
-        join the waitlist: the order of this list is decided by what people ask for.
+        The <Link href="/features">features page</Link> lists what the app does now, and the <Link href="/about">about page</Link> says who
+        makes it. If something here matters to you, say so when you join the waitlist: the order of this list is decided by what people
+        ask for.
       </p>
 
       <div className={styles.backRow}>

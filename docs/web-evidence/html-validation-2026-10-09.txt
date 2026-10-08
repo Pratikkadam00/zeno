@@ -1,0 +1,67 @@
+Nu HTML checker · 2026-10-08 · https://zenoapp.in
+ERROR  /                                          2 errors, 35 warnings/info
+    error line 1: Stray start tag “script”.
+    error/fatal line 1: Cannot recover after last error. Any further errors will be ignored.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+ERROR  /subscription-tracker                      2 errors, 33 warnings/info
+    error line 1: Stray start tag “script”.
+    error/fatal line 1: Cannot recover after last error. Any further errors will be ignored.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquoted attribute values.
+    info line 1: Trailing slash on void elements has no effect and interacts badly with unquot

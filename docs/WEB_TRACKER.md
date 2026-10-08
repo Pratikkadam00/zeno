@@ -8,7 +8,7 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 **Status:** ⬜ to do · 🔄 in progress · ✅ pass · ❌ fail (finding open) · 🔒 needs the owner
 · ⏸ blocked (says why)
 
-**Summary (2026-10-09):** 69 checks. 34 done (W1 and W4 complete; W3 all but the contact page; W2 all but the browser measurement and the lawyer); 9 need the owner (🔒); 1 blocked on the owner's mail set-up (⏸); the rest are mine.
+**Summary (2026-10-09):** 69 checks. 40 done (W1, W4 complete; W5 all but the owner's Search Console and Bing steps and the December D16 read; W3 all but the contact page; W2 all but the browser measurement and the lawyer); 9 need the owner (🔒); 1 blocked on the owner's mail set-up (⏸); the rest are mine.
 
 ---
 
@@ -73,12 +73,12 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 
 | ID | Check | Status | Evidence / finding |
 |---|---|---|---|
-| W5.1 | OG and Twitter cards checked in the validators, one per template | ⬜ | |
-| W5.2 | JSON-LD per template checked in the Rich Results test | ⬜ | |
-| W5.3 | Breadcrumbs on guides and posts | ⬜ | |
-| W5.4 | FAQ schema on landing pages with FAQs | ⬜ | |
-| W5.5 | Internal links tested: posts → two guides + one landing; guides → hub + three neighbours | ⬜ | |
-| W5.6 | `llms.txt` tested against the sitemap | ⬜ | |
+| W5.1 | OG and Twitter cards checked in the validators, one per template | ✅ | `scripts/og-check.mjs` on the live site 2026-10-08: 11 templates, tags present and agreeing, every image 200 and 1200 × 630 PNG (`docs/web-evidence/share-cards-2026-10-09.txt`) |
+| W5.2 | JSON-LD per template checked in the Rich Results test | ✅ | `scripts/schema-check.mjs` (the schema.org validator, the engine behind Google's markup check) on 12 live pages: 0 errors, 0 warnings (`docs/web-evidence/schema-validation-2026-10-09.txt`) |
+| W5.3 | Breadcrumbs on guides and posts | ✅ | BreadcrumbList on guides (HowTo + breadcrumb), posts, landings, hubs, about, roadmap; every trail Home → page checked in `pages.test.tsx` |
+| W5.4 | FAQ schema on landing pages with FAQs | ✅ | FAQPage on the four landing pages and the home page (`landings.test.tsx`, `layout-and-home.test.tsx`); validator: no errors |
+| W5.5 | Internal links tested: posts → two guides + one landing; guides → hub + three neighbours | ✅ | `app/links.test.tsx`: every post → a guide or the hub, a landing page, another post; every guide → hub + 3 neighbours; landing and compare pages → 3 onward; no orphan page (found and fixed: /about had no inbound link) |
+| W5.6 | `llms.txt` tested against the sitemap | ✅ | `seo.test.tsx` (llms.txt links only sitemap pages, real catalogue size and prices, no banned claims); the four new posts added |
 | W5.7 | Search Console: sitemap submitted, coverage report saved | 🔒 | owner; report to `docs/web-evidence/` |
 | W5.8 | Bing imported from Search Console | 🔒 | owner |
 | W5.9 | D16 trigger watched (general guides in "Crawled, not indexed") | ⬜ | re-read early December |
@@ -132,6 +132,8 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 | F226 | The site's own voice: 227 em dashes, a courtroom metaphor on the home page, self-praise ('the honest way', 'priced like we mean it') | Medium (reads as template or machine-written) | Fixed 2026-10-08 (W1); locked by the copy lint |
 
 ## Log
+
+**2026-10-09 (W5):** share cards and structured data checked on the live site with the schema.org validator and a scraper-style card check, both saved as evidence; breadcrumbs and FAQ schema confirmed per template; an internal-link test added (and the About page's missing inbound link fixed).
 
 **2026-10-09:** W4. Sixteen pictures drawn in code (`scripts/site-art.ts`) and rendered to WebP, a share card per page from one table of titles held equal to the pages' h1s, heroes and figures on all eight posts, four new posts written from the catalogue's data with every figure a token filled at render, and the feed validated at the W3C.
 

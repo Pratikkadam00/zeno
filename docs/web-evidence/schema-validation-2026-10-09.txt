@@ -1,0 +1,13 @@
+schema.org validator · 2026-10-08 · https://zenoapp.in
+ok             /                                          SoftwareApplication, WebSite, FAQPage
+ok             /subscription-tracker                      BreadcrumbList, FAQPage
+ok             /compare/no-bank-login                     BreadcrumbList, WebSite
+ok             /cancel                                    BreadcrumbList, WebSite
+ok             /cancel/netflix                            HowTo, BreadcrumbList, WebSite
+ok             /blog                                      BreadcrumbList, Blog
+ok             /blog/the-20-minute-subscription-audit     BreadcrumbList, BlogPosting
+ok             /features                                  BreadcrumbList, WebSite
+ok             /features/family-vault                     WebSite
+ok             /about                                     BreadcrumbList, WebSite
+ok             /roadmap                                   BreadcrumbList, WebSite
+ok             /legal/privacy                             WebSite
