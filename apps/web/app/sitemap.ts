@@ -28,6 +28,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // D20 (2026-10-08): one roadmap page replaced five planned-feature pages; /about is new.
     { url: `${BASE}/roadmap`, lastModified: new Date("2026-10-08"), changeFrequency: "monthly", priority: 0.5 },
     { url: `${BASE}/about`, lastModified: new Date("2026-10-08"), changeFrequency: "yearly", priority: 0.5 },
+    { url: `${BASE}/press`, lastModified: new Date("2026-10-09"), changeFrequency: "yearly", priority: 0.4 },
     { url: `${BASE}/features`, lastModified, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/features/family-vault`, lastModified, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/features/spend-twin`, lastModified, changeFrequency: "monthly", priority: 0.6 },

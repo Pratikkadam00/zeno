@@ -26,6 +26,7 @@ Pricing (USD):
 - [Features](https://zenoapp.in/features): what Zeno does today
 - [Roadmap](https://zenoapp.in/roadmap): what is planned and not available today
 - [About](https://zenoapp.in/about): who makes Zeno and how it is paid for
+- [Press kit](https://zenoapp.in/press): the name, the facts, the pictures, who to write to
 - [Compare](https://zenoapp.in/compare): Zeno next to Rocket Money, Monarch and YNAB
 - [A subscription tracker without bank login](https://zenoapp.in/compare/no-bank-login)
 - [A budget app that doesn't connect to your bank](https://zenoapp.in/compare/budget-app-no-bank-sync)

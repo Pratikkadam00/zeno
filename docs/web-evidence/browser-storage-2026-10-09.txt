@@ -1,0 +1,14 @@
+Browser storage on the live site, measured 2026-10-09 in a real browser (the app's built-in Chromium), on https://zenoapp.in/legal/cookies
+
+Before any interaction:
+  document.cookie: (empty)
+  localStorage keys: (none)
+  sessionStorage keys: (none)
+
+After pressing the theme button ("Switch to light theme" / dark):
+  document.cookie: (empty)
+  localStorage: zeno-theme=dark
+  sessionStorage keys: (none)
+  indexedDB databases: (none)
+
+Matches the cookie policy: no cookies; one item, the theme choice, in local storage, written only when the button is pressed.

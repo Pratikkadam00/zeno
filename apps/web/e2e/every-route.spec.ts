@@ -137,6 +137,7 @@ const PAGES = [
   "/legal/cookies",
   "/legal/privacy",
   "/legal/terms",
+  "/press",
   "/roadmap",
   "/subscription-tracker"
 ];

@@ -18,6 +18,7 @@ export const OG_PAGES: Record<string, OgPage> = {
   "/features/spend-twin": { title: "Your subscription total, as things you already know the price of", eyebrow: "Spend Twin" },
   "/roadmap": { title: "What is planned, and what is not here yet", eyebrow: "Roadmap" },
   "/about": { title: "Who makes Zeno, and why", eyebrow: "About" },
+  "/press": { title: "Zeno, for people writing about it", eyebrow: "Press kit" },
   "/compare": { title: "How Zeno compares", eyebrow: "Comparisons" },
   "/compare/no-bank-login": { title: "A subscription tracker that never asks for your bank login", eyebrow: "Compare" },
   "/compare/rocket-money-alternative": { title: "A Rocket Money alternative that doesn't use Plaid", eyebrow: "Compare" },

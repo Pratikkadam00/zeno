@@ -31,7 +31,7 @@ export default defineConfig({
   projects: [
     {
       name: "desktop",
-      testIgnore: /web-vitals/,
+      testIgnore: /web-vitals|visual/,
       use: {
         ...devices["Desktop Chrome"],
         channel: "chrome",
@@ -40,7 +40,7 @@ export default defineConfig({
     },
     {
       name: "mobile",
-      testIgnore: /web-vitals/,
+      testIgnore: /web-vitals|visual/,
       use: { ...devices["Pixel 7"], channel: "chrome" }
     },
     // W7.3, W7.4: the same site in Firefox and in WebKit (Safari's engine),
@@ -48,7 +48,7 @@ export default defineConfig({
     // timing budgets stay Chrome-only; everything else runs in all three.
     {
       name: "firefox",
-      testIgnore: /web-vitals/,
+      testIgnore: /web-vitals|visual/,
       // After the Chrome projects, and WebKit after this one: four engines at once starved Firefox of CPU (navigations timed out at 60 s, 2026-10-09).
       dependencies: ["desktop", "mobile"],
       use: {
@@ -58,7 +58,7 @@ export default defineConfig({
     },
     {
       name: "webkit",
-      testIgnore: /web-vitals/,
+      testIgnore: /web-vitals|visual/,
       dependencies: ["firefox"],
       use: {
         ...devices["Desktop Safari"],
@@ -76,7 +76,16 @@ export default defineConfig({
       dependencies: ["desktop", "mobile"],
       fullyParallel: false,
       use: { ...devices["Pixel 7"], channel: "chrome" }
-    }
+    },
+    // W7.2: pixel comparisons against baselines rendered on Linux (visual.yml).
+    // Only when asked for (VISUAL=1), so that a missing baseline never fails
+    // the ordinary run on a machine that renders differently.
+    ...(process.env.VISUAL
+      ? [
+          { name: "visual-desktop", testMatch: /visual/, use: { ...devices["Desktop Chrome"], channel: "chrome", viewport: { width: 1440, height: 900 } } },
+          { name: "visual-mobile", testMatch: /visual/, use: { ...devices["Pixel 7"], channel: "chrome" } }
+        ]
+      : [])
   ],
   webServer: [
     {

@@ -8,7 +8,7 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 **Status:** ⬜ to do · 🔄 in progress · ✅ pass · ❌ fail (finding open) · 🔒 needs the owner
 · ⏸ blocked (says why)
 
-**Summary (2026-10-09):** 69 checks. 53 done; 1 failed and waiting on the owner (W6.4, F227); 9 need the owner (🔒); 1 blocked on the owner's mail set-up (⏸); the rest are mine (W7, W8.3, W8.6, W5.9 in December).
+**Summary (2026-10-09, late):** 69 checks. 56 done; 1 failed and waiting on the owner (W6.4, F227); 10 need the owner (🔒), among them the Linux-rendered visual baselines (W7.2); 1 blocked on the owner's mail set-up (⏸); the rest are W5.9 (the December read of Search Console).
 
 ---
 
@@ -38,7 +38,7 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 | W2.3 | Terms rewritten to the plan's list; billing section equals the pricing table | ✅ | `app/legal/terms/page.tsx`, 16 sections; plan list and prices pinned to the pricing section by `legal-agreement.test.tsx` |
 | W2.4 | Apple's required EULA clauses and Google Play terms present | ✅ | Terms §11 (Apple's minimum EULA terms: no Apple obligation, warranty refund, claims, export compliance, third-party beneficiary; Google likewise) |
 | W2.5 | Privacy policy rewritten: controller, purposes with bases, retention per category, providers with location, transfers, rights with deadline, EU/UK and California, children | ✅ | `app/legal/privacy/page.tsx`, 16 sections; retention from the API's constants, providers from the code, data items from `docs/STORE_DATA_SAFETY.md` |
-| W2.6 | Cookie policy checked against what the site actually stores (measured in a browser) | 🔄 | the text is true to the code (`truthfulness.test.tsx`: no cookie API used, one localStorage key); the browser measurement of what is stored is W7 |
+| W2.6 | Cookie policy checked against what the site actually stores (measured in a browser) | ✅ | measured in a real browser on the live site 2026-10-09: no cookie, no sessionStorage, no IndexedDB; one localStorage item `zeno-theme` written only when the theme button is pressed (`docs/web-evidence/browser-storage-2026-10-09.txt`); the code side in `truthfulness.test.tsx` |
 | W2.7 | Test: legal pages agree with the pricing table, the provider list in code, and the data-safety draft | ✅ | `app/legal/legal-agreement.test.tsx`, 14 tests: plans, prices, household size, token lifetimes, providers, the coach stores nothing, export and deletion, data-safety list |
 | W2.8 | Test: no "draft", "to be confirmed", "at launch" in the legal pages; dates set by content | ✅ | same test: no 'draft', 'to be confirmed', 'finalised at launch', 'pre-launch notice'; bite-checked (a 'draft' inserted in the Terms failed it); dates set 2026-10-08 |
 | W2.9 | Lawyer's review | 🔒 | OWNER_GUIDE step 13 |
@@ -101,7 +101,7 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 | ID | Check | Status | Evidence / finding |
 |---|---|---|---|
 | W7.1 | Spell check in CI with a project dictionary | ✅ | `cspell.json` (British English, 27 project words, entities ignored) and a CI step over the website's sources and llms.txt; 67 files, 0 issues; bite-checked ('subscripton' and 'chargse' caught, 'colour' accepted) |
-| W7.2 | Visual baselines, every template, light and dark, phone and desktop | ⬜ | = U2.6 |
+| W7.2 | Visual baselines, every template, light and dark, phone and desktop | 🔒 | the test and the workflow exist (`e2e/visual.spec.ts`, 12 templates × light and dark × desktop and phone, behind VISUAL=1; `.github/workflows/visual.yml` renders the baselines on Linux and uploads them); proven end to end on this machine 2026-10-09, then the Windows renders discarded. Owner: run the workflow in update mode and hand me the artifact (OWNER_GUIDE step 15.4); then the check goes on |
 | W7.3 | Firefox project | ✅ | Playwright project `firefox` (Playwright's build, installed in CI): the whole suite, 2026-10-09 locally; one test's wording widened (Firefox says 'Content-Security-Policy') and one Firefox habit allowed for (focus stays on the last control instead of wrapping) |
 | W7.4 | WebKit project | ✅ | Playwright project `webkit` through a self-signed TLS front (`e2e/tls-proxy.mjs`): WebKit honours upgrade-insecure-requests for 127.0.0.1, Chrome and Firefox exempt it; 185 passed, 15 skipped by design (keyboard and forced colours). Found and fixed: nav links shorter than 24 px in WebKit (axe target-size) |
 | W7.5 | Keyboard-only through every page | ✅ | `e2e/keyboard.spec.ts`, 10 templates: first Tab is the skip link and Enter lands on main; every focusable control from main onward reached in document order; every one shows focus; no trap (the sequence reaches the footer's last link) |
@@ -116,10 +116,10 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 |---|---|---|---|
 | W8.1 | D21: waitlist double opt-in (recommended: confirmation email via Resend) | 🔒 | owner decision; then I build it |
 | W8.2 | Analytics decision recorded (none today; if ever, cookieless and self-hosted) | 🔒 | owner decision |
-| W8.3 | Press kit page | ⬜ | needs W4 images |
+| W8.3 | Press kit page | ✅ | `app/press/page.tsx`: one paragraph, the facts, the mark and six pictures (all ours), figures with their caveat, the address; linked from About and the footer; its own share card |
 | W8.4 | Social profiles claimed, linking here | 🔒 | owner |
 | W8.5 | Uptime monitor extended to the website | 🔒 | owner, with OWNER_GUIDE step 9 |
-| W8.6 | OWNER_GUIDE updated with the website steps | ⬜ | |
+| W8.6 | OWNER_GUIDE updated with the website steps | ✅ | `docs/OWNER_GUIDE.md` step 15: Netlify toolbar (F227), Search Console sitemap and the D16 read, Bing, the visual baselines, then D21 and the lawyer |
 
 ---
 

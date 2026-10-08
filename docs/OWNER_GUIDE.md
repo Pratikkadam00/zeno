@@ -184,6 +184,25 @@ events, and a web page for deletion requests (needs step 5's email).
   needs your Cloudflare account and a DNS change; tell me when you want to do it and I'll
   write the exact steps for your setup.
 
+### Step 15 · The website (added 2026-10-09, from `docs/WEB_PLAN.md`)
+
+1. **Netlify: turn off the toolbar script** (F227, 5 min). Netlify → the site → the settings for the
+   HUD / toolbar / "Netlify Drawer" (the name moves between releases) → off. It is appended to every
+   page after `</html>`, which makes the HTML invalid and shows an error in every visitor's console.
+   **Tell me** "step 15.1 done": I re-run the HTML and Lighthouse checks.
+2. **Search Console: submit the sitemap and read the report** (10 min). Sitemaps → add
+   `https://zenoapp.in/sitemap.xml`. Then Pages → "Why pages aren't indexed" → click the
+   "Crawled, currently not indexed" row and tell me whether the URLs are all `/cancel/...`
+   guides (D16) or include the home page, /compare or /blog (a different problem).
+3. **Bing Webmaster Tools** (5 min): bing.com/webmasters → Import from Google Search Console.
+4. **Visual baselines** (10 min, once). GitHub → Actions → "Visual baselines" → Run workflow →
+   mode **update**. When it finishes, download the artifact `visual-update` (a zip) and put its
+   `visual.spec.ts-snapshots` folder under `apps/web/e2e/` in the repository, then tell me; I
+   commit it and switch the check on. (They must be rendered on Linux, where CI renders; my
+   machine renders text differently, so I cannot make them here.)
+5. **Later, when you want it:** the waitlist confirmation email (D21) and the lawyer's read of the
+   Terms and privacy policy (step 13), which are now full documents rather than drafts.
+
 ### Step 14 · Your decisions
 
 `docs/OWNER_ACTIONS.md` section 2 has 17 decisions (D1 to D17), each with my

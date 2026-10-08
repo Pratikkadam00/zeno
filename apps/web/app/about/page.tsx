@@ -65,6 +65,11 @@ export default function AboutPage() {
         a charge, and checks that a cancellation stuck. The decisions are yours.
       </p>
 
+      <h2>Writing about Zeno?</h2>
+      <p>
+        The <Link href="/press">press kit</Link> has the one-paragraph description, the facts, and the logo and pictures you may use.
+      </p>
+
       <h2>Reach us</h2>
       <ul className={styles.list}>
         <li>

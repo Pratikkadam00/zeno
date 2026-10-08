@@ -1,0 +1,59 @@
+name: Visual baselines
+
+# W7.2 (docs/WEB_PLAN.md). Two jobs, both by hand (workflow_dispatch):
+#  - mode "check" (the default): compare every template, light and dark, desktop
+#    and phone, against the committed baselines; a difference fails and the
+#    diff images are uploaded.
+#  - mode "update": render fresh baselines on this Linux image and upload them
+#    as an artifact. The owner downloads the artifact and commits its files
+#    under apps/web/e2e/visual.spec.ts-snapshots/ (the renderer must be Linux
+#    because fonts and antialiasing differ by OS; a baseline made on Windows
+#    would never match CI).
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "check against the committed baselines, or update them"
+        type: choice
+        options: [check, update]
+        default: check
+
+permissions:
+  contents: read
+
+jobs:
+  visual:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the website
+        run: npm run build --workspace @zeno/web
+
+      - name: Render and compare (or update)
+        working-directory: apps/web
+        env:
+          VISUAL: "1"
+        run: npx playwright test --project=visual-desktop --project=visual-mobile ${{ inputs.mode == 'update' && '--update-snapshots' || '' }}
+
+      - name: Upload the baselines (update) or the diffs (check)
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: visual-${{ inputs.mode }}
+          path: |
+            apps/web/e2e/visual.spec.ts-snapshots/
+            apps/web/test-results/
+          if-no-files-found: ignore
+          retention-days: 14

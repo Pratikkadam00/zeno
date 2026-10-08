@@ -68,6 +68,7 @@ describe("the page list itself", () => {
       "/legal/cookies",
       "/legal/privacy",
       "/legal/terms",
+      "/press",
       "/roadmap",
       "/subscription-tracker"
     ]);
@@ -125,12 +126,14 @@ describe("every page", () => {
     }
   });
 
-  it("every internal link goes to a page that exists (or a file in public/)", () => {
+  it("every internal link goes to a page that exists (or a file in public/, or one of Next's metadata files in app/)", () => {
     const dead: string[] = [];
+    // app/icon.svg and app/apple-icon.png are served at /icon.svg and /apple-icon.png by Next's file convention (the press kit links them).
+    const METADATA_FILES = new Set(["/icon.svg", "/apple-icon.png"].filter((p) => existsSync(PUBLIC_DIR + "../app" + p)));
     for (const r of rendered) {
       for (const a of r.doc.querySelectorAll("a[href^='/']")) {
         const path = a.getAttribute("href")!.split("#")[0]!.split("?")[0]!;
-        if (!ROUTES.has(path || "/") && !existsSync(PUBLIC_DIR + path.slice(1))) dead.push(`${r.url} -> ${a.getAttribute("href")}`);
+        if (!ROUTES.has(path || "/") && !METADATA_FILES.has(path) && !existsSync(PUBLIC_DIR + path.slice(1))) dead.push(`${r.url} -> ${a.getAttribute("href")}`);
       }
     }
     expect(dead).toEqual([]);
