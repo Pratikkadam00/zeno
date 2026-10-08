@@ -49,6 +49,8 @@ export default defineConfig({
     {
       name: "firefox",
       testIgnore: /web-vitals|visual/,
+      // Playwright's Firefox build stalls on a navigation now and then (CI and here, 2026-10-09: 60 s timeouts on pages that load in 2 s the next time); a retry tells a stall from a defect. Chrome keeps zero retries.
+      retries: 2,
       // After the Chrome projects, and WebKit after this one: four engines at once starved Firefox of CPU (navigations timed out at 60 s, 2026-10-09).
       dependencies: ["desktop", "mobile"],
       use: {
@@ -59,6 +61,7 @@ export default defineConfig({
     {
       name: "webkit",
       testIgnore: /web-vitals|visual/,
+      retries: 2,
       dependencies: ["firefox"],
       use: {
         ...devices["Desktop Safari"],

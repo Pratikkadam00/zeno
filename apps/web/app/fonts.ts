@@ -1,5 +1,11 @@
 import localFont from "next/font/local";
 
+// display "optional" (W6, 2026-10-09): every face is preloaded and small, so it
+// is almost always there for the first paint; when it is not (a slow first
+// visit), the size-adjusted fallback stays for that page view and nothing
+// shifts. With "swap", CI measured CLS 0.107 on the privacy page under the
+// mobile profile (budget 0.1): a long page re-laid out when the fonts arrived.
+
 /**
  * The Honest Ledger type trio, self-hosted (F103).
  *
@@ -23,7 +29,7 @@ export const spaceGrotesk = localFont({
   src: "./fonts/space-grotesk/latin.woff2",
   weight: "500 700",
   variable: "--font-display",
-  display: "swap",
+  display: "optional",
   declarations: [
     { prop: "unicode-range", value: "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD" }
   ]
@@ -31,7 +37,7 @@ export const spaceGrotesk = localFont({
 const displayLatinExt = localFont({
   src: "./fonts/space-grotesk/latin-ext.woff2",
   weight: "500 700",
-  display: "swap",
+  display: "optional",
   preload: false,
   adjustFontFallback: false,
   declarations: [
@@ -42,7 +48,7 @@ const displayLatinExt = localFont({
 const displayVietnamese = localFont({
   src: "./fonts/space-grotesk/vietnamese.woff2",
   weight: "500 700",
-  display: "swap",
+  display: "optional",
   preload: false,
   adjustFontFallback: false,
   declarations: [
@@ -55,7 +61,7 @@ export const hankenGrotesk = localFont({
   src: "./fonts/hanken-grotesk/latin.woff2",
   weight: "400 700",
   variable: "--font-body",
-  display: "swap",
+  display: "optional",
   declarations: [
     { prop: "unicode-range", value: "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD" }
   ]
@@ -63,7 +69,7 @@ export const hankenGrotesk = localFont({
 const bodyLatinExt = localFont({
   src: "./fonts/hanken-grotesk/latin-ext.woff2",
   weight: "400 700",
-  display: "swap",
+  display: "optional",
   preload: false,
   adjustFontFallback: false,
   declarations: [
@@ -74,7 +80,7 @@ const bodyLatinExt = localFont({
 const bodyVietnamese = localFont({
   src: "./fonts/hanken-grotesk/vietnamese.woff2",
   weight: "400 700",
-  display: "swap",
+  display: "optional",
   preload: false,
   adjustFontFallback: false,
   declarations: [
@@ -85,7 +91,7 @@ const bodyVietnamese = localFont({
 const bodyCyrillicExt = localFont({
   src: "./fonts/hanken-grotesk/cyrillic-ext.woff2",
   weight: "400 700",
-  display: "swap",
+  display: "optional",
   preload: false,
   adjustFontFallback: false,
   declarations: [
@@ -98,7 +104,7 @@ export const jetbrainsMono = localFont({
   src: "./fonts/jetbrains-mono/latin.woff2",
   weight: "400 700",
   variable: "--font-mono",
-  display: "swap",
+  display: "optional",
   declarations: [
     { prop: "unicode-range", value: "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD" }
   ]
@@ -106,7 +112,7 @@ export const jetbrainsMono = localFont({
 const monoLatinExt = localFont({
   src: "./fonts/jetbrains-mono/latin-ext.woff2",
   weight: "400 700",
-  display: "swap",
+  display: "optional",
   preload: false,
   adjustFontFallback: false,
   declarations: [
@@ -117,7 +123,7 @@ const monoLatinExt = localFont({
 const monoVietnamese = localFont({
   src: "./fonts/jetbrains-mono/vietnamese.woff2",
   weight: "400 700",
-  display: "swap",
+  display: "optional",
   preload: false,
   adjustFontFallback: false,
   declarations: [
@@ -128,7 +134,7 @@ const monoVietnamese = localFont({
 const monoCyrillicExt = localFont({
   src: "./fonts/jetbrains-mono/cyrillic-ext.woff2",
   weight: "400 700",
-  display: "swap",
+  display: "optional",
   preload: false,
   adjustFontFallback: false,
   declarations: [
@@ -139,7 +145,7 @@ const monoCyrillicExt = localFont({
 const monoCyrillic = localFont({
   src: "./fonts/jetbrains-mono/cyrillic.woff2",
   weight: "400 700",
-  display: "swap",
+  display: "optional",
   preload: false,
   adjustFontFallback: false,
   declarations: [
@@ -150,7 +156,7 @@ const monoCyrillic = localFont({
 const monoGreek = localFont({
   src: "./fonts/jetbrains-mono/greek.woff2",
   weight: "400 700",
-  display: "swap",
+  display: "optional",
   preload: false,
   adjustFontFallback: false,
   declarations: [
