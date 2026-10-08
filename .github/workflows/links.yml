@@ -1,0 +1,50 @@
+name: Link check
+
+# W6.5 (docs/WEB_PLAN.md): every link on the live site, followed nightly.
+# A broken internal link fails the job; broken external links (mostly the
+# services' own cancellation pages, which move) are listed in the summary for
+# the catalogue to be updated. GitHub runs schedules hours late on this repo;
+# that is fine for a nightly.
+on:
+  schedule:
+    - cron: "23 4 * * *" # 04:23 UTC daily
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/links.yml"
+      - "scripts/link-check.mjs"
+
+permissions:
+  contents: read
+
+jobs:
+  links:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: .node-version
+
+      - name: Follow every link on the live site
+        run: |
+          set -o pipefail
+          node scripts/link-check.mjs https://zenoapp.in 2>&1 | tee link-check.log
+
+      - name: Summary
+        if: always()
+        run: |
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat link-check.log >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Failure detail as an annotation
+        if: failure()
+        run: |
+          detail=$(grep -A20 "not 200" link-check.log | head -n 20 | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')
+          echo "::error title=Broken internal links::${detail}"

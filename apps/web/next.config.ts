@@ -94,7 +94,15 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1"],
   transpilePackages: ["@zeno/shared", "@zeno/service-catalog"],
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // W6.7: the pictures and share cards (public/art, public/og) are
+      // committed files with stable names; Netlify served them with
+      // max-age=0 (measured 2026-10-08). A day in the browser cache, a week
+      // stale-while-revalidate: a re-rendered picture reaches everyone within
+      // a day, and nobody re-downloads 30 KB of hero on every post.
+      { source: "/(art|og)/:path*", headers: [{ key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }] }
+    ];
   },
   async rewrites() {
     // F184: while the sample dashboard is off, /analytics is answered by the

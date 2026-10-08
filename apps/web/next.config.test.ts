@@ -16,7 +16,7 @@ async function load(env: { NODE_ENV: string; NEXT_PUBLIC_SITE_URL?: string }) {
 async function headersFor(nodeEnv: string) {
   const config = await load({ NODE_ENV: nodeEnv });
   const rules = await config.headers!();
-  expect(rules).toHaveLength(1);
+  expect(rules).toHaveLength(2);
   const [rule] = rules;
   return { source: rule!.source, headers: new Map(rule!.headers.map((h) => [h.key, h.value])) };
 }
@@ -171,4 +171,14 @@ describe("www -> apex redirect", () => {
 it("builds the shared workspace packages from source", async () => {
   const config = await load({ NODE_ENV: "production" });
   expect(config.transpilePackages).toEqual(["@zeno/shared", "@zeno/service-catalog"]);
+});
+
+describe("caching of the pictures and share cards (W6.7)", () => {
+  it("public/art and public/og are cached for a day and served stale for a week while revalidating; everything else keeps the host's default", async () => {
+    const config = await load({ NODE_ENV: "production" });
+    const rules = await config.headers!();
+    const cache = rules.find((r) => r.source === "/(art|og)/:path*")!;
+    expect(cache.headers).toEqual([{ key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }]);
+    expect(rules.filter((r) => r.headers.some((h) => h.key === "Cache-Control"))).toHaveLength(1);
+  });
 });

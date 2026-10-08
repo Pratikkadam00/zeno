@@ -255,3 +255,49 @@ html:not(.js) .zn-reveal {
 @media (prefers-reduced-motion: reduce) {
   .zn-print, .zn-stamp { animation: none; }
 }
+
+/* ── Print (W6.8): a guide or a post on paper is the article, nothing else ── */
+@media print {
+  nav,
+  footer,
+  form,
+  aside,
+  a[href="#ledger"],
+  div[aria-hidden="true"] {
+    display: none !important;
+  }
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  * {
+    position: static !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  main,
+  article {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  a {
+    color: #000 !important;
+    border-bottom: none !important;
+  }
+  /* The address after an outward link, so the paper copy can still be followed. */
+  article a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.85em;
+  }
+  img {
+    max-width: 100% !important;
+    page-break-inside: avoid;
+  }
+  h1,
+  h2,
+  h3 {
+    page-break-after: avoid;
+  }
+}

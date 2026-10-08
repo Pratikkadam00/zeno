@@ -1,0 +1,8 @@
+/ mobile performance 95 | accessibility 100 | best-practices 92 | seo 100 LCP 2.8 s CLS 0 TBT 10 ms
+/ desktop performance 98 | accessibility 100 | best-practices 92 | seo 100 LCP 0.9 s CLS 0 TBT 0 ms
+/cancel/netflix mobile performance 99 | accessibility 100 | best-practices 92 | seo 100 LCP 1.4 s CLS 0 TBT 10 ms
+/cancel/netflix desktop performance 99 | accessibility 100 | best-practices 92 | seo 100 LCP 0.7 s CLS 0 TBT 0 ms
+/blog/the-20-minute-subscription-audit mobile performance 97 | accessibility 100 | best-practices 92 | seo 100 LCP 2.5 s CLS 0 TBT 10 ms
+/blog/the-20-minute-subscription-audit desktop performance 98 | accessibility 100 | best-practices 92 | seo 100 LCP 0.9 s CLS 0 TBT 0 ms
+/subscription-tracker mobile performance 100 | accessibility 100 | best-practices 92 | seo 100 LCP 1.5 s CLS 0 TBT 0 ms
+/subscription-tracker desktop performance 99 | accessibility 100 | best-practices 92 | seo 100 LCP 0.8 s CLS 0 TBT 0 ms

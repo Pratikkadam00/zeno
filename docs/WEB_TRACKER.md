@@ -8,7 +8,7 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 **Status:** ⬜ to do · 🔄 in progress · ✅ pass · ❌ fail (finding open) · 🔒 needs the owner
 · ⏸ blocked (says why)
 
-**Summary (2026-10-09):** 69 checks. 40 done (W1, W4 complete; W5 all but the owner's Search Console and Bing steps and the December D16 read; W3 all but the contact page; W2 all but the browser measurement and the lawyer); 9 need the owner (🔒); 1 blocked on the owner's mail set-up (⏸); the rest are mine.
+**Summary (2026-10-09):** 69 checks. 47 done; 1 failed and waiting on the owner (W6.4, F227); 9 need the owner (🔒); 1 blocked on the owner's mail set-up (⏸); the rest are mine (W7, W8.3, W8.6, W5.9 in December).
 
 ---
 
@@ -87,14 +87,14 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 
 | ID | Check | Status | Evidence / finding |
 |---|---|---|---|
-| W6.1 | Lighthouse mobile and desktop on one page per template; scores saved | ⬜ | |
-| W6.2 | Playwright vitals assertions made hard | ⬜ | |
-| W6.3 | Font subsetting and preload checked | ⬜ | |
-| W6.4 | HTML validated on every template | ⬜ | |
-| W6.5 | Link checker, internal and external, nightly | ⬜ | |
-| W6.6 | No console errors on any page | ⬜ | |
-| W6.7 | Caching headers for static assets | ⬜ | |
-| W6.8 | Print stylesheet for guides and posts | ⬜ | |
+| W6.1 | Lighthouse mobile and desktop on one page per template; scores saved | ✅ | Lighthouse 2026-10-08 on the live site, 4 templates × mobile and desktop (`docs/web-evidence/lighthouse-2026-10-09/`): performance 95 to 100, accessibility 100, SEO 100, best practices 92 on every page, the 8 points lost only to F227's blocked script in the console; home mobile LCP 2.8 s (budget 2.5), the rest under |
+| W6.2 | Playwright vitals assertions made hard | ✅ | `e2e/web-vitals.spec.ts`: `expect.soft` → `expect` for LCP, CLS and INP; a budget overrun now fails the run |
+| W6.3 | Font subsetting and preload checked | ✅ | three latin subsets preloaded by next/font (measured on the live home page 2026-10-08: `<link rel=preload as=font>` ×3), self-hosted woff2 (`app/fonts.ts`) |
+| W6.4 | HTML validated on every template | ❌ | `scripts/html-check.mjs` (Nu checker, 13 live pages): every page has 2 errors, both the Netlify toolbar script appended after `</html>` (F227, owner); the site's own markup produced only 'trailing slash on void element' info notes (`docs/web-evidence/html-validation-2026-10-09.txt`) |
+| W6.5 | Link checker, internal and external, nightly | ✅ | `scripts/link-check.mjs` + `.github/workflows/links.yml` (nightly 04:23 UTC; broken internal link fails, broken external listed); first run 2026-10-08: 538 pages, 538 internal links, 0 not 200; 495 external links checked nightly |
+| W6.6 | No console errors on any page | ✅ | `e2e/every-route.spec.ts` already fails on any console error on any route (local build); on the live site the only console error is F227's blocked script |
+| W6.7 | Caching headers for static assets | ✅ | `next.config.ts`: /art and /og cached a day, stale-while-revalidate a week (measured before: max-age=0 on every public file; `/_next/static` already immutable); `next.config.test.ts` |
+| W6.8 | Print stylesheet for guides and posts | ✅ | `app/globals.css` @media print; `e2e/print.spec.ts` (guide, post, terms: no nav, footer, form or fixed chrome; black on white; outward links print their address): 8 passed |
 
 ## W7 · Testing the presentation
 
@@ -130,8 +130,11 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 | F224 | Dates typed into the site went stale: the sample ledger renewed in July and August while it was October; the catalogue was cited as July 2026; competitor prices 'verified July 2026' | Medium (trust) | Fixed 2026-10-08: relative days, computed cite, prices re-read with the date; the 90-day test is W3.8 |
 | F225 | The Terms described Pro as 'advanced discovery, deeper insights, and cancellation guides' and listed a Business tier for sale; the pricing sells Pro as unlimited subscriptions plus two budgeting features, guides free, and no Business plan | High (a contract term contradicting the price list) | Fixed 2026-10-08 in the plan list; the test that the legal pages agree with the pricing is W2.7 |
 | F226 | The site's own voice: 227 em dashes, a courtroom metaphor on the home page, self-praise ('the honest way', 'priced like we mean it') | Medium (reads as template or machine-written) | Fixed 2026-10-08 (W1); locked by the copy lint |
+| F227 | Netlify appends its toolbar script after `</html>` on every page (even with the project public): invalid HTML, and a script the site's own policy blocks, so a console error for every visitor | Medium (trust, validity) | Owner: turn the HUD off in Netlify's settings (`docs/OWNER_ACTIONS.md`); W6.4 stays ❌ until then |
 
 ## Log
+
+**2026-10-09 (W6):** Lighthouse measured on the live site (95 to 100 performance, 100 accessibility and SEO, 92 best practices from F227 alone); the vitals budgets made hard; the Nu HTML checker found the Netlify toolbar script after `</html>` on every page (F227, owner); a nightly link check (538 internal links, all 200); caching for the pictures; a print stylesheet with a browser test.
 
 **2026-10-09 (W5):** share cards and structured data checked on the live site with the schema.org validator and a scraper-style card check, both saved as evidence; breadcrumbs and FAQ schema confirmed per template; an internal-link test added (and the About page's missing inbound link fixed).
 

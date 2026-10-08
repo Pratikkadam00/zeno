@@ -1,0 +1,167 @@
+{
+  "blog-the-20-minute-subscription-audit-desktop": {
+    "url": "https://zenoapp.in/blog/the-20-minute-subscription-audit",
+    "lighthouse": "13.5.0",
+    "fetched": "2026-10-08T12:49:03.239Z",
+    "scores": {
+      "performance": 98,
+      "accessibility": 100,
+      "best-practices": 92,
+      "seo": 100
+    },
+    "lcp": "0.9 s",
+    "cls": "0",
+    "tbt": "0 ms",
+    "belowFull": [
+      "performance: first-contentful-paint (0.99)",
+      "performance: largest-contentful-paint (0.97)",
+      "performance: speed-index (0.89)",
+      "best-practices: errors-in-console (0)",
+      "best-practices: inspector-issues (0)"
+    ]
+  },
+  "blog-the-20-minute-subscription-audit-mobile": {
+    "url": "https://zenoapp.in/blog/the-20-minute-subscription-audit",
+    "lighthouse": "13.5.0",
+    "fetched": "2026-10-08T12:48:48.061Z",
+    "scores": {
+      "performance": 97,
+      "accessibility": 100,
+      "best-practices": 92,
+      "seo": 100
+    },
+    "lcp": "2.5 s",
+    "cls": "0",
+    "tbt": "10 ms",
+    "belowFull": [
+      "performance: first-contentful-paint (0.99)",
+      "performance: largest-contentful-paint (0.89)",
+      "best-practices: errors-in-console (0)",
+      "best-practices: inspector-issues (0)"
+    ]
+  },
+  "cancel-netflix-desktop": {
+    "url": "https://zenoapp.in/cancel/netflix",
+    "lighthouse": "13.5.0",
+    "fetched": "2026-10-08T12:48:31.094Z",
+    "scores": {
+      "performance": 99,
+      "accessibility": 100,
+      "best-practices": 92,
+      "seo": 100
+    },
+    "lcp": "0.7 s",
+    "cls": "0",
+    "tbt": "0 ms",
+    "belowFull": [
+      "performance: first-contentful-paint (0.99)",
+      "performance: largest-contentful-paint (0.99)",
+      "performance: speed-index (0.92)",
+      "best-practices: errors-in-console (0)",
+      "best-practices: inspector-issues (0)"
+    ]
+  },
+  "cancel-netflix-mobile": {
+    "url": "https://zenoapp.in/cancel/netflix",
+    "lighthouse": "13.5.0",
+    "fetched": "2026-10-08T12:48:13.735Z",
+    "scores": {
+      "performance": 99,
+      "accessibility": 100,
+      "best-practices": 92,
+      "seo": 100
+    },
+    "lcp": "1.4 s",
+    "cls": "0",
+    "tbt": "10 ms",
+    "belowFull": [
+      "performance: first-contentful-paint (0.98)",
+      "performance: speed-index (0.96)",
+      "best-practices: errors-in-console (0)",
+      "best-practices: inspector-issues (0)"
+    ]
+  },
+  "home-desktop": {
+    "url": "https://zenoapp.in/",
+    "lighthouse": "13.5.0",
+    "fetched": "2026-10-08T12:47:56.617Z",
+    "scores": {
+      "performance": 98,
+      "accessibility": 100,
+      "best-practices": 92,
+      "seo": 100
+    },
+    "lcp": "0.9 s",
+    "cls": "0",
+    "tbt": "0 ms",
+    "belowFull": [
+      "performance: first-contentful-paint (0.98)",
+      "performance: largest-contentful-paint (0.97)",
+      "performance: speed-index (0.88)",
+      "best-practices: errors-in-console (0)",
+      "best-practices: inspector-issues (0)"
+    ]
+  },
+  "home-mobile": {
+    "url": "https://zenoapp.in/",
+    "lighthouse": "13.5.0",
+    "fetched": "2026-10-08T12:47:39.563Z",
+    "scores": {
+      "performance": 95,
+      "accessibility": 100,
+      "best-practices": 92,
+      "seo": 100
+    },
+    "lcp": "2.8 s",
+    "cls": "0",
+    "tbt": "10 ms",
+    "belowFull": [
+      "performance: first-contentful-paint (0.98)",
+      "performance: largest-contentful-paint (0.82)",
+      "performance: speed-index (0.95)",
+      "best-practices: errors-in-console (0)",
+      "best-practices: inspector-issues (0)"
+    ]
+  },
+  "subscription-tracker-desktop": {
+    "url": "https://zenoapp.in/subscription-tracker",
+    "lighthouse": "13.5.0",
+    "fetched": "2026-10-08T12:49:35.469Z",
+    "scores": {
+      "performance": 99,
+      "accessibility": 100,
+      "best-practices": 92,
+      "seo": 100
+    },
+    "lcp": "0.8 s",
+    "cls": "0",
+    "tbt": "0 ms",
+    "belowFull": [
+      "performance: first-contentful-paint (0.98)",
+      "performance: largest-contentful-paint (0.97)",
+      "performance: speed-index (0.96)",
+      "best-practices: errors-in-console (0)",
+      "best-practices: inspector-issues (0)"
+    ]
+  },
+  "subscription-tracker-mobile": {
+    "url": "https://zenoapp.in/subscription-tracker",
+    "lighthouse": "13.5.0",
+    "fetched": "2026-10-08T12:49:20.592Z",
+    "scores": {
+      "performance": 100,
+      "accessibility": 100,
+      "best-practices": 92,
+      "seo": 100
+    },
+    "lcp": "1.5 s",
+    "cls": "0",
+    "tbt": "0 ms",
+    "belowFull": [
+      "performance: first-contentful-paint (0.99)",
+      "performance: speed-index (0.99)",
+      "best-practices: errors-in-console (0)",
+      "best-practices: inspector-issues (0)"
+    ]
+  }
+}

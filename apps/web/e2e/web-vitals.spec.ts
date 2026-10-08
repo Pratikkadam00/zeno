@@ -112,9 +112,9 @@ test.describe("Core Web Vitals under Lighthouse's mobile throttling", () => {
       info.annotations.push({ type: "vitals", description: `${path} LCP ${Math.round(lcp)} ms, CLS ${cls.toFixed(3)}, INP ${Math.round(inp)} ms` });
       console.log(`VITALS ${path} LCP ${Math.round(lcp)} ms, CLS ${cls.toFixed(3)}, INP ${Math.round(inp)} ms`);
       expect(lcp, "LCP was measured").toBeGreaterThan(0);
-      expect.soft(lcp, "LCP (ms)").toBeLessThanOrEqual(BUDGET.lcp);
-      expect.soft(cls, "CLS").toBeLessThanOrEqual(BUDGET.cls);
-      expect.soft(inp, "INP (ms)").toBeLessThanOrEqual(BUDGET.inp);
+      expect(lcp, "LCP (ms)").toBeLessThanOrEqual(BUDGET.lcp);
+      expect(cls, "CLS").toBeLessThanOrEqual(BUDGET.cls);
+      expect(inp, "INP (ms)").toBeLessThanOrEqual(BUDGET.inp);
     });
   }
 });
