@@ -108,8 +108,7 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 | W7.6 | 200 % zoom | ✅ | `e2e/zoom.spec.ts`, 10 templates at a 640-px viewport drawn 2×: no sideways scroll, no heading, paragraph, link or button outside the viewport, no nowrap text cut off |
 | W7.7 | Forced colours | ✅ | `e2e/forced-colors.spec.ts`, 4 templates with forced colours active: every button, switch and input keeps an edge, nothing but pictures opts out, the heading stays; F228 found and fixed |
 | W7.8 | Waitlist end to end: the row lands in the sheet; what the sign-up sees | 🔒 | needs read access to the owner's sheet |
-| W7.9 | Theme toggle; external links `rel="noopener"` in a new tab | ⬜ | |
-
+| W7.9 | Theme toggle; external links `rel="noopener"` in a new tab | ✅ | `e2e/theme-and-links.spec.ts`, 18 checks on four engines (Chrome, the phone profile, Firefox, WebKit). New tabs: every `a[target="_blank"]` on 14 templates carries rel="noopener" — checked on the RENDERED page, because links come from the service catalogue and the blog data as well as from JSX — with a guard that the cancel guide still has such a link, so the check cannot pass vacuously. The toggle: it flips the theme, its aria-label names the ACTION (the theme you are not in), the choice survives a reload and carries to another page, and storage holds exactly one item, `zeno-theme`, with no cookie — which is what the cookie policy promises. |
 ## W8 · Launch readiness
 
 | ID | Check | Status | Evidence / finding |
