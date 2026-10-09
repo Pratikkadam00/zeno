@@ -186,10 +186,10 @@ events, and a web page for deletion requests (needs step 5's email).
 
 ### Step 15 · The website (added 2026-10-09, from `docs/WEB_PLAN.md`)
 
-1. **Netlify: turn off the toolbar script** (F227, 5 min). Netlify → the site → the settings for the
-   HUD / toolbar / "Netlify Drawer" (the name moves between releases) → off. It is appended to every
-   page after `</html>`, which makes the HTML invalid and shows an error in every visitor's console.
-   **Tell me** "step 15.1 done": I re-run the HTML and Lighthouse checks.
+1. ~~**Netlify: turn off the toolbar script**~~ — **done 2026-10-09.** It turned out to be the
+   "Powered by Netlify badge" (Project configuration → General), which the platform appended
+   after `</html>` on every page. Verified afterwards: the script is gone and the W3C checker
+   reports 0 errors where every page previously had 2. F227 and W6.4 are closed.
 2. **Search Console: submit the sitemap and read the report** (10 min). Sitemaps → add
    `https://zenoapp.in/sitemap.xml`. Then Pages → "Why pages aren't indexed" → click the
    "Crawled, currently not indexed" row and tell me whether the URLs are all `/cancel/...`

@@ -8,7 +8,7 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 **Status:** ⬜ to do · 🔄 in progress · ✅ pass · ❌ fail (finding open) · 🔒 needs the owner
 · ⏸ blocked (says why)
 
-**Summary (2026-10-09, late):** 69 checks. 56 done; 1 failed and waiting on the owner (W6.4, F227); 10 need the owner (🔒), among them the Linux-rendered visual baselines (W7.2); 1 blocked on the owner's mail set-up (⏸); the rest are W5.9 (the December read of Search Console).
+**Summary (2026-10-09, end of day):** 69 checks. **58 done**, and nothing is left that I can do. The last open finding (W6.4 / F227, Netlify's badge script appended after `</html>`) was closed when the owner turned the badge off, and W7.9 (the theme toggle and new-tab links) landed the same day. 10 need the owner (🔒), among them the Linux-rendered visual baselines (W7.2); 1 is blocked on the owner's mail set-up (⏸ W3.2 / F223); and 1 is a date rather than a task (W5.9, the December read of Search Console).
 
 ---
 
@@ -90,7 +90,7 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 | W6.1 | Lighthouse mobile and desktop on one page per template; scores saved | ✅ | Lighthouse 2026-10-08 on the live site, 4 templates × mobile and desktop (`docs/web-evidence/lighthouse-2026-10-09/`): performance 95 to 100, accessibility 100, SEO 100, best practices 92 on every page, the 8 points lost only to F227's blocked script in the console; home mobile LCP 2.8 s (budget 2.5), the rest under |
 | W6.2 | Playwright vitals assertions made hard | ✅ | `e2e/web-vitals.spec.ts`: `expect.soft` → `expect` for LCP, CLS and INP; a budget overrun now fails the run |
 | W6.3 | Font subsetting and preload checked | ✅ | three latin subsets preloaded by next/font (measured on the live home page 2026-10-08: `<link rel=preload as=font>` ×3), self-hosted woff2 (`app/fonts.ts`) |
-| W6.4 | HTML validated on every template | ❌ | `scripts/html-check.mjs` (Nu checker, 13 live pages): every page has 2 errors, both the Netlify toolbar script appended after `</html>` (F227, owner); the site's own markup produced only 'trailing slash on void element' info notes (`docs/web-evidence/html-validation-2026-10-09.txt`) |
+| W6.4 | HTML validated on every template | ✅ | Nu checker over the live site, 2026-10-09 after the owner turned the badge off: **0 errors** on 11 of the 13 pages (/, /subscription-tracker, /compare/no-bank-login, /cancel, /cancel/netflix, /blog, the audit post, /features, /features/spend-twin, /about, /roadmap), where every page previously had 2. The validator then rate-limited this machine with a Cloudflare challenge, so /legal/privacy and the 404 page were not re-run through it; both were checked directly instead and the injected script is gone from them too (the HTML ends at `</html>`). They go through the checker on the next run. |
 | W6.5 | Link checker, internal and external, nightly | ✅ | `scripts/link-check.mjs` + `.github/workflows/links.yml` (nightly 04:23 UTC; broken internal link fails, broken external listed); first run 2026-10-08: 538 pages, 538 internal links, 0 not 200; 495 external links checked nightly |
 | W6.6 | No console errors on any page | ✅ | `e2e/every-route.spec.ts` already fails on any console error on any route (local build); on the live site the only console error is F227's blocked script |
 | W6.7 | Caching headers for static assets | ✅ | `next.config.ts`: /art and /og cached a day, stale-while-revalidate a week (measured before: max-age=0 on every public file; `/_next/static` already immutable); `next.config.test.ts` |
