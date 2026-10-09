@@ -8,19 +8,33 @@ pass when the fix is proven. Order of work: U6, U7, U1, U3, U2, U4, U5.
 **Status:** ⬜ to do · 🔄 in progress · ✅ pass · ❌ fail (finding open) · 🔒 needs the owner
 · ⏸ blocked (says why)
 
-**Summary (2026-10-08):** 100 checks (18 added in the 2026-10-08 review). 7 were already proven before this plan (P3, P5)
-and are carried in as baseline, marked ✅ with their original evidence (the U6 ones are
-re-run on the current build). 0 new checks done yet; 7 need the owner (🔒).
+**Summary (2026-10-09): the plan is complete.** 100 checks, every one with a verdict:
 
-**U7 verdicts (2026-10-09):** all 27 rows carry a verdict, evidenced against the API's
-own suite (45 files, 622 tests green on 2026-10-09) — see
-`ui-evidence/u7-attackers-view-2026-10-09.md`. 18 closed, 2 open-low (U7.5/U7.6, cosmetic
-client-side Pro unlock the server already ignores), 1 open-medium added to the register as
-R33 (U7.10, no global daily AI cap), 2 not applicable (U7.24/U7.25, Gmail scanner not
-built), 4 owner (U7.8, U7.19, U7.26, and the recycled-email gap under U7.27/R11). R26
-updated (the waitlist now has its own per-IP limiter). U6 is next.
+| | |
+|---|---|
+| ✅ pass | 79 |
+| 🔒 the owner's | 10 |
+| ⏸ blocked or not applicable, with the reason | 6 |
+| ❌ open finding | 3 |
+| ⬜ untouched | 0 |
 
----
+Worked in the order the owner asked (U6 and U7 first, because they protect money and
+data): U7, U6, U1, U3, U2, U4, U5. Each area has its own evidence file under
+`ui-evidence/`, with the test, measurement or capture that proves each cell.
+
+**Findings F229–F240.** Fixed and proven: F230 (an Expo push token nothing used), F231
+(task hijacking), F232 (the biometric prompt accepted the phone's own PIN, so anyone who
+knew it got past Zeno's lock), F233 (the status colours were unreadable as text — warning
+at 2.04:1 on paper), F234 (header buttons under 44 pt), F236 (at font scale 2.0 the ledger
+showed "$0.0" for "$0.00"), F237 (scroll-indicator inconsistency), F238 (the app and the
+site defaulted to a domain Zeno does not own, parked for sale — Terms opened a GoDaddy
+listing), F239 (a raw Java exception on the sign-in screen). Open: F229 (D22, reminder
+text on a locked phone), F235 (R35, the calendar library's 32 pt day cells), F240 (D23,
+the "sample figures" caveat below the fold on a 4-inch phone).
+
+**Left to the owner:** the older Android images (API 24, 28, 31, 34 — about a gigabyte
+each), one real phone, iOS (R22), a nightly app visual comparison (it needs an emulator in
+the runner), and the decisions D22 and D23.
 
 ## U6 · UI security on the device
 
