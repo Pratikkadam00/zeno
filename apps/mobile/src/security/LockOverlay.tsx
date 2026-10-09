@@ -126,7 +126,7 @@ export function LockOverlay() {
           onSubmitEditing={() => void submit(pin)}
         />
 
-        {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
+        {error ? <Text style={[styles.error, { color: theme.dangerText }]}>{error}</Text> : null}
 
         {biometricAvailable ? (
           <Pressable

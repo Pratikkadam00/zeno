@@ -56,7 +56,7 @@ export function Button({
     secondary: { bg: c.surfaceCard, pressed: c.surfaceSunken, color: c.textPrimary, border: c.borderDefault },
     ghost: { bg: "transparent", pressed: c.surfaceSunken, color: c.textPrimary, border: "transparent" },
     // outlined, never solid — a destructive action shouldn't shout before it's chosen
-    danger: { bg: c.surfaceCard, pressed: c.dangerSoft, color: c.danger, border: c.danger }
+    danger: { bg: c.surfaceCard, pressed: c.dangerSoft, color: c.dangerText, border: c.danger }
   };
   const v = variants[variant];
   const solid = variant === "primary" || variant === "money";

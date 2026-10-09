@@ -507,7 +507,7 @@ function createStyles(theme: ThemeTokens) {
     togglePriceActive:{ color: theme.mutedText },
     togglePriceInactive:{ color: theme.quietText },
     saveBadge:        { backgroundColor: theme.successSurface, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2 },
-    saveBadgeText:    { fontSize: 10, fontFamily: fonts.sans.bold, color: theme.success },
+    saveBadgeText:    { fontSize: 10, fontFamily: fonts.sans.bold, color: theme.successText },
 
     // Price display
     priceBlock:    { alignItems: "center", paddingVertical: 24, paddingHorizontal: 20 },
@@ -518,7 +518,7 @@ function createStyles(theme: ThemeTokens) {
     priceCents:    { fontSize: 24, fontFamily: fonts.mono.regular, color: theme.mutedText },
     pricePer:      { fontSize: 14, fontFamily: fonts.sans.regular, color: theme.quietText, marginTop: 2 },
     priceDesc:     { marginTop: 8, fontSize: 14, fontFamily: fonts.sans.regular, color: theme.quietText, textAlign: "center" },
-    lifetimeAnchor:{ marginTop: 10, fontSize: 13, fontFamily: fonts.sans.semibold, color: theme.success, textAlign: "center", paddingHorizontal: 24 },
+    lifetimeAnchor:{ marginTop: 10, fontSize: 13, fontFamily: fonts.sans.semibold, color: theme.successText, textAlign: "center", paddingHorizontal: 24 },
 
     // Value props
     groupCard:     { marginHorizontal: 16, marginBottom: 8, backgroundColor: theme.card, borderRadius: 16, overflow: "hidden" },
@@ -534,7 +534,7 @@ function createStyles(theme: ThemeTokens) {
     commitmentText: { ...typography.footnote, flex: 1, color: theme.mutedText, lineHeight: 18 },
 
     // Error
-    errorText:     { ...typography.footnote, color: theme.danger, textAlign: "center", marginHorizontal: 16 },
+    errorText:     { ...typography.footnote, color: theme.dangerText, textAlign: "center", marginHorizontal: 16 },
 
     // CTA
     ctaBtn:        { marginHorizontal: 16, marginBottom: 12, backgroundColor: theme.primary, borderRadius: 16, paddingVertical: 18, flexDirection: "row", alignItems: "center", justifyContent: "center" },

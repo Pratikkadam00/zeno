@@ -104,23 +104,31 @@ describe("CategoryTag", () => {
 
 describe("Badge", () => {
   const textColour = (label: string) => flat(screen.getByText(label).props.style).color;
-  it("soft tones use their soft text colour; solid uses white, or ink on amber and on solid accent", async () => {
+  // F233: a soft chip carries the tone's TEXT grade (the fill grade was
+  // 2.79-3.18:1 on its own chip), and every solid chip but the neutral one
+  // carries ink (white was 3.10:1 on the green, 3.67 on the red, 3.68 on the
+  // blue). The neutral chip is the one dark fill, so it keeps white.
+  it("soft tones use their tone's text colour; solid uses ink, except the dark neutral chip", async () => {
     await shown(
       <>
         <Badge tone="danger">soft-danger</Badge>
+        <Badge tone="warning">soft-warning</Badge>
         <Badge>soft-neutral</Badge>
         <Badge tone="info" solid>solid-info</Badge>
         <Badge tone="warning" solid>solid-warning</Badge>
         <Badge tone="accent" solid>solid-accent</Badge>
         <Badge tone="success" solid dot>solid-success</Badge>
+        <Badge solid>solid-neutral</Badge>
       </>
     );
-    expect(textColour("soft-danger")).toBe(c.danger);
+    expect(textColour("soft-danger")).toBe(c.dangerText);
+    expect(textColour("soft-warning")).toBe(c.warningText);
     expect(textColour("soft-neutral")).toBe(c.textSecondary);
-    expect(textColour("solid-info")).toBe("#FFFFFF");
+    expect(textColour("solid-info")).toBe(palette.ink[900]);
     expect(textColour("solid-warning")).toBe(palette.ink[900]);
     expect(textColour("solid-accent")).toBe(palette.ink[900]);
-    expect(textColour("solid-success")).toBe("#FFFFFF");
+    expect(textColour("solid-success")).toBe(palette.ink[900]);
+    expect(textColour("solid-neutral")).toBe("#FFFFFF");
   });
 
   it("a dot is drawn only when asked, in the tone's colour (or the text colour when solid)", async () => {

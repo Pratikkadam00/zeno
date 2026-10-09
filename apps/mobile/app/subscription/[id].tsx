@@ -413,7 +413,7 @@ export default function SubscriptionDetailScreen() {
                       </Pressable>
                     ) : null}
                     <Pressable accessibilityRole="button" style={[styles.verifyBtn, { backgroundColor: theme.dangerSurface }]} onPress={() => markStillCharging(sub.id)}>
-                      <Text style={[styles.verifyBtnText, { color: theme.danger }]}>I was charged again</Text>
+                      <Text style={[styles.verifyBtnText, { color: theme.dangerText }]}>I was charged again</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -623,7 +623,7 @@ export default function SubscriptionDetailScreen() {
             </Pressable>
             <View style={styles.menuSep} />
             <Pressable accessibilityRole="button" style={styles.menuItem} onPress={handleDelete}>
-              <Text style={[styles.menuItemText, { color: theme.danger }]}>Delete</Text>
+              <Text style={[styles.menuItemText, { color: theme.dangerText }]}>Delete</Text>
             </Pressable>
           </View>
         </Pressable>
@@ -702,9 +702,9 @@ function createStyles(theme: ThemeTokens) {
     categoryChip: { paddingBottom: 3, borderBottomWidth: 2.5, borderBottomColor: theme.ruleStrong },
     categoryChipText: { ...typography.caption1, fontWeight: "500", color: theme.mutedText },
     dangerChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingBottom: 3, borderBottomWidth: 2.5, borderBottomColor: theme.stampAlert },
-    dangerChipText: { ...typography.caption1, fontFamily: fonts.sans.semibold, color: theme.danger },
+    dangerChipText: { ...typography.caption1, fontFamily: fonts.sans.semibold, color: theme.dangerText },
     trialChip: { paddingBottom: 3, borderBottomWidth: 2.5, borderBottomColor: theme.warning },
-    trialChipText: { ...typography.caption1, fontWeight: "600", color: theme.warning },
+    trialChipText: { ...typography.caption1, fontWeight: "600", color: theme.warningText },
 
     amountRow: { flexDirection: "row", alignItems: "baseline", gap: 2, justifyContent: "center" },
     amountCurrency: { fontSize: 22, fontWeight: "300", color: theme.mutedText, marginTop: 8 },
@@ -767,7 +767,7 @@ function createStyles(theme: ThemeTokens) {
     cancelledBtn: { backgroundColor: theme.surfaceAlt, borderRadius: 14, paddingVertical: 17, alignItems: "center" },
     cancelledBtnText: { fontSize: 17, fontWeight: "500", color: theme.mutedText },
     pausedBtn: { backgroundColor: theme.warningSurface, borderRadius: 14, paddingVertical: 17, alignItems: "center" },
-    pausedBtnText: { fontSize: 17, fontWeight: "500", color: theme.warning },
+    pausedBtnText: { fontSize: 17, fontWeight: "500", color: theme.warningText },
 
     // Android menu
     menuBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: theme.overlay, padding: 16 },

@@ -123,6 +123,7 @@ block the soft launch.
 | R32 | The contact addresses receive no mail (no MX record): data requests to `privacy@` and vulnerability reports to `security@` bounce | High (legal) | owner | 2026-10-12, before launch | F223 |
 | R33 | No global or daily AI spend cap: the coach is limited 10/min **per account**, but N accounts can drive up to N×600 coach calls/hour (each ≤1024 output tokens). The only global brake is provider-side spend limits on the Groq/Anthropic account plus the rate-limited account-creation path | Medium (cost) | owner (set a global daily token/spend cap, or accept with provider-side caps) | 2026-10-31 (P8) | U7.10 (2026-10-09) |
 | R34 | A renewal reminder's service name and amount show in full on a PIN-locked phone under Android's default lock-screen setting (hidden only when the user picks 'hide sensitive content'); the app can only go further by posting reminders as SECRET or without amounts | Low | owner (D22) | 2026-10-19 | F229; U6.1 (2026-10-09) |
+| R35 | The calendar's day cells are 32×32, under the 44 pt touch floor; they are drawn by `react-native-calendars`, so the fix is a custom day component | Low | me | before the Play release | F235; U3.3 (2026-10-09) |
 
 ## 6. Next
 

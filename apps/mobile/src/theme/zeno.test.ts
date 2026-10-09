@@ -113,6 +113,84 @@ describe("contrast promises (WCAG 2.1 AA)", () => {
     });
   });
 
+  // ── F233 ────────────────────────────────────────────────────────────────
+  // The four status colours are FILL grade. Painted as text they failed 1.4.3
+  // badly on paper (warning 2.04:1, success 3.10, danger 3.67, info 3.68), and
+  // on the dark desk they failed on their own soft chip (danger 3.83 on a
+  // raised card). Every place that paints text now uses the TEXT grade, and
+  // these pin it, including on the chip the text actually sits on.
+
+  /** A soft token may be `rgba(r,g,b,a)` (the dark chips are the tone at 16 %).
+   *  A chip is only as readable as what shows through it, so composite. */
+  function flatten(color: string, behind: string): string {
+    const rgba = /^rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)$/.exec(color);
+    if (!rgba) return color;
+    const [, r, g, b, a] = rgba;
+    const alpha = Number(a);
+    const under = [1, 3, 5].map((i) => parseInt(behind.slice(i, i + 2), 16));
+    const mixed = [Number(r), Number(g), Number(b)].map((channel, i) =>
+      Math.round(alpha * channel + (1 - alpha) * under[i]!)
+    );
+    return `#${mixed.map((c) => c.toString(16).padStart(2, "0")).join("")}`.toUpperCase();
+  }
+
+  it("flatten composites a translucent chip over what is behind it", () => {
+    expect(flatten("#E6F7EE", "#FFFFFF")).toBe("#E6F7EE"); // already opaque
+    expect(flatten("rgba(0, 0, 0, 0.5)", "#FFFFFF")).toBe("#808080");
+    expect(flatten("rgba(255, 255, 255, 1)", "#000000")).toBe("#FFFFFF");
+  });
+
+  const TONES = ["success", "warning", "danger", "info"] as const;
+  const SURFACES = ["bgApp", "surfaceCard", "surfaceSunken", "surfaceRaised"] as const;
+
+  describe.each([
+    ["light", lightScheme],
+    ["dark", darkScheme]
+  ] as const)("%s scheme, status colours (F233)", (_name, scheme) => {
+    it.each(TONES.flatMap((tone) => SURFACES.map((surface) => [tone, surface] as const)))(
+      "%sText on %s is at least 4.5:1",
+      (tone, surface) => {
+        expect(contrast(scheme[`${tone}Text`], scheme[surface])).toBeGreaterThanOrEqual(4.5);
+      }
+    );
+
+    it.each(TONES.flatMap((tone) => SURFACES.map((surface) => [tone, surface] as const)))(
+      "%sText on its own soft chip, over %s, is at least 4.5:1",
+      (tone, surface) => {
+        const chip = flatten(scheme[`${tone}Soft`], scheme[surface]);
+        expect(contrast(scheme[`${tone}Text`], chip)).toBeGreaterThanOrEqual(4.5);
+      }
+    );
+
+    it.each(TONES)("a solid %s chip carries ink, which clears 4.5:1 on it", (tone) => {
+      // Badge.tsx: every solid chip but the neutral one is ink on the fill.
+      expect(contrast(palette.ink[900], scheme[tone])).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it("the neutral solid chip is the one dark fill, so it keeps white", () => {
+      expect(contrast(palette.ink[900], palette.ink[700])).toBeLessThan(3); // why not ink
+      expect(contrast("#FFFFFF", palette.ink[700])).toBeGreaterThanOrEqual(4.5);
+    });
+
+    // The fill grade's load-bearing use is a button a sentence sits on:
+    // "Confirm it stopped" on the green, "Re-open cancellation help" on the
+    // red (subscription/[id].tsx), "Yes, I cancelled" on the green (the
+    // cancel guide). All three paint textOnAccent.
+    it.each(["success", "danger"] as const)("a button filled %s carries text that clears 4.5:1", (tone) => {
+      expect(contrast(scheme.textOnAccent, scheme[tone])).toBeGreaterThanOrEqual(4.5);
+    });
+  });
+
+  it("the fill grades really were too light to read on paper (why F233 exists)", () => {
+    // The regression this guards: each of these is what the screens used to paint.
+    expect(contrast(lightScheme.warning, lightScheme.surfaceCard)).toBeLessThan(4.5);
+    expect(contrast(lightScheme.success, lightScheme.surfaceCard)).toBeLessThan(4.5);
+    expect(contrast(lightScheme.danger, lightScheme.surfaceCard)).toBeLessThan(4.5);
+    expect(contrast(lightScheme.info, lightScheme.surfaceCard)).toBeLessThan(4.5);
+    // And white on a solid status chip, which Badge used to paint.
+    expect(contrast("#FFFFFF", lightScheme.success)).toBeLessThan(4.5);
+  });
+
   it("why the dark button is paper, and text on green is ink: the alternatives fail", () => {
     // The ColorScheme comment: an ink button on the #0A0C13 desk is ~1.3:1.
     expect(contrast(palette.ledger.inkPanel, darkScheme.bgApp)).toBeLessThan(3);

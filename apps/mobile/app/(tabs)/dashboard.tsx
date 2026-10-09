@@ -115,6 +115,9 @@ export default function DashboardScreen() {
           accessibilityRole="button"
           accessibilityLabel="Settings"
           onPress={() => router.push("/settings")}
+          // F234: the drawn circle stays 38, which the header's rhythm needs;
+          // hitSlop takes the TAPPABLE box to 44, the platform floor.
+          hitSlop={3}
           style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: c.surfaceSunken, alignItems: "center", justifyContent: "center" }}
         >
           <User size={19} color={c.textSecondary} strokeWidth={2} />
@@ -125,6 +128,8 @@ export default function DashboardScreen() {
           accessibilityRole="button"
           accessibilityLabel="Notifications"
           onPress={() => router.push("/notifications" as never)}
+          // F234: as above — 40 drawn, 44 tappable.
+          hitSlop={2}
           style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
         >
           <Bell size={20} color={c.textSecondary} strokeWidth={2} />

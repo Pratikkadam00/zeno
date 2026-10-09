@@ -374,7 +374,7 @@ export default function DiscoverScreen() {
                         </View>
                         {result.billedThrough ? (
                           <View style={[styles.sourcePill, { backgroundColor: theme.warningSurface }]}>
-                            <Text style={[styles.sourcePillText, { color: theme.warning }]}>
+                            <Text style={[styles.sourcePillText, { color: theme.warningText }]}>
                               {result.billedThrough === "app_store" ? "App Store" : "Play Store"}
                             </Text>
                           </View>
@@ -820,7 +820,7 @@ function createStyles(theme: ThemeTokens) {
 
     // Error
     errorCard:  { marginHorizontal: 16, marginTop: 12, borderRadius: 10, borderWidth: 0.5, borderColor: withAlpha(theme.danger, 0.2), backgroundColor: theme.dangerSurface, paddingHorizontal: 14, paddingVertical: 10 },
-    errorText:  { ...typography.footnote, color: theme.danger },
+    errorText:  { ...typography.footnote, color: theme.dangerText },
 
     // Discover cards
     discoverCard: { marginHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderColor: theme.rule },
@@ -854,7 +854,7 @@ function createStyles(theme: ThemeTokens) {
     connectedRow:  { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 20, paddingBottom: 12 },
     connectedDot:  { width: 8, height: 8, borderRadius: 4, backgroundColor: theme.success },
     connectedAddr: { flex: 1, fontSize: 14, color: theme.mutedText },
-    disconnectLink:{ fontSize: 13, color: theme.danger },
+    disconnectLink:{ fontSize: 13, color: theme.dangerText },
     scanNowBtn:    { margin: 20, marginTop: 4, backgroundColor: theme.primary, borderRadius: 14, paddingVertical: 15, alignItems: "center" },
     scanNowText:   { fontSize: 16, fontWeight: "600", color: theme.onPrimary },
 
@@ -864,7 +864,7 @@ function createStyles(theme: ThemeTokens) {
     progressFill:  { height: "100%", borderRadius: 2, backgroundColor: theme.primary },
     progressText:  { fontSize: 13, color: theme.mutedText, textAlign: "center", marginBottom: 12 },
     cancelScanBtn: { alignItems: "center", paddingVertical: 8 },
-    cancelScanText:{ fontSize: 14, color: theme.danger },
+    cancelScanText:{ fontSize: 14, color: theme.dangerText },
 
     // Bottom accent bar
     accentBar:   { height: 3, flexDirection: "row" },
@@ -902,7 +902,7 @@ function createStyles(theme: ThemeTokens) {
     selectRow:     { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: spacing.screenH, marginBottom: 8 },
     selectCount:   { fontSize: 13, color: theme.mutedText },
     selectAllLink: { fontSize: 13, fontWeight: "600", color: theme.primary },
-    capNotice:     { fontSize: 13, color: theme.warning, textAlign: "center", marginBottom: 10 },
+    capNotice:     { fontSize: 13, color: theme.warningText, textAlign: "center", marginBottom: 10 },
     groupCard:     { marginHorizontal: 16, backgroundColor: theme.card, overflow: "hidden" },
     // Receipt chrome: the tear edges above/below make the rows read as a
     // printed slip, so the sheet itself is square rather than a rounded card.
@@ -939,7 +939,7 @@ function createStyles(theme: ThemeTokens) {
     modalCard:     { backgroundColor: theme.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, gap: 12 },
     modalTitle:    { ...typography.title3, color: theme.text },
     input:         { minHeight: spacing.rowH + 4, borderRadius: 12, borderWidth: 0.5, borderColor: theme.border, backgroundColor: theme.surfaceAlt, color: theme.text, paddingHorizontal: 14, ...typography.body },
-    fieldHint:     { ...typography.caption1, color: theme.danger, marginTop: -6, marginBottom: 8 },
+    fieldHint:     { ...typography.caption1, color: theme.dangerText, marginTop: -6, marginBottom: 8 },
     cycleRow:      { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     cycleChip:     { borderRadius: 20, borderWidth: 0.5, borderColor: theme.border, paddingHorizontal: 12, paddingVertical: 8 },
     cycleChipActive: { borderColor: theme.primary, backgroundColor: theme.primarySurface },

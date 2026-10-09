@@ -229,7 +229,7 @@ export default function FamilyScreen() {
           </>
         )}
 
-        {error ? <Text style={{ color: theme.danger }}>{error}</Text> : null}
+        {error ? <Text style={{ color: theme.dangerText }}>{error}</Text> : null}
       </ScrollView>
     </View>
   );

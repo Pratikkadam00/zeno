@@ -262,8 +262,9 @@ export default function CalendarScreen() {
 
   const next30Count = groups.thisWeek.length + groups.nextWeek.length + groups.laterThisMonth.length;
 
-  const next7ValueColor = hasDueSoon ? theme.danger
-    : next7DaysList.length > 0 ? theme.warning
+  // F233: this paints the "Next 7 days" amount, so it is text, not a fill.
+  const next7ValueColor = hasDueSoon ? theme.dangerText
+    : next7DaysList.length > 0 ? theme.warningText
     : theme.text;
 
   const groupTotals = useMemo(() => ({
@@ -397,7 +398,7 @@ function createStyles(theme: ThemeTokens) {
     panelCycle: { ...typography.caption1, color: theme.mutedText, marginTop: 1 },
     panelRight: { alignItems: "flex-end" },
     panelAmount: { fontSize: 15, fontFamily: fonts.mono.semibold, color: theme.text, fontVariant: ["tabular-nums"] },
-    cancelLink: { fontSize: 12, fontWeight: "600", color: theme.danger, marginTop: 3 },
+    cancelLink: { fontSize: 12, fontWeight: "600", color: theme.dangerText, marginTop: 3 },
     panelFooter: {
       paddingHorizontal: 16, padding: 10, borderTopWidth: 0.5, borderTopColor: theme.border,
       flexDirection: "row", justifyContent: "space-between"
@@ -432,7 +433,7 @@ function createStyles(theme: ThemeTokens) {
 
     // Empty state
     emptyState: { paddingVertical: 40, paddingHorizontal: 20, alignItems: "center" },
-    emptyCheck: { fontSize: 40, color: theme.success, marginBottom: 16 },
+    emptyCheck: { fontSize: 40, color: theme.successText, marginBottom: 16 },
     emptyTitle: { fontSize: 20, fontWeight: "600", color: theme.text, letterSpacing: -0.5, marginBottom: 8 },
     emptyBody: { fontSize: 15, color: theme.mutedText, textAlign: "center" },
     emptyBtn: { marginTop: 20, backgroundColor: theme.buttonPrimaryBg, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 13 },

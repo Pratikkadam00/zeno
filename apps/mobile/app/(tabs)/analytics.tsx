@@ -347,7 +347,7 @@ function createStyles(theme: ThemeTokens) {
     },
     pageTitle: { fontSize: 30, fontFamily: fonts.display.bold, color: theme.text, letterSpacing: -0.6 },
     savingsPill: { flexDirection: "row", alignItems: "center", gap: 6, paddingBottom: 2, borderBottomWidth: 2.5, borderBottomColor: theme.stampVerified },
-    savingsPillText: { fontSize: 12, fontFamily: fonts.sans.semibold, color: theme.success },
+    savingsPillText: { fontSize: 12, fontFamily: fonts.sans.semibold, color: theme.successText },
 
     // Budget entry
     budgetEntry: { marginHorizontal: 16, marginTop: 4, flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.rule, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14 },
@@ -387,14 +387,14 @@ function createStyles(theme: ThemeTokens) {
     insightTitle: { fontSize: 15, fontWeight: "600", color: theme.text, letterSpacing: -0.2, marginBottom: 4 },
     insightMessage: { fontSize: 13, color: theme.mutedText, lineHeight: 18, letterSpacing: -0.1 },
     insightSavingPill: { marginTop: 10, alignSelf: "flex-start", paddingBottom: 2, borderBottomWidth: 2.5, borderBottomColor: theme.stampVerified },
-    insightSavingText: { fontSize: 11, fontWeight: "600", color: theme.success },
+    insightSavingText: { fontSize: 11, fontWeight: "600", color: theme.successText },
     insightAction: { fontSize: 13, fontWeight: "600", color: theme.primary, letterSpacing: -0.1, marginTop: 10 },
     dismissBtn: { padding: 4 },
     dismissText: { fontSize: 20, color: theme.quietText },
 
     // Empty state
     emptyState: { paddingVertical: 40, paddingHorizontal: 20, alignItems: "center" },
-    emptyCheck: { fontSize: 40, marginBottom: 16, color: theme.success },
+    emptyCheck: { fontSize: 40, marginBottom: 16, color: theme.successText },
     emptyTitle: { fontSize: 20, fontWeight: "600", color: theme.text, letterSpacing: -0.5, marginBottom: 8 },
     emptyBody: { fontSize: 15, color: theme.mutedText, textAlign: "center" },
 

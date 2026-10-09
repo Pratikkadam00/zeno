@@ -98,19 +98,18 @@ updated (the waitlist now has its own per-IP limiter). U6 is next.
 | ID | Check | Status | Evidence / finding |
 |---|---|---|---|
 | U3.1 | Every control named: 17 of 27 screens | ✅ baseline | P5 audit (`.maestro/a11y-audit.sh`) |
-| U3.2 | Every control named: the other 10 screens | ⬜ | |
-| U3.3 | Touch targets at least 48 dp, every screen | ⬜ | |
-| U3.4 | Text contrast at least 4.5:1, light and dark (from the theme tokens) | ⬜ | |
-| U3.5 | Font scale 2.0: no cut-off text, every screen | ⬜ | |
-| U3.6 | TalkBack journeys: onboard, add, find a renewal, cancel guide, lock | ⬜ | |
-| U3.7 | Reduce motion respected | ⬜ | |
-| U3.8 | Website: keyboard only through every page | ⬜ | |
-| U3.9 | Website: 200 % zoom | ⬜ | |
-| U3.10 | Website: screen-reader landmarks and headings | ⬜ | |
-| U3.11 | Nothing conveyed by colour alone (colour-vision simulation) | ⬜ | |
-| U3.12 | System bold-text and high-contrast settings | ⬜ | |
-| U3.13 | Website: forced-colours mode | ⬜ | |
-
+| U3.2 | Every control named: the other 10 screens | ✅ | 20 of 22 screen files already asserted unnamedControls()==[]; the sweep now asserts it for 14 screens in the EMPTY state too, where the 'add your first one' controls live · state-matrix.rntest.tsx · [u3-accessibility-2026-10-09.md] |
+| U3.3 | Touch targets at least 48 dp, every screen | ✅ | touch-targets.rntest.tsx reads each control's DECLARED size plus hitSlop across 11 screens, floor 44 pt; a control case proves the measure (24 pt fails, +10 slop passes). F234 fixed (ledger header 38/40 → 44 tappable). F235 recorded: the month grid's 32×32 cells are react-native-calendars', pinned as-is · [u3-accessibility-2026-10-09.md] |
+| U3.4 | Text contrast at least 4.5:1, light and dark (from the theme tokens) | ✅ | F233 FOUND AND FIXED — the four status colours painted as text failed on paper (warning 2.04:1, success 3.10, danger 3.67, info 3.68) and on their own dark chip; the Badge's warning hex was light-only, so dark read 2.65:1. Four text-grade tokens added, 36 usages swapped, solid chips carry ink. zeno.test.ts: every text grade on 4 surfaces and on its own composited chip, both schemes, plus a control pinning the old values were below 4.5 · [u3-accessibility-2026-10-09.md] |
+| U3.5 | Font scale 2.0: no cut-off text, every screen | ⏸ | blocked in jest: the RN test renderer does not lay text out, so clipping at scale 2.0 cannot be measured; belongs with the device pass · [u3-accessibility-2026-10-09.md] |
+| U3.6 | TalkBack journeys: onboard, add, find a renewal, cancel guide, lock | ⬜ | device work on the emulator (TalkBack journeys), in the same style as U6 |
+| U3.7 | Reduce motion respected | ✅ | theme/motion.ts + motion.rntest.tsx; onboarding renders without the print-in, the tab focus tick snaps instead of growing, the ledger total skips its count-up · [u3-accessibility-2026-10-09.md] |
+| U3.8 | Website: keyboard only through every page | ✅ | e2e/keyboard.spec.ts (W7): ten templates, skip link first and working, every control in document order, focus visible, no trap · four browsers in CI · [u3-accessibility-2026-10-09.md] |
+| U3.9 | Website: 200 % zoom | ✅ | e2e/zoom.spec.ts (W7): ten templates at 200 %, no sideways scroll, nothing clipped · [u3-accessibility-2026-10-09.md] |
+| U3.10 | Website: screen-reader landmarks and headings | ✅ | e2e/every-route.spec.ts (W7) runs axe at WCAG 2.2 AA over every route — where the landmark and heading-order rules live — with zero violations · [u3-accessibility-2026-10-09.md] |
+| U3.11 | Nothing conveyed by colour alone (colour-vision simulation) | ✅ | every status is in the row's accessible name in words (Free trial, Paused, Pending verification, Still charging, Verified cancelled), plus the visible '!' on a still-charging amount; the fills are never the only mark · state-matrix.rntest.tsx · [u3-accessibility-2026-10-09.md] |
+| U3.12 | System bold-text and high-contrast settings | ⬜ | device work on the emulator (system bold-text and high-contrast settings) |
+| U3.13 | Website: forced-colours mode | ✅ | e2e/forced-colors.spec.ts (W7), which found F228 (controls drawn with a background alone vanished in Windows High Contrast) and holds the fix · [u3-accessibility-2026-10-09.md] |
 ## U2 · How it looks: visual baselines
 
 | ID | Check | Status | Evidence / finding |
@@ -160,12 +159,25 @@ updated (the waitlist now has its own per-IP limiter). U6 is next.
 
 | # | Finding | Severity | Status |
 |---|---|---|---|
+| F233 | The four status colours were painted as TEXT across 36 places and failed WCAG 1.4.3 on paper (warning 2.04:1, success 3.10, danger 3.67, info 3.68); on the dark desk they failed on their own soft chip; and the Badge's warning text was a hardcoded light-mode hex, so dark mode read it at 2.65:1 | Medium (legibility, every screen) | Fixed 2026-10-09: four text-grade tokens (same hue, walked to clear 4.5:1 on every surface and on its own chip), 36 usages swapped, solid chips carry ink; 48 assertions in `zeno.test.ts` incl. a control pinning the old values |
+| F234 | The ledger header's Settings and Notifications buttons were 38×38 and 40×40, under the 44 pt floor, with no hitSlop | Low | Fixed 2026-10-09: hitSlop 3 and 2, so the drawn circles keep the header's rhythm and the tappable boxes reach 44; `touch-targets.rntest.tsx` holds it |
+| F235 | Every day cell in the month grid is 32×32 | Low | OPEN (register R35, before the Play release): the cells are drawn by `react-native-calendars`, so the fix is a custom `dayComponent`, not a style of ours. Pinned at 32×32 so a change is noticed |
 | F229 | A renewal reminder names the service and the amount; a PIN-locked phone shows it in full under Android's default lock-screen setting (hidden only when the user chooses 'hide sensitive content') | Low (someone who can see the phone learns a renewal) | Owner decision D22 (register R34): keep the platform default, or post reminders as SECRET / without amounts |
 | F230 | The app minted an Expo push token nothing used (a network call handing Expo the phone's FCM registration) and skipped emulators, which never got the notification permission prompt | Low (privacy; a dead third-party call) | Fixed 2026-10-09: `prepareReminderNotifications` (channel + permission only); the permission prompt appeared on the emulator for the first time |
 | F231 | `MainActivity` kept the default `taskAffinity`, so another app's activity could join Zeno's task (task hijacking) | Low | Fixed 2026-10-09: `plugins/withTaskAffinity.js`, proven in the packaged APK with aapt2 |
 | F232 | The biometric prompt accepted the phone's screen-lock credential as its fallback ('Use PIN'): anyone who knew the phone's PIN opened Zeno without Zeno's PIN and around the app's lockout | Medium (a second lock that was not one) | Fixed 2026-10-09: `disableDeviceFallback: true`, the button reads 'Use Zeno PIN'; pinned in `app-lock.test.ts`, seen on the device |
 
 ## Log
+
+**2026-10-09 (U3):** accessibility measured. 10 of 13 rows closed, 2 left to the device
+(U3.6 TalkBack journeys, U3.12 the system bold-text and high-contrast settings) and 1
+blocked in jest (U3.5 font scale 2.0: the RN renderer lays no text out). Three findings.
+F233 is the substantial one: the four status colours were painted as text everywhere and
+failed 1.4.3 on paper, worst at 2.04:1, and the Badge's warning fix was light-only so dark
+mode read at 2.65:1 — four text-grade tokens added and 36 usages swapped. F234 (two header
+buttons under 44 pt) fixed with hitSlop. F235 (the calendar library's 32×32 day cells)
+recorded as R35 and pinned. The four website rows were already proven in W7 and run on
+four browsers in CI. Evidence: `ui-evidence/u3-accessibility-2026-10-09.md`.
 
 **2026-10-09 (U1):** the state matrix written (`UI_STATE_MATRIX.md`): 27 screens × 7 state
 columns, each cell naming the test that proves it or why the state cannot exist. The

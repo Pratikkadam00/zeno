@@ -398,7 +398,7 @@ function createStyles(theme: ThemeTokens) {
     successText: { fontFamily: fonts.mono.bold, fontSize: 14, color: theme.stampVerified },
     successMessage: {
       ...type.footnote,
-      color: theme.success
+      color: theme.successText
     },
     primaryButton: { width: "100%", borderRadius: 12, paddingVertical: 16, alignItems: "center", justifyContent: "center" },
     primaryButtonText: {

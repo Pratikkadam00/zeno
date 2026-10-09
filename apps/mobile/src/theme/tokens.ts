@@ -40,6 +40,12 @@ export type ThemeTokens = {
   success: string;
   warning: string;
   danger: string;
+  /** Text grade of the three above (F233): same hue, dark enough on paper (or
+   *  light enough on the desk) to clear 4.5:1 as body text, including on its
+   *  own soft surface. The fill grades stay for dots, bars, chips and borders. */
+  successText: string;
+  warningText: string;
+  dangerText: string;
   primarySurface: string;
   successSurface: string;
   warningSurface: string;
@@ -85,6 +91,9 @@ function buildZenoTheme(id: ThemePreference, c: ColorScheme): ThemeTokens {
     success: c.success,
     warning: c.warning,
     danger: c.danger,
+    successText: c.successText,
+    warningText: c.warningText,
+    dangerText: c.dangerText,
     primarySurface: c.accentSoft,
     successSurface: c.successSoft,
     warningSurface: c.warningSoft,

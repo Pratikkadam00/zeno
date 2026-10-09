@@ -16,7 +16,7 @@ import SubscriptionDetailScreen from "../../app/subscription/[id]";
 import WidgetsScreen from "../../app/widgets";
 import WrappedScreen from "../../app/wrapped";
 import { formatMoney } from "../utils/format";
-import { renderScreen, resetFakes, routeParams } from "../test-support/screen-harness";
+import { renderScreen, resetFakes, routeParams, unnamedControls } from "../test-support/screen-harness";
 
 /**
  * U1 (docs/UI_TEST_PLAN.md) · every screen, every state. The per-screen files
@@ -134,6 +134,9 @@ describe("U1.8 · no placeholder text, 'undefined' or a raw key on any screen", 
     resetFakes({ rows: [] });
     const r = await renderScreen(ui(), { settleMs: 400 });
     expect(offenders(r.toJSON() as never)).toEqual([]);
+    // U3.2: and every control still has a name in the empty state, which the
+    // per-screen files mostly assert only once, with data on the screen.
+    expect(unnamedControls(r.toJSON() as never)).toEqual([]);
   });
 
   it.each(SCREENS)("%s: with subscriptions", async (_name, ui) => {
@@ -142,6 +145,7 @@ describe("U1.8 · no placeholder text, 'undefined' or a raw key on any screen", 
       sub({ id: "c", name: "Gym", category: "health", status: "paused" })] });
     const r = await renderScreen(ui(), { settleMs: 400 });
     expect(offenders(r.toJSON() as never)).toEqual([]);
+    expect(unnamedControls(r.toJSON() as never)).toEqual([]);
   });
 
   it("the sweep really catches a broken value (control)", () => {
@@ -259,6 +263,39 @@ describe("U1.6 · long names, emoji, non-Latin and right-to-left text", () => {
     expect(screen.getByText(formatMoney(99_999_999, "USD"))).toBeTruthy();
     expect(screen.getByText(formatMoney(1, "USD"))).toBeTruthy();
     expect(offenders(r.toJSON() as never)).toEqual([]);
+  });
+});
+
+describe("U3.11 · nothing is said with colour alone", () => {
+  // Each status has a colour (the amber trial chip, the red still-charging
+  // stamp, the green verified one). A reader who cannot tell those apart must
+  // still get the status, so each one has to be in WORDS in the row's
+  // accessible name, not only in its fill.
+  const STATUSES = [
+    ["active", "Active One", /^Active One, ENTERTAINMENT, /],
+    ["trial", "Trial One", /Free trial/],
+    ["paused", "Paused One", /Paused/],
+    ["pending", "Pending One", /Pending verification/],
+    ["attention", "Charging One", /Still charging/],
+    ["cancelled", "Cancelled One", /Verified cancelled/]
+  ] as const;
+
+  it("every status is in the row's accessible name, in words", async () => {
+    resetFakes({ rows: STATUSES.map(([status, name]) => sub({ id: status, name, status, category: "entertainment" })) });
+    await renderScreen(<SubscriptionsScreen />, { settleMs: 400 });
+    for (const [, name, says] of STATUSES) {
+      const row = screen.getAllByRole("button").find((b) => String(b.props.accessibilityLabel ?? "").startsWith(name));
+      expect(row).toBeTruthy();
+      expect(String(row!.props.accessibilityLabel)).toMatch(says);
+    }
+  });
+
+  it("the amount that is over budget says so in words, not just in red", async () => {
+    // The ledger's "still charging" row carries a visible "!" beside the
+    // amount, so the red is never the only mark on it.
+    resetFakes({ rows: [sub({ id: "att", name: "Charging One", status: "attention", price: { amountMinor: 899, currency: "USD" } })] });
+    await renderScreen(<SubscriptionsScreen />, { settleMs: 400 });
+    expect(screen.getByText("$8.99 !")).toBeTruthy();
   });
 });
 

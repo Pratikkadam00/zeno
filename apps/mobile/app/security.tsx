@@ -102,7 +102,7 @@ export default function SecurityScreen() {
           <>
             <Text style={[styles.label, { color: theme.mutedText }]}>Enter current PIN to turn off</Text>
             {input(current, setCurrent, "Current PIN", "••••")}
-            {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
+            {error ? <Text style={[styles.error, { color: theme.dangerText }]}>{error}</Text> : null}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Turn off app lock"
@@ -110,14 +110,14 @@ export default function SecurityScreen() {
               disabled={busy}
               onPress={() => void turnOff()}
             >
-              <Text style={[styles.btnText, { color: theme.danger }]}>Turn off app lock</Text>
+              <Text style={[styles.btnText, { color: theme.dangerText }]}>Turn off app lock</Text>
             </Pressable>
           </>
         ) : (
           <>
             {input(pin, setPin, "New PIN", "New PIN")}
             {input(confirm, setConfirm, "Confirm PIN", "Confirm PIN")}
-            {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
+            {error ? <Text style={[styles.error, { color: theme.dangerText }]}>{error}</Text> : null}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Turn on app lock"

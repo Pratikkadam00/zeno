@@ -130,6 +130,14 @@ export type ColorScheme = {
   warningSoft: string;
   dangerSoft: string;
   infoSoft: string;
+  // Text grade of the four above (F233): the same hue, dark enough on paper
+  // (or light enough on the desk) to clear 4.5:1 as body text, including on
+  // its own soft chip. `success`…`info` stay FILL grade: dots, bars, chips,
+  // borders. Anything that paints text uses these.
+  successText: string;
+  warningText: string;
+  dangerText: string;
+  infoText: string;
 
   focusRing: string;
   overlay: string;
@@ -183,6 +191,16 @@ export const lightScheme: ColorScheme = {
   warningSoft: "#FEF3DD",
   dangerSoft: "#FDE6EB",
   infoSoft: "#E6EFFE",
+  // F233: the status colours above are FILL grade — a dot, a chip, a bar, a
+  // border. On paper they are far too light to read as text (warning was
+  // 2.04:1, success 3.10, danger 3.67, info 3.68, all below the 4.5:1 that
+  // 1.4.3 asks of body text). These are the same hues walked down in
+  // lightness until each clears 4.5:1 on paper, card, sunken AND on its own
+  // soft chip. Anything that paints TEXT uses these.
+  successText: "#028048",
+  warningText: "#9A6207",
+  dangerText: "#D50C2F",
+  infoText: "#0B62F0",
 
   focusRing: "rgba(0, 194, 110, 0.35)",
   overlay: "rgba(18, 21, 27, 0.55)"
@@ -236,6 +254,15 @@ export const darkScheme: ColorScheme = {
   warningSoft: "rgba(245, 165, 36, 0.16)",
   dangerSoft: "rgba(244, 63, 94, 0.16)",
   infoSoft: "rgba(59, 130, 246, 0.16)",
+  // F233: on the dark desk the fill colours already read well as text on the
+  // surfaces (5-9:1), but not on their own soft chip, which is that colour at
+  // 16 % over the surface: danger fell to 3.83:1 and info to 3.67:1 on a
+  // raised card. Walked UP in lightness until each clears 4.5:1 on every dark
+  // surface and on its own chip. Warning already did, so it is unchanged.
+  successText: "#02AD62",
+  warningText: palette.semantic.warning,
+  dangerText: "#F65E78",
+  infoText: "#5895F7",
 
   focusRing: "rgba(20, 209, 126, 0.40)",
   overlay: "rgba(0, 0, 0, 0.6)"

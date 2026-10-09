@@ -20,14 +20,22 @@ export function Badge({ tone = "neutral", solid = false, dot = false, children, 
   const tones: Record<BadgeTone, { soft: string; softText: string; solid: string; dot: string }> = {
     neutral: { soft: c.surfaceSunken, softText: c.textSecondary, solid: t.palette.ink[700], dot: t.palette.ink[400] },
     accent: { soft: c.accentSoft, softText: c.accentText, solid: c.accent, dot: c.accent },
-    success: { soft: c.successSoft, softText: c.success, solid: c.success, dot: c.success },
-    warning: { soft: c.warningSoft, softText: "#B45309", solid: c.warning, dot: c.warning },
-    danger: { soft: c.dangerSoft, softText: c.danger, solid: c.danger, dot: c.danger },
-    info: { soft: c.infoSoft, softText: c.info, solid: c.info, dot: c.info }
+    // F233: the soft chip's text is the TEXT grade of the tone, which the
+    // theme picks per scheme. It used to be the fill colour (2.79-3.18:1 on
+    // its own chip in light), except warning, which was a hardcoded #B45309 —
+    // right for paper, but 2.65:1 on the dark chip, where it was never read.
+    success: { soft: c.successSoft, softText: c.successText, solid: c.success, dot: c.success },
+    warning: { soft: c.warningSoft, softText: c.warningText, solid: c.warning, dot: c.warning },
+    danger: { soft: c.dangerSoft, softText: c.dangerText, solid: c.danger, dot: c.danger },
+    info: { soft: c.infoSoft, softText: c.infoText, solid: c.info, dot: c.info }
   };
   const tn = tones[tone];
-  const isSolidGreen = solid && tone === "accent";
-  const textColor = solid ? (tone === "warning" || isSolidGreen ? t.palette.ink[900] : "#FFFFFF") : tn.softText;
+  // F233: every solid chip but the neutral one carries INK. White was 3.10:1
+  // on the green, 3.67 on the danger red and 3.68 on the info blue; ink is
+  // 5.81, 4.91 and 4.90, and it is already what the brand asks for on green
+  // ("never white-on-green") and what warning already used. The neutral chip
+  // is the one dark fill (ink 700), so it keeps white: ink on it is 1.34:1.
+  const textColor = solid ? (tone === "neutral" ? "#FFFFFF" : t.palette.ink[900]) : tn.softText;
 
   return (
     <View

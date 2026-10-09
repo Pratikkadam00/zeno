@@ -329,7 +329,7 @@ export default function SettingsScreen() {
                       <row.Icon size={18} color={row.danger ? theme.stampAlert : theme.mutedText} strokeWidth={2} />
                     </View>
                     <View style={styles.rowTextWrap}>
-                      <Text style={[styles.rowTitle, row.danger ? { color: theme.danger } : undefined]} numberOfLines={1}>{row.label}</Text>
+                      <Text style={[styles.rowTitle, row.danger ? { color: theme.dangerText } : undefined]} numberOfLines={1}>{row.label}</Text>
                       {row.sub ? <Text style={styles.rowSub}>{row.sub}</Text> : null}
                     </View>
                     {row.isSwitch ? (
@@ -476,7 +476,7 @@ function createStyles(theme: ThemeTokens) {
     signOutText: { fontSize: 16, fontFamily: fonts.sans.semibold, color: theme.text, letterSpacing: -0.2 },
 
     cancelAccountBtn: { alignItems: "center", paddingVertical: 16, marginTop: 4 },
-    cancelAccountText: { fontSize: 14, fontFamily: fonts.sans.semibold, color: theme.danger },
+    cancelAccountText: { fontSize: 14, fontFamily: fonts.sans.semibold, color: theme.dangerText },
 
     versionSection: { paddingTop: 16, paddingBottom: 24, alignItems: "center" },
     versionText: { ...typography.caption2, color: theme.quietText },

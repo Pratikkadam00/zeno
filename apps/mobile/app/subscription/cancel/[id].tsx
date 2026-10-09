@@ -25,24 +25,24 @@ function getDifficultyMeta(difficulty: CancellationDifficulty, theme: ThemeToken
     return {
       label: "Easy to cancel",
       note: "A couple of taps and you're done.",
-      ticks: 1, bg: theme.successSurface, border: withAlpha(theme.success, 0.2), color: theme.success
+      ticks: 1, bg: theme.successSurface, border: withAlpha(theme.success, 0.2), color: theme.successText
     };
   if (difficulty === "medium")
     return {
       label: "Moderate steps",
       note: "A few steps — follow them in order below.",
-      ticks: 2, bg: theme.warningSurface, border: withAlpha(theme.warning, 0.2), color: theme.warning
+      ticks: 2, bg: theme.warningSurface, border: withAlpha(theme.warning, 0.2), color: theme.warningText
     };
   if (difficulty === "hard")
     return {
       label: "Hard to cancel",
       note: "This one buries the cancel option. Follow the steps carefully.",
-      ticks: 3, bg: theme.dangerSurface, border: withAlpha(theme.danger, 0.2), color: theme.danger
+      ticks: 3, bg: theme.dangerSurface, border: withAlpha(theme.danger, 0.2), color: theme.dangerText
     };
   return {
     label: "Dark pattern",
     note: "Known for hard-to-cancel flows — they'll try to stop you. Follow these steps and don't accept any \"stay\" offers.",
-    ticks: 3, bg: theme.dangerSurface, border: withAlpha(theme.danger, 0.25), color: theme.danger
+    ticks: 3, bg: theme.dangerSurface, border: withAlpha(theme.danger, 0.25), color: theme.dangerText
   };
 }
 
@@ -220,8 +220,8 @@ export default function SubscriptionCancelScreen() {
             </Text>
             <Text style={[
               styles.heroRenewal,
-              daysRemaining !== null && daysRemaining <= 3 ? { color: theme.danger }
-                : daysRemaining !== null && daysRemaining <= 7 ? { color: theme.warning }
+              daysRemaining !== null && daysRemaining <= 3 ? { color: theme.dangerText }
+                : daysRemaining !== null && daysRemaining <= 7 ? { color: theme.warningText }
                 : null
             ]}>
               {renewalLabel}
@@ -466,8 +466,8 @@ function createStyles(theme: ThemeTokens) {
     savingsCard: { marginHorizontal: spacing.screenH, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 10, borderBottomWidth: 1, borderColor: theme.rule },
     savingsIcon: { display: "none" },
     savingsIconText: { fontSize: 18, textAlign: "center", lineHeight: 36 },
-    savingsLabel: { fontSize: 13, color: theme.success },
-    savingsAmount: { fontSize: 17, fontWeight: "700", color: theme.success, fontVariant: ["tabular-nums"], letterSpacing: -0.5 },
+    savingsLabel: { fontSize: 13, color: theme.successText },
+    savingsAmount: { fontSize: 17, fontWeight: "700", color: theme.successText, fontVariant: ["tabular-nums"], letterSpacing: -0.5 },
 
     // Difficulty card
     difficultyCard: { marginHorizontal: spacing.screenH, paddingVertical: 10, gap: 4, borderBottomWidth: 1, borderColor: theme.ruleStrong },
