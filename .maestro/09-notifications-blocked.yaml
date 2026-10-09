@@ -2,9 +2,10 @@ appId: app.zeno.mobile
 name: Notifications blocked by the phone - the app says reminders won't appear (F192), and stops saying it once allowed
 tags: [notifications]
 ---
-# (The permission prompt itself is asked only on a real device: the app skips
-# push registration on an emulator, Device.isDevice. So the phone's answer is
-# set here: denied.)
+# The phone's answer is set at launch, before the app can ask. Until F230
+# (2026-10-09) the app skipped the request on an emulator entirely, because it
+# was tied to fetching a push token nothing used; it now asks wherever it runs,
+# so the answer has to be decided here or the dialog lands mid-flow.
 - clearState
 - launchApp:
     permissions:
@@ -12,6 +13,16 @@ tags: [notifications]
 - tapOn: "Continue"
 - tapOn: "Continue"
 - tapOn: "Continue without an account"
+# A revoke leaves the permission ASKABLE, so the platform prompts anyway:
+# measured on the emulator on 2026-10-09 (granted -> no dialog; revoked -> the
+# dialog appears a beat after the ledger opens). Refusing here is what puts the
+# app in the state this flow is about. A COLD start would be asked again, which
+# is Android's own two-strike rule, not ours; the relaunches below all pass
+# stopApp: false, so the app resumes and never re-asks inside this flow.
+- extendedWaitUntil:
+    visible: "Don.t allow"
+    timeout: 10000
+- tapOn: "Don.t allow"
 - assertVisible: "Your ledger"
 - runFlow: common/add-netflix.yaml
 - tapOn: "Notifications"

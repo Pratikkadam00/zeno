@@ -2,11 +2,24 @@ appId: app.zeno.mobile
 name: (subflow) fresh install, onboarding, continue without an account
 ---
 - clearState
-- launchApp
+# F230 (2026-10-09) changed when the phone is asked about notifications. The app
+# used to skip that request on an emulator (it was tied to fetching a push token
+# the app never used), so no dialog ever appeared here. It now asks wherever it
+# runs, and the dialog arrives a moment AFTER the ledger opens — mid-flow, over
+# whatever is on screen. `clearState` above revokes runtime permissions, so the
+# answer is decided here, at launch, before the app can ask.
+- launchApp:
+    permissions:
+      notifications: allow
 - assertVisible: "Step 1 of 3"
 - tapOn: "Continue"
 - assertVisible: "Step 2 of 3"
 - tapOn: "Continue"
 - assertVisible: "Step 3 of 3"
 - tapOn: "Continue without an account"
+# Belt and braces: if a build or an Android version asks anyway, take the
+# dialog out of the way rather than letting it fail the next step.
+- tapOn:
+    text: "Allow"
+    optional: true
 - assertVisible: "Your ledger"
