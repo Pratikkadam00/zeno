@@ -43,3 +43,9 @@ reports/mutation-api/
 reports/mutation-mobile/
 .stryker-tmp-pr/
 reports/mutation-pr/
+
+# U2: the app visual baselines at a non-default font scale are produced on
+# demand (scripts/app-visual.mjs --mode update --scale 2.0) and inspected, not
+# committed: they double the binary weight of the repo and churn on every
+# deliberate UI change. The normal-size set IS committed, as the daily guard.
+apps/mobile/visual-baselines/phone@*/

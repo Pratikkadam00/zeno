@@ -1,0 +1,5 @@
+device=sdk_gphone64_x86_64
+sdk=36
+release=16
+Physical size: 1080x2400
+Physical density: 420

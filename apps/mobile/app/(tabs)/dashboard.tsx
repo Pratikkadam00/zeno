@@ -172,7 +172,10 @@ export default function DashboardScreen() {
             floating card: the type does the work (the DS "delete-a-card" test). */}
         <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
           <View style={{ flexDirection: "row", alignItems: "baseline", columnGap: 10 }}>
-            <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: 10.5, letterSpacing: 1.8, color: c.textTertiary }}>COMMITTED THIS MONTH</Text>
+            {/* F236, as in LedgerLine: at a large font scale this label grew
+                until the counter beside it ran off the edge ("1/10 FREE" read
+                as "1/"). The label shrinks; the count stays whole. */}
+            <Text numberOfLines={1} style={{ flexShrink: 1, fontFamily: t.fonts.mono.bold, fontSize: 10.5, letterSpacing: 1.8, color: c.textTertiary }}>COMMITTED THIS MONTH</Text>
             <View style={{ flex: 1, minWidth: 12, height: 0, borderBottomWidth: 2, borderStyle: "dotted", borderColor: c.ruleStrong, transform: [{ translateY: -3 }] }} />
             {plan === "free" ? (
               <Pressable

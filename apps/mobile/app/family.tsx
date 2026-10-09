@@ -158,7 +158,7 @@ export default function FamilyScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <ScrollView contentContainerStyle={{ gap: 16, paddingBottom: 32 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 16, paddingBottom: 32 }}>
         <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
           <Text style={{ color: theme.text, fontSize: 30, lineHeight: 36, fontWeight: "900" }}>Family</Text>
           <Text style={{ color: theme.mutedText, marginTop: 6, fontSize: 16, lineHeight: 22 }}>

@@ -121,7 +121,7 @@ export default function CoachScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <ScrollView contentContainerStyle={{ gap: 16, paddingBottom: 32 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 16, paddingBottom: 32 }}>
         <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
           <Text style={{ fontFamily: fonts.mono.bold, fontSize: 10.5, letterSpacing: 1.8, color: theme.quietText, marginBottom: 6 }}>SPEND COACH</Text>
           <Text style={{ fontFamily: fonts.display.bold, fontSize: 30, lineHeight: 34, letterSpacing: -0.8, color: theme.text }}>AI spend coach</Text>

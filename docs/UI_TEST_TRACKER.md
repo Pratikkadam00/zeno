@@ -101,7 +101,7 @@ updated (the waitlist now has its own per-IP limiter). U6 is next.
 | U3.2 | Every control named: the other 10 screens | ✅ | 20 of 22 screen files already asserted unnamedControls()==[]; the sweep now asserts it for 14 screens in the EMPTY state too, where the 'add your first one' controls live · state-matrix.rntest.tsx · [u3-accessibility-2026-10-09.md] |
 | U3.3 | Touch targets at least 48 dp, every screen | ✅ | touch-targets.rntest.tsx reads each control's DECLARED size plus hitSlop across 11 screens, floor 44 pt; a control case proves the measure (24 pt fails, +10 slop passes). F234 fixed (ledger header 38/40 → 44 tappable). F235 recorded: the month grid's 32×32 cells are react-native-calendars', pinned as-is · [u3-accessibility-2026-10-09.md] |
 | U3.4 | Text contrast at least 4.5:1, light and dark (from the theme tokens) | ✅ | F233 FOUND AND FIXED — the four status colours painted as text failed on paper (warning 2.04:1, success 3.10, danger 3.67, info 3.68) and on their own dark chip; the Badge's warning hex was light-only, so dark read 2.65:1. Four text-grade tokens added, 36 usages swapped, solid chips carry ink. zeno.test.ts: every text grade on 4 surfaces and on its own composited chip, both schemes, plus a control pinning the old values were below 4.5 · [u3-accessibility-2026-10-09.md] |
-| U3.5 | Font scale 2.0: no cut-off text, every screen | ⏸ | blocked in jest: the RN test renderer does not lay text out, so clipping at scale 2.0 cannot be measured; belongs with the device pass · [u3-accessibility-2026-10-09.md] |
+| U3.5 | Font scale 2.0: no cut-off text, every screen | ✅ | answered on the device, not in jest: captured at font scale 2.0, which FOUND F236 — the ledger clipped '1/10 FREE' to '1/' and '$0.00' to '$0.0' with no ellipsis. Fixed (the label shrinks, the amount never does) and re-captured; the 38 normal-size baselines still match, twice, so the fix costs nothing at normal size · [u2-visual-baselines-2026-10-09.md], [u3-accessibility-2026-10-09.md] |
 | U3.6 | TalkBack journeys: onboard, add, find a renewal, cancel guide, lock | ⬜ | device work on the emulator (TalkBack journeys), in the same style as U6 |
 | U3.7 | Reduce motion respected | ✅ | theme/motion.ts + motion.rntest.tsx; onboarding renders without the print-in, the tab focus tick snaps instead of growing, the ledger total skips its count-up · [u3-accessibility-2026-10-09.md] |
 | U3.8 | Website: keyboard only through every page | ✅ | e2e/keyboard.spec.ts (W7): ten templates, skip link first and working, every control in document order, focus visible, no trap · four browsers in CI · [u3-accessibility-2026-10-09.md] |
@@ -114,15 +114,14 @@ updated (the waitlist now has its own per-IP limiter). U6 is next.
 
 | ID | Check | Status | Evidence / finding |
 |---|---|---|---|
-| U2.1 | Screenshot tooling and comparison script | ⬜ | |
-| U2.2 | Baselines: every screen, light and dark, normal phone | ⬜ | |
-| U2.3 | Baselines: small phone (5.0") | ⬜ | |
-| U2.4 | Baselines: tablet | ⬜ | |
-| U2.5 | Baselines: font scale 1.3 and 2.0 | ⬜ | |
-| U2.6 | Website: `toHaveScreenshot` on every page, desktop and phone | ⬜ | |
-| U2.7 | Comparison runs nightly | ⬜ | |
-| U2.8 | Bite check: a deliberately broken layout is caught | ⬜ | |
-
+| U2.1 | Screenshot tooling and comparison script | ✅ | scripts/app-visual.mjs (update/check, --scale): freezes the clock, demo status bar, grants notifications, sets the theme through the app's own switch; per-pixel compare (tolerance 8/channel, fail above 0.1 %), lossless baselines, device fingerprint checked before any comparison · [u2-visual-baselines-2026-10-09.md] |
+| U2.2 | Baselines: every screen, light and dark, normal phone | ✅ | 38 baselines (19 screens × light/dark) in apps/mobile/visual-baselines/phone, against a ledger with one real subscription; compared twice in a row against an unchanged build, 0 differ both times. `security` is out by design (FLAG_SECURE, U6.13) · [u2-visual-baselines-2026-10-09.md] |
+| U2.3 | Baselines: small phone (5.0") | 🔒 | needs a 5.0" AVD this machine does not have; creating one means downloading a system image — owner · [u2-visual-baselines-2026-10-09.md] |
+| U2.4 | Baselines: tablet | 🔒 | needs a tablet AVD, same reason — owner · [u2-visual-baselines-2026-10-09.md] |
+| U2.5 | Baselines: font scale 1.3 and 2.0 | ✅ | `--scale 2.0` run and inspected: it FOUND F236 (text clipped off the right edge with no ellipsis). The scaled baselines are deliberately not committed (38 more binaries would double the repo's history and churn on every UI change); the command is one line and today's result is in the evidence · [u2-visual-baselines-2026-10-09.md] |
+| U2.6 | Website: `toHaveScreenshot` on every page, desktop and phone | ✅ | W7.2: apps/web/e2e/visual.spec.ts, 12 templates × light/dark × desktop/phone = 48 comparisons behind VISUAL=1, proven 48 written / 48 compared; baselines must render on Linux, so visual.yml makes them for the owner to commit (OWNER_GUIDE step 15) · [u2-visual-baselines-2026-10-09.md] |
+| U2.7 | Comparison runs nightly | 🔒 | the website's can run in CI; the app's needs an Android emulator in the runner (a slow job and a CI-minutes decision). The script is ready; the workflow is not written — owner decision · [u2-visual-baselines-2026-10-09.md] |
+| U2.8 | Bite check: a deliberately broken layout is caught | ✅ | proven end to end: ledger padding 20→44, rebuilt and installed — caught on exactly ledger-light (2.183 %) and ledger-dark (2.198 %), no false positives on the other 36; reverted, rebuilt, all 38 match again · [u2-visual-baselines-2026-10-09.md] |
 ## U4 · Robustness
 
 | ID | Check | Status | Evidence / finding |
@@ -162,12 +161,27 @@ updated (the waitlist now has its own per-IP limiter). U6 is next.
 | F233 | The four status colours were painted as TEXT across 36 places and failed WCAG 1.4.3 on paper (warning 2.04:1, success 3.10, danger 3.67, info 3.68); on the dark desk they failed on their own soft chip; and the Badge's warning text was a hardcoded light-mode hex, so dark mode read it at 2.65:1 | Medium (legibility, every screen) | Fixed 2026-10-09: four text-grade tokens (same hue, walked to clear 4.5:1 on every surface and on its own chip), 36 usages swapped, solid chips carry ink; 48 assertions in `zeno.test.ts` incl. a control pinning the old values |
 | F234 | The ledger header's Settings and Notifications buttons were 38×38 and 40×40, under the 44 pt floor, with no hitSlop | Low | Fixed 2026-10-09: hitSlop 3 and 2, so the drawn circles keep the header's rhythm and the tappable boxes reach 44; `touch-targets.rntest.tsx` holds it |
 | F235 | Every day cell in the month grid is 32×32 | Low | OPEN (register R35, before the Play release): the cells are drawn by `react-native-calendars`, so the fix is a custom `dayComponent`, not a style of ours. Pinned at 32×32 so a change is noticed |
+| F236 | At font scale 2.0 the ledger clipped text off the right edge with no ellipsis: the free-plan counter read "1/" and the still-to-renew amount read "$0.0" — a number not merely cut but misreadable as a different number. A row of label, leader and value gave the label no `flexShrink`, so as it grew the value was pushed off | Medium (a wrong number shown to anyone using large text) | Fixed 2026-10-09: the label shrinks and ellipsises, the value never does (`Ledger.tsx` LedgerLine, every ledger row, plus the dashboard's header row). Proven by re-capture; the 38 normal-size baselines still match, so it costs nothing at normal size |
+| F237 | Five screens (coach, family, wrapped, backend, open-banking) showed a scroll indicator where the other seventeen hide it; it also made the visual comparison flake at 0.554 % when caught mid-fade | Low (inconsistency) | Fixed 2026-10-09: all 22 now hide it |
 | F229 | A renewal reminder names the service and the amount; a PIN-locked phone shows it in full under Android's default lock-screen setting (hidden only when the user chooses 'hide sensitive content') | Low (someone who can see the phone learns a renewal) | Owner decision D22 (register R34): keep the platform default, or post reminders as SECRET / without amounts |
 | F230 | The app minted an Expo push token nothing used (a network call handing Expo the phone's FCM registration) and skipped emulators, which never got the notification permission prompt | Low (privacy; a dead third-party call) | Fixed 2026-10-09: `prepareReminderNotifications` (channel + permission only); the permission prompt appeared on the emulator for the first time |
 | F231 | `MainActivity` kept the default `taskAffinity`, so another app's activity could join Zeno's task (task hijacking) | Low | Fixed 2026-10-09: `plugins/withTaskAffinity.js`, proven in the packaged APK with aapt2 |
 | F232 | The biometric prompt accepted the phone's screen-lock credential as its fallback ('Use PIN'): anyone who knew the phone's PIN opened Zeno without Zeno's PIN and around the app's lockout | Medium (a second lock that was not one) | Fixed 2026-10-09: `disableDeviceFallback: true`, the button reads 'Use Zeno PIN'; pinned in `app-lock.test.ts`, seen on the device |
 
 ## Log
+
+**2026-10-09 (U2):** visual baselines for the app. `scripts/app-visual.mjs` captures and
+compares with everything but the app pinned (frozen clock, demo status bar, the theme set
+through the app's own switch, a device fingerprint checked before comparing). 38 baselines
+committed (19 screens × light/dark); the comparison ran twice against an unchanged build
+with 0 differences. The bite check passed end to end: a deliberate padding change was
+caught on exactly the two screens it touches and nowhere else. The font-scale run closed
+U3.5 and found F236 — at scale 2.0 the ledger clipped "$0.00" to "$0.0" and "1/10 FREE" to
+"1/", with no ellipsis — now fixed so labels give way and numbers never do. F237 (five
+screens showing a scroll indicator the other seventeen hide) fixed, which also settled the
+one flaky comparison. A small phone and a tablet need AVDs that are not on this machine
+(owner), and a nightly app comparison needs an emulator in CI (owner decision).
+Evidence: `ui-evidence/u2-visual-baselines-2026-10-09.md`.
 
 **2026-10-09 (U3):** accessibility measured. 10 of 13 rows closed, 2 left to the device
 (U3.6 TalkBack journeys, U3.12 the system bold-text and high-contrast settings) and 1

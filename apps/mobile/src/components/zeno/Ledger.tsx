@@ -69,11 +69,20 @@ export function LedgerLine({
   const c = t.color;
   return (
     <View style={[{ flexDirection: "row", alignItems: "baseline", columnGap: 10, paddingVertical: 7 }, style]}>
-      <Text style={{ fontFamily: strong ? t.fonts.sans.bold : t.fonts.sans.medium, fontSize: size, color: strong ? c.textPrimary : c.textSecondary }}>{label}</Text>
-      {sub ? <Text style={{ fontFamily: t.fonts.mono.regular, fontSize: 10, color: c.textTertiary, letterSpacing: 0.4 }}>{sub}</Text> : null}
+      {/* F236: at a large font scale the label grows until the VALUE runs off
+          the right edge — "$0.00" read as "$0.0", a 1/10 counter as "1/". The
+          amount is the point of the row, so the label is what gives way: it
+          shrinks and ellipsises, and the value never does. */}
+      <Text
+        numberOfLines={1}
+        style={{ flexShrink: 1, fontFamily: strong ? t.fonts.sans.bold : t.fonts.sans.medium, fontSize: size, color: strong ? c.textPrimary : c.textSecondary }}
+      >
+        {label}
+      </Text>
+      {sub ? <Text numberOfLines={1} style={{ flexShrink: 1, fontFamily: t.fonts.mono.regular, fontSize: 10, color: c.textTertiary, letterSpacing: 0.4 }}>{sub}</Text> : null}
       {/* dotted leader connecting label to value */}
       <View style={{ flex: 1, minWidth: 14, height: 0, borderBottomWidth: 2, borderStyle: "dotted", borderColor: c.ruleStrong, transform: [{ translateY: -3 }] }} />
-      <Text style={{ fontFamily: t.fonts.mono.bold, fontSize: size + 1, color: valueColor ?? c.textPrimary, letterSpacing: -0.14 }}>{value}</Text>
+      <Text numberOfLines={1} style={{ flexShrink: 0, fontFamily: t.fonts.mono.bold, fontSize: size + 1, color: valueColor ?? c.textPrimary, letterSpacing: -0.14 }}>{value}</Text>
     </View>
   );
 }

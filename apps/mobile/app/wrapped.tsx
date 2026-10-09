@@ -92,7 +92,7 @@ export default function WrappedScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <ScrollView contentContainerStyle={{ gap: 16, paddingBottom: 32 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 16, paddingBottom: 32 }}>
         <View style={{ flexDirection: "row", alignItems: "flex-start", paddingHorizontal: 20, paddingTop: 8 }}>
           <View style={{ flex: 1 }}>
             <Text style={{ color: theme.mutedText, fontFamily: theme.numberFontFamily, fontSize: 12, letterSpacing: 1, textTransform: "uppercase" }}>
