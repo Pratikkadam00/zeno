@@ -114,13 +114,14 @@ block the soft launch.
 | R23 | Sentry and RevenueCat untested in a release build; a native crash skips the event scrubber (breadcrumbs are scrubbed) | Medium | owner (keys), then me | when the keys exist | `OPEN_ITEMS.md` |
 | R24 | Accepted advisories: `braces` and `node-forge` (developer tools; no fix exists), `image-size` ×2 (build time) | Low | me | 2026-11-30 and 2026-12-31 (their expiries) | `.audit-allowlist.json` |
 | R25 | Website style policy allows `unsafe-inline` styles | Low | me | 2027-03-31 | `.zap-accepted.json` |
-| R26 | The waitlist function has no rate limit of its own (Netlify's platform limits only) | Low | me | 2026-10-31 (P8) | Threat model §3.4 |
+| R26 | The waitlist function now has its own per-IP limiter (5/min, trusted-hop XFF keying, 2 KB body cap, strict email validation — `apps/web/app/api/waitlist/route.ts`), but the in-memory counter resets on cold start, so a platform/WAF limiter is still wanted in front | Low | me | 2026-10-31 (P8) | Threat model §3.4; U7.22 (2026-10-09) |
 | R27 | A rare native crash after "Continue without an account" (react-native-screens with Reanimated; no released fix) | Low | me | each upgrade of either | F191 |
 | R28 | Wells Fargo CSV: the first row is assumed to be a header; a real export may lose its first transaction | Medium (data) | owner (one sample file) | before launch | F19 |
 | R29 | Small items: "Rate Zeno" opens Apple's store on Android (F101); what "Export my data" covers (F127, D6); made-up guide addresses log an error line (F199); text typed in the homepage's first 65 ms is lost (F200) | Low | owner (F101, F127); me (F199, F200) | before the store release; P8 | log |
 | R30 | The privacy policy, cookie policy and terms are drafts not reviewed by a lawyer | Medium (legal) | owner | before launch | `OWNER_ACTIONS.md` §1 |
 | R31 | **Closed 2026-10-06:** each successful change to a user's data (household created, joined, spend changed, left; account deleted) is now an audit event naming the account and household (`apps/api/src/security-events.test.ts`). Was: no audit trail of what users change | Low | me | 2026-10-06 (closed) | Threat model §6 |
 | R32 | The contact addresses receive no mail (no MX record): data requests to `privacy@` and vulnerability reports to `security@` bounce | High (legal) | owner | 2026-10-12, before launch | F223 |
+| R33 | No global or daily AI spend cap: the coach is limited 10/min **per account**, but N accounts can drive up to N×600 coach calls/hour (each ≤1024 output tokens). The only global brake is provider-side spend limits on the Groq/Anthropic account plus the rate-limited account-creation path | Medium (cost) | owner (set a global daily token/spend cap, or accept with provider-side caps) | 2026-10-31 (P8) | U7.10 (2026-10-09) |
 
 ## 6. Next
 

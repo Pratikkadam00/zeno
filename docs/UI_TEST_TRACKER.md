@@ -12,6 +12,14 @@ pass when the fix is proven. Order of work: U6, U7, U1, U3, U2, U4, U5.
 and are carried in as baseline, marked ✅ with their original evidence (the U6 ones are
 re-run on the current build). 0 new checks done yet; 7 need the owner (🔒).
 
+**U7 verdicts (2026-10-09):** all 27 rows carry a verdict, evidenced against the API's
+own suite (45 files, 622 tests green on 2026-10-09) — see
+`ui-evidence/u7-attackers-view-2026-10-09.md`. 18 closed, 2 open-low (U7.5/U7.6, cosmetic
+client-side Pro unlock the server already ignores), 1 open-medium added to the register as
+R33 (U7.10, no global daily AI cap), 2 not applicable (U7.24/U7.25, Gmail scanner not
+built), 4 owner (U7.8, U7.19, U7.26, and the recycled-email gap under U7.27/R11). R26
+updated (the waitlist now has its own per-IP limiter). U6 is next.
+
 ---
 
 ## U6 · UI security on the device
@@ -47,34 +55,33 @@ re-run on the current build). 0 new checks done yet; 7 need the owner (🔒).
 
 | ID | What could be lost · attack | Status | Evidence / finding |
 |---|---|---|---|
-| U7.1 | Users' data · authorisation matrix black-box against a running server | ⬜ | |
-| U7.2 | Users' data · replayed and stolen sign-in links, refresh-token reuse | ⬜ | |
-| U7.3 | Users' data · household share-code guessing: cost at the rate limits | ⬜ | |
-| U7.4 | Users' data · a modified app calling the API directly | ⬜ | |
-| U7.5 | Money · patched release APK: what Pro features it unlocks (F15) | ⬜ | |
-| U7.6 | Money · edited local storage flipping the plan | ⬜ | |
-| U7.7 | Money · faked or replayed RevenueCat webhook | ⬜ | |
-| U7.8 | Money · decision: server-side checks or Play Integrity for Pro | 🔒 | after U7.5 measures the exposure |
-| U7.9 | AI bill · many accounts at the per-account limit: cost per hour | ⬜ | |
-| U7.10 | AI bill · a global daily cap (none exists today) | ⬜ | |
-| U7.11 | AI bill · oversized and repeated prompts | ⬜ | |
-| U7.12 | AI · used as a free general-purpose AI (off-topic refusal) | ⬜ | |
-| U7.13 | AI · prompt injection through subscription names and notes | ⬜ | |
-| U7.14 | AI · extracting the system prompt | ⬜ | |
-| U7.15 | AI · harmful or professional financial advice | ⬜ | |
-| U7.16 | AI · one user's data in another's answer | ⬜ | |
-| U7.17 | Email · sign-in-email bombing, one address and many | ⬜ | |
-| U7.18 | Hosting · request floods, slow requests, large bodies | ⬜ | |
-| U7.19 | Hosting · edge rate limiting | 🔒 | P8.7 (Cloudflare) |
-| U7.20 | Secrets · release APK strings and assets re-scanned | ⬜ | |
-| U7.21 | Secrets · built website re-scanned | ⬜ | |
-| U7.22 | Website · waitlist spam | ⬜ | |
-| U7.23 | Verdicts added to the residual-risk register | ⬜ | |
-| U7.24 | Users' Gmail · token storage; connect bound to the signed-in account | ⬜ | |
-| U7.25 | Users' Gmail · crafted receipt emails against the scanner | ⬜ | |
-| U7.26 | Trust · a fake Zeno: how real mail and the real app are told apart | ⬜ | |
-| U7.27 | Account · deleting or taking over someone else's; lock-out by wrong codes; recycled email address (known gap) | ⬜ | |
-
+| U7.1 | Users' data · authorisation matrix black-box against a running server | ✅ | closed · authz-matrix.test.ts (route matrix, one 401, cross-household 403) · [u7-attackers-view-2026-10-09.md] |
+| U7.2 | Users' data · replayed and stolen sign-in links, refresh-token reuse | ✅ | closed · auth.test.ts/auth-expiry/auth-internals/token-path (single-use links, refresh rotation+reuse 401, forged-token battery) · [u7-attackers-view-2026-10-09.md] |
+| U7.3 | Users' data · household share-code guessing: cost at the rate limits | ✅ | closed (accepted R21) · family.test.ts + rate-limits.test.ts (8-char/31-alphabet, 10/min join, 5-member cap) · [u7-attackers-view-2026-10-09.md] |
+| U7.4 | Users' data · a modified app calling the API directly | ✅ | closed · authz-matrix + fuzz.test.ts (API trusts token/matrix, not the client) · [u7-attackers-view-2026-10-09.md] |
+| U7.5 | Money · patched release APK: what Pro features it unlocks (F15) | ❌ | open, low · webhook.test.ts F85 (server ignores client Pro claim); client unlock is cosmetic UI only · feeds U7.8 · [u7-attackers-view-2026-10-09.md] |
+| U7.6 | Money · edited local storage flipping the plan | ❌ | open, low · same as U7.5 (local entitlement is a cache; no server route reads it) · [u7-attackers-view-2026-10-09.md] |
+| U7.7 | Money · faked or replayed RevenueCat webhook | ✅ | closed · webhook.test.ts (constant-time secret, payload never trusted, idempotent, durable before 200) · [u7-attackers-view-2026-10-09.md] |
+| U7.8 | Money · decision: server-side checks or Play Integrity for Pro | 🔒 | owner decision · exposure is cosmetic (server already ignores client Pro); hard gate/Play Integrity optional · [u7-attackers-view-2026-10-09.md] |
+| U7.9 | AI bill · many accounts at the per-account limit: cost per hour | ✅ | closed per account · rate-limits.test.ts (10/min keyed by ACCOUNT, IP rotation no help; max_tokens 1024) · cross-account total is U7.10 · [u7-attackers-view-2026-10-09.md] |
+| U7.10 | AI bill · a global daily cap (none exists today) | ❌ | OPEN → register R33 · no global/daily AI cap; N accounts × 600 calls/hr; brake is provider-side caps · owner · [u7-attackers-view-2026-10-09.md] |
+| U7.11 | AI bill · oversized and repeated prompts | ✅ | closed · coach.route.test.ts (schema strips/rejects oversized fields) + app.ts (1 MB body, 30 s timeout) · [u7-attackers-view-2026-10-09.md] |
+| U7.12 | AI · used as a free general-purpose AI (off-topic refusal) | ✅ | closed · ai-coach-constitution.md §2–3 + coach.test.ts (out-of-scope forces empty recommendations) · [u7-attackers-view-2026-10-09.md] |
+| U7.13 | AI · prompt injection through subscription names and notes | ✅ | closed · coach.ts + coach.test.ts (fence-tag stripping, breakout stays inside fence, notes/accountId/email never sent) · [u7-attackers-view-2026-10-09.md] |
+| U7.14 | AI · extracting the system prompt | ✅ | closed (charter-enforced) · constitution §3/§4.3 forbids revealing the prompt · [u7-attackers-view-2026-10-09.md] |
+| U7.15 | AI · harmful or professional financial advice | ✅ | closed (charter-enforced) · constitution §3/§4.5/§5 (no harmful content, not professional advice) · [u7-attackers-view-2026-10-09.md] |
+| U7.16 | AI · one user's data in another's answer | ✅ | closed · coach is stateless per request, account-scoped like U7.1; no shared context · [u7-attackers-view-2026-10-09.md] |
+| U7.17 | Email · sign-in-email bombing, one address and many | ✅ | closed · auth.test.ts + rate-limits.test.ts (per-recipient AND per-IP 5/min magic-link cap) · [u7-attackers-view-2026-10-09.md] |
+| U7.18 | Hosting · request floods, slow requests, large bodies | ✅ | closed in-process · rate-limits (100/min) + fuzz.test.ts + app.ts (30 s, 1 MB); edge limiter is R8/U7.19 · [u7-attackers-view-2026-10-09.md] |
+| U7.19 | Hosting · edge rate limiting | 🔒 | owner · edge rate limiting, register R8 / P8.7 (Cloudflare) · [u7-attackers-view-2026-10-09.md] |
+| U7.20 | Secrets · release APK strings and assets re-scanned | ✅ | closed · APK carries only the client bundle; every server secret is API-side; gitleaks + outbound.test.ts · [u7-attackers-view-2026-10-09.md] |
+| U7.21 | Secrets · built website re-scanned | ✅ | closed · web build embeds no secret (waitlist webhook URL is server-side env at request time) · [u7-attackers-view-2026-10-09.md] |
+| U7.22 | Website · waitlist spam | ✅ | closed in-app → R26 updated · waitlist route.ts/route.test.ts (5/min XFF-keyed, 2 KB cap, strict email, 502 on fail); cold-start residual R26 · [u7-attackers-view-2026-10-09.md] |
+| U7.23 | Verdicts added to the residual-risk register | ✅ | closed by the evidence file · R26 updated, R33 added · [u7-attackers-view-2026-10-09.md] |
+| U7.24 | Users' Gmail · token storage; connect bound to the signed-in account | ⏸ | not applicable (feature not built) · no Gmail scanner in apps/api/src; re-opens on build · [u7-attackers-view-2026-10-09.md] |
+| U7.25 | Users' Gmail · crafted receipt emails against the scanner | ⏸ | not applicable (feature not built) · re-opens on build · [u7-attackers-view-2026-10-09.md] |
+| U7.26 | Trust · a fake Zeno: how real mail and the real app are told apart | 🔒 | owner (brand) · real mail from verified zenoapp.in, real app from the store listing; no code exposure · [u7-attackers-view-2026-10-09.md] |
+| U7.27 | Account · deleting or taking over someone else's; lock-out by wrong codes; recycled email address (known gap) | ✅ | takeover/deletion closed · authz-matrix + rate-limits (DELETE /account token-scoped, 5/min) + family.test.ts cascade; recycled-email is the known gap R11 · [u7-attackers-view-2026-10-09.md] |
 ## U1 · Every screen, every state
 
 | ID | Check | Status | Evidence / finding |
