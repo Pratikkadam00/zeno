@@ -17,8 +17,8 @@ afterEach(() => {
 describe("web site origin (lib/site)", () => {
   it("defaults to the current domain when the env var is unset", async () => {
     const m = await load(undefined);
-    expect(m.SITE_URL).toBe("https://zeno.app");
-    expect(m.SITE_HOST).toBe("zeno.app");
+    expect(m.SITE_URL).toBe("https://zenoapp.in");
+    expect(m.SITE_HOST).toBe("zenoapp.in");
   });
 
   it("uses NEXT_PUBLIC_SITE_URL when set, and strips a trailing slash", async () => {

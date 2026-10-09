@@ -11,7 +11,12 @@ import Constants from "expo-constants";
  * Same shape as src/api/config.ts's getApiBaseUrl(): read from expo config at
  * call time (so tests can mock it per case), imports no app code.
  */
-const DEFAULT_SITE_URL = "https://zeno.app";
+// F238: this was "https://zeno.app" — a domain Zeno does not own, parked and
+// for sale. A release built without EXPO_PUBLIC_SITE_URL pointed its Terms and
+// Privacy links, its share signature and its feedback address at that stranger's
+// page; opening Terms on the emulator landed on a GoDaddy sale listing. The
+// default is now the real domain, so a missing variable degrades to correct.
+const DEFAULT_SITE_URL = "https://zenoapp.in";
 
 /** Absolute origin, no trailing slash. */
 export function getSiteUrl(): string {

@@ -837,7 +837,7 @@ async function deliverMagicLink(email: string, link: string, code: string, reque
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      from: process.env.RESEND_FROM_EMAIL ?? "Zeno <login@zeno.app>",
+      from: process.env.RESEND_FROM_EMAIL ?? "Zeno <login@zenoapp.in>",
       to: [email],
       subject: "Sign in to Zeno",
       text: `Use this secure link to sign in to Zeno: ${link}\n\nCode: ${code}\n\nThis link expires in 10 minutes.`,

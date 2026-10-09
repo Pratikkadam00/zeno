@@ -126,19 +126,18 @@ updated (the waitlist now has its own per-IP limiter). U6 is next.
 
 | ID | Check | Status | Evidence / finding |
 |---|---|---|---|
-| U4.1 | No network, start to finish | ⬜ | |
-| U4.2 | Slow network (2G profile) | ⬜ | |
-| U4.3 | API down; API answering garbage | ⬜ | |
-| U4.4 | Airplane mode in the middle of sign-in | ⬜ | |
-| U4.5 | Backgrounded, killed by the system, restored (process death) | ⬜ | |
-| U4.6 | Clock and time zone changed: renewal dates don't move | ⬜ | |
-| U4.7 | Language and number format changed | ⬜ | |
-| U4.8 | 1,000 subscriptions: speed and memory | ⬜ | |
-| U4.9 | Upgrade from the previous release with data on the phone | ⬜ | |
-| U4.10 | A call or notification mid-flow | ⬜ | |
-| U4.11 | Phone almost out of storage: database writes fail safely | ⬜ | |
-| U4.12 | Low memory, battery saver | ⬜ | |
-
+| U4.1 | No network, start to finish | ✅ | airplane on, ping unreachable: the ledger opens with its figures, a subscription can be ADDED and is still there after a force-stop and cold start (so it was written, not held in memory); no crash · [u4-robustness-2026-10-09.md] |
+| U4.2 | Slow network (2G profile) | ✅ | emu network speed gsm + delay gprs: opens, the ledger reads normally, nothing stuck on a spinner · [u4-robustness-2026-10-09.md] |
+| U4.3 | API down; API answering garbage | ✅ | DOWN: nothing listening → a written sentence, not let in (this produced F239). GARBAGE: unreachable on a release build — usesCleartextTraffic="false" blocks a plain-HTTP API before the request leaves the device, proven by a garbage server behind adb reverse receiving ZERO requests; the malformed-envelope paths are covered in client.edges.test.ts · [u4-robustness-2026-10-09.md] |
+| U4.4 | Airplane mode in the middle of sign-in | ✅ | airplane enabled while the sign-in request was in flight: a written sentence, no crash, not signed in · [u4-robustness-2026-10-09.md] |
+| U4.5 | Backgrounded, killed by the system, restored (process death) | ✅ | `am kill` (what the system does under memory pressure): 0 pids after, and on relaunch the ledger and its figures are intact · [u4-robustness-2026-10-09.md] |
+| U4.6 | Clock and time zone changed: renewal dates don't move | ✅ | IST → Honolulu (UTC−10) → Auckland (UTC+13), a 23-hour swing: the renewal stayed Nov 8 while the header's 'today' correctly followed the device (FRI OCT 9 → SAT OCT 10). Clock +40 days: the renewal became Dec 8, the NEXT occurrence, not a stale date · [u4-robustness-2026-10-09.md] |
+| U4.7 | Language and number format changed | ⏸ | not run on the device: changing the emulator's locale needs a property write and a framework restart mid-session. Off-device the six currencies are pinned (format.behavior.test.ts, and rendered on a screen in U1.7) and dates are UTC-parsed with suites run at Honolulu and Auckland offsets (P6). The on-device run is still owed · [u4-robustness-2026-10-09.md] |
+| U4.8 | 1,000 subscriptions: speed and memory | ⏸ | not reachable on the device: the database is SQLCipher-encrypted and the only writer is the UI, so a thousand rows cannot be injected. 200 are driven in jest (U1.3): counted, totalled, and the list virtualises. Needs a seeding hook that does not exist · [u4-robustness-2026-10-09.md] |
+| U4.9 | Upgrade from the previous release with data on the phone | ✅ | nine successive `install -r` upgrades over an existing database today: the ledger survived each, and all 38 visual baselines still match afterwards — the same screens pixel for pixel across every upgrade · [u4-robustness-2026-10-09.md] |
+| U4.10 | A call or notification mid-flow | ✅ | a notification posted over the open app: Zeno stays in front, the screen is intact, no crash · [u4-robustness-2026-10-09.md] |
+| U4.11 | Phone almost out of storage: database writes fail safely | ⏸ | not run: filling the data partition until SQLite writes fail risks leaving the image unusable for the rest of the work, and there is no supported 'fail the next write' knob. The failure handling is covered in erase-device.test.ts and the repository tests. Worth a scratch AVD — owner, with U2.3/U2.4 · [u4-robustness-2026-10-09.md] |
+| U4.12 | Low memory, battery saver | ✅ | under `low_power 1` the app opens and reads normally; after TRIM_MEMORY_COMPLETE while backgrounded it returns intact · [u4-robustness-2026-10-09.md] |
 ## U5 · Devices
 
 | ID | Check | Status | Evidence / finding |
@@ -163,12 +162,25 @@ updated (the waitlist now has its own per-IP limiter). U6 is next.
 | F235 | Every day cell in the month grid is 32×32 | Low | OPEN (register R35, before the Play release): the cells are drawn by `react-native-calendars`, so the fix is a custom `dayComponent`, not a style of ours. Pinned at 32×32 so a change is noticed |
 | F236 | At font scale 2.0 the ledger clipped text off the right edge with no ellipsis: the free-plan counter read "1/" and the still-to-renew amount read "$0.0" — a number not merely cut but misreadable as a different number. A row of label, leader and value gave the label no `flexShrink`, so as it grew the value was pushed off | Medium (a wrong number shown to anyone using large text) | Fixed 2026-10-09: the label shrinks and ellipsises, the value never does (`Ledger.tsx` LedgerLine, every ledger row, plus the dashboard's header row). Proven by re-capture; the 38 normal-size baselines still match, so it costs nothing at normal size |
 | F237 | Five screens (coach, family, wrapped, backend, open-banking) showed a scroll indicator where the other seventeen hide it; it also made the visual comparison flake at 0.554 % when caught mid-fade | Low (inconsistency) | Fixed 2026-10-09: all 22 now hide it |
+| F238 | Both the app and the website defaulted to `https://zeno.app` — a domain Zeno does not own, parked and for sale. Deploys set the env var, so production was always right, but any build that forgot it shipped a stranger's page as the Terms and Privacy links (what a store review opens), the share signature, and the privacy@/legal@/feedback@ addresses; the API's dev-default sender was `login@zeno.app`, a domain Resend has not verified. The guard meant to prevent this was policing the wrong host | High (legal links to a third party; store review opens them) | Fixed 2026-10-09: both defaults and the API sender are the real `zenoapp.in`; the guard now polices the real host and immediately caught a hardcoded one in the website's FAQ copy. Proven on the device: Terms opens `zenoapp.in/legal/terms` |
+| F239 | A failed request showed the platform's raw exception to the user: the sign-in screen read "fetch failed: java.net.UnknownServiceException: CLEARTEXT communication to 127.0.0.1 not permitted by network security policy". Screens render `error.message`, which is the server's own words for an API error but the platform's for a transport failure | Medium (users shown internals; on a real phone, DNS/TLS/socket text whenever the network is poor) | Fixed 2026-10-09: `timedFetch` wraps a transport failure in `NetworkError` whose message is a sentence, keeping the platform's error as `cause` for logs; every caller goes through it. Pinned in `http.test.ts` (no `java.`, no `Exception`, no `CLEARTEXT`, no stack frame) and seen on the device |
 | F229 | A renewal reminder names the service and the amount; a PIN-locked phone shows it in full under Android's default lock-screen setting (hidden only when the user chooses 'hide sensitive content') | Low (someone who can see the phone learns a renewal) | Owner decision D22 (register R34): keep the platform default, or post reminders as SECRET / without amounts |
 | F230 | The app minted an Expo push token nothing used (a network call handing Expo the phone's FCM registration) and skipped emulators, which never got the notification permission prompt | Low (privacy; a dead third-party call) | Fixed 2026-10-09: `prepareReminderNotifications` (channel + permission only); the permission prompt appeared on the emulator for the first time |
 | F231 | `MainActivity` kept the default `taskAffinity`, so another app's activity could join Zeno's task (task hijacking) | Low | Fixed 2026-10-09: `plugins/withTaskAffinity.js`, proven in the packaged APK with aapt2 |
 | F232 | The biometric prompt accepted the phone's screen-lock credential as its fallback ('Use PIN'): anyone who knew the phone's PIN opened Zeno without Zeno's PIN and around the app's lockout | Medium (a second lock that was not one) | Fixed 2026-10-09: `disableDeviceFallback: true`, the button reads 'Use Zeno PIN'; pinned in `app-lock.test.ts`, seen on the device |
 
 ## Log
+
+**2026-10-09 (U4):** robustness on the emulator. 9 of 12 conditions run and passed: no
+network (including ADDING a subscription offline and finding it after a cold start), a 2G
+link, the API down, the network pulled mid sign-in, process death, the clock and time zone
+moved, upgrading over existing data, a notification mid-flow, battery saver and a memory
+trim. No FATAL in logcat anywhere. Three are not run and say why (locale needs a framework
+restart; a thousand rows cannot be injected past SQLCipher; filling the disk risks the
+image). Two findings, both fixed. F238: the app and site defaulted to `zeno.app`, a domain
+Zeno does not own — tapping Terms opened a GoDaddy sale listing — and the guard meant to
+catch it was policing the wrong host. F239: a failed request showed a raw Java exception on
+the sign-in screen. Evidence: `ui-evidence/u4-robustness-2026-10-09.md`.
 
 **2026-10-09 (U2):** visual baselines for the app. `scripts/app-visual.mjs` captures and
 compares with everything but the app pinned (frozen clock, demo status bar, the theme set

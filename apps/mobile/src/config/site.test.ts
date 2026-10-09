@@ -13,15 +13,15 @@ beforeEach(() => {
 
 describe("mobile site origin (config/site)", () => {
   it("defaults to the current domain when extra.siteUrl is absent", () => {
-    expect(getSiteUrl()).toBe("https://zeno.app");
-    expect(getSiteHost()).toBe("zeno.app");
+    expect(getSiteUrl()).toBe("https://zenoapp.in");
+    expect(getSiteHost()).toBe("zenoapp.in");
   });
 
   it("treats an EMPTY extra.siteUrl as absent (an unset env var forwards as undefined or '')", () => {
     extra.siteUrl = "";
-    expect(getSiteUrl()).toBe("https://zeno.app");
+    expect(getSiteUrl()).toBe("https://zenoapp.in");
     extra.siteUrl = "   ";
-    expect(getSiteUrl()).toBe("https://zeno.app");
+    expect(getSiteUrl()).toBe("https://zenoapp.in");
   });
 
   it("uses extra.siteUrl when set, stripping a trailing slash", () => {

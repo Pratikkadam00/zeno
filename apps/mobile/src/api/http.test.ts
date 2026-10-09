@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { timedFetch } from "./http";
+import { NetworkError, timedFetch } from "./http";
 
 // timedFetch is the app's only network entry point. It enforces two safety
 // properties that matter beyond convenience:
@@ -79,8 +79,13 @@ describe("timedFetch — timeout enforcement", () => {
 describe("timedFetch — retry policy", () => {
   it("does NOT retry by default (a mutating POST must never be repeated)", async () => {
     fetchMock.mockRejectedValue(new TypeError("Network request failed"));
-    await expect(timedFetch("https://api.test/pay", { method: "POST" })).rejects.toThrow("Network request failed");
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await expect(timedFetch("https://api.test/pay", { method: "POST" })).rejects.toThrow("Could not reach Zeno");
+    // F239: the platform's error is not shown, but it is not lost either.
+    await expect(timedFetch("https://api.test/pay", { method: "POST" })).rejects.toMatchObject({
+      name: "NetworkError",
+      cause: expect.objectContaining({ message: "Network request failed" })
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("retries exactly `retries` extra times, then rethrows the LAST error", async () => {
@@ -88,7 +93,11 @@ describe("timedFetch — retry policy", () => {
       .mockRejectedValueOnce(new Error("first"))
       .mockRejectedValueOnce(new Error("second"));
     const promise = timedFetch("https://api.test/get", {}, { retries: 1 });
-    const assertion = expect(promise).rejects.toThrow("second");
+    // the LAST attempt's error is the one kept as the cause
+    const assertion = expect(promise).rejects.toMatchObject({
+      name: "NetworkError",
+      cause: expect.objectContaining({ message: "second" })
+    });
     await vi.advanceTimersByTimeAsync(1000); // clear the backoff wait
     await assertion;
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -105,7 +114,7 @@ describe("timedFetch — retry policy", () => {
   it("backs off between attempts rather than hammering immediately", async () => {
     fetchMock.mockRejectedValue(new Error("down"));
     const promise = timedFetch("https://api.test/get", {}, { retries: 1 });
-    const assertion = expect(promise).rejects.toThrow("down");
+    const assertion = expect(promise).rejects.toMatchObject({ cause: expect.objectContaining({ message: "down" }) });
     await Promise.resolve();
     // still only the first attempt before the backoff window elapses
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -122,10 +131,55 @@ describe("timedFetch — retry policy", () => {
       return Promise.reject(new Error("nope"));
     });
     const promise = timedFetch("https://api.test/get", {}, { retries: 1 });
-    const assertion = expect(promise).rejects.toThrow("nope");
+    const assertion = expect(promise).rejects.toMatchObject({ cause: expect.objectContaining({ message: "nope" }) });
     await vi.advanceTimersByTimeAsync(1000);
     await assertion;
     expect(signals).toHaveLength(2);
     expect(signals[0]).not.toBe(signals[1]);
+  });
+});
+
+/** Await a call that must reject, and hand back the error, typed. */
+async function rejection(promise: Promise<unknown>): Promise<NetworkError> {
+  return promise.then(
+    () => { throw new Error("expected the call to reject, but it resolved"); },
+    (error: unknown) => error as NetworkError
+  );
+}
+
+describe("F239 — a transport failure never shows the platform's exception", () => {
+  // The sign-in screen renders `error.message`. For an API error that message
+  // is the server's own, written for a person; for a transport failure it used
+  // to be whatever Android threw, and a real sign-in read
+  // "fetch failed: java.net.UnknownServiceException: CLEARTEXT communication
+  // to 127.0.0.1 not permitted by network security policy".
+  const PLATFORM_NOISE = /java\.|Exception|CLEARTEXT|ECONN|at .*\(/;
+
+  it("the Android cleartext exception becomes a sentence, and is kept as the cause", async () => {
+    const android = new TypeError(
+      "fetch failed: java.net.UnknownServiceException: CLEARTEXT communication to 127.0.0.1 not permitted by network security policy"
+    );
+    fetchMock.mockRejectedValue(android);
+    const error = await rejection(timedFetch("http://127.0.0.1:8787/api/v1/auth/request", { method: "POST" }));
+    expect(error.message).toBe("Could not reach Zeno. Check your connection and try again.");
+    expect(error.message).not.toMatch(PLATFORM_NOISE);
+    expect(error.cause).toBe(android);
+  });
+
+  it("our own timeout says so, and says it without jargon", async () => {
+    fetchMock.mockImplementation((_u: string, init: RequestInit) =>
+      new Promise((_resolve, reject) => init.signal?.addEventListener("abort", () => reject(Object.assign(new Error("Aborted"), { name: "AbortError" }))))
+    );
+    const promise = timedFetch("https://api.test/slow", {}, { timeoutMs: 100 });
+    const assertion = expect(promise).rejects.toMatchObject({ name: "NetworkError", timedOut: true, message: "That took too long. Check your connection and try again." });
+    await vi.advanceTimersByTimeAsync(200);
+    await assertion;
+  });
+
+  it("a caller that aborts with its OWN signal is not called a timeout", async () => {
+    const caller = new AbortController();
+    fetchMock.mockRejectedValue(Object.assign(new Error("Aborted"), { name: "AbortError" }));
+    const error = await rejection(timedFetch("https://api.test/x", { signal: caller.signal }));
+    expect(error.timedOut).toBe(false);
   });
 });

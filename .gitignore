@@ -49,3 +49,6 @@ reports/mutation-pr/
 # committed: they double the binary weight of the repo and churn on every
 # deliberate UI change. The normal-size set IS committed, as the daily guard.
 apps/mobile/visual-baselines/phone@*/
+
+# scripts/app-visual.mjs working directory (captures and FAILED-* diffs)
+.visual-shots/

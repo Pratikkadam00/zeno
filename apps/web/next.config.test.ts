@@ -164,7 +164,7 @@ describe("www -> apex redirect", () => {
   it("defaults to the production domain when no site URL is configured", async () => {
     const config = await load({ NODE_ENV: "production" });
     const [rule] = await config.redirects!();
-    expect(rule).toMatchObject({ has: [{ type: "host", value: "www.zeno.app" }], destination: "https://zeno.app/:path*" });
+    expect(rule).toMatchObject({ has: [{ type: "host", value: "www.zenoapp.in" }], destination: "https://zenoapp.in/:path*" });
   });
 });
 

@@ -7,7 +7,12 @@
  * creeps back in. NEXT_PUBLIC_ so server and client agree, and SSG bakes the
  * value into all 500+ pages at build time.
  */
-const DEFAULT_SITE_URL = "https://zeno.app";
+// F238: this was "https://zeno.app" — a domain Zeno does not own and which is
+// parked for sale. Deploys set NEXT_PUBLIC_SITE_URL, so the live site was
+// always right, but any build that forgot it stamped a stranger's address into
+// every canonical, sitemap entry and share card. The default is now the real
+// domain, so a missing variable degrades to correct, not to someone else's.
+const DEFAULT_SITE_URL = "https://zenoapp.in";
 
 function normalizeOrigin(raw: string): string {
   const trimmed = raw.trim().replace(/\/+$/, "");
@@ -23,13 +28,13 @@ function normalizeOrigin(raw: string): string {
   return trimmed;
 }
 
-/** Absolute origin, no trailing slash. e.g. "https://zeno.app" */
+/** Absolute origin, no trailing slash. e.g. "https://zenoapp.in" */
 export const SITE_URL: string = normalizeOrigin(process.env.NEXT_PUBLIC_SITE_URL || DEFAULT_SITE_URL);
 
-/** Bare host, for prose and addresses. e.g. "zeno.app" */
+/** Bare host, for prose and addresses. e.g. "zenoapp.in" */
 export const SITE_HOST: string = new URL(SITE_URL).host;
 
-/** Absolute URL for a site path. siteUrl("/cancel/netflix") → "https://zeno.app/cancel/netflix" */
+/** Absolute URL for a site path. siteUrl("/cancel/netflix") → "https://zenoapp.in/cancel/netflix" */
 export function siteUrl(path = "/"): string {
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }

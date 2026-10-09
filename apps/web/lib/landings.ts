@@ -1,4 +1,5 @@
 import { isGeneralCancelGuide, serviceRecords, services } from "@zeno/service-catalog";
+import { SITE_HOST } from "@/lib/site";
 
 // The four landing pages (SEO.md §5.1 "money pages", §6.1 formula): one buying
 // intent each. Copy lives here as data so the visible FAQ and its FAQPage schema
@@ -201,7 +202,7 @@ export const LANDINGS: Landing[] = [
       },
       {
         q: "Do I need the app to use the guides?",
-        a: `No. All ${SERVICE_COUNT} guides are free to read at zenoapp.in/cancel.`
+        a: `No. All ${SERVICE_COUNT} guides are free to read at ${SITE_HOST}/cancel.`
       }
     ],
     related: [

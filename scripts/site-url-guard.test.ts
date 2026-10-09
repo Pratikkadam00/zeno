@@ -10,7 +10,11 @@ import { describe, expect, it } from "vitest";
  * occurrence of the host.
  */
 const ROOT = join(__dirname, "..");
-const HOST = /zeno\.app/i;
+// F238: the host the guard polices is the REAL one. It used to be
+// /zeno\.app/i — a domain Zeno does not own, which both sources of truth
+// carried as their default until a build without the env var pointed the app's
+// Terms link at a parked sale page.
+const HOST = /zenoapp\.in/i;
 
 const SOURCE_ROOTS = [
   "apps/web/app",
@@ -67,7 +71,7 @@ describe("site-url guard: the domain lives in two files", () => {
   it("the two sources of truth still exist and still carry the default", () => {
     for (const rel of ["apps/web/lib/site.ts", "apps/mobile/src/config/site.ts"]) {
       const text = readFileSync(join(ROOT, rel), "utf8");
-      expect(text, rel).toMatch(/DEFAULT_SITE_URL = "https:\/\/zeno\.app"/);
+      expect(text, rel).toMatch(/DEFAULT_SITE_URL = "https:\/\/zenoapp\.in"/);
     }
   });
 
