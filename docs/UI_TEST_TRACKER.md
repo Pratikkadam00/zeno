@@ -85,15 +85,14 @@ updated (the waitlist now has its own per-IP limiter). U6 is next.
 
 | ID | Check | Status | Evidence / finding |
 |---|---|---|---|
-| U1.1 | State matrix written: 27 screens × empty / one / many / loading / offline / error | ⬜ | |
-| U1.2 | Empty states | ⬜ | |
-| U1.3 | The free cap (10) and many (200) | ⬜ | |
-| U1.4 | Loading and offline | ⬜ | |
-| U1.5 | Server errors | ⬜ | |
-| U1.6 | Long names and amounts; emoji; non-Latin text | ⬜ | |
-| U1.7 | All six currencies' formatting | ⬜ | |
-| U1.8 | Every screen: no placeholder text, "undefined" or raw keys; locale formats; every link where its label says | ⬜ | |
-
+| U1.1 | State matrix written: 27 screens × empty / one / many / loading / offline / error | ✅ | matrix written: 27 screens × 7 state columns, every cell naming the test that proves it (or why it cannot exist) · [UI_STATE_MATRIX.md] |
+| U1.2 | Empty states | ✅ | every screen with a list has its empty state driven by its own file (ledger, subs, calendar, insights, budget, recap, coach, family, notifications, add, wrapped, spend-twin, widgets); re-swept empty in state-matrix.rntest.tsx · [UI_STATE_MATRIX.md] |
+| U1.3 | The free cap (10) and many (200) | ✅ | cap 10: ten rows and their total on the ledger; 200: counted and totalled in full ($20,100.00) and drawn a window at a time — the list virtualises, the drawn rows are the first in order and every one is real; the ledger and insights also render 200 with no broken value · state-matrix.rntest.tsx |
+| U1.4 | Loading and offline | ✅ | loading driven per screen: sign-in in flight, the scan's progress and Cancel, the AI 'asking', a purchase in flight, a household request, the cold-start detail form, the ledger's count-up. Offline is covered as the failure of each thing fetched (rate, plan, AI, household, deletion); aeroplane mode itself belongs to U5 · [UI_STATE_MATRIX.md] |
+| U1.5 | Server errors | ✅ | server errors per screen: a failed plan check falls back to free, a failed scan is shown not swallowed, the store's own messages on sign-in and purchase, a household that cannot be reached keeps you in it, a deletion the server will not confirm touches nothing locally · [UI_STATE_MATRIX.md] |
+| U1.6 | Long names and amounts; emoji; non-Latin text | ✅ | eight names, one of each kind (120 chars, a long unbroken word, emoji, Japanese, Hindi, Arabic, combining marks, mixed) on the ledger, subscription page, calendar, insights and Wrapped; plus $999,999.99 and $0.01, which stay money · state-matrix.rntest.tsx |
+| U1.7 | All six currencies' formatting | ✅ | format.behavior.test.ts pins the six symbols and separators; state-matrix.rntest.tsx renders a row in USD, EUR, GBP, INR, CAD and AUD and asserts each reads exactly as the formatter writes it, so no screen invents a sign |
+| U1.8 | Every screen: no placeholder text, "undefined" or raw keys; locale formats; every link where its label says | ✅ | state-matrix.rntest.tsx sweeps 14 screens (every one that runs on the standard fakes) empty and populated over text nodes AND accessibility labels/hints/values/placeholders, failing on undefined, NaN, a stringified object, a broken amount, an unfilled slot, lorem ipsum, TODO/FIXME/TBD, 'placeholder', a raw dotted key or a bare null; a control proves the sweep catches a planted value. The other 13 screens assert their copy in their own files · [UI_STATE_MATRIX.md] |
 ## U3 · Accessibility, measured
 
 | ID | Check | Status | Evidence / finding |
@@ -167,6 +166,16 @@ updated (the waitlist now has its own per-IP limiter). U6 is next.
 | F232 | The biometric prompt accepted the phone's screen-lock credential as its fallback ('Use PIN'): anyone who knew the phone's PIN opened Zeno without Zeno's PIN and around the app's lockout | Medium (a second lock that was not one) | Fixed 2026-10-09: `disableDeviceFallback: true`, the button reads 'Use Zeno PIN'; pinned in `app-lock.test.ts`, seen on the device |
 
 ## Log
+
+**2026-10-09 (U1):** the state matrix written (`UI_STATE_MATRIX.md`): 27 screens × 7 state
+columns, each cell naming the test that proves it or why the state cannot exist. The
+per-screen files already held most cells; three had nothing anywhere and now do, in
+`__screens__/state-matrix.rntest.tsx` (43 tests): 200 subscriptions (counted and totalled
+in full, drawn a window at a time — the list virtualises), hostile names (120 characters,
+emoji, Japanese, Hindi, Arabic, combining marks) across five screens, and a placeholder
+sweep over 14 screens that fails on "undefined", NaN, a stringified object, an unfilled
+slot or a raw key. No finding: nothing broken was found, and the one surprise (200 rows
+drawing 12) is the list doing its job.
 
 **2026-10-09 (U6):** 23 of 24 rows carry a verdict on emulator-5554 (Android 16) with
 today's release builds: 19 pass, 1 owner (U6.1, F229 → D22), 1 blocked by R9 (U6.17),
