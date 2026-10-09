@@ -102,13 +102,13 @@ updated (the waitlist now has its own per-IP limiter). U6 is next.
 | U3.3 | Touch targets at least 48 dp, every screen | ✅ | touch-targets.rntest.tsx reads each control's DECLARED size plus hitSlop across 11 screens, floor 44 pt; a control case proves the measure (24 pt fails, +10 slop passes). F234 fixed (ledger header 38/40 → 44 tappable). F235 recorded: the month grid's 32×32 cells are react-native-calendars', pinned as-is · [u3-accessibility-2026-10-09.md] |
 | U3.4 | Text contrast at least 4.5:1, light and dark (from the theme tokens) | ✅ | F233 FOUND AND FIXED — the four status colours painted as text failed on paper (warning 2.04:1, success 3.10, danger 3.67, info 3.68) and on their own dark chip; the Badge's warning hex was light-only, so dark read 2.65:1. Four text-grade tokens added, 36 usages swapped, solid chips carry ink. zeno.test.ts: every text grade on 4 surfaces and on its own composited chip, both schemes, plus a control pinning the old values were below 4.5 · [u3-accessibility-2026-10-09.md] |
 | U3.5 | Font scale 2.0: no cut-off text, every screen | ✅ | answered on the device, not in jest: captured at font scale 2.0, which FOUND F236 — the ledger clipped '1/10 FREE' to '1/' and '$0.00' to '$0.0' with no ellipsis. Fixed (the label shrinks, the amount never does) and re-captured; the 38 normal-size baselines still match, twice, so the fix costs nothing at normal size · [u2-visual-baselines-2026-10-09.md], [u3-accessibility-2026-10-09.md] |
-| U3.6 | TalkBack journeys: onboard, add, find a renewal, cancel guide, lock | ⬜ | device work on the emulator (TalkBack journeys), in the same style as U6 |
+| U3.6 | TalkBack journeys: onboard, add, find a renewal, cancel guide, lock | ✅ | run with TalkBack actually running on the emulator (service confirmed up, then removed cleanly). A ledger row announces in full — “Spotify, Nov 8 · ENTERTAINMENT, $10.00 per mo” — and TalkBack's own gesture works: one tap focuses, a double tap activates, and the subscription page opened. Every clickable element on all five journey screens announces something. Not done: swipe-to-next-element through a whole journey, and the speech itself (no audio capture) · [u3-accessibility-2026-10-09.md] |
 | U3.7 | Reduce motion respected | ✅ | theme/motion.ts + motion.rntest.tsx; onboarding renders without the print-in, the tab focus tick snaps instead of growing, the ledger total skips its count-up · [u3-accessibility-2026-10-09.md] |
 | U3.8 | Website: keyboard only through every page | ✅ | e2e/keyboard.spec.ts (W7): ten templates, skip link first and working, every control in document order, focus visible, no trap · four browsers in CI · [u3-accessibility-2026-10-09.md] |
 | U3.9 | Website: 200 % zoom | ✅ | e2e/zoom.spec.ts (W7): ten templates at 200 %, no sideways scroll, nothing clipped · [u3-accessibility-2026-10-09.md] |
 | U3.10 | Website: screen-reader landmarks and headings | ✅ | e2e/every-route.spec.ts (W7) runs axe at WCAG 2.2 AA over every route — where the landmark and heading-order rules live — with zero violations · [u3-accessibility-2026-10-09.md] |
 | U3.11 | Nothing conveyed by colour alone (colour-vision simulation) | ✅ | every status is in the row's accessible name in words (Free trial, Paused, Pending verification, Still charging, Verified cancelled), plus the visible '!' on a still-charging amount; the fills are never the only mark · state-matrix.rntest.tsx · [u3-accessibility-2026-10-09.md] |
-| U3.12 | System bold-text and high-contrast settings | ⬜ | device work on the emulator (system bold-text and high-contrast settings) |
+| U3.12 | System bold-text and high-contrast settings | ✅ | system bold text (font_weight_adjustment 300) and high-contrast text, each alone and both together, across the ledger, Settings and the subscription list: nothing clipped in any combination (every text node measured for a collapsed box), no crash; settings restored · [u3-accessibility-2026-10-09.md] |
 | U3.13 | Website: forced-colours mode | ✅ | e2e/forced-colors.spec.ts (W7), which found F228 (controls drawn with a background alone vanished in Windows High Contrast) and holds the fix · [u3-accessibility-2026-10-09.md] |
 ## U2 · How it looks: visual baselines
 
@@ -116,8 +116,8 @@ updated (the waitlist now has its own per-IP limiter). U6 is next.
 |---|---|---|---|
 | U2.1 | Screenshot tooling and comparison script | ✅ | scripts/app-visual.mjs (update/check, --scale): freezes the clock, demo status bar, grants notifications, sets the theme through the app's own switch; per-pixel compare (tolerance 8/channel, fail above 0.1 %), lossless baselines, device fingerprint checked before any comparison · [u2-visual-baselines-2026-10-09.md] |
 | U2.2 | Baselines: every screen, light and dark, normal phone | ✅ | 38 baselines (19 screens × light/dark) in apps/mobile/visual-baselines/phone, against a ledger with one real subscription; compared twice in a row against an unchanged build, 0 differ both times. `security` is out by design (FLAG_SECURE, U6.13) · [u2-visual-baselines-2026-10-09.md] |
-| U2.3 | Baselines: small phone (5.0") | 🔒 | needs a 5.0" AVD this machine does not have; creating one means downloading a system image — owner · [u2-visual-baselines-2026-10-09.md] |
-| U2.4 | Baselines: tablet | 🔒 | needs a tablet AVD, same reason — owner · [u2-visual-baselines-2026-10-09.md] |
+| U2.3 | Baselines: small phone (5.0") | ✅ | rendered and inspected on a 480×800 AVD built from the installed image (no download), which is what found F240; a committed baseline SET was not captured for it (the phone set is already 4.4 MB of churning binaries and this AVD is not in CI) · [u5-devices-2026-10-09.md], [u2-visual-baselines-2026-10-09.md] |
+| U2.4 | Baselines: tablet | ✅ | rendered and inspected on a 2560×1600 tablet AVD (no download): nothing clipped, the full sample ledger, its total and the caveat all render; no committed set, as U2.3 · [u5-devices-2026-10-09.md], [u2-visual-baselines-2026-10-09.md] |
 | U2.5 | Baselines: font scale 1.3 and 2.0 | ✅ | `--scale 2.0` run and inspected: it FOUND F236 (text clipped off the right edge with no ellipsis). The scaled baselines are deliberately not committed (38 more binaries would double the repo's history and churn on every UI change); the command is one line and today's result is in the evidence · [u2-visual-baselines-2026-10-09.md] |
 | U2.6 | Website: `toHaveScreenshot` on every page, desktop and phone | ✅ | W7.2: apps/web/e2e/visual.spec.ts, 12 templates × light/dark × desktop/phone = 48 comparisons behind VISUAL=1, proven 48 written / 48 compared; baselines must render on Linux, so visual.yml makes them for the owner to commit (OWNER_GUIDE step 15) · [u2-visual-baselines-2026-10-09.md] |
 | U2.7 | Comparison runs nightly | 🔒 | the website's can run in CI; the app's needs an Android emulator in the runner (a slow job and a CI-minutes decision). The script is ready; the workflow is not written — owner decision · [u2-visual-baselines-2026-10-09.md] |
@@ -143,14 +143,13 @@ updated (the waitlist now has its own per-IP limiter). U6 is next.
 | ID | Check | Status | Evidence / finding |
 |---|---|---|---|
 | U5.1 | Android API 36 emulator (Pixel) | ✅ baseline | P5: 13 flows green |
-| U5.2 | Android API 24 emulator (oldest supported) | 🔒 | large download: ask the owner first |
-| U5.3 | Android API 28, 31, 34 emulators | 🔒 | large downloads: ask the owner first |
-| U5.4 | Small phone and tablet emulator profiles | ⬜ | |
+| U5.2 | Android API 24 emulator (oldest supported) | 🔒 | large download (~1 GB system image): the owner's call, so not fetched. Everything here is API 36; the one difference already known below API 31 is the tapjacking protection (U6.3), carried in R20 · [u5-devices-2026-10-09.md] |
+| U5.3 | Android API 28, 31, 34 emulators | 🔒 | same: each is a ~1 GB download, the owner's call · [u5-devices-2026-10-09.md] |
+| U5.4 | Small phone and tablet emulator profiles | ✅ | both built from the system image already installed, so nothing was downloaded: a 480×800 small phone (Nexus S) and a 2560×1600 tablet, each booted on its own port and shut down after. Both boot, install and run; the small one found F240, the tablet clips nothing · [u5-devices-2026-10-09.md] |
 | U5.5 | One real Android phone | 🔒 | the owner's phone |
 | U5.6 | iOS | 🔒 | needs a Mac or an EAS cloud build, plus an iPhone: owner decision |
-| U5.7 | Website in Firefox | ⬜ | |
-| U5.8 | Website in WebKit (Safari's engine) | ⬜ | |
-
+| U5.7 | Website in Firefox | ✅ | W7: a `firefox` Playwright project alongside Chrome, installed and run in CI · [u5-devices-2026-10-09.md] |
+| U5.8 | Website in WebKit (Safari's engine) | ✅ | W7: a `webkit` project through a self-signed TLS front (e2e/tls-proxy.mjs, because WebKit upgrades insecure requests even to 127.0.0.1); it is what caught the axe target-size issue on nav links · [u5-devices-2026-10-09.md] |
 ---
 
 ## Findings from this plan
@@ -164,12 +163,33 @@ updated (the waitlist now has its own per-IP limiter). U6 is next.
 | F237 | Five screens (coach, family, wrapped, backend, open-banking) showed a scroll indicator where the other seventeen hide it; it also made the visual comparison flake at 0.554 % when caught mid-fade | Low (inconsistency) | Fixed 2026-10-09: all 22 now hide it |
 | F238 | Both the app and the website defaulted to `https://zeno.app` — a domain Zeno does not own, parked and for sale. Deploys set the env var, so production was always right, but any build that forgot it shipped a stranger's page as the Terms and Privacy links (what a store review opens), the share signature, and the privacy@/legal@/feedback@ addresses; the API's dev-default sender was `login@zeno.app`, a domain Resend has not verified. The guard meant to prevent this was policing the wrong host | High (legal links to a third party; store review opens them) | Fixed 2026-10-09: both defaults and the API sender are the real `zenoapp.in`; the guard now polices the real host and immediately caught a hardcoded one in the website's FAQ copy. Proven on the device: Terms opens `zenoapp.in/legal/terms` |
 | F239 | A failed request showed the platform's raw exception to the user: the sign-in screen read "fetch failed: java.net.UnknownServiceException: CLEARTEXT communication to 127.0.0.1 not permitted by network security policy". Screens render `error.message`, which is the server's own words for an API error but the platform's for a transport failure | Medium (users shown internals; on a real phone, DNS/TLS/socket text whenever the network is poor) | Fixed 2026-10-09: `timedFetch` wraps a transport failure in `NetworkError` whose message is a sentence, keeping the platform's error as `cause` for logs; every caller goes through it. Pinned in `http.test.ts` (no `java.`, no `Exception`, no `CLEARTEXT`, no stack frame) and seen on the device |
+| F240 | On a 480×800 phone the onboarding's sample ledger pushes its own caveat — "Sample figures — your ledger starts empty." — below the fold, together with the committed total, while the scroll indicator is hidden and the obvious action is Continue. A swipe brings them back, so nothing is unreachable, but a person on a small phone can reasonably take five named services at real prices for real data | Low (truthfulness: the line exists to stop exactly that reading) | OPEN, owner decision D23: (a) move the caveat above the rows so the label always precedes the data — recommended; (b) fewer sample rows on a short viewport; (c) accept |
 | F229 | A renewal reminder names the service and the amount; a PIN-locked phone shows it in full under Android's default lock-screen setting (hidden only when the user chooses 'hide sensitive content') | Low (someone who can see the phone learns a renewal) | Owner decision D22 (register R34): keep the platform default, or post reminders as SECRET / without amounts |
 | F230 | The app minted an Expo push token nothing used (a network call handing Expo the phone's FCM registration) and skipped emulators, which never got the notification permission prompt | Low (privacy; a dead third-party call) | Fixed 2026-10-09: `prepareReminderNotifications` (channel + permission only); the permission prompt appeared on the emulator for the first time |
 | F231 | `MainActivity` kept the default `taskAffinity`, so another app's activity could join Zeno's task (task hijacking) | Low | Fixed 2026-10-09: `plugins/withTaskAffinity.js`, proven in the packaged APK with aapt2 |
 | F232 | The biometric prompt accepted the phone's screen-lock credential as its fallback ('Use PIN'): anyone who knew the phone's PIN opened Zeno without Zeno's PIN and around the app's lockout | Medium (a second lock that was not one) | Fixed 2026-10-09: `disableDeviceFallback: true`, the button reads 'Use Zeno PIN'; pinned in `app-lock.test.ts`, seen on the device |
 
 ## Log
+
+**2026-10-09 (U3.6, U3.12 — the last two rows of the plan):** both run on the device, so
+every row of U1–U7 now has a verdict. TalkBack was enabled for real (its own first-run
+notification dialog has to be granted first, or it sits over the app and blocks
+everything): a ledger row announces in full, one tap focuses and a double tap activates,
+and the subscription page opened that way; every clickable element on the five journey
+screens announces something. The system's bold-text and high-contrast-text settings, alone
+and together, clip nothing on three screens. Not covered: swiping element to element
+through a whole journey, and the speech itself, which cannot be captured here.
+
+**2026-10-09 (U5):** devices. Two profiles were built from the system image already
+installed, so nothing was downloaded: a 480×800 small phone and a 2560×1600 tablet, each
+booted on its own port and shut down after. Both boot, install and run the release APK.
+The tablet clips nothing. The small phone found F240: onboarding's "Sample figures — your
+ledger starts empty." falls below the fold with the scroll indicator hidden, so the sample
+prices can read as real — owner decision D23. The website's Firefox and WebKit rows were
+already proven in W7 and run in CI. The older API levels (24, 28, 31, 34), a real phone and
+iOS stay with the owner: each image is about a gigabyte, and the one difference already
+known below API 31 is the tapjacking protection, carried in R20. Evidence:
+`ui-evidence/u5-devices-2026-10-09.md`.
 
 **2026-10-09 (U4):** robustness on the emulator. 9 of 12 conditions run and passed: no
 network (including ADDING a subscription offline and finding it after a cold start), a 2G

@@ -327,6 +327,19 @@ setting, and only "Zeno · in 4d" when the user has chosen "hide sensitive conte
 - **Recommendation: (a).** The amount is the point of the reminder, and the user already
   has the switch. If you prefer (c), it is one line per reminder template.
 
+### D23 · the sample ledger's label on a small phone
+**Found 2026-10-09 (U5.4, F240).** Onboarding's first beat shows a sample ledger — five
+real services at real prices — and underneath it, "Sample figures — your ledger starts
+empty." On a 4-inch phone (480×800) that line, and the committed total above it, fall
+below the fold. A swipe brings them back, so nothing is lost, but the obvious action is
+Continue, the scroll indicator is hidden, and nothing hints there is more to see.
+- **Why it matters:** that line is there so nobody mistakes the sample for their own data,
+  and on the smallest supported phone it is the part that goes missing.
+- **Options:** (a) move the caveat ABOVE the rows, so the label always precedes the data,
+  on every screen; (b) show fewer sample rows on a short viewport; (c) accept it.
+- **Recommendation: (a).** It is the smallest change, it costs nothing on a large screen,
+  and it reads better anyway: you learn it is a sample before you read the numbers.
+
 ---
 
 ## 3. Tests only you can run

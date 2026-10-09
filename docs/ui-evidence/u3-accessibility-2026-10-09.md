@@ -125,12 +125,40 @@ Proven in the W7 pass and running in CI on four browsers:
 - **U3.13 forced colours** — `e2e/forced-colors.spec.ts`, which found F228 (controls drawn
   with a background alone vanished in Windows High Contrast) and now holds the fix.
 
+## U3.6 · TalkBack (added later the same day)
+
+Run with TalkBack genuinely running, not simulated: the service was enabled and confirmed
+up in `dumpsys accessibility`, then removed cleanly afterwards (a `put ""` is rejected;
+`settings delete` is the way). One trap first — enabling TalkBack raises **its own**
+first-run notification dialog, which sits over the app and blocks every gesture until the
+Accessibility Suite is granted `POST_NOTIFICATIONS`. That is what a first attempt hit.
+
+With it running:
+
+- A ledger row announces in full: **“Spotify, Nov 8 · ENTERTAINMENT, $10.00 per mo”** — the
+  name, the date, the category and the amount, in one phrase.
+- **TalkBack's own gesture works**: a single tap only focuses, a double tap activates. Done
+  that way, the Spotify row opened its subscription page. This is the part a jest test
+  cannot answer, because it is the platform intercepting touches.
+- Every clickable element on all five journey screens (ledger, subscription page, the
+  ledger list, add, security) announces something — checked against the *compressed*
+  accessibility tree, which is what a screen reader actually consumes.
+- No crash, and the lock screen's PIN field is properly labelled under TalkBack.
+
+**Not covered:** swiping element to element through an entire journey, and the speech
+itself, which this setup cannot capture (there is no audio out of the emulator here). What
+is proven is that the journeys are reachable and correctly announced, not how they sound.
+
+## U3.12 · the system's bold-text and high-contrast settings
+
+`font_weight_adjustment 300` (the system's "bold text") and `high_text_contrast_enabled 1`,
+each alone and both together, over the ledger, Settings and the subscription list. Every
+text node's box was measured; a collapsed box is text the screen cannot show. **Nothing
+clipped in any of the four combinations**, and no crash. Both settings restored afterwards.
+
 ## Still open
 
-- **U3.5 font scale 2.0.** Not done. RN's test renderer does not lay text out, so clipping
-  at a doubled font scale cannot be measured here; it belongs with the device pass.
-- **U3.6 TalkBack journeys** (onboard, add, find a renewal, cancel guide, lock) and
-  **U3.12 the system bold-text and high-contrast settings**: both are device work on the
-  emulator, in the same style as U6.
 - **U3.1** stays as its P5 baseline (the `.maestro/a11y-audit.sh` audit of 17 screens);
   U3.2 above is the part that extends it.
+- **U3.5** was answered later the same day by the device run in U2
+  (`ui-evidence/u2-visual-baselines-2026-10-09.md`), which found and fixed F236.
