@@ -203,11 +203,42 @@ events, and a web page for deletion requests (needs step 5's email).
 5. **Later, when you want it:** the waitlist confirmation email (D21) and the lawyer's read of the
    Terms and privacy policy (step 13), which are now full documents rather than drafts.
 
+### Step 16 · The app, tested end to end (added 2026-10-09, from `docs/UI_TEST_PLAN.md`)
+
+The UI and attack-resistance plan is finished: 100 checks, every one with a verdict, in
+`docs/UI_TEST_TRACKER.md`, with the evidence per area in `docs/ui-evidence/`. Nine findings
+were fixed along the way. Three need you, and none is urgent:
+
+1. **D22 · what a reminder shows on a locked phone** (2 min read). "Netflix renews in 3 days
+   · $15.49" appears in full on a locked phone under Android's default; only someone who has
+   turned on "hide sensitive content" sees it redacted. That is how most banking apps behave
+   and the amount is the point of the reminder, so my recommendation is to keep it. Say "D22
+   keep" or "D22 drop the amount".
+2. **D23 · the sample ledger on a small phone** (2 min read). Onboarding shows five real
+   services at real prices with "Sample figures — your ledger starts empty." underneath. On a
+   4-inch phone that line falls below the fold, so the sample can read as real data. I
+   recommend moving the line above the rows. Say "D23 yes" and I will do it.
+3. **A global cap on the AI bill** (R33). The coach is limited to 10 requests a minute per
+   account, but nothing caps the total across accounts, so the only brake is the spend limit
+   on the Groq or Anthropic account itself. Either set one there (quickest) or tell me to add
+   a daily cap in the API.
+
+**Things only a real device or a download can answer**, whenever you have a spare hour:
+
+- The older Android versions (API 24, 28, 31, 34). Each system image is about a gigabyte, so
+  I have not downloaded any; everything so far is API 36. Say the word and I will fetch them
+  one at a time. The one difference already known below Android 12 is that the system does
+  not block tapjacking overlays (R20).
+- **Your own phone**: biometrics on a real sensor, and face unlock, which an emulator cannot
+  really test.
+- **iOS** (R22): needs a Mac or an EAS cloud build, plus an iPhone. I will not start a cloud
+  build without you asking.
+
 ### Step 14 · Your decisions
 
-`docs/OWNER_ACTIONS.md` section 2 has 17 decisions (D1 to D17), each with my
-recommendation and why. Reply with the number and "yes", or the option you prefer, for
-example "D7 yes, D12 yes, D17: yes to all". Most are five-minute reads.
+`docs/OWNER_ACTIONS.md` section 2 has the decisions D1 to D23, each with my recommendation
+and why. Reply with the number and "yes", or the option you prefer, for example "D7 yes,
+D12 yes, D17: yes to all". Most are five-minute reads.
 
 ---
 
