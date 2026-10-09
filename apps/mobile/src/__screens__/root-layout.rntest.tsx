@@ -135,7 +135,7 @@ beforeEach(() => {
   for (const m of Object.values(rc)) m.mockClear();
   rc.checkStatus!.mockResolvedValue("pro");
   fakeNotificationsModule.rescheduleAllNotifications.mockClear();
-  fakeNotificationsModule.registerForPushNotifications.mockClear();
+  fakeNotificationsModule.prepareReminderNotifications.mockClear();
   appStateHandler = null;
   // The app starts in the foreground, as a device reports it (jest-expo mocks
   // currentState as a function, not the string a device gives).
@@ -322,7 +322,7 @@ describe("root layout, the app lock", () => {
     expect(screen.getByText("LOCK OVERLAY")).toBeTruthy();
     expect(appHidden()).toBe(true);
     expect(useLockStore.getState().hydrate).toHaveBeenCalledTimes(1);
-    expect(fakeNotificationsModule.registerForPushNotifications).toHaveBeenCalledTimes(1);
+    expect(fakeNotificationsModule.prepareReminderNotifications).toHaveBeenCalledTimes(1);
   });
 
   it("locked: covered; loaded and unlocked: the app, readable", async () => {
@@ -354,7 +354,7 @@ describe("root layout, the app lock", () => {
     await mount();
     expect(screen.queryByText("LOCK OVERLAY")).toBeNull();
     expect(useLockStore.getState().hydrate).not.toHaveBeenCalled();
-    expect(fakeNotificationsModule.registerForPushNotifications).not.toHaveBeenCalled();
+    expect(fakeNotificationsModule.prepareReminderNotifications).not.toHaveBeenCalled();
   });
 });
 

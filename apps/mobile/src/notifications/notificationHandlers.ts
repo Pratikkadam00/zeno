@@ -4,9 +4,10 @@ import type { EventSubscription } from "expo-notifications";
 
 let responseSubscription: EventSubscription | null = null;
 
-// A tap's `data` is untrusted input (§8: validate deep-link params). Besides the
-// app's own local reminders, a remote push to this device's Expo push token can
-// carry any data, and the id is spliced into a route path. Only ids shaped like
+// A tap's `data` is untrusted input (§8: validate deep-link params). Today every
+// notification is the app's own local reminder (no push token exists since
+// 2026-10-09, U6.23), but a notification's data is read as if it came from
+// anywhere, and the id is spliced into a route path. Only ids shaped like
 // the app's own (`sub_<uuid>`, seed ids such as `sub_netflix`) are accepted, so
 // "/", "?", "#", "%" or ".." can never re-target the navigation. The 128 cap
 // matches the shared schema's entity-id bound.

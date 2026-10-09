@@ -281,6 +281,16 @@ describe("biometrics", () => {
     expect(await canUseBiometrics()).toBe(true);
   });
 
+  it("unlockWithBiometrics never accepts the phone's screen-lock credential: the only way past the prompt is Zeno's own PIN (U6.20, F232)", async () => {
+    biometricMocks.authenticateAsync.mockClear();
+    await unlockWithBiometrics();
+    expect(biometricMocks.authenticateAsync).toHaveBeenCalledWith({
+      promptMessage: "Unlock Zeno",
+      cancelLabel: "Use Zeno PIN",
+      disableDeviceFallback: true
+    });
+  });
+
   it("unlockWithBiometrics reflects the native prompt's success flag", async () => {
     biometricMocks.authenticateAsync.mockResolvedValueOnce({ success: true });
     expect(await unlockWithBiometrics()).toBe(true);

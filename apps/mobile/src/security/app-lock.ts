@@ -56,8 +56,13 @@ export async function canUseBiometrics(): Promise<boolean> {
 export async function unlockWithBiometrics(): Promise<boolean> {
   const result = await LocalAuthentication.authenticateAsync({
     promptMessage: "Unlock Zeno",
-    fallbackLabel: "Use PIN",
-    disableDeviceFallback: false
+    // The only way past this prompt is Zeno's own PIN, on the overlay behind
+    // it. Until 2026-10-09 the phone's screen-lock credential was accepted as
+    // the fallback (disableDeviceFallback: false, labelled "Use PIN"): anyone
+    // who knew the phone's PIN opened Zeno without Zeno's PIN, and around the
+    // app's own lockout (U6.20, F232).
+    cancelLabel: "Use Zeno PIN",
+    disableDeviceFallback: true
   });
   return result.success;
 }

@@ -315,13 +315,25 @@ Writing real steps (D5) is what actually earns rankings for those 470 names.
   joins the list only when the link is opened. It costs a template and one route, and it
   is what a mailing law expects (consent that can be shown per address).
 
+### D22 · what a renewal reminder shows on a locked phone
+**Found 2026-10-09 (U6.1, F229).** A reminder reads "Netflix renews in 3 days · $15.49 ·
+Tap to cancel now". On a PIN-locked phone Android shows that in full under its default
+setting, and only "Zeno · in 4d" when the user has chosen "hide sensitive content".
+- **Today:** the platform default. Every reminder is marked private, so the user's own
+  lock-screen setting decides. This is how Google Calendar and most banking apps behave.
+- **Options:** (a) keep it; (b) post reminders as SECRET: nothing on the lock screen at
+  all, the reminder waits for the unlock; (c) keep the name and drop the amount from the
+  text ("Netflix renews in 3 days").
+- **Recommendation: (a).** The amount is the point of the reminder, and the user already
+  has the switch. If you prefer (c), it is one line per reminder template.
+
 ---
 
 ## 3. Tests only you can run
 
 | What | Why it needs you |
 |---|---|
-| **Biometric unlock** on a real phone (fingerprint or face) | The emulator has none enrolled; the PIN path is verified, biometrics never were. |
+| **Biometric unlock** on a real phone (fingerprint or face) | Verified on the emulator with an enrolled fingerprint on 2026-10-09 (U6.19: wrong finger refused, right finger opens, removed → PIN only). A real sensor and face unlock remain yours to try. |
 | **iOS**, any of it | No iOS build has ever been run. |
 | **Google sign-in and Gmail connect** after F11 | Needs the real client IDs. |
 | **A real Pro purchase** in store sandbox (RevenueCat), and the trial after F134 | Needs your store accounts and keys. |

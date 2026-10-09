@@ -2,27 +2,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Second suite for notificationService.ts (notificationService.test.ts pins the
 // pure date/quiet-hours rules and the reconcile diff). This one drives the
-// native side effects: push registration across platform / device / permission
+// native side effects: reminder preparation across platform / permission
 // states, per-subscription scheduling, cancellation, and the reconcile against
 // a FAKE pending queue that behaves like the OS's (schedule adds, cancel
 // removes, get returns what is pending). Native modules are the only mocks.
 
 const platform = vi.hoisted(() => ({ OS: "ios" as string }));
-const device = vi.hoisted(() => ({ isDevice: true }));
-const constants = vi.hoisted(() => ({
-  expoConfig: {} as { extra?: { eas?: { projectId?: string } } } | null,
-  easConfig: {} as { projectId?: string } | null
-}));
 
 vi.mock("react-native", () => ({ Platform: platform }));
-vi.mock("expo-device", () => ({
-  get isDevice() {
-    return device.isDevice;
-  }
-}));
-vi.mock("expo-constants", () => ({ default: constants }));
 vi.mock("expo-notifications", () => ({
   AndroidImportance: { HIGH: 4 },
+  AndroidNotificationVisibility: { PRIVATE: 2 },
   SchedulableTriggerInputTypes: { DATE: "date" },
   setNotificationChannelAsync: vi.fn(),
   getPermissionsAsync: vi.fn(),
@@ -101,14 +91,10 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(NOW);
   platform.OS = "ios";
-  device.isDevice = true;
-  constants.expoConfig = { extra: { eas: { projectId: "proj-from-app-config" } } };
-  constants.easConfig = {};
   for (const fn of Object.values(N)) fn.mockReset();
   setItem.mockReset();
   N.getPermissions.mockResolvedValue(GRANTED);
   N.requestPermissions.mockResolvedValue(GRANTED);
-  N.getToken.mockResolvedValue({ type: "expo", data: "ExponentPushToken[test-device]" });
   useFakeQueue();
 });
 
@@ -122,7 +108,6 @@ describe("notificationsAllowed — whether the phone will show reminders (F192)"
     expect(await service.notificationsAllowed()).toBe(true);
     N.getPermissions.mockResolvedValueOnce(DENIED);
     expect(await service.notificationsAllowed()).toBe(false);
-    device.isDevice = false;
     N.getPermissions.mockResolvedValueOnce(UNDETERMINED);
     expect(await service.notificationsAllowed()).toBe(false);
   });
@@ -135,101 +120,81 @@ describe("notificationsAllowed — whether the phone will show reminders (F192)"
   });
 });
 
-describe("registerForPushNotifications — platform and device gates", () => {
+describe("prepareReminderNotifications — platform gates", () => {
   it("web: unsupported, and touches no native API", async () => {
     platform.OS = "web";
-    await expect(service.registerForPushNotifications()).resolves.toEqual({ ok: false, reason: "unsupported" });
+    await expect(service.prepareReminderNotifications()).resolves.toEqual({ ok: false, reason: "unsupported" });
     expect(N.getPermissions).not.toHaveBeenCalled();
     expect(N.setChannel).not.toHaveBeenCalled();
   });
 
-  it("simulator/emulator: unsupported, and never prompts for permission", async () => {
-    device.isDevice = false;
-    await expect(service.registerForPushNotifications()).resolves.toEqual({ ok: false, reason: "unsupported" });
-    expect(N.getPermissions).not.toHaveBeenCalled();
-    expect(N.requestPermissions).not.toHaveBeenCalled();
-  });
-
-  it("android: creates the renewal channel (brand accent) before asking for permission", async () => {
+  it("android: creates the renewal channel (brand accent, private on the lock screen) before asking for permission", async () => {
     platform.OS = "android";
     const order: string[] = [];
     N.setChannel.mockImplementation(async () => { order.push("channel"); return null; });
     N.getPermissions.mockImplementation(async () => { order.push("permissions"); return GRANTED; });
-    await service.registerForPushNotifications();
+    await service.prepareReminderNotifications();
     expect(N.setChannel).toHaveBeenCalledWith("zeno-renewals", {
       name: "Renewal reminders",
       importance: 4,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: themes.millennial.primary
+      lightColor: themes.millennial.primary,
+      lockscreenVisibility: 2
     });
     expect(order).toEqual(["channel", "permissions"]);
   });
 
   it("ios: no Android channel is created", async () => {
-    await service.registerForPushNotifications();
+    await service.prepareReminderNotifications();
     expect(N.setChannel).not.toHaveBeenCalled();
   });
 });
 
-describe("registerForPushNotifications — permission", () => {
-  it("already granted: no prompt; fetches the token for the app's EAS project and keeps it device-only", async () => {
-    await expect(service.registerForPushNotifications()).resolves.toEqual({ ok: true, token: "ExponentPushToken[test-device]" });
+describe("prepareReminderNotifications — permission, and no push token (U6.23)", () => {
+  // Reminders are local notifications; until 2026-10-09 this path also minted
+  // an Expo push token (a network call that hands Expo the phone's FCM
+  // registration) and kept it in the keychain, for nothing that used it. It
+  // also skipped emulators, which never got asked for POST_NOTIFICATIONS.
+
+  it("already granted: no prompt, ok, and no push token is fetched or stored", async () => {
+    await expect(service.prepareReminderNotifications()).resolves.toEqual({ ok: true });
     expect(N.requestPermissions).not.toHaveBeenCalled();
-    expect(N.getToken).toHaveBeenCalledWith({ projectId: "proj-from-app-config" });
-    expect(setItem).toHaveBeenCalledWith("zeno_push_token", "ExponentPushToken[test-device]", {
-      keychainAccessible: "WHEN_UNLOCKED_THIS_DEVICE_ONLY"
-    });
+    expect(N.getToken).not.toHaveBeenCalled();
+    expect(setItem).not.toHaveBeenCalled();
   });
 
   it("not yet decided: prompts once, and proceeds when the user allows", async () => {
     N.getPermissions.mockResolvedValue(UNDETERMINED);
     N.requestPermissions.mockResolvedValue(GRANTED);
-    await expect(service.registerForPushNotifications()).resolves.toMatchObject({ ok: true });
+    await expect(service.prepareReminderNotifications()).resolves.toEqual({ ok: true });
     expect(N.requestPermissions).toHaveBeenCalledTimes(1);
   });
 
-  it("denied: reports 'denied', never fetches or stores a token", async () => {
+  it("denied: reports 'denied'", async () => {
     N.getPermissions.mockResolvedValue(DENIED);
     N.requestPermissions.mockResolvedValue(DENIED);
-    await expect(service.registerForPushNotifications()).resolves.toEqual({ ok: false, reason: "denied" });
-    expect(N.getToken).not.toHaveBeenCalled();
-    expect(setItem).not.toHaveBeenCalled();
+    await expect(service.prepareReminderNotifications()).resolves.toEqual({ ok: false, reason: "denied" });
   });
 
-  it("falls back to easConfig.projectId, then to no project id at all", async () => {
-    constants.expoConfig = null;
-    constants.easConfig = { projectId: "proj-from-eas" };
-    await service.registerForPushNotifications();
-    expect(N.getToken).toHaveBeenLastCalledWith({ projectId: "proj-from-eas" });
-
-    constants.easConfig = null;
-    await service.registerForPushNotifications();
-    expect(N.getToken).toHaveBeenLastCalledWith(undefined);
+  it("an emulator is prepared exactly like a device (the channel, then the permission)", async () => {
+    platform.OS = "android";
+    await expect(service.prepareReminderNotifications()).resolves.toEqual({ ok: true });
+    expect(N.setChannel).toHaveBeenCalledTimes(1);
+    expect(N.getPermissions).toHaveBeenCalledTimes(1);
   });
 });
 
-describe("registerForPushNotifications — resolves, never rejects (its caller fire-and-forgets it)", () => {
-  // app/_layout.tsx calls `void registerForPushNotifications()` with no catch,
+describe("prepareReminderNotifications — resolves, never rejects (its caller fire-and-forgets it)", () => {
+  // app/_layout.tsx calls `void prepareReminderNotifications()` with no catch,
   // so any rejection here is an unhandled promise rejection (§7).
-
-  it("the Expo token fetch failing (it is a network call) → 'failed', nothing stored", async () => {
-    N.getToken.mockRejectedValue(new Error("Error encountered while fetching Expo token, expected an OK response, received: 503"));
-    await expect(service.registerForPushNotifications()).resolves.toEqual({ ok: false, reason: "failed" });
-    expect(setItem).not.toHaveBeenCalled();
-  });
-
-  it("the keychain write failing → 'failed'", async () => {
-    setItem.mockRejectedValue(new Error("keychain unavailable"));
-    await expect(service.registerForPushNotifications()).resolves.toEqual({ ok: false, reason: "failed" });
-  });
 
   it("the permission API or the Android channel call failing → 'failed'", async () => {
     N.getPermissions.mockRejectedValueOnce(new Error("permissions module unavailable"));
-    await expect(service.registerForPushNotifications()).resolves.toEqual({ ok: false, reason: "failed" });
+    await expect(service.prepareReminderNotifications()).resolves.toEqual({ ok: false, reason: "failed" });
 
     platform.OS = "android";
     N.setChannel.mockRejectedValueOnce(new Error("channel"));
-    await expect(service.registerForPushNotifications()).resolves.toEqual({ ok: false, reason: "failed" });
+    await expect(service.prepareReminderNotifications()).resolves.toEqual({ ok: false, reason: "failed" });
   });
 });
 

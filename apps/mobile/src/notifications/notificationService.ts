@@ -1,6 +1,4 @@
 import type { BillingCycle } from "@zeno/shared";
-import Constants from "expo-constants";
-import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
@@ -97,15 +95,20 @@ export async function notificationsAllowed(): Promise<boolean | null> {
   }
 }
 
-export type PushRegistrationResult =
-  | { ok: true; token: string }
+export type ReminderPreparationResult =
+  | { ok: true }
   | { ok: false; reason: "unsupported" | "denied" | "failed" };
 
-// Resolves, never rejects: app/_layout.tsx fire-and-forgets this with `void`, so
-// a rejection would be an unhandled one (§7). Failure is routine here, not
-// exceptional: fetching the Expo token is a network call to Expo's service.
-export async function registerForPushNotifications(): Promise<PushRegistrationResult> {
-  if (Platform.OS === "web" || !Device.isDevice) {
+// Every reminder is a LOCAL notification scheduled on the phone (scheduleTrigger
+// below); no server sends anything, so no push token is asked for. Until
+// 2026-10-09 this function also minted an Expo push token, which handed the
+// phone's FCM registration to Expo's push service for a token nothing used
+// (U6.23). What the reminders need is the Android channel and the user's
+// POST_NOTIFICATIONS permission, on an emulator as much as on a device.
+// Resolves, never rejects: app/_layout.tsx fire-and-forgets this with `void`,
+// so a rejection would be an unhandled one (§7).
+export async function prepareReminderNotifications(): Promise<ReminderPreparationResult> {
+  if (Platform.OS === "web") {
     return { ok: false, reason: "unsupported" };
   }
 
@@ -115,7 +118,12 @@ export async function registerForPushNotifications(): Promise<PushRegistrationRe
         name: "Renewal reminders",
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: notificationAccentColor
+        lightColor: notificationAccentColor,
+        // A reminder names the service and the amount. On a locked phone the
+        // system then shows only that Zeno has a notification; the text waits
+        // for the unlock (U6.1). The user can relax this per channel in the
+        // phone's settings; the app's default is the private one.
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE
       });
     }
 
@@ -124,23 +132,14 @@ export async function registerForPushNotifications(): Promise<PushRegistrationRe
       ? existingPermissions
       : await Notifications.requestPermissionsAsync();
 
-    if (!finalPermissions.granted) {
-      return { ok: false, reason: "denied" };
-    }
-
-    const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-    const tokenResult = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
-    const token = tokenResult.data;
-    await SecureStore.setItemAsync(pushTokenKey, token, {
-      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY
-    });
-
-    return { ok: true, token };
+    return finalPermissions.granted ? { ok: true } : { ok: false, reason: "denied" };
   } catch {
     return { ok: false, reason: "failed" };
   }
 }
 
+// Builds before 2026-10-09 saved an Expo push token under this key; erasing the
+// device (erase-device.ts) still removes it from those installs.
 export async function clearStoredPushToken(): Promise<void> {
   await SecureStore.deleteItemAsync(pushTokenKey);
 }

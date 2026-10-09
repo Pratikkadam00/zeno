@@ -55,8 +55,9 @@ flowchart LR
 
 **What the app does NOT do** (read in `apps/mobile/src`, 2026-10-05): it never calls
 `/sync/push` or `/sync/pull`, `/public-api/keys`, `/business/summary` or the
-open-banking intents; the push token is kept in the keychain and never sent to the API
-(`notificationService.ts`); email content goes from Google to the phone only, never to
+open-banking intents; no push token is requested at all, reminders being local notifications
+(`notificationService.ts`, since 2026-10-09; before, an Expo token was minted and kept
+in the keychain, never sent to the API); email content goes from Google to the phone only, never to
 our API (`emailScanner.ts`).
 
 ## 2. What is worth protecting

@@ -23,7 +23,7 @@ Re-check this file whenever a screen or SDK starts sending something new.
 
 **Never leaves the phone:** the subscription list itself (SQLCipher on the device), notes,
 budgets, the PIN, Gmail message content (read on the phone, never sent to our API), the
-Gmail token, the push token, CSV files imported. The exchange-rate table is downloaded
+Gmail token, CSV files imported (no push token exists: reminders are local notifications). The exchange-rate table is downloaded
 from a public rate service without sending anything about the user. Bank connection
 (Plaid) is not in the release build (`app/open-banking.tsx` shows it only in development).
 

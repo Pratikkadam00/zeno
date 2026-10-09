@@ -133,7 +133,10 @@ const config: ExpoConfig = {
         imageWidth: 220,
         backgroundColor: "#0A0F2C"
       }
-    ]
+    ],
+    // U6.5: an empty taskAffinity on the main activity, so no other app's
+    // activity can slot itself into Zeno's task (see the plugin's comment).
+    "./plugins/withTaskAffinity"
   ],
   experiments: {
     typedRoutes: true

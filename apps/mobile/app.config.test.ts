@@ -176,3 +176,39 @@ describe("P3.1 release hardening (F92, F93)", () => {
     });
   });
 });
+
+describe("U6.5: the main activity's task affinity (task hijacking)", () => {
+  it("the plugin is configured", async () => {
+    const config = await load();
+    expect(config.plugins).toContain("./plugins/withTaskAffinity");
+  });
+
+  it("sets an EMPTY taskAffinity on .MainActivity and leaves other activities alone", async () => {
+    const { setMainActivityTaskAffinity } = await import("./plugins/withTaskAffinity");
+    const manifest = {
+      manifest: {
+        application: [
+          {
+            $: { "android:name": ".MainApplication" },
+            activity: [
+              { $: { "android:name": ".MainActivity", "android:launchMode": "singleTask" } },
+              { $: { "android:name": "com.other.Activity" } }
+            ]
+          }
+        ]
+      }
+    };
+    const out = setMainActivityTaskAffinity(manifest);
+    expect(out.manifest.application[0]!.activity[0]!.$).toEqual({
+      "android:name": ".MainActivity",
+      "android:launchMode": "singleTask",
+      "android:taskAffinity": ""
+    });
+    expect(out.manifest.application[0]!.activity[1]!.$).toEqual({ "android:name": "com.other.Activity" });
+  });
+
+  it("fails the build loudly if the main activity is not where the template puts it", async () => {
+    const { setMainActivityTaskAffinity } = await import("./plugins/withTaskAffinity");
+    expect(() => setMainActivityTaskAffinity({ manifest: { application: [{ $: {}, activity: [] }] } })).toThrow(/MainActivity/);
+  });
+});

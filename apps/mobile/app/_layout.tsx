@@ -12,7 +12,7 @@ import { checkStatus, identifyRevenueCatUser, initRevenueCat, resetRevenueCatUse
 import { BudgetStoreProvider } from "../src/data/budget-store";
 import { SubscriptionStoreProvider, useSubscriptionStore } from "../src/data/subscription-store";
 import { cleanupNotificationHandlers, setupNotificationHandlers } from "../src/notifications/notificationHandlers";
-import { registerForPushNotifications, rescheduleAllNotifications } from "../src/notifications/notificationService";
+import { prepareReminderNotifications, rescheduleAllNotifications } from "../src/notifications/notificationService";
 import { reminderSubscriptions } from "../src/notifications/reminder-subscriptions";
 import { refreshWidgetSnapshot } from "../src/widgets/widgetBridge";
 import { useZenoFonts } from "../src/theme/fonts";
@@ -204,7 +204,7 @@ function RootStack() {
     if (!canUseApp) {
       return;
     }
-    void registerForPushNotifications();
+    void prepareReminderNotifications();
     // Load the app-lock config; if a PIN is set this engages the lock overlay.
     void hydrateLock();
   }, [canUseApp, hydrateLock]);

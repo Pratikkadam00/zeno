@@ -48,7 +48,7 @@ export const fakeNotificationsModule = {
   scheduleRenewalNotificationsWithPreferences: jest.fn(async () => {}),
   scheduleRenewalNotifications: jest.fn(async () => {}),
   rescheduleAllNotifications: jest.fn(),
-  registerForPushNotifications: jest.fn(async () => ({ status: "granted" })),
+  prepareReminderNotifications: jest.fn(async () => ({ status: "granted" })),
   // F192: the phone allows Zeno's notifications unless a test says otherwise.
   notificationsAllowed: jest.fn(async (): Promise<boolean | null> => true),
   clearStoredPushToken: jest.fn(async () => {}),

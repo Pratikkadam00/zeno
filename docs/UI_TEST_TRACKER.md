@@ -26,31 +26,30 @@ updated (the waitlist now has its own per-IP limiter). U6 is next.
 
 | ID | Check | Status | Evidence / finding |
 |---|---|---|---|
-| U6.1 | Reminder notifications on a **locked** screen: name and amount hidden? | ⬜ | |
-| U6.2 | Notification channel visibility (`dumpsys notification`) | ⬜ | |
-| U6.3 | Tapjacking: touches refused when another app draws over the PIN screen | ⬜ | |
-| U6.4 | Tapjacking: same over the paywall and sign-in | ⬜ | |
-| U6.5 | Task hijacking: `taskAffinity` / `launchMode` in the built manifest, tried with a test app | ⬜ | |
-| U6.6 | Keyboard learning: amount, email, notes and PIN inputs' attributes | ⬜ | |
-| U6.7 | Autofill and password managers on the PIN field | ⬜ | |
-| U6.8 | Clipboard after each copy action (share code, export) | ⬜ | |
-| U6.9 | logcat over every flow of a release build: no email, token or amount | ⬜ | |
-| U6.10 | Deep links from another app: every route with hostile parameters | ⬜ | |
-| U6.11 | Release build: no developer menu, no stack trace on screen after a forced error | ⬜ | |
-| U6.12 | Recents thumbnail shows the lock | ✅ baseline | P3.4 (device, 2026-10-02); re-run ⬜ |
-| U6.13 | Lock and PIN screens can't be captured | ✅ baseline | P3.7 (0 % non-black); re-run ⬜ |
-| U6.14 | Locked app hidden from accessibility services | ✅ baseline | F105 (device); re-run ⬜ |
-| U6.15 | Data on the phone unreadable without the key (rooted read) | ✅ baseline | F16 (device); re-run ⬜ |
-| U6.16 | No backup of app data | ✅ baseline | P3.9 (`allowBackup=false`); re-run ⬜ |
-| U6.17 | Gmail: consent screen asks read-only only; disconnect revokes at Google | ⬜ | |
-| U6.18 | Gmail: token never in logs, exports or crash reports; a scan reads only what the UI says | ⬜ | |
-| U6.19 | Biometrics: wrong finger refused; disabled or re-enrolled falls back to the PIN, never opens | ⬜ | |
-| U6.20 | Biometrics: the lockout applies to biometric attempts too | ⬜ | |
-| U6.21 | Exported CSV: location, readers, cache after sharing, contents | ⬜ | |
+| U6.1 | Reminder notifications on a **locked** screen: name and amount hidden? | 🔒 | owner D22 (F229, R34) · a PIN-locked phone shows 'Netflix renews in 3 days · $15.49' under Android's default; 'Zeno · in 4d' under 'hide sensitive content' (captures 10/11, 18/19) · [u6-device-security-2026-10-09.md] |
+| U6.2 | Notification channel visibility (`dumpsys notification`) | ✅ | pass · channel zeno-renewals, importance HIGH; reminders post on it vis=PRIVATE; before F230 the emulator had no channel and no permission prompt · [u6-device-security-2026-10-09.md] |
+| U6.3 | Tapjacking: touches refused when another app draws over the PIN screen | ✅ | closed by the platform · Android 12+ blocks untrusted-overlay touches (device at the platform default); no filterTouchesWhenObscured; Android 7–11 residual added to R20; no overlay test app built · [u6-device-security-2026-10-09.md] |
+| U6.4 | Tapjacking: same over the paywall and sign-in | ✅ | same as U6.3 · [u6-device-security-2026-10-09.md] |
+| U6.5 | Task hijacking: `taskAffinity` / `launchMode` in the built manifest, tried with a test app | ✅ | fixed F231 · plugins/withTaskAffinity.js sets taskAffinity="" on .MainActivity; aapt2 on the packaged APK: taskAffinity="", launchMode=singleTask; app.config.test.ts pins it; no hijack test app built · [u6-device-security-2026-10-09.md] |
+| U6.6 | Keyboard learning: amount, email, notes and PIN inputs' attributes | ✅ | pass · PIN: secure, number-pad, autofill off, autocomplete off, no context menu; email: autoCorrect off, autoCapitalize none; amounts: numeric keyboards; notes learnable by design · [u6-device-security-2026-10-09.md] |
+| U6.7 | Autofill and password managers on the PIN field | ✅ | pass · importantForAutofill="no", autoComplete="off", textContentType="oneTimeCode" on the overlay and the setup fields · [u6-device-security-2026-10-09.md] |
+| U6.8 | Clipboard after each copy action (share code, export) | ✅ | pass (static) · the Clipboard API is imported nowhere; share code is displayed only; export goes to the share sheet · [u6-device-security-2026-10-09.md] |
+| U6.9 | logcat over every flow of a release build: no email, token or amount | ✅ | pass · 14,243 + 2,662 logcat lines over every flow incl. a typed email: 0 hits for the address, name, amount, PIN, Bearer, tokens · [u6-device-security-2026-10-09.md] |
+| U6.10 | Deep links from another app: every route with hostile parameters | ✅ | pass · 24 routes + 12 hostile payloads: Status ok, focus kept, no FATAL/JS error; hidden routes show placeholders · [u6-device-security-2026-10-09.md] |
+| U6.11 | Release build: no developer menu, no stack trace on screen after a forced error | ✅ | pass · menu key: nothing (16-menu-key.png); error boundary shows no error text; package flags carry no DEBUGGABLE · [u6-device-security-2026-10-09.md] |
+| U6.12 | Recents thumbnail shows the lock | ✅ | re-run pass · recents card solid black (15-recents.png) · [u6-device-security-2026-10-09.md] |
+| U6.13 | Lock and PIN screens can't be captured | ✅ | re-run pass · window fl=SECURE; lock overlay capture 0.00 % non-black · [u6-device-security-2026-10-09.md] |
+| U6.14 | Locked app hidden from accessibility services | ✅ | re-run pass · compressed tree while locked: 'Zeno is locked', PIN field, Sign out only · [u6-device-security-2026-10-09.md] |
+| U6.15 | Data on the phone unreadable without the key (rooted read) | ✅ | re-run pass (root) · zeno.db/WAL random bytes, no name/amount/PIN in any private file; the one plaintext copy is the widget snapshot F161/R18 (unchanged) · [u6-device-security-2026-10-09.md] |
+| U6.16 | No backup of app data | ✅ | re-run pass · allowBackup="false" in the packaged manifest; ALLOW_BACKUP absent from the package flags · [u6-device-security-2026-10-09.md] |
+| U6.17 | Gmail: consent screen asks read-only only; disconnect revokes at Google | ⏸ | device part blocked by R9 (Google redirect) · static: one scope gmail.readonly; disconnect revokes at Google and forgets the token even if the revoke fails · [u6-device-security-2026-10-09.md] |
+| U6.18 | Gmail: token never in logs, exports or crash reports; a scan reads only what the UI says | ✅ | static pass · token in SecureStore (sensitive, WHEN_UNLOCKED_THIS_DEVICE_ONLY); redact.ts strips Bearer and token= params; export carries no token; scan lists billing messages only; device part re-opens with R9 · [u6-device-security-2026-10-09.md] |
+| U6.19 | Biometrics: wrong finger refused; disabled or re-enrolled falls back to the PIN, never opens | ✅ | fixed F232 and proven · prompt appears; wrong finger refused; enrolled finger opens; fingerprint removed → PIN only; the fallback is now 'Use Zeno PIN', never the phone's credential · [u6-device-security-2026-10-09.md] |
+| U6.20 | Biometrics: the lockout applies to biometric attempts too | ✅ | closed by lock-store.test.ts:221 (refused during a lockout without prompting); device run partial: automation counted 3 wrong PINs, not 10; prompt returns after the window · [u6-device-security-2026-10-09.md] |
+| U6.21 | Exported CSV: location, readers, cache after sharing, contents | ✅ | pass · CSV shared as text, no file written (cache listed before/after); 8 columns incl. notes (F127) · [u6-device-security-2026-10-09.md] |
 | U6.22 | Purchases: shown price equals the store's; a cancelled purchase changes nothing; restore is per account; no "free" without a trial | 🔒 | needs a Play licensed test account |
-| U6.23 | Push token never leaves the phone | ⬜ | |
-| U6.24 | Privacy promises on screen traced to the code that makes them true | ⬜ | |
-
+| U6.23 | Push token never leaves the phone | ✅ | fixed F230 · no push token is requested any more (reminders are local); before: minted and kept, never sent to the API; THREAT_MODEL and STORE_DATA_SAFETY updated · [u6-device-security-2026-10-09.md] |
+| U6.24 | Privacy promises on screen traced to the code that makes them true | ✅ | pass · each promise traced to code (table in the evidence); F114 and F45 stay the owner's wording items (R10) · [u6-device-security-2026-10-09.md] |
 ## U7 · The attacker's view: can anything be lost?
 
 | ID | What could be lost · attack | Status | Evidence / finding |
@@ -162,9 +161,18 @@ updated (the waitlist now has its own per-IP limiter). U6 is next.
 
 | # | Finding | Severity | Status |
 |---|---|---|---|
-| — | none yet | | |
+| F229 | A renewal reminder names the service and the amount; a PIN-locked phone shows it in full under Android's default lock-screen setting (hidden only when the user chooses 'hide sensitive content') | Low (someone who can see the phone learns a renewal) | Owner decision D22 (register R34): keep the platform default, or post reminders as SECRET / without amounts |
+| F230 | The app minted an Expo push token nothing used (a network call handing Expo the phone's FCM registration) and skipped emulators, which never got the notification permission prompt | Low (privacy; a dead third-party call) | Fixed 2026-10-09: `prepareReminderNotifications` (channel + permission only); the permission prompt appeared on the emulator for the first time |
+| F231 | `MainActivity` kept the default `taskAffinity`, so another app's activity could join Zeno's task (task hijacking) | Low | Fixed 2026-10-09: `plugins/withTaskAffinity.js`, proven in the packaged APK with aapt2 |
+| F232 | The biometric prompt accepted the phone's screen-lock credential as its fallback ('Use PIN'): anyone who knew the phone's PIN opened Zeno without Zeno's PIN and around the app's lockout | Medium (a second lock that was not one) | Fixed 2026-10-09: `disableDeviceFallback: true`, the button reads 'Use Zeno PIN'; pinned in `app-lock.test.ts`, seen on the device |
 
 ## Log
+
+**2026-10-09 (U6):** 23 of 24 rows carry a verdict on emulator-5554 (Android 16) with
+today's release builds: 19 pass, 1 owner (U6.1, F229 → D22), 1 blocked by R9 (U6.17),
+1 owner (U6.22). Four findings, three fixed today (F230 push token, F231 task affinity,
+F232 device-credential fallback) and one for the owner (F229). Evidence:
+`ui-evidence/u6-device-security-2026-10-09.md`.
 
 **2026-10-08:** reviewed against the app's features; 18 checks added that the first
 version missed: the Gmail connection (the most sensitive thing the app touches),

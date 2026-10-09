@@ -108,7 +108,7 @@ block the soft launch.
 | R17 | Production refuses to boot on fewer bad settings than planned (others only warn) | Low | owner (D8) | 2026-10-19 | F90 |
 | R18 | The widget snapshot is written in plaintext before any widget ships | Low | owner (D10) | 2026-10-19 | F161 |
 | R19 | Two photo-read permissions from `expo-screen-capture` | Low | owner (D3) | before the Play release | F104 |
-| R20 | MASVS: no certificate pinning, no forced updates, minimum Android 7.0, no root or tamper detection | Low (for this app) | owner (D12) | 2026-10-19 | MASVS checklist |
+| R20 | MASVS: no certificate pinning, no forced updates, minimum Android 7.0 (so no OS block on tapjacking overlays below Android 12, U6.3), no root or tamper detection | Low (for this app) | owner (D12) | 2026-10-19 | MASVS checklist; U6.3 (2026-10-09) |
 | R21 | Household share code is about 40 bits (typed by people; rate-limited, 5 members at most) | Low | owner (accept, D17) | 2026-10-19 | ASVS V11.5.1 |
 | R22 | iOS never run on a device | Medium | owner (device or cloud build), then me | before the iOS release | §4 |
 | R23 | Sentry and RevenueCat untested in a release build; a native crash skips the event scrubber (breadcrumbs are scrubbed) | Medium | owner (keys), then me | when the keys exist | `OPEN_ITEMS.md` |
@@ -122,6 +122,7 @@ block the soft launch.
 | R31 | **Closed 2026-10-06:** each successful change to a user's data (household created, joined, spend changed, left; account deleted) is now an audit event naming the account and household (`apps/api/src/security-events.test.ts`). Was: no audit trail of what users change | Low | me | 2026-10-06 (closed) | Threat model §6 |
 | R32 | The contact addresses receive no mail (no MX record): data requests to `privacy@` and vulnerability reports to `security@` bounce | High (legal) | owner | 2026-10-12, before launch | F223 |
 | R33 | No global or daily AI spend cap: the coach is limited 10/min **per account**, but N accounts can drive up to N×600 coach calls/hour (each ≤1024 output tokens). The only global brake is provider-side spend limits on the Groq/Anthropic account plus the rate-limited account-creation path | Medium (cost) | owner (set a global daily token/spend cap, or accept with provider-side caps) | 2026-10-31 (P8) | U7.10 (2026-10-09) |
+| R34 | A renewal reminder's service name and amount show in full on a PIN-locked phone under Android's default lock-screen setting (hidden only when the user picks 'hide sensitive content'); the app can only go further by posting reminders as SECRET or without amounts | Low | owner (D22) | 2026-10-19 | F229; U6.1 (2026-10-09) |
 
 ## 6. Next
 
