@@ -32,6 +32,7 @@ const PUBLIC_ROUTES = new Set<string>([
   "/api/v1/open-banking/providers",
   // Webhook authenticates with its own shared secret (verifyWebhookAuth), not the user JWT.
   "/api/v1/billing/webhook",
+  "/api/v1/billing/razorpay/webhook",
   // Aggregate, anonymous funnel events — local-only (no-account) users must be
   // able to post these too, and the handler deliberately never reads userId
   // even when a caller is authenticated (see app.ts).

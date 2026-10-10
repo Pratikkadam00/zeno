@@ -19,7 +19,7 @@ const RUNS = Number(process.env.FUZZ_RUNS ?? 200);
 const SEED = process.env.FAST_CHECK_SEED === undefined ? undefined : Number(process.env.FAST_CHECK_SEED);
 const BODY_LIMIT = 1_048_576; // app.ts: Fastify({ bodyLimit: 1_048_576 }) — a larger valid body is a 413
 const ENV_KEYS = [
-  "RESEND_API_KEY", "REVENUECAT_SECRET_KEY", "REVENUECAT_WEBHOOK_AUTH", "PLAID_CLIENT_ID", "PLAID_SECRET", "COACH_PROVIDER",
+  "RESEND_API_KEY", "REVENUECAT_SECRET_KEY", "REVENUECAT_WEBHOOK_AUTH", "RAZORPAY_WEBHOOK_SECRET", "PLAID_CLIENT_ID", "PLAID_SECRET", "COACH_PROVIDER",
   "ANTHROPIC_API_KEY", "GROQ_API_KEY", "APPLE_CLIENT_ID", "APPLE_BUNDLE_ID", "GOOGLE_EXPO_CLIENT_ID", "GOOGLE_WEB_CLIENT_ID",
   "GOOGLE_IOS_CLIENT_ID", "GOOGLE_ANDROID_CLIENT_ID", "ALLOW_UNVERIFIED_OAUTH_TOKENS", "DEMO_LOGIN_PASSWORD", "DATABASE_URL", "MONITORING_WEBHOOK_URL"
 ] as const;
@@ -105,6 +105,7 @@ beforeEach(() => {
     delete process.env[key];
   }
   process.env.REVENUECAT_WEBHOOK_AUTH = "hook-secret";
+  process.env.RAZORPAY_WEBHOOK_SECRET = "razorpay-hook-secret";
 });
 afterEach(() => {
   for (const key of ENV_KEYS) {
@@ -271,6 +272,15 @@ const ROUTES: Record<string, Spec> = {
     rule: "authenticated: 200 (the cached entitlement is dropped; F85)",
     headers: async () => ({ authorization: "Bearer hook-secret" }),
     expect: () => 200
+  },
+  "POST /api/v1/billing/razorpay/webhook": {
+    schemaName: "razorpayWebhookSchema", schema: async () => (await app_()).razorpayWebhookSchema,
+    // The invariant worth fuzzing here is the gate, not the grant: no body the
+    // schema accepts may be acted on without a valid signature over the raw
+    // bytes, and the handler checks that before it reads anything.
+    rule: "a body with no valid signature: 401, whatever it contains",
+    headers: async () => ({ "x-razorpay-signature": "0".repeat(64) }),
+    expect: () => 401
   },
   "POST /api/v1/plaid/exchange": {
     schemaName: "plaidExchangeSchema", schema: async () => (await app_()).plaidExchangeSchema,

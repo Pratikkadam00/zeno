@@ -42,6 +42,7 @@ const LIMITS: Record<string, Limit> = {
   "GET /api/v1/partners": GLOBAL,
   "GET /api/v1/open-banking/providers": GLOBAL,
   "POST /api/v1/billing/webhook": { max: 30, key: "ip" },
+  "POST /api/v1/billing/razorpay/webhook": { max: 60, key: "ip" },
   "POST /api/v1/auth/magic-link": { max: 5, key: "ip" },
   "POST /api/v1/auth/magic-link/request": { max: 5, key: "ip" },
   "POST /api/v1/auth/demo-login": { max: 5, key: "ip" },

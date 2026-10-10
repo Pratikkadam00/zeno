@@ -42,6 +42,8 @@ subscription webhooks) instead.
 **Sign in first, then pay.** The checkout page uses the existing magic-link flow against
 `/api/v1/auth/magic-link`, so the purchase is bound to a verified account id.
 
+**Settled 2026-10-10 (owner):** no post-payment confirmation step either. A buyer who signed in with a magic link is already verified, so asking them to click a second link after paying would be ceremony with no security value — payment completes and Pro is on.
+
 Rejected: "type the email of your Zeno account at checkout". A typo grants Pro to the
 wrong person or to nobody, support cannot tell the two apart, and the grant would have to
 sit pending against an unverified address. Signing in costs the buyer one email and
@@ -125,8 +127,8 @@ be undone by accident months from now.
 | Slice | State |
 |---|---|
 | Signature verification, grant model, two-source resolution (API, unit-tested) | ✅ `apps/api/src/billing-razorpay.ts`, 32 tests |
-| Webhook route + raw-body hook + replay guard | ⬜ |
+| Webhook route + raw-body hook + replay guard | ✅ `POST /api/v1/billing/razorpay/webhook`, 23 tests |
 | Order creation endpoint (needs keys) | ⬜ |
 | Checkout page + scoped CSP (needs prices) | ⬜ |
-| The mobile no-steering guard test | ⬜ |
+| The mobile no-steering guard test | ✅ `scripts/play-steering-guard.test.ts` |
 | End-to-end in Razorpay test mode | ⬜ |

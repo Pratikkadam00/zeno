@@ -5,12 +5,14 @@ import { findServiceBySlug, searchServices, services } from "@zeno/service-catal
 import { createBusinessSummary, createMockOpenBankingAdapter, createPublicApiKeyPreview, demoBusinessWorkspace, fail, listPartnerIntegrations, ok, syncPullSchema, syncPushSchema, type CurrencyCode, type OpenBankingProvider, type PublicApiKey } from "@zeno/shared";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest, type FastifyServerOptions } from "fastify";
 import { pingStorage } from "./storage/pg";
+import { Readable } from "node:stream";
 import Redis from "ioredis";
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { authRoutes, revokeAccessTokensForAccount, revokeAllSessionsForAccount, verifyAccessToken } from "./routes/auth";
 import { createLinkToken, deletePlaidItem, exchangePublicToken, getRecentTransactions, getStoredPlaidItem, plaidConfigured, sandboxPublicToken, storePlaidItem } from "./plaid";
 import { billingConfigured, deleteEntitlementForUser, fetchEntitlement, getCachedEntitlement, verifyWebhookAuth, webhookConfigured } from "./billing";
+import { claimEvent, grantWindow, razorpayWebhookConfigured, recordWebGrant, revokeWebGrantByPayment, verifyRazorpaySignature } from "./billing-razorpay";
 import { deleteUserSyncData, pullChanges, pushChanges, type EncryptedChange } from "./sync";
 import { createHousehold, getHousehold, joinHousehold, removeMember, removeUserFromAllHouseholds, setMemberSpend, type Household } from "./family";
 import { coachConfigured, coachModel, generateCoaching } from "./coach";
@@ -214,6 +216,33 @@ export const revenueCatWebhookSchema = z.object({
 // Real Plaid public tokens are short (well under 200 chars); 512 is a
 // generous cap, bounding the value before it's forwarded verbatim into a
 // server-to-server call to Plaid rather than relying on the 1MB bodyLimit alone.
+// Razorpay signs the body, so unlike RevenueCat's payload (F85) this one is
+// acted on. Only the fields we use are read; the rest passes through, because a
+// value we rejected would make Razorpay retry and then give up, losing a
+// purchase that really happened. `notes` is ours: we set it when creating the
+// order, so accountId and product come from us, not from the buyer.
+export const razorpayWebhookSchema = z.object({
+  event: z.string().min(1).max(64),
+  payload: z.object({
+    payment: z.object({
+      entity: z.object({
+        id: z.string().min(1).max(128),
+        amount: z.number().int().min(0),
+        currency: z.string().min(3).max(8),
+        notes: z.object({
+          accountId: z.string().min(1).max(128).optional(),
+          product: z.enum(["pro_annual", "pro_lifetime", "family_annual"]).optional()
+        }).passthrough().optional()
+      }).passthrough()
+    }).optional(),
+    refund: z.object({
+      entity: z.object({
+        id: z.string().min(1).max(128),
+        payment_id: z.string().min(1).max(128)
+      }).passthrough()
+    }).optional()
+  }).passthrough()
+}).passthrough();
 export const plaidExchangeSchema = z.object({ publicToken: z.string().min(1).max(512) });
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
@@ -714,6 +743,93 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       reply.code(503);
       return fail("SERVICE_UNAVAILABLE", "Could not record the billing event. Please retry.", request.id);
     }
+    return ok({ received: true }, request.id);
+  });
+
+  // Razorpay's webhook for the website's own checkout (P6 / D24). Unlike
+  // RevenueCat's, this one is SIGNED over the body, so the payload can be acted
+  // on rather than merely treated as "re-verify this user" — there is no third
+  // party to re-ask. The signature is over the RAW bytes, which the preParsing
+  // hook below keeps hold of.
+  app.post("/api/v1/billing/razorpay/webhook", {
+    ...limit(60),
+    // Fastify hands the parser a stream; this reads it, stashes the exact bytes
+    // and returns them again so the normal JSON parser still runs. Scoped to
+    // this route: a global content-type parser would change every endpoint.
+    preParsing: async (request, _reply, payload) => {
+      const chunks: Buffer[] = [];
+      // Buffer.from accepts both a Buffer and a string chunk, so there is no
+      // branch here to leave untested.
+      for await (const chunk of payload) chunks.push(Buffer.from(chunk as Buffer | string));
+      const raw = Buffer.concat(chunks);
+      (request as FastifyRequest & { rawBody?: string }).rawBody = raw.toString("utf8");
+      return Readable.from([raw]);
+    }
+  }, async (request, reply) => {
+    if (!razorpayWebhookConfigured()) {
+      reply.code(503);
+      return fail("SERVICE_UNAVAILABLE", "Razorpay webhook is not configured.", request.id);
+    }
+    const rawBody = (request as FastifyRequest & { rawBody?: string }).rawBody;
+    const signature = request.headers["x-razorpay-signature"];
+    if (!verifyRazorpaySignature(rawBody, typeof signature === "string" ? signature : undefined)) {
+      reply.code(401);
+      return fail("UNAUTHORIZED", "Invalid webhook signature.", request.id);
+    }
+    const parsed = parseBody(razorpayWebhookSchema, request.body, request.id);
+    if (!parsed.ok) {
+      reply.code(400);
+      return parsed.error;
+    }
+    const { event, payload } = parsed.data;
+    const payment = payload.payment?.entity;
+    // Razorpay's own event id where it sends one; otherwise the event and the
+    // entity it concerns, which is as unique as a re-delivery of the same event.
+    const headerEventId = request.headers["x-razorpay-event-id"];
+    const eventId = typeof headerEventId === "string" && headerEventId.length > 0
+      ? headerEventId
+      : `${event}:${payment?.id ?? payload.refund?.entity.id ?? "none"}`;
+    if (!claimEvent(eventId)) {
+      // A re-delivery. Acked, deliberately: Razorpay has nothing left to do and
+      // retrying would not change the outcome.
+      return ok({ received: true, duplicate: true }, request.id);
+    }
+
+    if (event === "payment.captured" && payment) {
+      const accountId = payment.notes?.accountId;
+      const product = payment.notes?.product;
+      // A payment that did not come from our own checkout (a Payment Link, say)
+      // carries no account: nothing to grant, and nothing is wrong either.
+      if (!accountId || !product) {
+        return ok({ received: true, granted: false }, request.id);
+      }
+      const { plan, expiresAt } = grantWindow(product, Date.now());
+      const stored = await recordWebGrant(accountId, {
+        product,
+        plan,
+        expiresAt,
+        paymentId: payment.id,
+        amountMinor: payment.amount,
+        currency: payment.currency,
+        grantedAt: new Date().toISOString()
+      });
+      if (!stored) {
+        // Do NOT ack: a retry is the only thing that can still save this
+        // purchase, and Razorpay will retry a non-2xx.
+        reply.code(503);
+        return fail("SERVICE_UNAVAILABLE", "Could not record the purchase. Please retry.", request.id);
+      }
+      return ok({ received: true, granted: true }, request.id);
+    }
+
+    if (event === "refund.processed" && payload.refund) {
+      if (!(await revokeWebGrantByPayment(payload.refund.entity.payment_id))) {
+        reply.code(503);
+        return fail("SERVICE_UNAVAILABLE", "Could not record the refund. Please retry.", request.id);
+      }
+      return ok({ received: true, revoked: true }, request.id);
+    }
+
     return ok({ received: true }, request.id);
   });
 

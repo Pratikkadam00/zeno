@@ -32,10 +32,19 @@ vi.mock("./storage/pg", () => ({
     if (!kv.deleteOk) return false;
     if (namespace === "billing-web") kv.rows.delete(key);
     return true;
+  },
+  kvDeleteByValueField: async (namespace: string, field: string, value: string) => {
+    if (!kv.deleteOk) return false;
+    if (namespace === "billing-web") {
+      for (const [key, row] of kv.rows) {
+        if ((row as Record<string, unknown>)[field] === value) kv.rows.delete(key);
+      }
+    }
+    return true;
   }
 }));
 
-const { clearWebBillingState, getWebGrant, recordWebGrant, revokeWebGrant } =
+const { clearWebBillingState, getWebGrant, recordWebGrant, revokeWebGrant, revokeWebGrantByPayment } =
   await import("./billing-razorpay");
 
 const grant = (over: Record<string, unknown> = {}) => ({
@@ -96,6 +105,37 @@ describe("when the database refuses", () => {
     // would make the two disagree, and a restart would bring the grant back.
     expect(getWebGrant("acct_1")).toEqual(grant());
     expect(kv.rows.has("acct_1")).toBe(true);
+  });
+});
+
+describe("revoking by payment id, which is all a refund gives us", () => {
+  it("removes the grant that payment created, from memory and from the table", async () => {
+    await recordWebGrant("acct_1", grant());
+    expect(await revokeWebGrantByPayment("pay_ABC123")).toBe(true);
+    expect(getWebGrant("acct_1")).toBeUndefined();
+    expect(kv.rows.has("acct_1")).toBe(false);
+  });
+
+  it("leaves a grant from a different payment alone", async () => {
+    await recordWebGrant("acct_1", grant());
+    await recordWebGrant("acct_2", grant({ paymentId: "pay_OTHER" }));
+    await revokeWebGrantByPayment("pay_ABC123");
+    expect(getWebGrant("acct_1")).toBeUndefined();
+    expect(getWebGrant("acct_2")).toBeDefined();
+  });
+
+  it("keeps everything when the database refuses the delete", async () => {
+    await recordWebGrant("acct_1", grant());
+    kv.deleteOk = false;
+    expect(await revokeWebGrantByPayment("pay_ABC123")).toBe(false);
+    // The caller must not ack: memory and the table still agree, and the
+    // refund will be retried.
+    expect(getWebGrant("acct_1")).toEqual(grant());
+    expect(kv.rows.has("acct_1")).toBe(true);
+  });
+
+  it("succeeds for a payment it has no grant for — there is nothing to undo", async () => {
+    expect(await revokeWebGrantByPayment("pay_UNKNOWN")).toBe(true);
   });
 });
 

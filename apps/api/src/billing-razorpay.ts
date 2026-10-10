@@ -1,6 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { BillingPlan, Entitlement } from "./billing";
-import { kvDeleteAwait, kvPersistAwait, registerHydrator, type StoredEntry } from "./storage/pg";
+import { kvDeleteAwait, kvDeleteByValueField, kvPersistAwait, registerHydrator, type StoredEntry } from "./storage/pg";
 
 // Razorpay web checkout (docs/RAZORPAY_WEB_CHECKOUT.md). Pro is also sold on
 // the public website, because Google Play requires Play's billing system for
@@ -72,8 +72,11 @@ export function razorpayWebhookConfigured(): boolean {
  * change Razorpay's retries of earlier events still carry the old signature.
  * Clear it once the retry window has passed.
  */
-export function verifyRazorpaySignature(rawBody: string, signature: string | undefined): boolean {
-  if (!signature) return false;
+export function verifyRazorpaySignature(rawBody: string | undefined, signature: string | undefined): boolean {
+  // Fail closed on either half being absent. The route hands over whatever the
+  // raw-body hook captured, so the "no body" case lives here, where it can be
+  // tested, rather than as an untestable fallback at the call site.
+  if (!signature || rawBody === undefined) return false;
   const secrets = [process.env.RAZORPAY_WEBHOOK_SECRET, process.env.RAZORPAY_WEBHOOK_SECRET_PREVIOUS]
     .filter((value): value is string => Boolean(value && value.length > 0));
   if (secrets.length === 0) return false;
@@ -184,6 +187,22 @@ export function claimEvent(eventId: string, nowMs: number = Date.now()): boolean
     seenEvents.delete(oldest);
   }
   seenEvents.set(eventId, nowMs);
+  return true;
+}
+
+/**
+ * Revoke by payment id, which is what a refund gives us: the refund event names
+ * the payment it reverses, not the account. Small scale, so the in-memory
+ * lookup is a scan; the durable delete goes by the stored field, so a retry
+ * still finds the row after the in-memory copy is gone (the F75 pattern that
+ * kvDeleteByValueField exists for).
+ */
+export async function revokeWebGrantByPayment(paymentId: string): Promise<boolean> {
+  const removed = await kvDeleteByValueField("billing-web", "paymentId", paymentId);
+  if (!removed) return false;
+  for (const [accountId, grant] of grants) {
+    if (grant.paymentId === paymentId) grants.delete(accountId);
+  }
   return true;
 }
 

@@ -84,6 +84,13 @@ describe("verifyRazorpaySignature", () => {
     expect(verifyRazorpaySignature(reserialised, sign(raw))).toBe(false);
   });
 
+  it("refuses when there is no body to verify", () => {
+    // The route passes whatever its raw-body hook captured; nothing captured is
+    // not an empty body that happens to match a signature of "".
+    expect(verifyRazorpaySignature(undefined, sign(""))).toBe(false);
+    expect(verifyRazorpaySignature("", sign(""))).toBe(true);
+  });
+
   it("refuses a missing header, and refuses everything when no secret is set", () => {
     expect(verifyRazorpaySignature(body, undefined)).toBe(false);
     delete process.env.RAZORPAY_WEBHOOK_SECRET;
