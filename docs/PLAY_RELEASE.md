@@ -167,6 +167,8 @@ the next time the app asks.
 **Then I:** put the public key in the build's env, and run the purchase and restore flows
 against Play's test track.
 
+**Razorpay (owner decision, 2026-10-10):** the website will also sell Pro through Razorpay, which Play permits because the purchase happens outside the app. That is a second path to the same entitlement, not a replacement — P6 stays exactly as it is. Design and the keys it needs: `docs/RAZORPAY_WEB_CHECKOUT.md`.
+
 ---
 
 ## P7 · Sentry

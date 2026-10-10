@@ -17,7 +17,9 @@ export type Entitlement = {
   plan: BillingPlan;
   active: boolean;
   expiresAt: string | null;
-  source: "revenuecat" | "cache" | "unconfigured";
+  // "razorpay" is a paid grant from the website's own checkout
+  // (billing-razorpay.ts), which is a receipt rather than a cached answer.
+  source: "revenuecat" | "razorpay" | "cache" | "unconfigured";
 };
 
 const REVENUECAT_API = "https://api.revenuecat.com/v1";

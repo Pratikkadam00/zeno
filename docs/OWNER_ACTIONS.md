@@ -30,6 +30,7 @@ same items, ordered P1–P15 by what unblocks what, with the hard date on P10.
 | F3 | Make one request yourself and check the request log's `remoteAddress` equals your public IP. If it shows a Cloudflare IP, set `TRUST_PROXY_HOPS=2` | Render → Logs | Rate limits must key on the real visitor. |
 | — | Run **Nightly fuzz** once by hand (it has never run; the schedule didn't fire) | GitHub → Actions → Nightly fuzz → Run workflow | It passed locally (10,000 runs per route); this proves it on CI. |
 | — | **RevenueCat:** the secret key and webhook password are on Render (2026-10-04). Left: the **webhook** (URL `https://zeno-api-5dwv.onrender.com/api/v1/billing/webhook`, Authorization = `zeno-keys\prod\REVENUECAT_WEBHOOK_AUTH.txt`), the entitlements `pro`/`family` and products `zeno_pro_monthly`, `zeno_pro_annual`, `zeno_pro_lifetime`, `zeno_family_monthly`, and the public SDK keys in the app build once the store apps exist | RevenueCat; EAS env | Without the webhook, purchases are only picked up when the app asks. |
+| — | **Razorpay (web checkout, decided 2026-10-10):** put the **key id**, **key secret** and the **webhook secret** in `zeno-keys\prod\` as files (don't paste them in chat); say whether **international payments** are activated on the account (that decides whether USD is possible or v1 is INR-only); and give me the **INR prices** for Pro annual, Pro lifetime and Family — real price points for an Indian audience, not a conversion of the USD ones | Razorpay dashboard | Without these the checkout page cannot create an order, and the amount charged has to be a number we chose, never a client-side conversion. Design: `docs/RAZORPAY_WEB_CHECKOUT.md` |
 | — | **Sentry:** create the project; set `EXPO_PUBLIC_SENTRY_DSN`, plus org, project and auth token for source-map and R8 mapping upload | Sentry; EAS env | Until then crash reporting is off, and an obfuscated release crash can't be read. |
 | F11 | Create the **Google client IDs** (A3) and send them | Google Cloud console | Google's guide says custom URI schemes are no longer supported on Android, so Google sign-in and Gmail connect are likely rejected there. I migrate them once I have the IDs. |
 | F134 | Set up the **Pro free trial**: an App Store introductory offer (free, 1 week to match "7-day"), and on Google Play a **new-customer-acquisition** offer (not "developer determined", which Play shows even to people who already had a trial) | App Store Connect; Play Console | The paywall offers a trial only when the store does. |
@@ -344,6 +345,25 @@ Continue, the scroll indicator is hidden, and nothing hints there is more to see
   and it reads better anyway: you learn it is a sample before you read the numbers.
 
 ---
+
+### D24 · what the website sells, and what stays in the app
+- **Decided 2026-10-10 (owner):** Razorpay sells on the web **and** Play billing stays in
+  the app. Play requires its own billing for purchases made inside the app and forbids
+  pointing at another payment method from inside it, but does not cover purchases made
+  outside — so the website is a legitimate second path to the same entitlement.
+- **Open sub-decision: which products the website sells.** My recommendation, and what the
+  code assumes today: **annual and lifetime on the web, monthly in the app.** One-time
+  orders need no e-mandate, so none of Razorpay's recurring failure states exist
+  (`subscription.pending` → retries → `subscription.halted`), the grant is a fixed expiry
+  date instead of a state machine, and the 15% saved is largest on the big-ticket items.
+  Monthly through Play keeps the in-app Upgrade button, which is where most people convert.
+- **Then I:** add Razorpay Subscriptions (plans, mandates, the five subscription webhooks)
+  instead, if you want monthly on the web too.
+- **Not now:** Play's India user-choice billing, which would allow Razorpay *inside* the
+  app for Indian users at 4% off Google's fee. It requires PCI DSS certification, a
+  fraud-reporting channel and reporting every transaction to Google within 24 hours
+  through the ExternalTransactions API. That nets about two points on Indian users only —
+  revisit when there is revenue to justify the compliance work.
 
 ## 3. Tests only you can run
 
