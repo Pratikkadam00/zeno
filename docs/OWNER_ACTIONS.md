@@ -11,6 +11,9 @@ side, modelled on what large companies verifiably do today.
 
 Finding numbers (F…) point to rows in `docs/HARDENING_LOG.md` for the full detail.
 
+**For the Play Store release specifically, work from `docs/PLAY_RELEASE.md`** — the
+same items, ordered P1–P15 by what unblocks what, with the hard date on P10.
+
 ---
 
 ## 1. Account actions (minutes each)
