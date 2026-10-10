@@ -179,10 +179,9 @@ export function claimEvent(eventId: string, nowMs: number = Date.now()): boolean
   if (seenEvents.has(eventId)) return false;
   // Oldest-first eviction if the cap is reached: Map preserves insertion order,
   // and every id inserted here is newer than the one before it.
-  while (seenEvents.size >= EVENT_MEMORY_MAX) {
-    const oldest = seenEvents.keys().next();
-    if (oldest.done) break;
-    seenEvents.delete(oldest.value);
+  for (const oldest of seenEvents.keys()) {
+    if (seenEvents.size < EVENT_MEMORY_MAX) break;
+    seenEvents.delete(oldest);
   }
   seenEvents.set(eventId, nowMs);
   return true;
