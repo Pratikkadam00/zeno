@@ -22,4 +22,11 @@ name: (subflow) fresh install, onboarding, continue without an account
 - tapOn:
     text: "Allow"
     optional: true
-- assertVisible: "Your ledger"
+# The ledger's first paint can take longer than the default wait on a loaded
+# runner: the nightly of 2026-10-11 failed here in the audit's own run of this
+# flow, having passed in all 13 flows before it in the same session, with the
+# optional tap above reporting no dialog to clear. A longer wait cannot hide a
+# real regression — a ledger that never appears still fails, 20 seconds later.
+- extendedWaitUntil:
+    visible: "Your ledger"
+    timeout: 20000
