@@ -365,6 +365,28 @@ Continue, the scroll indicator is hidden, and nothing hints there is more to see
   through the ExternalTransactions API. That nets about two points on Indian users only —
   revisit when there is revenue to justify the compliance work.
 
+### D25 · F241 — the refund policy for anything bought on the website
+- **Why it is yours:** once the website takes a payment, Zeno is the seller and the
+  refund obligation is Zeno's, not a store's. The terms currently say the opposite
+  (§7: “Refunds are requested from the store you bought from”), which is true today and
+  false the moment the checkout goes live. Razorpay's own site review also expects a
+  refund and cancellation policy to be published.
+- **My recommendation: 14 days, no questions asked, on the website's own sales.**
+- **Why:** it is what the EU and UK already require for digital content sold direct, so
+  for those buyers it is not a concession; offering the same terms to everyone avoids a
+  policy that reads as “rights for Europeans only”. It is also cheaper than the
+  alternative — a buyer who cannot get a refund from you asks their bank, and a card
+  chargeback costs the fee plus the dispute, while Razorpay's own refunds cost nothing
+  like that. The exposure is bounded: annual and lifetime are the only things sold on the
+  web, and a 14-day window on an annual plan is 4% of its term.
+- **The alternative** is “no refunds except where the law requires”, which is defensible
+  for digital goods in India and will produce chargebacks instead.
+- **Then I:** rewrite §6 and §7 of the terms for two channels (store purchases unchanged;
+  website purchases sold by Zeno, processed by Razorpay, refunded by us, and — since the
+  web annual is a one-time order with no mandate — explicitly not auto-renewing), publish
+  the refund policy as its own page, and the guard test stops failing. The lawyer's read
+  (P13) covers the result.
+
 ## 3. Tests only you can run
 
 | What | Why it needs you |
