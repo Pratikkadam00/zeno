@@ -12,7 +12,7 @@ import { z } from "zod";
 import { authRoutes, revokeAccessTokensForAccount, revokeAllSessionsForAccount, verifyAccessToken } from "./routes/auth";
 import { createLinkToken, deletePlaidItem, exchangePublicToken, getRecentTransactions, getStoredPlaidItem, plaidConfigured, sandboxPublicToken, storePlaidItem } from "./plaid";
 import { billingConfigured, deleteEntitlementForUser, fetchEntitlement, getCachedEntitlement, verifyWebhookAuth, webhookConfigured } from "./billing";
-import { claimEvent, grantWindow, razorpayWebhookConfigured, recordWebGrant, revokeWebGrantByPayment, verifyRazorpaySignature } from "./billing-razorpay";
+import { claimEvent, createOrder, grantWindow, priceFor, razorpayConfigured, razorpayWebhookConfigured, recordWebGrant, revokeWebGrantByPayment, verifyRazorpaySignature } from "./billing-razorpay";
 import { deleteUserSyncData, pullChanges, pushChanges, type EncryptedChange } from "./sync";
 import { createHousehold, getHousehold, joinHousehold, removeMember, removeUserFromAllHouseholds, setMemberSpend, type Household } from "./family";
 import { coachConfigured, coachModel, generateCoaching } from "./coach";
@@ -221,6 +221,13 @@ export const revenueCatWebhookSchema = z.object({
 // value we rejected would make Razorpay retry and then give up, losing a
 // purchase that really happened. `notes` is ours: we set it when creating the
 // order, so accountId and product come from us, not from the buyer.
+// What the browser may ask for: a product we sell on the web, in a currency we
+// price it in. Nothing about the amount or the account comes from the client —
+// the server decides both (billing-razorpay.ts createOrder).
+export const razorpayOrderSchema = z.object({
+  product: z.enum(["pro_annual", "pro_lifetime", "family_annual"]),
+  currency: z.enum(["INR", "USD"]).default("INR")
+});
 export const razorpayWebhookSchema = z.object({
   event: z.string().min(1).max(64),
   payload: z.object({
@@ -744,6 +751,33 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       return fail("SERVICE_UNAVAILABLE", "Could not record the billing event. Please retry.", request.id);
     }
     return ok({ received: true }, request.id);
+  });
+
+  // The website's checkout asks for an order here; Razorpay Checkout then runs
+  // against it in the browser. Authenticated, because the grant that follows is
+  // bound to this account id and nothing else (docs/RAZORPAY_WEB_CHECKOUT.md).
+  app.post("/api/v1/billing/razorpay/order", limit(10), async (request, reply) => {
+    if (!razorpayConfigured()) {
+      reply.code(503);
+      return fail("SERVICE_UNAVAILABLE", "Web checkout is not configured on this server.", request.id);
+    }
+    const parsed = parseBody(razorpayOrderSchema, request.body, request.id);
+    if (!parsed.ok) {
+      reply.code(400);
+      return parsed.error;
+    }
+    const { product, currency } = parsed.data;
+    // An unpriced product is not for sale in that currency. Said plainly, and
+    // without the configuration detail, which is the operator's business.
+    if ("error" in priceFor(product, currency)) {
+      reply.code(503);
+      return fail("SERVICE_UNAVAILABLE", `${product} is not available in ${currency}.`, request.id);
+    }
+    try {
+      return ok(await createOrder(request.userId!, product, currency), request.id);
+    } catch (error) {
+      return upstreamFailure(request, reply, error, "Could not start the checkout.");
+    }
   });
 
   // Razorpay's webhook for the website's own checkout (P6 / D24). Unlike

@@ -1,4 +1,5 @@
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import { fetchWithTimeout } from "./http";
 import type { BillingPlan, Entitlement } from "./billing";
 import { kvDeleteAwait, kvDeleteByValueField, kvPersistAwait, registerHydrator, type StoredEntry } from "./storage/pg";
 
@@ -34,6 +35,12 @@ export type WebGrant = {
   grantedAt: string;
 };
 
+const RAZORPAY_API = "https://api.razorpay.com/v1";
+
+// Below these, a configured price is read as a unit error rather than a price
+// (see priceFor). ₹100 and $3.
+const MINIMUM_MINOR: Record<"INR" | "USD", number> = { INR: 10_000, USD: 300 };
+
 const PLAN_FOR: Record<WebProduct, BillingPlan> = {
   pro_annual: "pro",
   pro_lifetime: "pro",
@@ -54,6 +61,101 @@ const seenEvents = new Map<string, number>();
 
 export function razorpayConfigured(): boolean {
   return Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
+}
+
+export type WebCurrency = "INR" | "USD";
+
+/**
+ * Prices are configuration, never code: the amount charged is a number the
+ * owner chose per currency, not a conversion of another currency's price
+ * (ENGINEERING_STANDARDS §4 — no invented rates on anything with money on it).
+ * Set RAZORPAY_PRICE_PRO_ANNUAL_INR and friends, in the MINOR unit.
+ */
+export function priceEnvName(product: WebProduct, currency: WebCurrency): string {
+  return `RAZORPAY_PRICE_${product.toUpperCase()}_${currency}`;
+}
+
+/**
+ * The configured price in minor units, or a reason it cannot be used. Nothing
+ * is defaulted: an unset or unusable price means that product is not for sale
+ * in that currency, which is the only safe reading.
+ *
+ * The floor is deliberate. The classic mistake with this kind of variable is
+ * entering 499 meaning ₹499, which is 499 paise — ₹4.99, a hundredfold
+ * undercharge that nothing downstream could notice. So each currency has a
+ * minimum below which a value is read as a unit error rather than a price:
+ * ₹100 and $3, both far under anything Zeno would charge for a year (the
+ * cheapest thing it sells at all is $6.99 a month) and far over what the
+ * mistake produces.
+ */
+export function priceFor(product: WebProduct, currency: WebCurrency): { amountMinor: number } | { error: string } {
+  const name = priceEnvName(product, currency);
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === "") return { error: `${name} is not set` };
+  if (!/^\d+$/.test(raw.trim())) return { error: `${name} must be a whole number of minor units (paise or cents)` };
+  const amountMinor = Number(raw.trim());
+  const floor = MINIMUM_MINOR[currency];
+  if (amountMinor < floor) {
+    return { error: `${name} is below ${floor} minor units — set it in paise or cents, not rupees or dollars` };
+  }
+  return { amountMinor };
+}
+
+export type CreatedOrder = {
+  orderId: string;
+  amountMinor: number;
+  currency: WebCurrency;
+  /** The PUBLIC key id, which Razorpay Checkout needs in the browser. */
+  keyId: string;
+};
+
+/**
+ * Create the Razorpay order a checkout runs against. The amount and the account
+ * it belongs to are decided HERE, server-side: `notes` is what the webhook later
+ * reads to know who paid for what, so a buyer can neither choose their own price
+ * nor attach someone else's account to a payment.
+ */
+export async function createOrder(
+  accountId: string,
+  product: WebProduct,
+  currency: WebCurrency
+): Promise<CreatedOrder> {
+  const keyId = process.env.RAZORPAY_KEY_ID;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  if (!keyId || !keySecret) throw new Error("Razorpay is not configured.");
+  const price = priceFor(product, currency);
+  if ("error" in price) throw new Error(price.error);
+
+  const response = await fetchWithTimeout(`${RAZORPAY_API}/orders`, {
+    method: "POST",
+    headers: {
+      // Razorpay authenticates its REST API with HTTP Basic: key id as the user,
+      // key secret as the password. Built here and never logged.
+      Authorization: `Basic ${Buffer.from(`${keyId}:${keySecret}`).toString("base64")}`,
+      "content-type": "application/json",
+      accept: "application/json"
+    },
+    body: JSON.stringify({
+      amount: price.amountMinor,
+      currency,
+      // Razorpay caps the receipt at 40 characters; a UUID is 36 and carries no
+      // account information into a field that appears on statements.
+      receipt: randomUUID(),
+      notes: { accountId, product }
+    })
+  });
+  if (!response.ok) {
+    // The body can quote the request back; the status is all a caller needs and
+    // all that is safe to surface.
+    throw new Error(`Razorpay responded ${response.status}`);
+  }
+  const json = (await response.json()) as { id?: unknown; amount?: unknown; currency?: unknown };
+  if (typeof json.id !== "string" || json.id.length === 0) {
+    throw new Error("Razorpay returned an order with no id.");
+  }
+  // Trust our own amount over the echo: these must agree, and if they ever did
+  // not, charging what we decided is the only defensible choice.
+  return { orderId: json.id, amountMinor: price.amountMinor, currency, keyId };
 }
 
 export function razorpayWebhookConfigured(): boolean {

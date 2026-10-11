@@ -117,7 +117,20 @@ be undone by accident months from now.
    available at all, or whether v1 is INR-only.
 3. **The INR prices** for Pro annual, Pro lifetime and (if you want it on the web) Family
    — real price points, not a conversion of $69.99. Indian pricing for an Indian audience
-   is a positioning decision.
+   is a positioning decision. They are configuration, not code, so they go straight into
+   the environment with no deploy:
+
+   | Variable | What it sets |
+   |---|---|
+   | `RAZORPAY_PRICE_PRO_ANNUAL_INR` | Pro, one year, in **paise** |
+   | `RAZORPAY_PRICE_PRO_LIFETIME_INR` | Pro, lifetime, in paise |
+   | `RAZORPAY_PRICE_FAMILY_ANNUAL_INR` | Family, one year, in paise |
+   | `..._USD` | the same three in **cents**, once international payments are on |
+
+   In minor units: ₹999 is `99900`. A product with no price set is simply not for sale in
+   that currency — the endpoint says so and never guesses. A value under ₹100 or $3 is
+   refused as a unit mistake, because "499" meaning ₹499 is ₹4.99, and nothing downstream
+   could notice a hundredfold undercharge.
 4. **The legal entity and GST position** (D18). Razorpay onboarding and the invoices it
    issues need the registered name, and whether GST applies to the sale changes what the
    buyer is shown.
@@ -128,7 +141,7 @@ be undone by accident months from now.
 |---|---|
 | Signature verification, grant model, two-source resolution (API, unit-tested) | ✅ `apps/api/src/billing-razorpay.ts`, 32 tests |
 | Webhook route + raw-body hook + replay guard | ✅ `POST /api/v1/billing/razorpay/webhook`, 23 tests |
-| Order creation endpoint (needs keys) | ⬜ |
+| Order creation endpoint | ✅ `POST /api/v1/billing/razorpay/order`, 23 tests (keys only needed to RUN it) |
 | Checkout page + scoped CSP (needs prices) | ⬜ |
 | The mobile no-steering guard test | ✅ `scripts/play-steering-guard.test.ts` |
 | End-to-end in Razorpay test mode | ⬜ |

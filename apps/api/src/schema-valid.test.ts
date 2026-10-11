@@ -273,6 +273,12 @@ const ROUTES: Record<string, Spec> = {
     headers: async () => ({ authorization: "Bearer hook-secret" }),
     expect: () => 200
   },
+  "POST /api/v1/billing/razorpay/order": {
+    schemaName: "razorpayOrderSchema", schema: async () => (await app_()).razorpayOrderSchema,
+    rule: "Razorpay not configured (the state in tests): 503 before the body is used",
+    headers: (app) => oneAccount(app),
+    expect: () => 503
+  },
   "POST /api/v1/billing/razorpay/webhook": {
     schemaName: "razorpayWebhookSchema", schema: async () => (await app_()).razorpayWebhookSchema,
     // The invariant worth fuzzing here is the gate, not the grant: no body the

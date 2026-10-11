@@ -33,6 +33,7 @@ const INVENTORY: Record<string, Partial<Record<Callee, number>>> = {
   "http.ts": { fetch: 1 }, // fetchWithTimeout itself: the ONLY direct fetch
   "app.ts": { fetchWithTimeout: 1, "new Redis": 1 }, // the 5xx alert (the operator's MONITORING_WEBHOOK_URL); the rate-limit store (REDIS_URL)
   "billing.ts": { fetchWithTimeout: 1 }, // RevenueCat
+  "billing-razorpay.ts": { fetchWithTimeout: 1 }, // Razorpay Orders (host fixed: api.razorpay.com)
   "coach.ts": { fetchWithTimeout: 1, "new Anthropic": 1 }, // Groq / OpenAI-compatible (the operator's COACH_BASE_URL); Anthropic
   "plaid.ts": { fetchWithTimeout: 1 }, // Plaid (host fixed by PLAID_ENV)
   "routes/auth.ts": { fetchWithTimeout: 2 }, // Resend; the Apple / Google JWKS
