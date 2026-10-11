@@ -295,8 +295,15 @@ export async function revokeWebGrant(accountId: string): Promise<boolean> {
  * keeps a second delivery from extending a subscription a second time.
  */
 export function claimEvent(eventId: string, nowMs: number = Date.now()): boolean {
+  // Expire from the front only. A Map keeps insertion order and ids are
+  // inserted as they arrive, so the oldest sit at the front and the first
+  // entry still inside the window means every entry after it is too. Sweeping
+  // the whole map instead made this O(n) on EVERY webhook — with the cap at
+  // 5,000 that is five thousand comparisons to record one payment, and it was
+  // slow enough to time out the flood test under mutation testing.
   for (const [id, at] of seenEvents) {
-    if (nowMs - at > EVENT_MEMORY_MS) seenEvents.delete(id);
+    if (nowMs - at <= EVENT_MEMORY_MS) break;
+    seenEvents.delete(id);
   }
   if (seenEvents.has(eventId)) return false;
   // Oldest-first eviction if the cap is reached: Map preserves insertion order,

@@ -86,6 +86,13 @@ export default function FeaturesPage() {
           cta: "Learn more"
         }))}
       />
+      <h2>Free, and Pro</h2>
+      <p>
+        Everything above is in the app today, and the free plan covers it for up to ten subscriptions with no card and no time limit. Pro
+        removes that limit and adds category budgets and the spend coach. <Link href="/pro">What Pro costs</Link> says what it includes and
+        where to buy it.
+      </p>
+
       <div className={styles.backRow}>
         <Link href="/">← Back to Zeno</Link>
       </div>

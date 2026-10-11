@@ -135,6 +135,20 @@ be undone by accident months from now.
    issues need the registered name, and whether GST applies to the sale changes what the
    buyer is shown.
 
+## The refund policy (D25, decided 2026-10-11)
+
+**No refunds except where the law requires**, which is the owner's call. That makes the
+exceptions the load-bearing part, so `/legal/refunds` states them exactly: the EU/UK
+fourteen-day withdrawal right and how the checkout's tick box waives it in exchange for
+immediate access; a local consumer-law remedy we cannot sign away; and money taken in
+error, which is returned in full because it was never ours.
+
+The terms' §6 and §7 are rewritten for two channels, so F241 is closed.
+
+**The checkout must therefore collect that consent explicitly** before it takes money
+from an EU or UK buyer: a tick box in those words, recorded with the order. That lands
+with the purchase flow.
+
 ## Status
 
 | Slice | State |
@@ -142,6 +156,6 @@ be undone by accident months from now.
 | Signature verification, grant model, two-source resolution (API, unit-tested) | ✅ `apps/api/src/billing-razorpay.ts`, 32 tests |
 | Webhook route + raw-body hook + replay guard | ✅ `POST /api/v1/billing/razorpay/webhook`, 23 tests |
 | Order creation endpoint | ✅ `POST /api/v1/billing/razorpay/order`, 23 tests (keys only needed to RUN it) |
-| Checkout page + scoped CSP (needs prices) | ⬜ |
+| Checkout page, rendering configured prices | ✅ `/pro` + `/api/checkout/prices`; no CSP change needed yet |
 | The mobile no-steering guard test | ✅ `scripts/play-steering-guard.test.ts` |
 | End-to-end in Razorpay test mode | ⬜ |

@@ -133,9 +133,12 @@ export default function TermsPage() {
         </li>
       </ul>
       <p>
-        Plans are sold and billed by Apple (through the App Store) or Google (through Google Play), under their terms as well as these. Taxes
-        may be added by the store according to where you are. A monthly or yearly plan renews automatically at the end of each period at the
-        price then shown in the store, until you cancel it. We do not see or hold your card details; the stores handle payment.
+        Zeno is sold in two places, and which one you used decides who you bought from. <strong>Inside the app</strong>, plans are sold and
+        billed by Apple (through the App Store) or Google (through Google Play), under their terms as well as these. A monthly or yearly plan
+        bought there renews automatically at the end of each period, at the price then shown in the store, until you cancel it. The store may
+        add taxes according to where you are. <strong>On this website</strong>, Zeno is the seller and Razorpay handles the payment for us.
+        What you buy here is a single payment for a fixed term, a year of Pro or Lifetime, which does <strong>not</strong> renew and keeps no
+        card on file. In both cases we never see or hold your card details: the store or the payment processor handles them.
       </p>
       <p>
         If a price changes, the store tells you before the next renewal, and where the store&rsquo;s rules require it, asks you to agree. Any
@@ -145,14 +148,23 @@ export default function TermsPage() {
 
       <h2 id="cancel">7. Cancelling a plan and refunds</h2>
       <p>
-        You cancel a monthly or yearly plan in your App Store or Google Play account settings, not inside the app, and it stays active until
-        the end of the period you have paid for. Refunds are requested from the store you bought from, under its refund rules; we will help
-        where we can.
+        A plan bought <strong>inside the app</strong> is cancelled in your App Store or Google Play account settings, not inside Zeno, and it
+        stays active until the end of the period you have paid for. Its refunds are Apple&rsquo;s or Google&rsquo;s to give, under their rules;
+        we will say what we can on your behalf, but the decision is theirs.
       </p>
       <p>
-        If you live in the European Union, the United Kingdom, or another place that gives consumers a right to withdraw from a purchase of
-        digital content within 14 days, that right is yours and is exercised through the store. Nothing in these terms takes away a right
-        that consumer law gives you where you live.
+        A purchase made <strong>on this website</strong> does not renew, so there is nothing to cancel: it runs to the end of the term you
+        paid for and stops. Refunds on it are ours to give, and we do not give discretionary ones. Zeno is digital content delivered in
+        full the moment you pay, and the free plan exists so you can decide before you do. The exceptions are set out in the{" "}
+        <Link href="/legal/refunds">refunds and cancellations policy</Link>: money taken in error is always returned, and a right your own
+        consumer law gives you is not ours to remove.
+      </p>
+      <p>
+        If you live in the European Union, the European Economic Area or the United Kingdom, you normally have fourteen days to withdraw from
+        a distance purchase of digital content. For a purchase in the app, you exercise that right with the store you bought from. For a
+        purchase on this website, the checkout asks you to agree that Zeno starts immediately and that you give up those fourteen days in
+        exchange; if you did not agree to that, the fourteen days stand. Nothing in these terms takes away a right that consumer law gives you
+        where you live.
       </p>
 
       <h2 id="your-subscriptions">8. Your own subscriptions</h2>

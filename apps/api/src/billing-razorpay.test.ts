@@ -269,9 +269,13 @@ describe("claimEvent", () => {
 
   it("stays bounded under a flood, and keeps the newest ids", () => {
     const t0 = Date.parse("2026-10-10T00:00:00.000Z");
+    // Counted rather than asserted per iteration: 6,000 expect() calls cost
+    // more than the code under test, and this runs again for every mutant.
+    let claimed = 0;
     for (let i = 0; i < 6_000; i += 1) {
-      expect(claimEvent(`evt_${i}`, t0 + i)).toBe(true);
+      if (claimEvent(`evt_${i}`, t0 + i)) claimed += 1;
     }
+    expect(claimed).toBe(6_000);
     // The newest is still remembered; the oldest has been evicted, which is the
     // trade this cap makes deliberately.
     expect(claimEvent("evt_5999", t0 + 6_000)).toBe(false);

@@ -27,6 +27,8 @@ export const OG_PAGES: Record<string, OgPage> = {
   "/compare/budget-app-no-bank-sync": { title: "A budget app that doesn't need to connect to your bank", eyebrow: "Compare" },
   "/cancel": { title: `How to cancel ${services.length}+ subscriptions`, eyebrow: "Cancellation guides" },
   "/blog": { title: "Subscriptions, written down plainly", eyebrow: "The Zeno blog" },
+  "/pro": { title: "Get Zeno Pro", eyebrow: "Pro" },
+  "/legal/refunds": { title: "Refunds and Cancellations", eyebrow: "Legal" },
   "/legal/privacy": { title: "Privacy Policy", eyebrow: "Legal" },
   "/legal/terms": { title: "Terms of Service", eyebrow: "Legal" },
   "/legal/cookies": { title: "Cookie Policy", eyebrow: "Legal" }

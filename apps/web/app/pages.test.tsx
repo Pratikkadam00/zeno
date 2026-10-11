@@ -44,7 +44,7 @@ const ROUTES = new Set(
 );
 
 describe("the page list itself", () => {
-  it("finds every page on disk (28 routes today, the guides as one)", () => {
+  it("finds every page on disk (30 routes today, the guides as one)", () => {
     expect(PAGES.map((p) => p.route)).toEqual([
       "/",
       "/about",
@@ -67,8 +67,10 @@ describe("the page list itself", () => {
       "/free-trial-reminders",
       "/legal/cookies",
       "/legal/privacy",
+      "/legal/refunds",
       "/legal/terms",
       "/press",
+      "/pro",
       "/roadmap",
       "/subscription-tracker"
     ]);

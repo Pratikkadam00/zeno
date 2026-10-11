@@ -365,13 +365,18 @@ Continue, the scroll indicator is hidden, and nothing hints there is more to see
   through the ExternalTransactions API. That nets about two points on Indian users only —
   revisit when there is revenue to justify the compliance work.
 
-### D25 · F241 — the refund policy for anything bought on the website
+### D25 · F241 — the refund policy for anything bought on the website — **DECIDED 2026-10-11: no refunds except where the law requires**
 - **Why it is yours:** once the website takes a payment, Zeno is the seller and the
   refund obligation is Zeno's, not a store's. The terms currently say the opposite
   (§7: “Refunds are requested from the store you bought from”), which is true today and
   false the moment the checkout goes live. Razorpay's own site review also expects a
   refund and cancellation policy to be published.
-- **My recommendation: 14 days, no questions asked, on the website's own sales.**
+- **The owner chose the third option: no discretionary refunds.** Published at
+  `/legal/refunds`, with the statutory exceptions spelled out exactly, and the terms'
+  §6 and §7 rewritten for two sales channels. One consequence for the build: the
+  checkout must collect the EU/UK consent to immediate access explicitly, or those
+  buyers keep the fourteen days.
+- ~~My recommendation was 14 days, no questions asked.~~
 - **Why:** it is what the EU and UK already require for digital content sold direct, so
   for those buyers it is not a concession; offering the same terms to everyone avoids a
   policy that reads as “rights for Europeans only”. It is also cheaper than the
