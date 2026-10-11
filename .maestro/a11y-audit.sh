@@ -16,7 +16,29 @@ work="${TMPDIR:-/tmp}/zeno-a11y"
 mkdir -p "$work"
 
 # A realistic state: onboarded, one subscription on the books.
-"$maestro" --device "$device" test "$here/common/audit-setup.yaml" > "$work/setup.log" 2>&1 || { echo "setup flow failed"; tail -20 "$work/setup.log"; exit 1; }
+#
+# Retried on the same terms run.sh uses for the flows, and for the same reason:
+# Maestro's device server dies on GitHub's runner. On 2026-10-11 it died four
+# times during the 13 flows — each retried and passed — and then killed this
+# setup, which had no retry, at "Launch app". An app crash is never retried
+# away; only the tooling's own death is.
+setup_failed() {
+  grep -qE "DeviceServerDiedException|device offline" "$work/setup.log"
+}
+run_setup() {
+  "$adb" -s "$device" wait-for-device > /dev/null 2>&1
+  "$maestro" --device "$device" test "$here/common/audit-setup.yaml" > "$work/setup.log" 2>&1
+}
+run_setup
+rc=$?
+for attempt in 1 2; do
+  if [ $rc -ne 0 ] && setup_failed && ! "$adb" -s "$device" logcat -d -b crash | grep -q "FATAL EXCEPTION"; then
+    echo "RETRY audit setup (Maestro's device server died; no app crash; retry $attempt)"
+    run_setup
+    rc=$?
+  fi
+done
+[ $rc -eq 0 ] || { echo "setup flow failed"; tail -20 "$work/setup.log"; exit 1; }
 
 # Every screen reachable from the app (routes = files under apps/mobile/app).
 routes=(dashboard subscriptions calendar analytics discover settings notifications profile security family coach budget paywall wrapped spend-twin widgets subscription/add)

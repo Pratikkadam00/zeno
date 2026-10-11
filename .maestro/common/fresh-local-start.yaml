@@ -22,11 +22,13 @@ name: (subflow) fresh install, onboarding, continue without an account
 - tapOn:
     text: "Allow"
     optional: true
-# The ledger's first paint can take longer than the default wait on a loaded
-# runner: the nightly of 2026-10-11 failed here in the audit's own run of this
-# flow, having passed in all 13 flows before it in the same session, with the
-# optional tap above reporting no dialog to clear. A longer wait cannot hide a
-# real regression — a ledger that never appears still fails, 20 seconds later.
+# A longer wait than the default, for a loaded runner. The 2026-10-11 nightly
+# failed on this assertion in the audit's run of this flow; the run after it
+# died earlier still, at "Launch app", which says the cause was Maestro's device
+# server dying (it died four times in the flows that night) rather than the
+# ledger being slow. The retry in a11y-audit.sh is the fix for that. This wait
+# stays as cheap insurance: it cannot hide a regression, because a ledger that
+# never appears still fails, 20 seconds later.
 - extendedWaitUntil:
     visible: "Your ledger"
     timeout: 20000
