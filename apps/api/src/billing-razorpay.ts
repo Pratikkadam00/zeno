@@ -101,6 +101,23 @@ export function priceFor(product: WebProduct, currency: WebCurrency): { amountMi
   return { amountMinor };
 }
 
+export const WEB_PRODUCTS: readonly WebProduct[] = ["pro_annual", "pro_lifetime", "family_annual"];
+
+/**
+ * What the website can sell right now, in one currency. A product with no
+ * usable price is simply absent — so the page renders what is configured and
+ * nothing else, and setting a price is all it takes to put a product on sale.
+ */
+export function availableProducts(currency: WebCurrency): { product: WebProduct; plan: BillingPlan; amountMinor: number }[] {
+  const available = [];
+  for (const product of WEB_PRODUCTS) {
+    const price = priceFor(product, currency);
+    if ("error" in price) continue;
+    available.push({ product, plan: PLAN_FOR[product], amountMinor: price.amountMinor });
+  }
+  return available;
+}
+
 export type CreatedOrder = {
   orderId: string;
   amountMinor: number;

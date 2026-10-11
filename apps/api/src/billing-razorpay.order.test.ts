@@ -235,3 +235,61 @@ describe("the route", () => {
     expect(response.json().error.code).toBe("UPSTREAM_ERROR");
   });
 });
+
+describe("the price list the website renders from", () => {
+  it("offers only what is priced, so an unset product is simply not for sale", async () => {
+    const app = await buildApp();
+    const response = await app.inject({ method: "GET", url: "/api/v1/billing/razorpay/prices" });
+    await app.close();
+    expect(response.statusCode).toBe(200);
+    expect(response.json().data).toEqual({
+      currency: "INR",
+      configured: true,
+      products: [{ product: "pro_annual", plan: "pro", amountMinor: 49900 }]
+    });
+  });
+
+  it("returns an empty list rather than a placeholder price", async () => {
+    delete process.env.RAZORPAY_PRICE_PRO_ANNUAL_INR;
+    const app = await buildApp();
+    const response = await app.inject({ method: "GET", url: "/api/v1/billing/razorpay/prices" });
+    await app.close();
+    expect(response.json().data.products).toEqual([]);
+  });
+
+  it("reads the currency asked for, and treats anything else as INR", async () => {
+    process.env.RAZORPAY_PRICE_PRO_LIFETIME_USD = "9900";
+    const app = await buildApp();
+    const usd = await app.inject({ method: "GET", url: "/api/v1/billing/razorpay/prices?currency=USD" });
+    const odd = await app.inject({ method: "GET", url: "/api/v1/billing/razorpay/prices?currency=JPY" });
+    await app.close();
+    expect(usd.json().data).toEqual({
+      currency: "USD",
+      configured: true,
+      products: [{ product: "pro_lifetime", plan: "pro", amountMinor: 9900 }]
+    });
+    expect(odd.json().data.currency).toBe("INR");
+  });
+
+  it("says when the server has no keys at all, so the page can stay quiet", async () => {
+    delete process.env.RAZORPAY_KEY_ID;
+    const app = await buildApp();
+    const response = await app.inject({ method: "GET", url: "/api/v1/billing/razorpay/prices" });
+    await app.close();
+    expect(response.json().data.configured).toBe(false);
+  });
+
+  it("needs no token", async () => {
+    const app = await buildApp();
+    const response = await app.inject({ method: "GET", url: "/api/v1/billing/razorpay/prices" });
+    await app.close();
+    expect(response.statusCode).toBe(200);
+  });
+
+  it("never exposes the key secret", async () => {
+    const app = await buildApp();
+    const response = await app.inject({ method: "GET", url: "/api/v1/billing/razorpay/prices" });
+    await app.close();
+    expect(response.body).not.toContain("rzp_test_secret");
+  });
+});

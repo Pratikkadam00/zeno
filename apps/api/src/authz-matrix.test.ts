@@ -51,6 +51,7 @@ const ACCESS: Record<string, Access> = {
   "GET /api/v1/partners": "public",
   "GET /api/v1/open-banking/providers": "public",
   "POST /api/v1/billing/webhook": "own-auth", // REVENUECAT_WEBHOOK_AUTH
+  "GET /api/v1/billing/razorpay/prices": "public", // a price list is public by nature
   "POST /api/v1/billing/razorpay/order": "token",
   "POST /api/v1/billing/razorpay/webhook": "own-auth", // RAZORPAY_WEBHOOK_SECRET, as a signature over the raw body
   "POST /api/v1/auth/magic-link": "public",

@@ -12,7 +12,7 @@ import { z } from "zod";
 import { authRoutes, revokeAccessTokensForAccount, revokeAllSessionsForAccount, verifyAccessToken } from "./routes/auth";
 import { createLinkToken, deletePlaidItem, exchangePublicToken, getRecentTransactions, getStoredPlaidItem, plaidConfigured, sandboxPublicToken, storePlaidItem } from "./plaid";
 import { billingConfigured, deleteEntitlementForUser, fetchEntitlement, getCachedEntitlement, verifyWebhookAuth, webhookConfigured } from "./billing";
-import { claimEvent, createOrder, grantWindow, priceFor, razorpayConfigured, razorpayWebhookConfigured, recordWebGrant, revokeWebGrantByPayment, verifyRazorpaySignature } from "./billing-razorpay";
+import { availableProducts, claimEvent, createOrder, grantWindow, priceFor, razorpayConfigured, razorpayWebhookConfigured, recordWebGrant, revokeWebGrantByPayment, verifyRazorpaySignature } from "./billing-razorpay";
 import { deleteUserSyncData, pullChanges, pushChanges, type EncryptedChange } from "./sync";
 import { createHousehold, getHousehold, joinHousehold, removeMember, removeUserFromAllHouseholds, setMemberSpend, type Household } from "./family";
 import { coachConfigured, coachModel, generateCoaching } from "./coach";
@@ -751,6 +751,19 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       return fail("SERVICE_UNAVAILABLE", "Could not record the billing event. Please retry.", request.id);
     }
     return ok({ received: true }, request.id);
+  });
+
+  // What the website may offer today. Public: a price list is public by
+  // nature, and the page shows it before anyone signs in. Empty until prices
+  // are configured, which is the honest state rather than a placeholder.
+  app.get("/api/v1/billing/razorpay/prices", limit(60), async (request) => {
+    const currency = request.query && typeof request.query === "object" && "currency" in request.query
+      && (request.query as { currency?: unknown }).currency === "USD" ? "USD" : "INR";
+    return ok({
+      currency,
+      configured: razorpayConfigured(),
+      products: availableProducts(currency)
+    }, request.id);
   });
 
   // The website's checkout asks for an order here; Razorpay Checkout then runs
