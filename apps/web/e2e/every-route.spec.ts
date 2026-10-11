@@ -136,8 +136,10 @@ const PAGES = [
   "/free-trial-reminders",
   "/legal/cookies",
   "/legal/privacy",
+  "/legal/refunds",
   "/legal/terms",
   "/press",
+  "/pro",
   "/roadmap",
   "/subscription-tracker"
 ];
