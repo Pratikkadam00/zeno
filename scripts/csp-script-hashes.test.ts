@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { governedInlineScripts, hashSource, run, withScriptCsp } from "./csp-script-hashes.mjs";
+import { extraScriptSources, extraScriptSourcesForRoute, governedInlineScripts, hashSource, run, withScriptCsp } from "./csp-script-hashes.mjs";
 
 const sha = (text: string) => `'sha256-${createHash("sha256").update(text, "utf8").digest("base64")}'`;
 const page = (body: string, head = "<head>") => `<!DOCTYPE html><html lang="en">${head}<title>t</title></head><body>${body}</body></html>`;
@@ -108,4 +108,34 @@ describe("run", () => {
 it("the website's build runs it after next build, so every deploy gets it", () => {
   const pkg = JSON.parse(readFileSync(join(__dirname, "..", "apps", "web", "package.json"), "utf8"));
   expect(pkg.scripts.build).toMatch(/&& next build && node \.\.\/\.\.\/scripts\/csp-script-hashes\.mjs$/);
+});
+
+describe("the pages allowed a third-party script (D24)", () => {
+  it("names Razorpay for /pro and nothing for anything else", () => {
+    expect(extraScriptSourcesForRoute("/pro")).toEqual(["https://checkout.razorpay.com"]);
+    for (const route of ["/", "/about", "/legal/refunds", "/pro/x", "/not-pro"]) {
+      expect(extraScriptSourcesForRoute(route), route).toEqual([]);
+    }
+  });
+
+  it("reads the route from a prerendered file, whichever separator the build used", () => {
+    expect(extraScriptSources("/w/.next/server/app/pro.html")).toEqual(["https://checkout.razorpay.com"]);
+    expect(extraScriptSources(["C:", "w", ".next", "server", "app", "pro.html"].join("\\"))).toEqual(["https://checkout.razorpay.com"]);
+    expect(extraScriptSources("/w/.next/server/app/not-pro.html")).toEqual([]);
+    expect(extraScriptSources("/w/.next/server/app/legal/refunds.html")).toEqual([]);
+    // A path that is not a prerendered page gets nothing, rather than guessing.
+    expect(extraScriptSources("/w/pro.html")).toEqual([]);
+  });
+
+  it("puts the extra source in the page's policy, before its own hashes", () => {
+    const page = "<html><head></head><body><script>one()</script></body></html>";
+    const { html } = withScriptCsp(page, ["https://checkout.razorpay.com"]);
+    const policy = /content="([^"]*)"/.exec(html)![1]!;
+    expect(policy).toBe(`script-src 'self' https://checkout.razorpay.com ${hashSource("one()")}`);
+  });
+
+  it("changes nothing for a page with no extras", () => {
+    const page = "<html><head></head><body><script>one()</script></body></html>";
+    expect(withScriptCsp(page).html).toBe(withScriptCsp(page, []).html);
+  });
 });

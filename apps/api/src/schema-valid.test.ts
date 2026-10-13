@@ -63,6 +63,11 @@ function arbitraryFor(schema: Json, ascii = false): fc.Arbitrary<unknown> {
       const max = (schema.maximum as number | undefined) ?? 1_000_000;
       return fc.oneof({ weight: 6, arbitrary: fc.integer({ min, max }) }, { weight: 1, arbitrary: fc.constantFrom(min, max) });
     }
+    // Both values, every time: a boolean has no edges to find, and the field
+    // that brought this here (the checkout's consent, D24) must be exercised
+    // in each state.
+    case "boolean":
+      return fc.boolean();
     case "array": {
       const minLength = (schema.minItems as number | undefined) ?? 0;
       const maxItems = (schema.maxItems as number | undefined) ?? 8;

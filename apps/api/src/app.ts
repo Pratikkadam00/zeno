@@ -226,7 +226,11 @@ export const revenueCatWebhookSchema = z.object({
 // the server decides both (billing-razorpay.ts createOrder).
 export const razorpayOrderSchema = z.object({
   product: z.enum(["pro_annual", "pro_lifetime", "family_annual"]),
-  currency: z.enum(["INR", "USD"]).default("INR")
+  currency: z.enum(["INR", "USD"]).default("INR"),
+  // The EU/UK consent to immediate access, which trades the fourteen-day
+  // withdrawal right (/legal/refunds §4). Absent means not given, and the
+  // fourteen days stand — never the other way round.
+  acceptedImmediateAccess: z.boolean().default(false)
 });
 export const razorpayWebhookSchema = z.object({
   event: z.string().min(1).max(64),
@@ -238,7 +242,8 @@ export const razorpayWebhookSchema = z.object({
         currency: z.string().min(3).max(8),
         notes: z.object({
           accountId: z.string().min(1).max(128).optional(),
-          product: z.enum(["pro_annual", "pro_lifetime", "family_annual"]).optional()
+          product: z.enum(["pro_annual", "pro_lifetime", "family_annual"]).optional(),
+          immediateAccess: z.string().max(8).optional()
         }).passthrough().optional()
       }).passthrough()
     }).optional(),
@@ -779,7 +784,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       reply.code(400);
       return parsed.error;
     }
-    const { product, currency } = parsed.data;
+    const { product, currency, acceptedImmediateAccess } = parsed.data;
     // An unpriced product is not for sale in that currency. Said plainly, and
     // without the configuration detail, which is the operator's business.
     if ("error" in priceFor(product, currency)) {
@@ -787,7 +792,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       return fail("SERVICE_UNAVAILABLE", `${product} is not available in ${currency}.`, request.id);
     }
     try {
-      return ok(await createOrder(request.userId!, product, currency), request.id);
+      return ok(await createOrder(request.userId!, product, currency, acceptedImmediateAccess), request.id);
     } catch (error) {
       return upstreamFailure(request, reply, error, "Could not start the checkout.");
     }
@@ -845,6 +850,9 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     if (event === "payment.captured" && payment) {
       const accountId = payment.notes?.accountId;
       const product = payment.notes?.product;
+      // Our own note, written when the order was created. Anything but "yes"
+      // reads as consent not given.
+      const immediateAccess = payment.notes?.immediateAccess === "yes";
       // A payment that did not come from our own checkout (a Payment Link, say)
       // carries no account: nothing to grant, and nothing is wrong either.
       if (!accountId || !product) {
@@ -858,7 +866,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
         paymentId: payment.id,
         amountMinor: payment.amount,
         currency: payment.currency,
-        grantedAt: new Date().toISOString()
+        grantedAt: new Date().toISOString(),
+        immediateAccess
       });
       if (!stored) {
         // Do NOT ack: a retry is the only thing that can still save this

@@ -20,6 +20,16 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/** A real signed-in account: the magic link, followed the way a browser would
+ *  (the dev link carries the token), as schema-valid.test.ts does. */
+async function signedIn(app: Awaited<ReturnType<typeof buildApp>>) {
+  const email = `order-${Math.random().toString(36).slice(2)}@zeno.test`;
+  const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email } });
+  const token = decodeURIComponent(String(requested.json().data.devLink).split("token=")[1]!);
+  const verified = await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token } });
+  return { authorization: `Bearer ${verified.json().data.accessToken as string}` };
+}
+
 const orderResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
@@ -88,7 +98,7 @@ describe("createOrder", () => {
     const body = JSON.parse(init.body as string);
     expect(body.amount).toBe(49900);
     expect(body.currency).toBe("INR");
-    expect(body.notes).toEqual({ accountId: "acct_1", product: "pro_annual" });
+    expect(body.notes).toEqual({ accountId: "acct_1", product: "pro_annual", immediateAccess: "no" });
     // Razorpay caps the receipt at 40 characters.
     expect(body.receipt.length).toBeLessThanOrEqual(40);
   });
@@ -133,16 +143,6 @@ describe("createOrder", () => {
 });
 
 describe("the route", () => {
-  /** A real signed-in account: the magic link, followed the way a browser would
-   *  (the dev link carries the token), as schema-valid.test.ts does. */
-  async function signedIn(app: Awaited<ReturnType<typeof buildApp>>) {
-    const email = `order-${Math.random().toString(36).slice(2)}@zeno.test`;
-    const requested = await app.inject({ method: "POST", url: "/api/v1/auth/magic-link", payload: { email } });
-    const token = decodeURIComponent(String(requested.json().data.devLink).split("token=")[1]!);
-    const verified = await app.inject({ method: "POST", url: "/api/v1/auth/verify", payload: { token } });
-    return { authorization: `Bearer ${verified.json().data.accessToken as string}` };
-  }
-
   it("creates an order for the account in the token, not one in the body", async () => {
     const app = await buildApp();
     const headers = await signedIn(app);
@@ -291,5 +291,45 @@ describe("the price list the website renders from", () => {
     const response = await app.inject({ method: "GET", url: "/api/v1/billing/razorpay/prices" });
     await app.close();
     expect(response.body).not.toContain("rzp_test_secret");
+  });
+});
+
+describe("the EU/UK consent to immediate access", () => {
+  it("is carried on the order as our own note", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(orderResponse({ id: "order_1" }));
+    await createOrder("acct_1", "pro_annual", "INR", true);
+    const body = JSON.parse((fetchSpy.mock.calls[0] as [string, RequestInit])[1].body as string);
+    expect(body.notes.immediateAccess).toBe("yes");
+  });
+
+  it("records 'no' when it was not given, rather than leaving it out", async () => {
+    // Absent would be ambiguous later; "no" is a statement.
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(orderResponse({ id: "order_1" }));
+    await createOrder("acct_1", "pro_annual", "INR");
+    const body = JSON.parse((fetchSpy.mock.calls[0] as [string, RequestInit])[1].body as string);
+    expect(body.notes.immediateAccess).toBe("no");
+  });
+
+  it("defaults to not given when the browser does not say", async () => {
+    const app = await buildApp();
+    const headers = await signedIn(app);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(orderResponse({ id: "order_1" }));
+    await app.inject({ method: "POST", url: "/api/v1/billing/razorpay/order", headers, payload: { product: "pro_annual" } });
+    await app.close();
+    const body = JSON.parse((fetchSpy.mock.calls[0] as [string, RequestInit])[1].body as string);
+    expect(body.notes.immediateAccess).toBe("no");
+  });
+
+  it("passes on what the buyer actually ticked", async () => {
+    const app = await buildApp();
+    const headers = await signedIn(app);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(orderResponse({ id: "order_1" }));
+    await app.inject({
+      method: "POST", url: "/api/v1/billing/razorpay/order", headers,
+      payload: { product: "pro_annual", acceptedImmediateAccess: true }
+    });
+    await app.close();
+    const body = JSON.parse((fetchSpy.mock.calls[0] as [string, RequestInit])[1].body as string);
+    expect(body.notes.immediateAccess).toBe("yes");
   });
 });

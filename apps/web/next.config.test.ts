@@ -13,11 +13,13 @@ async function load(env: { NODE_ENV: string; NEXT_PUBLIC_SITE_URL?: string }) {
   return (await import("./next.config")).default;
 }
 
-async function headersFor(nodeEnv: string) {
+async function headersFor(nodeEnv: string, source = "/:path*") {
   const config = await load({ NODE_ENV: nodeEnv });
   const rules = await config.headers!();
-  expect(rules).toHaveLength(2);
-  const [rule] = rules;
+  // Site-wide, the checkout route (D24), and the picture cache.
+  expect(rules).toHaveLength(3);
+  const rule = rules.find((r) => r.source === source);
+  expect(rule, `no header rule for ${source}`).toBeDefined();
   return { source: rule!.source, headers: new Map(rule!.headers.map((h) => [h.key, h.value])) };
 }
 
@@ -106,6 +108,53 @@ describe("Content-Security-Policy in production", () => {
     const sources = Object.values(parseCsp(headers.get("Content-Security-Policy")!)).flat();
     for (const source of sources) {
       expect(source, source).toMatch(/^('self'|'none'|'unsafe-inline'|data:|blob:)$/);
+    }
+  });
+});
+
+describe("the checkout route's policy (D24)", () => {
+  const RAZORPAY = /^https:\/\/[a-z-]+\.razorpay\.com$/;
+
+  it("opens script, frame, connect and img for Razorpay, and nothing else", async () => {
+    const site = parseCsp((await headersFor("production")).headers.get("Content-Security-Policy")!);
+    const pro = parseCsp((await headersFor("production", "/pro")).headers.get("Content-Security-Policy")!);
+
+    expect(pro["script-src"]).toEqual([...site["script-src"]!, "https://checkout.razorpay.com"]);
+    expect(pro["connect-src"]).toEqual([...site["connect-src"]!, "https://api.razorpay.com", "https://lumberjack.razorpay.com", "https://lumberjack-cx.razorpay.com"]);
+    expect(pro["img-src"]).toEqual([...site["img-src"]!, "https://cdn.razorpay.com", "https://badges.razorpay.com"]);
+    // frame-src is 'none' everywhere else; here it names the two hosts and
+    // drops 'none', which would otherwise forbid them.
+    expect(pro["frame-src"]).toEqual(["https://api.razorpay.com", "https://checkout.razorpay.com"]);
+
+    // Every other directive is the site's own, untouched.
+    const untouched = (policy: Record<string, string[]>) =>
+      Object.fromEntries(Object.entries(policy).filter(([k]) => !["script-src", "connect-src", "img-src", "frame-src"].includes(k)));
+    expect(untouched(pro)).toEqual(untouched(site));
+  });
+
+  it("adds only https Razorpay hosts, never a wildcard or anything else", async () => {
+    const site = parseCsp((await headersFor("production")).headers.get("Content-Security-Policy")!);
+    const pro = parseCsp((await headersFor("production", "/pro")).headers.get("Content-Security-Policy")!);
+    const siteSources = new Set(Object.values(site).flat());
+    for (const source of Object.values(pro).flat()) {
+      if (siteSources.has(source)) continue;
+      expect(source, source).toMatch(RAZORPAY);
+    }
+  });
+
+  it("leaves every other page with no third-party source at all", async () => {
+    const site = parseCsp((await headersFor("production")).headers.get("Content-Security-Policy")!);
+    for (const source of Object.values(site).flat()) {
+      expect(source, source).toMatch(/^('self'|'none'|'unsafe-inline'|data:|blob:)$/);
+    }
+  });
+
+  it("carries the site's other security headers unchanged", async () => {
+    const site = await headersFor("production");
+    const pro = await headersFor("production", "/pro");
+    for (const [key, value] of site.headers) {
+      if (key === "Content-Security-Policy") continue;
+      expect(pro.headers.get(key), key).toBe(value);
     }
   });
 });

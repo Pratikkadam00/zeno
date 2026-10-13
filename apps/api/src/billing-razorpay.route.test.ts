@@ -228,3 +228,20 @@ describe("refunds", () => {
     expect(response.statusCode).toBe(200);
   });
 });
+
+describe("the consent travels from the order to the grant", () => {
+  it("records it when the note says yes", async () => {
+    await post(captured({ notes: { accountId: "acct_c1", product: "pro_annual", immediateAccess: "yes" } }), { eventId: "evt_c1" });
+    expect(getWebGrant("acct_c1")?.immediateAccess).toBe(true);
+  });
+
+  it("records not-given for anything else, including a missing note", async () => {
+    await post(captured({ notes: { accountId: "acct_c2", product: "pro_annual", immediateAccess: "no" } }), { eventId: "evt_c2" });
+    expect(getWebGrant("acct_c2")?.immediateAccess).toBe(false);
+    await post(captured({ id: "pay_c3", notes: { accountId: "acct_c3", product: "pro_annual" } }), { eventId: "evt_c3" });
+    expect(getWebGrant("acct_c3")?.immediateAccess).toBe(false);
+    // Not a value we wrote: a forged or mangled note cannot read as consent.
+    await post(captured({ id: "pay_c4", notes: { accountId: "acct_c4", product: "pro_annual", immediateAccess: "YES" } }), { eventId: "evt_c4" });
+    expect(getWebGrant("acct_c4")?.immediateAccess).toBe(false);
+  });
+});

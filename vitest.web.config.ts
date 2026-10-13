@@ -45,10 +45,10 @@ export default defineConfig({
         // 97.84 / 99.44 while the floors read 97.85 / 99.45 from one earlier run
         // that rounded up (the same lesson as jest's truncation): the floors
         // are the stable measured level, never a single run's rounding.
-        statements: 97.99,
-        branches: 89.12,
-        functions: 99.51,
-        lines: 99.91,
+        statements: 98.1,
+        branches: 89.41,
+        functions: 99.53,
+        lines: 99.92,
         autoUpdate: true
       }
     }

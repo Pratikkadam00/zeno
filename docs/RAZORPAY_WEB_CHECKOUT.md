@@ -108,6 +108,19 @@ The app must not link to, or price, the web checkout. I'll add a test that fails
 file under `apps/mobile` references the checkout path or Razorpay — a rail, so this can't
 be undone by accident months from now.
 
+## What has never been run
+
+Everything above is tested, and one thing is not *proven*: the modal itself has
+never opened against Razorpay. Its options, callbacks and script URL come from
+their Standard Checkout guide and are pinned by tests against a stand-in, which
+is as far as code can go without a key. The first run with a test key is the
+measurement, and the likely corrections are small and local to
+`lib/razorpay-checkout.ts`.
+
+Everything else in the path — the price list, sign-in, the order, the consent,
+the webhook, the grant, the refund revocation — is exercised by tests that do
+not need a key.
+
 ## What I need from the owner
 
 1. **Razorpay key id and key secret** — live and test. Put them in `zeno-keys\prod\` as
@@ -158,4 +171,7 @@ with the purchase flow.
 | Order creation endpoint | ✅ `POST /api/v1/billing/razorpay/order`, 23 tests (keys only needed to RUN it) |
 | Checkout page, rendering configured prices | ✅ `/pro` + `/api/checkout/prices`; no CSP change needed yet |
 | The mobile no-steering guard test | ✅ `scripts/play-steering-guard.test.ts` |
-| End-to-end in Razorpay test mode | ⬜ |
+| Sign in to buy (the email CODE, not the link) | ✅ `/api/checkout/session` |
+| The EU/UK consent, recorded with the payment | ✅ order note → webhook → grant |
+| Razorpay Checkout opened over the page, CSP scoped to `/pro` | ✅ written to their docs; **unrun against real keys** |
+| End-to-end in Razorpay test mode | ⬜ **the only thing left**, and it needs the test key id and secret |

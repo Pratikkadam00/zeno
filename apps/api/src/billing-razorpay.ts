@@ -33,6 +33,13 @@ export type WebGrant = {
   amountMinor: number;
   currency: string;
   grantedAt: string;
+  /**
+   * Whether the buyer asked for Zeno to start at once and gave up the EU/UK
+   * fourteen-day withdrawal right in exchange (/legal/refunds §4). Kept with
+   * the payment because that is the only place it can be proved later; absent
+   * means they did not, and the fourteen days stand.
+   */
+  immediateAccess?: boolean;
 };
 
 const RAZORPAY_API = "https://api.razorpay.com/v1";
@@ -135,7 +142,8 @@ export type CreatedOrder = {
 export async function createOrder(
   accountId: string,
   product: WebProduct,
-  currency: WebCurrency
+  currency: WebCurrency,
+  immediateAccess = false
 ): Promise<CreatedOrder> {
   const keyId = process.env.RAZORPAY_KEY_ID;
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
@@ -158,7 +166,8 @@ export async function createOrder(
       // Razorpay caps the receipt at 40 characters; a UUID is 36 and carries no
       // account information into a field that appears on statements.
       receipt: randomUUID(),
-      notes: { accountId, product }
+      // Razorpay stores notes as strings, and the webhook reads them back.
+      notes: { accountId, product, immediateAccess: immediateAccess ? "yes" : "no" }
     })
   });
   if (!response.ok) {

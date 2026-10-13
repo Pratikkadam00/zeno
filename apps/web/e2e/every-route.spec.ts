@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type APIRequestContext, type Page, type Response } from "@playwright/test";
-import { governedInlineScripts, hashSource } from "../../../scripts/csp-script-hashes.mjs";
+import { extraScriptSourcesForRoute, governedInlineScripts, hashSource } from "../../../scripts/csp-script-hashes.mjs";
 
 // Every route the site serves, taken from its own sitemap.xml (so a new page
 // is covered the day the sitemap lists it), in a real Chrome, on desktop and
@@ -30,11 +30,15 @@ function scriptPolicy(html: string): string | undefined {
   return /<meta data-zeno-csp http-equiv="Content-Security-Policy" content="([^"]*)">/.exec(html)?.[1];
 }
 
-/** Problems with a page's script policy: missing, or not exactly its own inline scripts. */
-function scriptPolicyProblems(html: string): string[] {
+/** Problems with a page's script policy: missing, or not exactly its own inline
+ *  scripts plus whatever that route is allowed to load from elsewhere (D24:
+ *  /pro loads Razorpay's checkout). The allowance is read from the generator
+ *  itself, so the page and this check cannot drift apart. */
+function scriptPolicyProblems(html: string, route = ""): string[] {
   const policy = scriptPolicy(html);
   if (!policy) return ["no script policy"];
-  const expected = `script-src 'self' ${[...new Set(governedInlineScripts(html).map(hashSource))].join(" ")}`;
+  const own = [...new Set(governedInlineScripts(html).map(hashSource))];
+  const expected = `script-src 'self' ${[...extraScriptSourcesForRoute(route), ...own].join(" ")}`;
   return policy === expected ? [] : [`policy ${policy.slice(0, 60)}… is not the page's own scripts`];
 }
 
@@ -64,10 +68,28 @@ async function watch(page: Page): Promise<Watch> {
   return w;
 }
 
-function checkHeaders(response: Response | null) {
+// D24: /pro is the one route whose policy differs, because Razorpay's checkout
+// runs there. Its exact value is pinned by next.config.test.ts; here the rule
+// is only that the difference is confined to that page and is Razorpay's hosts.
+const CHECKOUT_ROUTE = "/pro";
+
+function checkHeaders(response: Response | null, route = "") {
   expect(response, "a response").not.toBeNull();
   const headers = response!.headers();
-  for (const [name, value] of Object.entries(EXPECTED_HEADERS)) expect.soft(headers[name], name).toBe(value);
+  for (const [name, value] of Object.entries(EXPECTED_HEADERS)) {
+    if (name === "content-security-policy" && route === CHECKOUT_ROUTE) {
+      const extra = headers[name]!.split("; ").filter((d) => !value.split("; ").includes(d));
+      // Every directive this page changes names only Razorpay beyond what the
+      // site-wide policy already allowed.
+      for (const directive of extra) {
+        const added = directive.split(" ").slice(1).filter((source) => !value.includes(source));
+        expect.soft(added.length, `${directive} adds nothing`).toBeGreaterThan(0);
+        for (const source of added) expect.soft(source, source).toMatch(/^https:\/\/[a-z-]+\.razorpay\.com$/);
+      }
+      continue;
+    }
+    expect.soft(headers[name], name).toBe(value);
+  }
   expect.soft(headers["x-powered-by"], "x-powered-by").toBeUndefined();
 }
 
@@ -157,8 +179,8 @@ for (const path of [...PAGES, ...GUIDES]) {
     const w = await watch(page);
     const response = await page.goto(path, { waitUntil: "networkidle" });
     expect(response?.status()).toBe(200);
-    checkHeaders(response);
-    expect.soft(scriptPolicyProblems(await response!.text()), "script policy").toEqual([]);
+    checkHeaders(response, path);
+    expect.soft(scriptPolicyProblems(await response!.text(), path), "script policy").toEqual([]);
     expect.soft(await scriptsRan(page), "inline scripts ran").toEqual({ themeScript: true, hydrated: true });
     expect.soft(w.consoleErrors, "console errors").toEqual([]);
     expect.soft(w.outside, "requests to other hosts").toEqual([]);
@@ -245,7 +267,7 @@ test("all 509 guides answer 200 with the security headers and their own script p
       guides.slice(i, i + 25).map(async (path) => {
         const res = await request.get(path);
         if (res.status() !== 200 || res.headers()["content-security-policy"] !== EXPECTED_HEADERS["content-security-policy"]) bad.push(`${path} ${res.status()}`);
-        for (const problem of scriptPolicyProblems(await res.text())) bad.push(`${path} ${problem}`);
+        for (const problem of scriptPolicyProblems(await res.text(), path)) bad.push(`${path} ${problem}`);
       })
     );
   }

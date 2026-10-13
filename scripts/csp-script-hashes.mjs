@@ -21,6 +21,26 @@ import { fileURLToPath } from "node:url";
 
 const MARKER = "data-zeno-csp";
 
+// D24: pages that may load a third-party script, and which. /pro opens
+// Razorpay's Standard Checkout; the header policy (next.config.ts) names the
+// same source, and a browser enforces both. Keyed by the prerendered file's
+// path, so only that page is affected.
+const EXTRA_SCRIPT_SRC = {
+  "/pro": ["https://checkout.razorpay.com"]
+};
+
+/** The extra script sources a route is allowed. The e2e sweep asks this too, so
+ *  the page's policy and the check on it cannot drift apart. */
+export function extraScriptSourcesForRoute(route) {
+  return EXTRA_SCRIPT_SRC[route] ?? [];
+}
+
+/** The same, for a prerendered file under .next/server/app (either separator). */
+export function extraScriptSources(file) {
+  const route = /[\\/]server[\\/]app(.*)\.html$/.exec(file)?.[1]?.replace(/\\/g, "/");
+  return route ? extraScriptSourcesForRoute(route) : [];
+}
+
 // <script type> values a browser executes, or that script-src governs anyway
 // (import maps, speculation rules). Any other type (application/ld+json) is a
 // data block: never run, not subject to CSP.
@@ -62,7 +82,7 @@ export function hashSource(text) {
 }
 
 /** The page's HTML with its script <meta> CSP as the first thing in <head>. Exported for tests. */
-export function withScriptCsp(html) {
+export function withScriptCsp(html, extra = []) {
   const cleaned = html.replace(new RegExp(`<meta ${MARKER}[^>]*>`, "g"), "");
   const head = /<head(\s[^>]*)?>/i.exec(cleaned);
   if (!head) throw new Error("no <head> to put the policy in");
@@ -70,7 +90,8 @@ export function withScriptCsp(html) {
   // A policy only governs what the parser meets after it.
   if (/<script\b/i.test(cleaned.slice(0, at))) throw new Error("a script comes before <head>");
   const unique = [...new Set(governedInlineScripts(cleaned).map(hashSource))];
-  const meta = `<meta ${MARKER} http-equiv="Content-Security-Policy" content="script-src 'self' ${unique.join(" ")}">`;
+  const sources = [...extra, ...unique];
+  const meta = `<meta ${MARKER} http-equiv="Content-Security-Policy" content="script-src 'self' ${sources.join(" ")}">`;
   return { html: cleaned.slice(0, at) + meta + cleaned.slice(at), hashes: unique.length };
 }
 
@@ -92,7 +113,7 @@ export function run(dir) {
   if (files.length === 0) throw new Error(`no prerendered pages under ${dir}: run next build first`);
   let hashes = 0;
   for (const file of files) {
-    const result = withScriptCsp(readFileSync(file, "utf8"));
+    const result = withScriptCsp(readFileSync(file, "utf8"), extraScriptSources(file));
     writeFileSync(file, result.html);
     hashes += result.hashes;
   }

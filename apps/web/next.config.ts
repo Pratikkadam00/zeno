@@ -63,6 +63,36 @@ const DENIED_FEATURES = [
 // `preload` because submitting the domain needs it (submitting is the owner's
 // call: OWNER_ACTIONS); no Cache-Control no-store or Clear-Site-Data (a public
 // site meant to be cached; there's no sign-out); no COEP (nothing to isolate).
+// D24: /pro, and only /pro, opens the policy for Razorpay's Standard Checkout.
+// It loads checkout.razorpay.com/v1/checkout.js and opens its own frames, and
+// that script talks to Razorpay's API and its telemetry host. Every other page
+// keeps `script-src 'self'` with no third party at all, which is what the
+// privacy pages claim and what app/pages.test.tsx and the e2e sweep hold.
+//
+// The page's own <meta> policy (scripts/csp-script-hashes.mjs) carries the same
+// script source, because a browser enforces both and the stricter wins.
+export const RAZORPAY_SOURCES = {
+  script: ["https://checkout.razorpay.com"],
+  frame: ["https://api.razorpay.com", "https://checkout.razorpay.com"],
+  connect: ["https://api.razorpay.com", "https://lumberjack.razorpay.com", "https://lumberjack-cx.razorpay.com"],
+  img: ["https://cdn.razorpay.com", "https://badges.razorpay.com"]
+};
+
+/** The site's CSP with Razorpay allowed, for the checkout route only. */
+function cspForCheckout(base: string): string {
+  return base
+    .split("; ")
+    .map((directive) => {
+      if (directive.startsWith("script-src ")) return `${directive} ${RAZORPAY_SOURCES.script.join(" ")}`;
+      if (directive.startsWith("connect-src ")) return `${directive} ${RAZORPAY_SOURCES.connect.join(" ")}`;
+      if (directive.startsWith("img-src ")) return `${directive} ${RAZORPAY_SOURCES.img.join(" ")}`;
+      // frame-src is 'none' on every other page; here it names the two hosts.
+      if (directive.startsWith("frame-src ")) return `frame-src ${RAZORPAY_SOURCES.frame.join(" ")}`;
+      return directive;
+    })
+    .join("; ");
+}
+
 const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -95,6 +125,14 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@zeno/shared", "@zeno/service-catalog"],
   async headers() {
     return [
+      // The checkout route first: Next applies the first matching source, and
+      // this one needs Razorpay in its policy.
+      {
+        source: "/pro",
+        headers: securityHeaders.map((header) =>
+          header.key === "Content-Security-Policy" ? { key: header.key, value: cspForCheckout(header.value) } : header
+        )
+      },
       { source: "/:path*", headers: securityHeaders },
       // W6.7: the pictures and share cards (public/art, public/og) are
       // committed files with stable names; Netlify served them with
