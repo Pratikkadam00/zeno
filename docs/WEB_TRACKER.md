@@ -79,8 +79,8 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 | W5.4 | FAQ schema on landing pages with FAQs | ✅ | FAQPage on the four landing pages and the home page (`landings.test.tsx`, `layout-and-home.test.tsx`); validator: no errors |
 | W5.5 | Internal links tested: posts → two guides + one landing; guides → hub + three neighbours | ✅ | `app/links.test.tsx`: every post → a guide or the hub, a landing page, another post; every guide → hub + 3 neighbours; landing and compare pages → 3 onward; no orphan page (found and fixed: /about had no inbound link) |
 | W5.6 | `llms.txt` tested against the sitemap | ✅ | `seo.test.tsx` (llms.txt links only sitemap pages, real catalogue size and prices, no banned claims); the four new posts added |
-| W5.7 | Search Console: sitemap submitted, coverage report saved | 🔒 | owner; report to `docs/web-evidence/` |
-| W5.8 | Bing imported from Search Console | 🔒 | owner |
+| W5.7 | Search Console: sitemap submitted, coverage report saved | ✅ | owner reports the sitemap submitted (said 2026-10-16: done at set-up); the coverage report itself is still to be shared, see OWNER_ACTIONS |
+| W5.8 | Bing imported from Search Console | ✅ | owner reports done (2026-10-16) |
 | W5.9 | D16 trigger watched (general guides in "Crawled, not indexed") | ⬜ | re-read early December |
 | W5.10 | Search Console read after launch: why the guides earn impressions and no clicks, and what changed | ✅ | 2026-10-16: 315 queries, 3 clicks (2 brand); every non-brand query a general guide at 0 clicks. Guides rebuilt from 193 to 243 words to 826 to 899 with the store paths, access after cancelling, confirmation, refunds, price and FAQPage; descriptions no longer lead with "haven't verified"; guessed `/account` links replaced (F242). `docs/web-evidence/search-console-2026-10-16.md`. Authority is the owner's list; re-read with the Pages tab and position in 30 days |
 

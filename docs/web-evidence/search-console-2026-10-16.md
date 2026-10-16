@@ -29,8 +29,9 @@ cancellation guide, and every one of those earned zero clicks.
 ## What that says
 
 1. **Authority, not relevance.** The site is twelve days old with no inbound links
-   (`docs/OWNER_ACTIONS.md`: "zenoapp.in has none yet") and its sitemap has not been
-   submitted. `SEO.md` §0: rank is relevance × authority × time, and a new domain takes
+   (`docs/OWNER_ACTIONS.md`: "zenoapp.in has none yet"). The sitemap was submitted and Bing
+   imported at set-up, the owner says (corrected 2026-10-16: this file first said otherwise,
+   from a tracker row that had not been updated). `SEO.md` §0: rank is relevance × authority × time, and a new domain takes
    "2–6 weeks after indexing to settle". Nothing on the page side changes that; it is
    the largest factor and it is the owner's list in §10.
 2. **The guides Google shows are the thin ones.** Songsterr Plus, Clue Plus, Mixcloud
@@ -84,6 +85,6 @@ Measured after the build: see the commit message for the word counts.
 ## What this does not do
 
 It does not create authority. Until the owner's list in `docs/OWNER_ACTIONS.md` is done
-(sitemap, Bing, request indexing, directories, brand profiles), the guides compete on
+(request indexing, directories, brand profiles; the sitemap and Bing are done), the guides compete on
 content alone from a twelve-day-old domain. Read this report again in thirty days with
 the Pages tab and average position visible.
