@@ -51,11 +51,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // Guides with steps written for their service rank above the general ones
   // (the same five steps with the name filled in, F171); whether the general
   // ones are listed at all is D16 (apps/web/lib/guides.ts).
+  // 2026-10-16: every guide gained the store cancellation paths, what happens
+  // after cancelling, how to confirm it, refunds and the usual price (W5): a
+  // real content change, so a real date (SEO.md §7.1).
+  const guidesModified = new Date("2026-10-16");
   const cancelRoutes: MetadataRoute.Sitemap = services
     .filter((service) => INDEX_GENERAL_GUIDES || !isGeneralCancelGuide(service.name, service.cancelGuide))
     .map((service) => ({
       url: `${BASE}/cancel/${service.slug}`,
-      lastModified,
+      lastModified: guidesModified,
       changeFrequency: "monthly",
       priority: isGeneralCancelGuide(service.name, service.cancelGuide) ? 0.5 : 0.8
     }));

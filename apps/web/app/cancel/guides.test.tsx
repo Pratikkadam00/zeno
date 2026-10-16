@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { findServiceBySlug, isGeneralCancelGuide, services } from "@zeno/service-catalog";
+import { isGuessedCancelUrl } from "@/lib/guides";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, describe, expect, it, vi } from "vitest";
@@ -44,7 +45,9 @@ describe("the cancel guides: one per catalog service", () => {
   it("each prints the catalog's steps, in order, and states their difficulty", () => {
     for (const { slug, doc } of guides) {
       const service = findServiceBySlug(slug)!;
-      const steps = [...doc.querySelectorAll("main ol li")].map((li) => li.textContent);
+      // The first list is the catalogue's steps; the store paths below it are
+      // Apple's and Google's own steps (lib/guide-content.ts), lists of their own.
+      const steps = [...doc.querySelector("main ol")!.querySelectorAll("li")].map((li) => li.textContent);
       expect([slug, steps]).toEqual([slug, service.cancellationGuideSteps]);
       expect(doc.querySelector("main")!.textContent).toContain(`Difficulty: ${service.cancellationDifficulty.replace("_", " ")}`);
     }
@@ -94,21 +97,58 @@ describe("the cancel guides: one per catalog service", () => {
     }
   });
 
-  it("a cancellation link, when the catalog has one, is https and opens safely in a new tab", () => {
-    let withLink = 0;
+  it("a written cancellation link is used; a guessed '<website>/account' one is replaced by the homepage (F242); both https, both in a new tab", () => {
+    let researched = 0;
+    let general = 0;
     for (const { slug, doc } of guides) {
       const service = findServiceBySlug(slug)!;
-      const link = [...doc.querySelectorAll("a")].find((a) => a.textContent === `Open ${service.name} cancellation page →`);
-      if (!service.cancellationUrl) {
-        expect([slug, link]).toEqual([slug, undefined]);
-        continue;
+      const guessed = isGuessedCancelUrl(service.website, service.cancellationUrl);
+      const text = guessed ? `Open ${service.name}'s website →` : `Open ${service.name} cancellation page →`;
+      const link = [...doc.querySelectorAll("a")].find((a) => a.textContent === text);
+      if (guessed) {
+        general += 1;
+        // Never the guessed "<website>/account": 4 of a 14-link sample were 404s.
+        expect([slug, link?.getAttribute("href")]).toEqual([slug, service.website]);
+        expect([...doc.querySelectorAll("a")].map((a) => a.getAttribute("href"))).not.toContain(service.cancellationUrl);
+      } else {
+        researched += 1;
+        expect([slug, link?.getAttribute("href")]).toEqual([slug, service.cancellationUrl]);
       }
-      withLink += 1;
-      expect([slug, link?.getAttribute("href")]).toEqual([slug, service.cancellationUrl]);
       expect(link!.getAttribute("href")).toMatch(/^https:\/\//);
       expect(link!.getAttribute("rel")).toBe("noopener noreferrer");
     }
-    expect(withLink).toBeGreaterThan(0);
+    expect(researched).toBeGreaterThan(0);
+    expect(general).toBeGreaterThan(0);
+  });
+
+  it("every guide answers the store paths, access after cancelling, confirmation and refunds, with FAQ schema mirroring its visible questions", () => {
+    for (const { slug, doc } of guides) {
+      const service = findServiceBySlug(slug)!;
+      const h2s = [...doc.querySelectorAll("main h2")].map((h) => h.textContent);
+      expect([slug, h2s]).toEqual([slug, expect.arrayContaining([
+        `Before you cancel: check how you pay ${service.name}`,
+        `What happens after you cancel ${service.name}`,
+        `How to confirm ${service.name} is cancelled`,
+        "Refunds",
+        `Questions about cancelling ${service.name}`
+      ])]);
+      const faq = jsonLd(doc).find((b) => b["@type"] === "FAQPage")!;
+      const visible = [...doc.querySelectorAll("main h3")].map((h) => h.textContent);
+      const entities = faq.mainEntity as { name: string; acceptedAnswer: { text: string } }[];
+      expect(entities).toHaveLength(3);
+      for (const entity of entities) {
+        expect([slug, visible]).toEqual([slug, expect.arrayContaining([entity.name])]);
+        expect([slug, doc.querySelector("main")!.textContent]).toEqual([slug, expect.stringContaining(entity.acceptedAnswer.text)]);
+      }
+    }
+  });
+
+  it("a guide with a catalogue price says what the service usually costs; one without says nothing about price", () => {
+    for (const { slug, doc } of guides) {
+      const service = findServiceBySlug(slug)!;
+      const text = doc.querySelector("main")!.textContent ?? "";
+      expect([slug, text.includes(`What ${service.name} costs`)]).toEqual([slug, Boolean(service.defaultMonthlyPrice)]);
+    }
   });
 
   it("related guides: up to six others from the same catalog category, never itself", () => {

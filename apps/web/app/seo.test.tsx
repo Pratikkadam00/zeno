@@ -89,12 +89,15 @@ describe("every indexable page's metadata (SEO.md §3)", () => {
     expect(new Set(descriptions).size).toBe(descriptions.length);
   });
 
-  it("a guide's description never claims more than its page: general guides say they are unverified", () => {
+  it("a guide's description never claims more than its page: a general guide says 'General steps' and never 'step-by-step'", () => {
+    // 2026-10-16: the description used to add "We haven't verified the exact
+    // flow yet", which Search Console showed to be the line nobody clicks. The
+    // honest label stays in front; the rest now says what the page answers.
     for (const service of serviceRecords) {
       const general = isGeneralCancelGuide(service.name, service.cancellationGuideSteps);
       const text = guideDescription(service.name, service.cancellationDifficulty.replace("_", " "), general);
       expect(text.startsWith(general ? "General steps" : "Step-by-step guide"), service.name).toBe(true);
-      if (general) expect(text, service.name).toContain("haven't verified");
+      if (general) expect(text, service.name).not.toMatch(/step-by-step|verified/i);
     }
   });
 });

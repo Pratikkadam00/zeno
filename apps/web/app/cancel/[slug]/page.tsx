@@ -1,6 +1,8 @@
 import { siteUrl } from "@/lib/site";
 import { findServiceBySlug, isGeneralCancelGuide, services } from "@zeno/service-catalog";
-import { INDEX_GENERAL_GUIDES, guideDescription } from "@/lib/guides";
+import { INDEX_GENERAL_GUIDES, guideDescription, isGuessedCancelUrl } from "@/lib/guides";
+import { guideFaqs, guideSections } from "@/lib/guide-content";
+import { WEBSITE_ID } from "@/lib/seo";
 import { pageMetadata } from "@/lib/seo";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -73,6 +75,14 @@ export default async function CancellationGuidePage({ params }: { params: Promis
     ? services.filter((candidate) => candidate.category === rawService.category && candidate.slug !== slug).slice(0, 6)
     : [];
 
+  // W5 (2026-10-16): the half of the guide that is true for every service: the
+  // store paths, access after cancelling, confirmation, refunds, the usual
+  // price. The questions are rendered and put in FAQPage schema from one
+  // array, so the schema mirrors the page word for word (SEO.md §4.3).
+  const sections = guideSections(service.name, service.defaultMonthlyPrice, service.defaultAnnualPrice);
+  const faqs = guideFaqs(service.name);
+  const pageUrl = siteUrl(`/cancel/${slug}`);
+
   return (
     <ContentShell
       eyebrow="Cancellation guide"
@@ -123,13 +133,64 @@ export default async function CancellationGuidePage({ params }: { params: Promis
         ))}
       </ol>
 
-      {service.cancellationUrl ? (
+      {isGuessedCancelUrl(service.website, service.cancellationUrl) ? (
+        // F242: this catalogue link is "<website>/account", a guess that 404s
+        // for about a third of a sample. The homepage is the one address we
+        // know is right, so that is what this guide opens.
+        <p>
+          <a className={styles.cta} href={service.website} target="_blank" rel="noopener noreferrer">
+            Open {service.name}&apos;s website →
+          </a>
+        </p>
+      ) : (
+        // Every catalogue entry has a cancellation link (services.test.ts
+        // checks each one is https), so there is no third case.
         <p>
           <a className={styles.cta} href={service.cancellationUrl} target="_blank" rel="noopener noreferrer">
             Open {service.name} cancellation page →
           </a>
         </p>
-      ) : null}
+      )}
+
+      {sections.map((section) => (
+        <section key={section.heading}>
+          <h2>{section.heading}</h2>
+          {section.paragraphs.map((paragraph) => (
+            <p key={paragraph}>{paragraph}</p>
+          ))}
+          {section.subsections?.map((sub) => (
+            <div key={sub.heading}>
+              <h3>{sub.heading}</h3>
+              <ol className={styles.steps}>
+                {sub.steps.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
+              {sub.paragraphs.map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
+            </div>
+          ))}
+        </section>
+      ))}
+
+      <h2>Questions about cancelling {service.name}</h2>
+      {faqs.map((faq) => (
+        <div key={faq.q}>
+          <h3>{faq.q}</h3>
+          <p>{faq.a}</p>
+        </div>
+      ))}
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "@id": `${pageUrl}#faq`,
+          url: pageUrl,
+          isPartOf: { "@id": WEBSITE_ID },
+          mainEntity: faqs.map((faq) => ({ "@type": "Question", name: faq.q, acceptedAnswer: { "@type": "Answer", text: faq.a } }))
+        }}
+      />
 
       {relatedServices.length > 0 ? (
         <>

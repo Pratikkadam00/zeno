@@ -82,6 +82,7 @@ proven. Order of work: W1, W3, W2, W4, W5, W6, W7, W8.
 | W5.7 | Search Console: sitemap submitted, coverage report saved | 🔒 | owner; report to `docs/web-evidence/` |
 | W5.8 | Bing imported from Search Console | 🔒 | owner |
 | W5.9 | D16 trigger watched (general guides in "Crawled, not indexed") | ⬜ | re-read early December |
+| W5.10 | Search Console read after launch: why the guides earn impressions and no clicks, and what changed | ✅ | 2026-10-16: 315 queries, 3 clicks (2 brand); every non-brand query a general guide at 0 clicks. Guides rebuilt from 193 to 243 words to 826 to 899 with the store paths, access after cancelling, confirmation, refunds, price and FAQPage; descriptions no longer lead with "haven't verified"; guessed `/account` links replaced (F242). `docs/web-evidence/search-console-2026-10-16.md`. Authority is the owner's list; re-read with the Pages tab and position in 30 days |
 
 ## W6 · Performance and technical
 

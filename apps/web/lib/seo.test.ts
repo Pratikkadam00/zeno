@@ -81,25 +81,33 @@ describe("structured data", () => {
 
 describe("guideDescription", () => {
   it("takes the longest wording that fits 160 characters", () => {
-    // A short name fits the longest wording; Netflix at "medium" is one character
-    // over it (161), so the next one is used.
+    // A short name fits the longest wording; Netflix at "medium" pushes it to
+    // 165, so the next one is used.
     expect(guideDescription("Max", "easy", false)).toBe(
-      "Step-by-step guide to cancel your Max subscription (difficulty: easy), with a direct link to the cancellation page, so you can stop before the next charge."
+      "Step-by-step guide to cancel your Max subscription (difficulty: easy), the App Store and Google Play paths, what happens to your access, and how to confirm it."
     );
     expect(guideDescription("Netflix", "medium", false)).toBe(
-      "Step-by-step guide to cancel your Netflix subscription (difficulty: medium), with a direct link to the cancellation page when one is available."
+      "Step-by-step guide to cancel Netflix (difficulty: medium), the App Store and Google Play paths, what happens to your access, and how to confirm it stopped."
     );
     expect(guideDescription("Max", "easy", true)).toBe(
-      "General steps to cancel your Max subscription (difficulty: easy), with a direct link to Max's cancellation page. We haven't verified Max's exact flow yet."
+      "General steps to cancel Max, with its website, the App Store and Google Play cancellation paths, what happens to your access, and how to confirm it stopped."
     );
     for (const text of [guideDescription("Max", "easy", false), guideDescription("Netflix", "medium", false), guideDescription("Max", "easy", true)]) {
       expect(text.length).toBeLessThanOrEqual(160);
+      expect(text.length).toBeGreaterThanOrEqual(140);
     }
   });
 
   it("falls back to the shortest wording for a name too long for any", () => {
     const name = "A".repeat(80);
-    expect(guideDescription(name, "hard", true)).toBe(`General steps to cancel ${name} (difficulty: hard), with a direct link to its cancellation page. We haven't verified the exact flow yet.`);
-    expect(guideDescription(name, "hard", false)).toBe(`Step-by-step guide to cancel your ${name} subscription (difficulty: hard), with a direct link to the cancellation page when available.`);
+    expect(guideDescription(name, "hard", true)).toBe(`General steps to cancel ${name}, the App Store and Google Play paths, what happens to your access, and how to confirm it stopped.`);
+    expect(guideDescription(name, "hard", false)).toBe(`Step-by-step guide to cancel ${name} (hard), the App Store and Google Play paths, your access afterwards, and how to confirm it.`);
+  });
+
+  it("a general guide's description never says 'verified' or 'step-by-step' (2026-10-16: the old 'haven't verified' line earned no clicks)", () => {
+    for (const name of ["Max", "TunnelBear", "Songsterr Plus", "A".repeat(80)]) {
+      expect(guideDescription(name, "medium", true)).not.toMatch(/verified|step-by-step/i);
+      expect(guideDescription(name, "medium", true).startsWith("General steps")).toBe(true);
+    }
   });
 });
