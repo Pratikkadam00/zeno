@@ -1,5 +1,5 @@
 import { act, fireEvent, screen } from "@testing-library/react-native";
-import { Linking, Platform } from "react-native";
+import { BackHandler, Linking, Platform } from "react-native";
 import LoginScreen from "../../app/login";
 import { renderScreen, resetFakes, routerMock, unnamedControls } from "../test-support/screen-harness";
 
@@ -31,8 +31,10 @@ beforeEach(() => {
     loginWithMagicLink: jest.fn(async () => {}),
     loginWithDemoAccount: jest.fn(async () => {}),
     loginWithApple: jest.fn(async () => {}),
-    loginWithGoogle: jest.fn(async () => {})
+    loginWithGoogle: jest.fn(async () => {}),
+    continueLocalOnly: jest.fn(async () => {})
   });
+  routerMock.canGoBack.mockReturnValue(true);
 });
 afterEach(() => jest.useRealTimers());
 
@@ -167,5 +169,73 @@ describe("login, the other ways in", () => {
     useAuthStore.setState({ isAuthenticated: true });
     await open();
     expect(routerMock.replace).toHaveBeenCalledWith("/dashboard");
+  });
+});
+
+describe("F243: the screen is not a dead end", () => {
+  it("offers Continue without an account, which marks the device local-only and opens the ledger", async () => {
+    await open();
+    await press("Continue without an account");
+    expect(store().continueLocalOnly).toHaveBeenCalledTimes(1);
+    expect(routerMock.replace).toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("the guest option needs no consent tick, because it creates no account", async () => {
+    await open();
+    expect(disabled("Continue without an account")).toBeFalsy();
+  });
+
+  it("but is locked while a sign-in is in flight, like every other control", async () => {
+    useAuthStore.setState({ status: "pending" });
+    await open();
+    expect(disabled("Continue without an account")).toBe(true);
+    await press("Continue without an account");
+    expect(store().continueLocalOnly).not.toHaveBeenCalled();
+  });
+
+  it("Back goes to onboarding for someone who cannot use the app, even with a stack to pop (a pop would bounce straight back here)", async () => {
+    routerMock.canGoBack.mockReturnValue(true);
+    await open();
+    await press("Back");
+    expect(routerMock.back).not.toHaveBeenCalled();
+    expect(routerMock.replace).toHaveBeenCalledWith("/");
+  });
+
+  it("Back pops the stack for someone who can use the app (local-only), when there is one", async () => {
+    useAuthStore.setState({ status: "local_only" });
+    await open();
+    await press("Back");
+    expect(routerMock.back).toHaveBeenCalledTimes(1);
+    expect(routerMock.replace).not.toHaveBeenCalledWith("/");
+  });
+
+  it("and goes to onboarding for them when there is nothing to pop", async () => {
+    useAuthStore.setState({ status: "local_only" });
+    routerMock.canGoBack.mockReturnValue(false);
+    await open();
+    await press("Back");
+    expect(routerMock.back).not.toHaveBeenCalled();
+    expect(routerMock.replace).toHaveBeenCalledWith("/");
+  });
+
+  it("the phone's back button follows the same rule, and is consumed", async () => {
+    const listen = jest.spyOn(BackHandler, "addEventListener");
+    await open();
+    const registered = listen.mock.calls.find(([event]) => event === "hardwareBackPress");
+    expect(registered).toBeDefined();
+    let handled: unknown;
+    await act(async () => { handled = (registered![1] as () => unknown)(); });
+    expect(routerMock.replace).toHaveBeenCalledWith("/");
+    expect(routerMock.back).not.toHaveBeenCalled();
+    // true: the event did not fall through to the OS, which would leave the app.
+    expect(handled).toBe(true);
+    listen.mockRestore();
+  });
+
+  it("names both controls for a screen reader, and keeps every control named", async () => {
+    const r = await open();
+    expect(screen.getByRole("button", { name: "Back" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Continue without an account" })).toBeTruthy();
+    expect(unnamedControls(r.toJSON() as never)).toEqual([]);
   });
 });

@@ -45,3 +45,14 @@ tags: [onboarding, auth]
 - assertVisible:
     text: "Continue with Google"
     enabled: false
+# F243 (2026-10-17): the screen is not a dead end. Back returns to onboarding,
+# and "Continue without an account" is offered here too, not only on the last
+# onboarding slide, and it reaches the ledger.
+- tapOn: "Back"
+- assertVisible: "Step 3 of 3"
+- tapOn: "Sign in"
+- assertVisible: "SIGN THE LINE TO CONTINUE"
+- tapOn: "Continue without an account"
+- extendedWaitUntil:
+    visible: "Your ledger"
+    timeout: 20000

@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  BackHandler,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -42,7 +43,8 @@ export default function LoginScreen() {
     loginWithMagicLink,
     loginWithDemoAccount,
     loginWithApple,
-    loginWithGoogle
+    loginWithGoogle,
+    continueLocalOnly
   } = useAuthStore();
 
   const [email, setEmail] = useState("");
@@ -133,6 +135,42 @@ export default function LoginScreen() {
     void openExternalUrl(url);
   }
 
+  // F243: this screen was a dead end. Reached from onboarding it sat on the
+  // stack and the phone's back button popped to the slide it came from.
+  // Reached the way the app itself sends you here (the root layout's
+  // `router.replace("/login")`, as after "Exit local-only mode") the screen
+  // beneath was the ledger, and a pop landed on it only for the layout to see
+  // "cannot use the app" and replace straight back to sign-in: measured on the
+  // device as back doing nothing. So a pop is never the answer for someone who
+  // cannot use the app; onboarding is, where every way in is offered. Someone
+  // who CAN use it (local-only, signed in) is popped, which is where they were.
+  const canUseApp = isAuthenticated || status === "local_only";
+  function handleBack(): void {
+    if (canUseApp && router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/");
+    }
+  }
+
+  // The phone's back button follows the same rule, for the same reason.
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      handleBack();
+      return true;
+    });
+    return () => subscription.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleBack reads the latest status on each press
+  }, [canUseApp]);
+
+  // The control is disabled while a sign-in is in flight (`disabled={isBusy}`
+  // below, tested), so no guard is repeated here: a line that cannot run is a
+  // line that cannot be tested.
+  async function handleContinueLocalOnly(): Promise<void> {
+    await continueLocalOnly();
+    router.replace("/dashboard");
+  }
+
   return (
     <SafeAreaView edges={["top"]} style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -145,6 +183,17 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.topSection}>
+            <View style={styles.backRow}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Back"
+                hitSlop={8}
+                onPress={handleBack}
+                style={({ pressed }) => [styles.backButton, { opacity: pressed ? 0.6 : 1 }]}
+              >
+                <Text style={styles.backText}>{"← Back"}</Text>
+              </Pressable>
+            </View>
             <View style={styles.brandBlock}>
               <View style={styles.iconContainer} accessible={false} importantForAccessibility="no-hide-descendants">
                 <Text style={styles.brandIcon}>Z</Text>
@@ -309,6 +358,21 @@ export default function LoginScreen() {
             </View>
           </View>
 
+          <View style={styles.localOnlyBlock}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Continue without an account"
+              accessibilityState={{ disabled: isBusy }}
+              disabled={isBusy}
+              onPress={() => void handleContinueLocalOnly()}
+              style={({ pressed }) => [styles.localOnlyLink, { opacity: pressed ? 0.6 : 1 }]}
+            >
+              <Text style={styles.localOnlyLinkText}>Continue without an account</Text>
+            </Pressable>
+            <Text style={styles.localOnlyHint}>
+              Tracking, discovery, budgets and export all work on this phone alone. Sync, the AI coach and Family Vault need a sign-in.
+            </Text>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -328,6 +392,14 @@ function createStyles(theme: ThemeTokens) {
       backgroundColor: theme.background,
       position: "relative"
     },
+    backRow: { flexDirection: "row", marginBottom: 8 },
+    // 48 high: the touch-target floor (U3.3), with hitSlop on top.
+    backButton: { minHeight: 48, justifyContent: "center", paddingRight: spacing.innerPad },
+    backText: { ...type.subheadline, color: theme.primary },
+    localOnlyBlock: { alignItems: "center", marginTop: spacing.sectionGap, marginBottom: spacing.innerPad },
+    localOnlyLink: { minHeight: 48, justifyContent: "center", paddingHorizontal: spacing.innerPad },
+    localOnlyLinkText: { ...type.subheadline, color: theme.primary, textDecorationLine: "underline" },
+    localOnlyHint: { ...type.caption1, color: theme.quietText, textAlign: "center", marginTop: 6, paddingHorizontal: spacing.innerPad },
     keyboard: {
       flex: 1
     },
