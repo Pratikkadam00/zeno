@@ -63,6 +63,7 @@ export const routerMock = {
   back: jest.fn(),
   replace: jest.fn(),
   navigate: jest.fn(),
+  setParams: jest.fn(),
   canGoBack: jest.fn(() => true)
 };
 export const routeParams: { current: Record<string, unknown> } = { current: {} };

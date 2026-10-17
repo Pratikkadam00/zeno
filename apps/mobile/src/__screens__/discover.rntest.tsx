@@ -6,6 +6,7 @@ import DiscoverScreen from "../../app/(tabs)/discover";
 import { parseCSV } from "../discovery/csvParser";
 import type { ParsedSubscription } from "../discovery/emailScanner";
 import { fakeNotificationsModule, fakeStorage, renderScreen, resetFakes, routerMock, unnamedControls } from "../test-support/screen-harness";
+import { routeParams } from "../test-support/screen-fakes";
 
 /**
  * P3.8c-2: the Discover tab, the scan entry points (bank CSV, Gmail) and the
@@ -417,5 +418,30 @@ describe("Discover, editing a result (F113)", () => {
     type("Service name", "Discarded");
     await press("Cancel");
     expect(screen.queryByText("Discarded")).toBeNull();
+  });
+});
+
+describe("F244: arriving from the quick-pick arc", () => {
+  it("?action=csv opens the file picker once and clears the param", async () => {
+    routeParams.current = { action: "csv" };
+    mockPick.mockResolvedValueOnce({ canceled: true, assets: [] });
+    await renderScreen(<DiscoverScreen />, { settleMs: 300 });
+    expect(mockPick).toHaveBeenCalledTimes(1);
+    expect(routerMock.setParams).toHaveBeenCalledWith({ action: undefined });
+  });
+
+  it("?action=email starts the Gmail connect once", async () => {
+    process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID = "client.apps.googleusercontent.com";
+    routeParams.current = { action: "email" };
+    await renderScreen(<DiscoverScreen />, { settleMs: 300 });
+    expect(mockAuth.prompt).toHaveBeenCalledTimes(1);
+    expect(routerMock.setParams).toHaveBeenCalledWith({ action: undefined });
+  });
+
+  it("any other value does nothing", async () => {
+    routeParams.current = { action: "nope" };
+    await renderScreen(<DiscoverScreen />, { settleMs: 300 });
+    expect(mockPick).not.toHaveBeenCalled();
+    expect(mockAuth.prompt).not.toHaveBeenCalled();
   });
 });

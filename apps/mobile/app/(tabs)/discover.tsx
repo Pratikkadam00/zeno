@@ -3,7 +3,7 @@ import type { BillingCycle, SubscriptionCategory } from "@zeno/shared";
 import { ResponseType } from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import * as DocumentPicker from "expo-document-picker";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, ToastAndroid, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -127,6 +127,26 @@ export default function DiscoverScreen() {
 
   const selectedCount = results.filter((r) => r.selected).length;
   const isBusy = scanStatus !== "idle";
+
+  // F244: the tab bar's quick-pick arc lands here with what it picked. The
+  // action runs once, when nothing else is running, and the param is cleared
+  // so that coming back to this tab does not run it again.
+  const { action } = useLocalSearchParams<{ action?: string }>();
+  // Each arrival is handled once, remembered here rather than inferred from
+  // the param: the test harness's router keeps params as given, and a screen
+  // that re-ran the import every time the picker closed would loop.
+  const handledAction = useRef<string | null>(null);
+  useEffect(() => {
+    if (action !== "csv" && action !== "email") return;
+    if (isBusy || handledAction.current === action) return;
+    handledAction.current = action;
+    router.setParams({ action: undefined });
+    if (action === "csv") {
+      void handleImportCSV();
+    } else {
+      void handleConnectGmail();
+    }
+  }, [action, isBusy]); // eslint-disable-line react-hooks/exhaustive-deps -- the two handlers read current state when they run
 
   useEffect(() => {
     let mounted = true;
