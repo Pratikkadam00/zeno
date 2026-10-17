@@ -149,7 +149,10 @@ export default function LoginScreen() {
     if (canUseApp && router.canGoBack()) {
       router.back();
     } else {
-      router.replace("/");
+      // The last slide: sign-in and "continue without an account" side by
+      // side, which is the choice they came from. Slide one would be two
+      // taps away from it (the nightly run measured exactly that).
+      router.replace({ pathname: "/", params: { step: "3" } });
     }
   }
 

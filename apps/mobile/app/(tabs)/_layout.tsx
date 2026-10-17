@@ -154,13 +154,6 @@ function DiscoverTabButton({ onPress, quickAdd }: { onPress?: () => void; quickA
   // and this one is meant to travel 134dp up to a seal. Measured on the device
   // before this line existed: the arc opened on the hold and vanished on the
   // first move.
-  //
-  // react-hooks/refs is switched off for this one expression: the rule reads
-  // the useMemo factory as render and so forbids it to touch callbacks that
-  // read a ref (pickHot, on release). These are gesture-handler event
-  // handlers; they run when a finger lifts, never during render, which is
-  // exactly the case the rule exists to allow. Nothing here is called in render.
-  /* eslint-disable react-hooks/refs */
   const hold = useMemo(
     () =>
       Gesture.LongPress()
@@ -186,7 +179,6 @@ function DiscoverTabButton({ onPress, quickAdd }: { onPress?: () => void; quickA
         .withTestId("quick-add-hold"),
     [openArc, moveHot, pickHot, cancelArc]
   );
-  /* eslint-enable react-hooks/refs */
 
   const onAccessibilityAction = (event: AccessibilityActionEvent) => {
     const action = QUICK_ACTIONS.find((q) => q.id === event.nativeEvent.actionName);

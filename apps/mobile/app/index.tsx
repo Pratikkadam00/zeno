@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -32,12 +32,23 @@ const money = (minor: number) => `$${(minor / 100).toFixed(2)}`;
 // skippable — the ledger prints itself, then defiant type, then the promise.
 // Its slop audit rejects the centre-hero + gradient-CTA-per-beat pattern and the
 // 6-screen mascot tutorial; this is asymmetric editorial type on paper.
+/** The slide an arrival asked for (1..3), as an index; anything else is the first. */
+export function initialStep(requested: string | string[] | undefined): 0 | 1 | 2 {
+  const n = Number(Array.isArray(requested) ? requested[0] : requested);
+  return n === 2 || n === 3 ? ((n - 1) as 1 | 2) : 0;
+}
+
 export default function OnboardingScreen() {
   const { theme } = useZenoTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const continueLocalOnly = useAuthStore((state) => state.continueLocalOnly);
   const reduced = useReducedMotion();
-  const [step, setStep] = useState(0);
+  // `?step=3` lands on the last slide, where sign-in and "continue without an
+  // account" are both offered. The sign-in screen's Back sends people here
+  // (F243): the nightly Maestro run caught the first version landing them on
+  // slide one, two taps away from the choice they had just left.
+  const { step: requestedStep } = useLocalSearchParams<{ step?: string }>();
+  const [step, setStep] = useState<number>(() => initialStep(requestedStep));
 
   // "Your data stays on your device" (beat 2) has to be true even before
   // sign-in — this is the actual no-account path. Cloud sync, the AI coach, and

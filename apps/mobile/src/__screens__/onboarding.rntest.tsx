@@ -1,7 +1,8 @@
 import { act, fireEvent, screen } from "@testing-library/react-native";
 import { AccessibilityInfo } from "react-native";
-import OnboardingScreen from "../../app/index";
+import OnboardingScreen, { initialStep } from "../../app/index";
 import { renderScreen, resetFakes, routerMock, unnamedControls } from "../test-support/screen-harness";
+import { routeParams } from "../test-support/screen-fakes";
 
 /**
  * P3.8e-2: onboarding (app/index.tsx): three beats, skippable, ending in
@@ -32,6 +33,32 @@ const open = () => renderScreen(<OnboardingScreen />, { settleMs: 1500 });
 const press = async (name: string) => {
   await act(async () => { fireEvent.press(screen.getAllByRole("button", { name }).at(-1)!); });
 };
+
+describe("arriving on a slide (F243: Back from sign-in lands on the last one)", () => {
+  it("reads ?step as 1..3 and ignores anything else", () => {
+    expect(initialStep(undefined)).toBe(0);
+    expect(initialStep("1")).toBe(0);
+    expect(initialStep("2")).toBe(1);
+    expect(initialStep("3")).toBe(2);
+    expect(initialStep(["3", "1"])).toBe(2);
+    for (const bad of ["0", "4", "-1", "x", "", "2.5"]) expect(initialStep(bad)).toBe(0);
+  });
+
+  it("?step=3 shows the last slide, with sign-in and the guest route, no taps needed", async () => {
+    routeParams.current = { step: "3" };
+    const r = await open();
+    expect(screen.getByLabelText("Step 3 of 3")).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Sign in" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: "Continue without an account" }).length).toBeGreaterThan(0);
+    r.unmount();
+  });
+
+  it("without the param, onboarding starts at the first slide", async () => {
+    const r = await open();
+    expect(screen.getByLabelText("Step 1 of 3")).toBeTruthy();
+    r.unmount();
+  });
+});
 
 describe("onboarding", () => {
   it("beat 1: the sample ledger, its total computed from its rows, labelled as a sample; every control is named", async () => {

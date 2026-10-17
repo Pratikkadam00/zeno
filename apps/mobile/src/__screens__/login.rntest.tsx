@@ -193,12 +193,15 @@ describe("F243: the screen is not a dead end", () => {
     expect(store().continueLocalOnly).not.toHaveBeenCalled();
   });
 
-  it("Back goes to onboarding for someone who cannot use the app, even with a stack to pop (a pop would bounce straight back here)", async () => {
+  // Onboarding's last slide: sign-in and the guest route side by side.
+  const LAST_SLIDE = { pathname: "/", params: { step: "3" } };
+
+  it("Back goes to onboarding's last slide for someone who cannot use the app, even with a stack to pop (a pop would bounce straight back here)", async () => {
     routerMock.canGoBack.mockReturnValue(true);
     await open();
     await press("Back");
     expect(routerMock.back).not.toHaveBeenCalled();
-    expect(routerMock.replace).toHaveBeenCalledWith("/");
+    expect(routerMock.replace).toHaveBeenCalledWith(LAST_SLIDE);
   });
 
   it("Back pops the stack for someone who can use the app (local-only), when there is one", async () => {
@@ -206,7 +209,7 @@ describe("F243: the screen is not a dead end", () => {
     await open();
     await press("Back");
     expect(routerMock.back).toHaveBeenCalledTimes(1);
-    expect(routerMock.replace).not.toHaveBeenCalledWith("/");
+    expect(routerMock.replace).not.toHaveBeenCalledWith(LAST_SLIDE);
   });
 
   it("and goes to onboarding for them when there is nothing to pop", async () => {
@@ -215,7 +218,7 @@ describe("F243: the screen is not a dead end", () => {
     await open();
     await press("Back");
     expect(routerMock.back).not.toHaveBeenCalled();
-    expect(routerMock.replace).toHaveBeenCalledWith("/");
+    expect(routerMock.replace).toHaveBeenCalledWith(LAST_SLIDE);
   });
 
   it("the phone's back button follows the same rule, and is consumed", async () => {
@@ -225,7 +228,7 @@ describe("F243: the screen is not a dead end", () => {
     expect(registered).toBeDefined();
     let handled: unknown;
     await act(async () => { handled = (registered![1] as () => unknown)(); });
-    expect(routerMock.replace).toHaveBeenCalledWith("/");
+    expect(routerMock.replace).toHaveBeenCalledWith(LAST_SLIDE);
     expect(routerMock.back).not.toHaveBeenCalled();
     // true: the event did not fall through to the OS, which would leave the app.
     expect(handled).toBe(true);
