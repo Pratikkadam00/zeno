@@ -166,6 +166,25 @@ the runner), and the decisions D22 and D23.
 | U5.8 | Website in WebKit (Safari's engine) | ✅ | W7: a `webkit` project through a self-signed TLS front (e2e/tls-proxy.mjs, because WebKit upgrades insecure requests even to 127.0.0.1); it is what caught the axe target-size issue on nav links · [u5-devices-2026-10-09.md] |
 ---
 
+## Flows · journeys walked end to end (docs/FLOW_TEST_PLAN.md)
+
+Nine journeys added 2026-10-18, each passed on emulator-5554 and then on GitHub's emulator
+with the other thirteen: Maestro run [39109160334](https://github.com/Pratikkadam00/zeno/actions/runs/39109160334) on `d50ef83`, all 22 flows and the
+accessibility audit green.
+
+| # | Journey | Status | Evidence |
+|---|---|---|---|
+| F-A | Edit price and cycle, then delete | ✅ | `.maestro/14-edit-and-delete.yaml` |
+| F-B | Home currency: totals convert, rows keep their currency, back again | ✅ | `15-settings-currency.yaml` |
+| F-C | Exit local-only → Back (phone and on-screen) → guest again, data intact | ✅ | `16-exit-local-only-and-back.yaml` |
+| F-D | Budget below the forecast: OVER, the gap, the cut; the recap waits for a month | ✅ | `17-budget-exceeded.yaml` |
+| F-E | Replace the PIN; ten wrong PINs → 15-minute lockout, right PIN refused, survives a cold start | ✅ | `18-pin-reset-and-lockout.yaml` |
+| F-F | System kill in the background → locked on return, data intact | ✅ | `19-process-death.yaml` |
+| F-G | Bad CSV files say why and import nothing | ✅ fixed F245 | `20-discover-csv-bad-file.yaml` |
+| F-H | Reminders follow the ledger (Android's alarms agreed: 3 → 3 after update → 0) | ✅ | `21-reminders-follow-the-ledger.yaml` |
+| F-I | `zeno://` links land, unknown id says so, none passes the lock | ✅ · F246 open | `22-deep-links.yaml` |
+| O-1…O-8 | Sign-in end to end, Gmail, purchases, refund, own phone, old Android, iOS | 🔒 | the owner's, `docs/FLOW_TEST_PLAN.md` §4 |
+
 ## Findings from this plan
 
 | # | Finding | Severity | Status |
@@ -263,3 +282,5 @@ storage and memory, colour-only information, forced colours, and copy correctnes
 
 **2026-10-07:** plan and tracker written from a measured baseline (screens, tests, flows,
 audit scope, device coverage, website projects, the AI limits in the code).
+
+**2026-10-18:** flows F-A to F-I added and green on GitHub (run 39109160334); F245 fixed, F246 open.
