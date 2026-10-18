@@ -1,0 +1,34 @@
+appId: app.zeno.mobile
+name: Discover - a CSV with no amounts, then an empty one; each says why on the screen and imports nothing (F245)
+tags: [discover]
+---
+# F-G in docs/FLOW_TEST_PLAN.md. Needs fixtures/no-amounts.csv and
+# fixtures/empty.csv on the device as Download/zeno-*.csv (.maestro/run.sh
+# pushes them). Before F245 both ended in a two-second Android toast, "Found 0
+# subscriptions from Unknown.", and an unchanged screen.
+- runFlow: common/fresh-local-start.yaml
+- tapOn: "Discover subscriptions"
+- assertVisible: "Import bank statement"
+# Rows with a date and a description but no amount.
+- tapOn: "Import CSV file"
+- tapOn: "zeno-no-amounts.csv"
+- runFlow:
+    when:
+      visible: "1 selected"
+    commands:
+      - tapOn: "Select"
+- assertVisible: "No charges found in that file\\. Zeno reads a date, a description and an amount on each row, and none of its rows had all three\\."
+- assertNotVisible: "SCAN RESULTS"
+# An empty file.
+- tapOn: "Import CSV file"
+- tapOn: "zeno-empty.csv"
+- runFlow:
+    when:
+      visible: "1 selected"
+    commands:
+      - tapOn: "Select"
+- assertVisible: "That file has no statement rows in it\\. Export the statement from your bank again and pick the new file\\."
+- assertNotVisible: "SCAN RESULTS"
+# Nothing was half-imported: the ledger is still empty.
+- tapOn: "LEDGER"
+- assertVisible: "Nothing on the books yet\\."

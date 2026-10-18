@@ -1,0 +1,48 @@
+appId: app.zeno.mobile
+name: Reminders follow the ledger - three per renewal, gone when it is stamped cancelled, there for a new one
+tags: [notifications]
+---
+# F-H in docs/FLOW_TEST_PLAN.md. 09 walks the permission-denied state; this is
+# the granted one, and the promise the product makes: seven days out, three
+# days out, and on the day. The renewal is 30 days from the day the flow runs,
+# so dates are patterns.
+#
+# What Android itself holds was measured alongside on 2026-10-18 (adb shell
+# dumpsys alarm, emulator-5554): three alarms after adding Netflix, still three
+# after an app update, none after the cancel stamp. Maestro cannot read the
+# alarm table, so that part lives in docs/FLOW_TEST_PLAN.md, not here.
+- runFlow: common/fresh-local-start.yaml
+- runFlow: common/add-netflix.yaml
+- tapOn: "Notifications"
+- assertVisible: "UPCOMING REMINDERS"
+- assertVisible: "Netflix renews in 7 days"
+- assertVisible: ".*Netflix renews in 3 days"
+- assertVisible: "Netflix charged today"
+- tapOn: "Go back"
+# Stamp it cancelled: no more renewal reminders, a verification flag instead.
+- tapOn:
+    text: "Netflix, .* · ENTERTAINMENT, \\$15\\.49 per mo"
+- tapOn: "Cancel Subscription"
+- tapOn: "Mark Netflix as cancelled"
+- assertVisible: "PENDING"
+- tapOn: "Go back"
+- tapOn: "Go back"
+- tapOn: "Notifications"
+- assertNotVisible: ".*Netflix renews.*"
+- assertNotVisible: "Netflix charged today"
+- assertVisible: "Verifying Netflix cancellation"
+- assertVisible: "We'll confirm around [A-Z][a-z]{2} \\d{1,2}"
+- tapOn: "Go back"
+# A new subscription gets its own three.
+- tapOn: "Add"
+- tapOn: "Search services"
+- inputText: "Spotify"
+- tapOn:
+    text: "Spotify, .*"
+- tapOn: "Save subscription"
+- assertVisible: "Your ledger"
+- tapOn: "Notifications"
+- assertVisible: "Spotify renews in 7 days"
+- assertVisible: ".*Spotify renews in 3 days"
+- assertVisible: "Spotify charged today"
+- assertNotVisible: ".*Netflix renews.*"

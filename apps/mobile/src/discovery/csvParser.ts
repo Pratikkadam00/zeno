@@ -8,7 +8,28 @@ import type { ParsedSubscription } from "./emailScanner";
 export interface CSVParseResult {
   subscriptions: ParsedSubscription[];
   totalRows: number;
+  /** Rows that held a date, a description and a charge: what detection ran on. */
+  chargeCount: number;
   detectedFormat: string;
+}
+
+/**
+ * What to tell someone whose file produced no subscriptions, or null when it
+ * produced some. Measured on the device (2026-10-18, flow F-G): an empty file
+ * and a file with no amount column both ended in a two-second Android toast,
+ * "Found 0 subscriptions from Unknown.", and an unchanged screen. These say
+ * which of the three things happened, and what to do about it.
+ */
+export function importOutcomeMessage(result: CSVParseResult): string | null {
+  if (result.subscriptions.length > 0) return null;
+  if (result.totalRows === 0) {
+    return "That file has no statement rows in it. Export the statement from your bank again and pick the new file.";
+  }
+  if (result.chargeCount === 0) {
+    return "No charges found in that file. Zeno reads a date, a description and an amount on each row, and none of its rows had all three.";
+  }
+  const charges = result.chargeCount === 1 ? "1 charge" : `${result.chargeCount} charges`;
+  return `Read ${charges}, none of them recurring. A subscription needs the same merchant charging a similar amount at least twice, so a longer statement may find more.`;
 }
 
 type BankFormat = "Chase" | "Bank of America" | "Wells Fargo" | "Citi" | "Capital One" | "Generic";
@@ -35,7 +56,7 @@ type ColumnMap = {
 export function parseCSV(csvContent: string, fallbackCurrency: CurrencyCode): CSVParseResult {
   const rows = parseCsvRows(csvContent).filter((row) => row.some((cell) => cell.trim().length > 0));
   if (rows.length === 0) {
-    return { subscriptions: [], totalRows: 0, detectedFormat: "Unknown" };
+    return { subscriptions: [], totalRows: 0, chargeCount: 0, detectedFormat: "Unknown" };
   }
 
   const header = rows[0].map((cell) => cell.trim());
@@ -50,6 +71,7 @@ export function parseCSV(csvContent: string, fallbackCurrency: CurrencyCode): CS
   return {
     subscriptions: detectRecurringSubscriptions(transactions, currency),
     totalRows: Math.max(0, rows.length - 1),
+    chargeCount: transactions.length,
     detectedFormat
   };
 }

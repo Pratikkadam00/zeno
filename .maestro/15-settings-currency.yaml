@@ -1,0 +1,40 @@
+appId: app.zeno.mobile
+name: Home currency - totals convert, each subscription keeps the currency it was added in, and back again
+tags: [settings, money]
+---
+# F-B in docs/FLOW_TEST_PLAN.md. Settings promises: "Totals and budgets are
+# shown in this currency. Individual subscriptions keep displaying in the
+# currency you added them in." Nothing walked that promise.
+#
+# The converted figure depends on the day's exchange rate (open.er-api.com),
+# so the flow checks the currency and the shape of the number, never the
+# number. If the rate fetch is down the totals stay in dollars and this flow
+# fails, which is the right signal: the setting would then do nothing.
+- runFlow: common/fresh-local-start.yaml
+- runFlow: common/add-netflix.yaml
+- assertVisible: "Set a monthly budget\\. Forecast \\$15\\.49 this month\\."
+- tapOn: "Settings"
+- assertVisible: "USD \\(\\$\\)"
+- tapOn: "Home currency"
+- assertVisible: "Totals and budgets are shown in this currency\\..*"
+- tapOn: "EUR \\(€\\)"
+- assertVisible: "EUR \\(€\\)"
+- tapOn: "Navigate up"
+# The ledger's totals are in euros now; the Netflix row is still in dollars.
+- assertVisible: "Set a monthly budget\\. Forecast €\\d+\\.\\d{2} this month\\."
+- assertVisible: "€\\d+\\.\\d{2}"
+- assertVisible:
+    text: "Netflix, .* · ENTERTAINMENT, \\$15\\.49 per mo"
+# Insights totals follow the setting too.
+- tapOn: "INSIGHTS"
+- assertVisible: "MONTHLY SPEND"
+- assertVisible: ".*€\\d+\\.\\d{2}.*"
+# Back to dollars: the original figure returns exactly, nothing was rewritten.
+- tapOn: "LEDGER"
+- tapOn: "Settings"
+- tapOn: "Home currency"
+- tapOn: "USD \\(\\$\\)"
+- tapOn: "Navigate up"
+- assertVisible: "Set a monthly budget\\. Forecast \\$15\\.49 this month\\."
+- assertVisible:
+    text: "Netflix, .* · ENTERTAINMENT, \\$15\\.49 per mo"

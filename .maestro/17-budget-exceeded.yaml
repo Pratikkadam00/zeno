@@ -1,0 +1,43 @@
+appId: app.zeno.mobile
+name: Budget below the forecast - OVER, the gap in dollars, the subscription to cut; the recap waits for a full month
+tags: [budget, money]
+---
+# F-D in docs/FLOW_TEST_PLAN.md. 08 starts a budget and leaves for the coach;
+# nothing checked the numbers a money screen shows when the cap is passed.
+- runFlow: common/fresh-local-start.yaml
+- runFlow: common/add-netflix.yaml
+- tapOn: "Set a monthly budget.*"
+- assertVisible: "Your monthly cap"
+# The cap steps by $5 and stops at $5; eight presses reach the floor from any
+# suggested start up to $45.
+- repeat:
+    times: 8
+    commands:
+      - tapOn: "Lower cap"
+- tapOn: "Start tracking this budget"
+# $15.49 forecast against a $5 cap: over, by $10.49, and Netflix is named as
+# the thing to cut, with what it costs a year.
+- assertVisible: "OVER"
+- assertVisible: "/ \\$5"
+- assertVisible: "Forecast month-end"
+- assertVisible: "Cut \\$10\\.49 to get back under"
+- assertVisible: "\\$15\\.49/month · \\$185\\.88/yr"
+- assertVisible: "What to cut to hit \\$5 — and how much it saves\\."
+# Raising the cap past the forecast takes it off "over".
+- tapOn: "Edit budget"
+- assertVisible: "Your monthly cap"
+- repeat:
+    times: 3
+    commands:
+      - tapOn: "Raise cap"
+- tapOn: "Start tracking this budget"
+- assertVisible: "/ \\$20"
+- assertNotVisible: "OVER"
+- assertNotVisible: "Cut \\$.* to get back under"
+# The recap is honest about having nothing yet: it needs a whole month.
+- scrollUntilVisible:
+    element: "How your spend tracked against your cap\\."
+    direction: DOWN
+- tapOn: "How your spend tracked against your cap\\."
+- assertVisible: "Recap"
+- assertVisible: "We'll show a recap once you've set a budget and tracked a full month\\."

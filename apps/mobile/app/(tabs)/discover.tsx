@@ -10,7 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AppModal } from "../../src/security/AppModal";
 import { useAuthStore } from "../../src/auth/authStore";
 import { useSubscriptionStore } from "../../src/data/subscription-store";
-import { parseCSV } from "../../src/discovery/csvParser";
+import { importOutcomeMessage, parseCSV } from "../../src/discovery/csvParser";
 import { applyFreeCap, summarizeFoundMoney, toCurrencyCode } from "../../src/discovery/discovery-helpers";
 import {
   connectGmail,
@@ -219,6 +219,13 @@ export default function DiscoverScreen() {
       const asset = picked.assets[0];
       const csvContent = await readPickedText(asset);
       const parsed = parseCSV(csvContent, homeCurrency);
+      // Nothing found is said on the screen, with the reason, not in a toast
+      // that fades in two seconds (F245).
+      const nothingFound = importOutcomeMessage(parsed);
+      if (nothingFound) {
+        setError(nothingFound);
+        return;
+      }
       setResults(annotateTracked(toDetected(parsed.subscriptions, "Bank import")));
       showToast(`Found ${parsed.subscriptions.length} subscriptions from ${parsed.detectedFormat}.`);
     } catch (importError) {

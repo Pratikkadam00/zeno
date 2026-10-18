@@ -196,6 +196,18 @@ describe("Discover, bank CSV", () => {
     expect(screen.getAllByText("Bank import").length).toBe(expected.subscriptions.length);
   });
 
+  it("a file that yields nothing says why on the screen, not in a fading toast (F245)", async () => {
+    const noAmounts = ["Date,Description,Category", `${iso(-15).slice(0, 10)},NETFLIX.COM,Entertainment`].join("\n");
+    mockPick.mockResolvedValue({ canceled: false, assets: [{ uri: "file://x.csv", file: { text: async () => noAmounts } }] });
+    await renderScreen(<DiscoverScreen />);
+    await press("Import CSV file");
+    expect(screen.getByText(/^No charges found in that file\./)).toBeTruthy();
+    expect(alert).not.toHaveBeenCalled();
+    expect(screen.queryByText(/^Found \d+ subscriptions$/)).toBeNull();
+    // The import card is still there to try another file.
+    expect(screen.getByRole("button", { name: "Import CSV file" })).toBeTruthy();
+  });
+
   it("cancelling the picker changes nothing; a picker failure is shown", async () => {
     mockPick.mockResolvedValueOnce({ canceled: true, assets: [] });
     await renderScreen(<DiscoverScreen />);

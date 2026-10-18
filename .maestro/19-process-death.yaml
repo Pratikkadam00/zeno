@@ -1,0 +1,33 @@
+appId: app.zeno.mobile
+name: The system kills the app in the background - it comes back locked, and the ledger is intact after the PIN
+tags: [security, data]
+---
+# F-F in docs/FLOW_TEST_PLAN.md. 06 and 18 cold-start with stopApp (a force
+# stop). Android reclaiming a backgrounded app is a different path: the
+# activity is recreated from saved state, which is where a lock can be
+# skipped. killApp is Maestro's simulation of that system kill.
+- runFlow: common/fresh-local-start.yaml
+- runFlow: common/add-netflix.yaml
+- tapOn: "Settings"
+- tapOn: "Security"
+- waitForAnimationToEnd
+- tapOn: "New PIN"
+- inputText: "2580"
+- tapOn: "Confirm PIN"
+- inputText: "2580"
+- tapOn: "Turn on app lock"
+- assertVisible: "APP LOCK · PIN( \\+ BIOMETRICS)?"
+# Leave it in the background on Settings, and let the system take it.
+- pressKey: Home
+- killApp
+- launchApp:
+    stopApp: false
+- assertVisible: "Zeno is locked"
+- assertNotVisible: "Home currency"
+- tapOn: "Enter PIN"
+- inputText: "2580"
+- assertNotVisible: "Zeno is locked"
+# The subscription written before the kill is still there.
+- tapOn: "LEDGER"
+- assertVisible:
+    text: "Netflix, .* · ENTERTAINMENT, \\$15\\.49 per mo"

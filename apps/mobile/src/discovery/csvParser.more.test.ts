@@ -15,12 +15,12 @@ const monthly = (desc: string, amount: string, dates = ["2026-01-05", "2026-02-0
 
 describe("parseCSV — empty and header-only input", () => {
   it("empty or whitespace-only content", () => {
-    expect(parse("")).toEqual({ subscriptions: [], totalRows: 0, detectedFormat: "Unknown" });
-    expect(parse("\n , ,\n\n")).toEqual({ subscriptions: [], totalRows: 0, detectedFormat: "Unknown" });
+    expect(parse("")).toEqual({ subscriptions: [], totalRows: 0, chargeCount: 0, detectedFormat: "Unknown" });
+    expect(parse("\n , ,\n\n")).toEqual({ subscriptions: [], totalRows: 0, chargeCount: 0, detectedFormat: "Unknown" });
   });
 
   it("a header with no data rows", () => {
-    expect(parse("Date,Description,Amount")).toEqual({ subscriptions: [], totalRows: 0, detectedFormat: "Citi" });
+    expect(parse("Date,Description,Amount")).toEqual({ subscriptions: [], totalRows: 0, chargeCount: 0, detectedFormat: "Citi" });
   });
 
   it("counts data rows, ignoring blank lines", () => {

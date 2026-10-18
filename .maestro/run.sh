@@ -11,11 +11,15 @@ shift || true
 adb="${ADB:-adb}"
 maestro="${MAESTRO:-maestro}"
 
-fixture="$here/fixtures/statement.csv"
-# Windows' adb.exe needs a Windows path (Git Bash's path conversion is off above).
-command -v cygpath > /dev/null && fixture="$(cygpath -w "$fixture")"
-"$adb" -s "$device" push "$fixture" /sdcard/Download/zeno-statement.csv > /dev/null || { echo "could not push the CSV fixture"; exit 1; }
-"$adb" -s "$device" shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/zeno-statement.csv > /dev/null
+# Every fixture goes to Downloads as zeno-<name>.csv: statement.csv (flow 10),
+# no-amounts.csv and empty.csv (flow 20, F245).
+for fixture in "$here"/fixtures/*.csv; do
+  name="zeno-$(basename "$fixture")"
+  # Windows' adb.exe needs a Windows path (Git Bash's path conversion is off above).
+  command -v cygpath > /dev/null && fixture="$(cygpath -w "$fixture")"
+  "$adb" -s "$device" push "$fixture" "/sdcard/Download/$name" > /dev/null || { echo "could not push the fixture $name"; exit 1; }
+  "$adb" -s "$device" shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file:///sdcard/Download/$name" > /dev/null
+done
 
 flows=("$@")
 [ ${#flows[@]} -eq 0 ] && flows=("$here"/[0-9][0-9]-*.yaml)

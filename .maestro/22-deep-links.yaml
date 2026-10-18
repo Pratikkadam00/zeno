@@ -1,0 +1,43 @@
+appId: app.zeno.mobile
+name: Deep links - each zeno link lands on its screen, an unknown id says so, none gets past the app lock
+tags: [links, security]
+---
+# F-I in docs/FLOW_TEST_PLAN.md. U6.10 (2026-10-09) proved 24 routes and 12
+# hostile payloads do not crash; nothing proved a link lands where it says. The
+# website has no links into the app (no app links, no .well-known file), so
+# zeno:// is the whole surface: sign-in emails use zeno://auth/verify.
+- runFlow: common/fresh-local-start.yaml
+- openLink: "zeno://subscription/add"
+- assertVisible: "Add subscription"
+- assertVisible: "Search services"
+- openLink: "zeno://subscription/does-not-exist"
+- assertVisible: "Subscription not found"
+- openLink: "zeno://settings"
+- assertVisible: "Home currency"
+- openLink: "zeno://notifications"
+- assertVisible: "NOTIFICATIONS"
+# With the app lock on, a link opens the lock screen, never the screen behind it.
+- openLink: "zeno://security"
+- waitForAnimationToEnd
+- tapOn: "New PIN"
+- inputText: "2580"
+- tapOn: "Confirm PIN"
+- inputText: "2580"
+- tapOn: "Turn on app lock"
+- pressKey: Home
+- openLink: "zeno://settings"
+- assertVisible: "Zeno is locked"
+- assertNotVisible: "Home currency"
+# From a cold start too.
+- stopApp
+- openLink: "zeno://subscription/add"
+- assertVisible: "Zeno is locked"
+- assertNotVisible: "Search services"
+- tapOn: "Enter PIN"
+- inputText: "2580"
+- assertNotVisible: "Zeno is locked"
+# Not asserted: WHICH screen opens after that PIN. A link that cold-starts the
+# app lands on the ledger, not on the screen it named, with or without the
+# lock (F246, measured 2026-10-18). Sign-in links are not affected: the root
+# layout reads the launch URL itself for zeno://auth/verify. When F246 is
+# fixed, assert "Add subscription" here.
