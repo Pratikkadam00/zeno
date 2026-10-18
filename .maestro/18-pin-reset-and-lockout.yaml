@@ -1,0 +1,80 @@
+appId: app.zeno.mobile
+name: Replace the PIN (off with the current one, on with a new one), then ten wrong PINs lock it out
+tags: [security]
+---
+# F-E in docs/FLOW_TEST_PLAN.md. 06 sets a PIN and tries one wrong one. The app
+# has no "change PIN" control: a new PIN means turning the lock off (which asks
+# for the current PIN, counted against the same 10 attempts, F98) and on again.
+# The lockout itself (10 wrong → 15 minutes, the right PIN refused meanwhile,
+# surviving a cold start) was unit-tested only.
+- runFlow: common/fresh-local-start.yaml
+- tapOn: "Settings"
+- tapOn: "Security"
+- waitForAnimationToEnd
+- tapOn: "New PIN"
+- inputText: "2580"
+- tapOn: "Confirm PIN"
+- inputText: "2580"
+- tapOn: "Turn on app lock"
+- assertVisible: "APP LOCK · PIN( \\+ BIOMETRICS)?"
+# Turning it off asks for the current PIN, and a wrong one is counted.
+- tapOn: "Security"
+- waitForAnimationToEnd
+- assertVisible: "Enter current PIN to turn off"
+- tapOn: "Current PIN"
+- inputText: "1111"
+- tapOn: "Turn off app lock"
+- assertVisible: "Incorrect PIN\\. 9 attempts left\\."
+- tapOn: "Current PIN"
+- inputText: "2580"
+- tapOn: "Turn off app lock"
+# Off: back on Settings, the lock reads Off; Security now offers a new PIN.
+- assertVisible: "Off"
+- tapOn: "Security"
+- waitForAnimationToEnd
+- assertVisible: "Turn on app lock"
+- tapOn: "New PIN"
+- inputText: "1357"
+- tapOn: "Confirm PIN"
+- inputText: "1357"
+- tapOn: "Turn on app lock"
+- assertVisible: "APP LOCK · PIN( \\+ BIOMETRICS)?"
+# Leave and come back: the old PIN is refused, the new one opens.
+- pressKey: Home
+- launchApp:
+    stopApp: false
+- assertVisible: "Zeno is locked"
+- tapOn: "Enter PIN"
+- inputText: "2580"
+- assertVisible: "Incorrect PIN\\. 9 attempts left\\."
+- tapOn: "Enter PIN"
+- inputText: "1357"
+- assertNotVisible: "Zeno is locked"
+# The lockout: nine wrong PINs count down, the tenth locks the app out.
+- pressKey: Home
+- launchApp:
+    stopApp: false
+- assertVisible: "Zeno is locked"
+- repeat:
+    times: 9
+    commands:
+      - tapOn: "Enter PIN"
+      - inputText: "0000"
+      - assertVisible: "Incorrect PIN\\. \\d attempts? left\\."
+- assertVisible: "Incorrect PIN\\. 1 attempt left\\."
+- tapOn: "Enter PIN"
+- inputText: "0000"
+- assertVisible: "Too many attempts\\. Try again in 15 minutes\\."
+# While it lasts, even the right PIN is refused.
+- tapOn: "Enter PIN"
+- inputText: "1357"
+- assertVisible: "Too many attempts\\. Try again later\\."
+- assertVisible: "Zeno is locked"
+# And a cold start does not reset it.
+- stopApp
+- launchApp
+- assertVisible: "Zeno is locked"
+- tapOn: "Enter PIN"
+- inputText: "1357"
+- assertVisible: "Too many attempts\\. Try again later\\."
+- assertVisible: "Zeno is locked"

@@ -1,0 +1,52 @@
+appId: app.zeno.mobile
+name: Edit a subscription's price and cycle, see the ledger follow; delete it, see it gone
+tags: [subscriptions]
+---
+# F-A in docs/FLOW_TEST_PLAN.md. Adding is walked by 03 and 04; nothing walked
+# changing or removing one, the next two things anyone does.
+- runFlow: common/fresh-local-start.yaml
+- runFlow: common/add-netflix.yaml
+- tapOn:
+    text: "Netflix, .* · ENTERTAINMENT, \\$15\\.49 per mo"
+- assertVisible: "More options"
+- tapOn: "More options"
+- tapOn: "Edit"
+# The edit form: the subscription's own fields, nothing from the catalogue.
+- assertVisible: "Save changes"
+- tapOn: "Price"
+- eraseText: 10
+- inputText: "22.99"
+# Close the keyboard by tapping a heading, not with hideKeyboard: on this
+# screen that sends Back, which left the form and dropped the edit (measured
+# 2026-10-18). "Save changes" sits under the keyboard otherwise.
+- tapOn: "Billing cycle"
+- tapOn: "Billing cycle annual"
+- tapOn: "Save changes"
+# The detail reads the new figures: a yearly plan, $22.99 a year (the hero
+# splits the amount into "22" and ".99"; the Per year line has it whole).
+- assertVisible: "Yearly"
+- assertVisible: "/year"
+- assertVisible: "\\$22\\.99"
+- tapOn: "Go back"
+# The ledger row follows: the price, and "per yr" rather than "per mo".
+- assertVisible:
+    text: "Netflix, .* · ENTERTAINMENT, \\$22\\.99 per yr"
+- assertNotVisible:
+    text: "Netflix, .*\\$15\\.49 per mo"
+# Delete asks first, and Cancel keeps it.
+- tapOn:
+    text: "Netflix, .* · ENTERTAINMENT, \\$22\\.99 per yr"
+- tapOn: "More options"
+- tapOn: "Delete"
+- assertVisible: "Delete subscription\\?"
+- assertVisible: "Netflix will be removed from Zeno\\."
+- tapOn: "Cancel"
+- assertVisible: "More options"
+# Delete for real: back on an empty ledger.
+- tapOn: "More options"
+- tapOn: "Delete"
+- tapOn: "Delete"
+- assertVisible: "Your ledger"
+- assertVisible: "Nothing on the books yet\\."
+- assertNotVisible:
+    text: "Netflix, .*"

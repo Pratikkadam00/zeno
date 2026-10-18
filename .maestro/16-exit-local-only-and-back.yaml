@@ -1,0 +1,34 @@
+appId: app.zeno.mobile
+name: Exit local-only mode, change your mind with Back, continue as a guest again, data intact (F243)
+tags: [auth]
+---
+# F-C in docs/FLOW_TEST_PLAN.md. This is the path the owner reported as a dead
+# end (F243): Profile → Exit local-only mode lands on sign-in with the ledger
+# beneath it, so a plain pop bounced straight back. 02 walks Back from
+# onboarding's own sign-in; this walks it from here, both the on-screen Back
+# and the phone's back button, and checks "This won't delete your data".
+- runFlow: common/fresh-local-start.yaml
+- runFlow: common/add-netflix.yaml
+- tapOn: "Settings"
+- tapOn: "Profile"
+- tapOn: "Exit local-only mode"
+- assertVisible: "This won't delete your data\\..*"
+- tapOn: "Exit"
+- assertVisible: "Know what you pay."
+- assertVisible: "SIGN THE LINE TO CONTINUE"
+# The phone's back button: onboarding's last slide, where both ways in are.
+- pressKey: back
+- assertVisible: "Step 3 of 3"
+- assertVisible: "Continue without an account"
+# And the on-screen Back, from the same sign-in screen.
+- tapOn: "Sign in"
+- assertVisible: "SIGN THE LINE TO CONTINUE"
+- tapOn: "Back"
+- assertVisible: "Step 3 of 3"
+# Guest again: the subscription added before exiting is still on the ledger.
+- tapOn: "Continue without an account"
+- extendedWaitUntil:
+    visible: "Your ledger"
+    timeout: 20000
+- assertVisible:
+    text: "Netflix, .* · ENTERTAINMENT, \\$15\\.49 per mo"

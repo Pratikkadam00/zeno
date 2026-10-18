@@ -53,15 +53,20 @@ break the nightly run: F243's first version did, and the run caught it (fixed in
 
 | # | Journey | Why it matters | Flow to add |
 |---|---|---|---|
-| F-A | **Edit and delete a subscription** (`subscription/[id]`): change the amount and cycle, save, see the ledger total move; delete, see it gone and the total move back | the second most common thing after adding; never walked end to end | 14-edit-and-delete.yaml |
+| F-A ✅ 2026-10-18 | **Edit and delete a subscription** (`subscription/[id]`): change the amount and cycle, save, see the ledger total move; delete, see it gone and the total move back | the second most common thing after adding; never walked end to end | 14-edit-and-delete.yaml |
 | F-B | **Settings: display currency** (`settings.tsx`): change it, see every amount on the ledger, calendar and insights re-render in it | currency is shown on every screen and no flow changes it (the theme switch is covered by 13) | 15-settings-currency.yaml |
-| F-C | **Exit local-only → sign-in → Back → last slide → guest again, data intact** (`profile.tsx`, `login.tsx`) | 07 stops at the sign-in screen; the Back from THIS path is the one F243 fixed and the nightly only walks Back from onboarding's own sign-in | 16-exit-local-only-and-back.yaml |
+| F-C ✅ 2026-10-18 | **Exit local-only → sign-in → Back → last slide → guest again, data intact** (`profile.tsx`, `login.tsx`) | 07 stops at the sign-in screen; the Back from THIS path is the one F243 fixed and the nightly only walks Back from onboarding's own sign-in | 16-exit-local-only-and-back.yaml |
 | F-D | **Budget: exceed it and read the recap** (`budget.tsx`, `budget-recap.tsx`): with a budget set (08 does that), add enough to pass it, see the over-budget state and the recap's figures | the numbers on a money screen; 08 sets the budget and leaves | 17-budget-exceeded.yaml |
-| F-E | **Security: change the PIN, then the full lockout** (`security.tsx`): old PIN refused, new one works; ten wrong PINs → the lockout message and its timer | 06 sets a PIN and tries one wrong PIN; it never changes the PIN or reaches the lockout | 18-pin-change-lockout.yaml |
+| F-E ✅ 2026-10-18 | **Security: replace the PIN, then the full lockout** (`security.tsx`): there is no "change PIN" control, so off (current PIN, a wrong one counted) and on with a new one; old PIN refused, new one works; ten wrong PINs → "Try again in 15 minutes", the right PIN refused meanwhile, through a cold start | 06 sets a PIN and tries one wrong PIN; it never replaces the PIN or reaches the lockout | 18-pin-reset-and-lockout.yaml |
 | F-F | **Process death with a lock set**: background, `am kill`, relaunch → lock screen first, data intact after unlock | the one thing a flow can prove that unit tests cannot | 19-process-death.yaml (uses `runScript`/adb from run.sh) |
 | F-G | **CSV import, bad file**: a non-CSV, an empty file, a CSV with no amount column → an error the person can read, nothing half-imported | 10 covers the happy path only | 20-discover-csv-bad-file.yaml + two fixtures |
 | F-H | **Reminders follow the ledger** (`notifications.tsx`), permission granted: a renewal in 3 days is listed as scheduled; stamp it cancelled → gone; a new subscription → listed | 09 walks the permission-denied state only; reminders are the product's promise ("seven days out, three days out, the morning of") | 21-reminders-follow-the-ledger.yaml |
 | F-I | **Deep links from the website**: `zenoapp.in/cancel/<slug>` and the app's own `zeno://` routes open the right screen (U6.10 proved they do not crash; nothing proves they land right) | the guides are the pages Google shows | 22-deep-links.yaml |
+
+**Done 2026-10-18** (passed on emulator-5554, release APK of ab85461): F-A, F-C, F-E.
+Writing them found one thing worth knowing for every future flow: on the edit form,
+Maestro's `hideKeyboard` sends Back and leaves the form, dropping the edit; flow 14
+closes the keyboard by tapping a heading instead.
 
 Cost: about one working session for F-A to F-E, a second for F-F to F-I. Each is
 added to `.maestro/run.sh` and runs nightly from then on.
