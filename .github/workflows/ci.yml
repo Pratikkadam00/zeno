@@ -21,7 +21,12 @@ jobs:
   build:
     name: typecheck & test
     runs-on: ubuntu-24.04 # pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19 (GitHub notice); upgrade deliberately
-    timeout-minutes: 25
+    # Measured 2026-10-18 over the last 12 runs on main: the job takes 21-25
+    # minutes, 13-17 of them in the Playwright step (three browsers, every
+    # route). At 25 the limit left two minutes of slack, and two slow runners
+    # in a row (ab85461, 8507ded) were cancelled mid-Playwright with nothing
+    # failing. 40 still stops a hung run; it no longer stops a slow one.
+    timeout-minutes: 40
     # A REAL Postgres server for the P2.1 suite (apps/api/src/storage/real-pg.test.ts),
     # which otherwise embeds PGlite. Pinned by digest like every other image here.
     # A throwaway database on the runner's loopback: trust auth, so no password
