@@ -397,7 +397,9 @@ describe("upstream failures (F31: provider text stays in the server log)", () =>
     const good = await app.inject({ method: "POST", url: "/api/v1/coach", headers: auth(token), payload: coachBody });
     expect(good.json().data).toEqual({ source: "ai", model: "m", summary: "ok" });
     upstream.coach.mockRejectedValueOnce(new Error('AI provider request failed (HTTP 429): {"error":{"message":"Rate limit reached in organization org_SECRET123"}}'));
-    const bad = await app.inject({ method: "POST", url: "/api/v1/coach", headers: auth(token), payload: coachBody });
+    // A different request: the same one again would be answered from the
+    // coach's one-day answer cache (F247) and never reach the provider.
+    const bad = await app.inject({ method: "POST", url: "/api/v1/coach", headers: auth(token), payload: { ...coachBody, totalMonthlyMinor: 1001 } });
     expect(bad.statusCode).toBe(502);
     expect(bad.json().error).toEqual({ code: "UPSTREAM_ERROR", message: "AI coach request failed." });
     expect(bad.body).not.toContain("org_SECRET123");

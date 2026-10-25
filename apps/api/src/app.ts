@@ -2,7 +2,7 @@ import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import { findServiceBySlug, searchServices, services } from "@zeno/service-catalog";
-import { createBusinessSummary, createMockOpenBankingAdapter, createPublicApiKeyPreview, demoBusinessWorkspace, fail, listPartnerIntegrations, ok, syncPullSchema, syncPushSchema, type CurrencyCode, type OpenBankingProvider, type PublicApiKey } from "@zeno/shared";
+import { createBusinessSummary, createMockOpenBankingAdapter, createPublicApiKeyPreview, demoBusinessWorkspace, fail, listPartnerIntegrations, ok, syncPullSchema, syncPushSchema, type BillingCycle, type CurrencyCode, type OpenBankingProvider, type PublicApiKey, type SubscriptionCategory } from "@zeno/shared";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest, type FastifyServerOptions } from "fastify";
 import { pingStorage } from "./storage/pg";
 import { Readable } from "node:stream";
@@ -15,7 +15,7 @@ import { billingConfigured, deleteEntitlementForUser, fetchEntitlement, getCache
 import { availableProducts, claimEvent, createOrder, grantWindow, priceFor, razorpayConfigured, razorpayWebhookConfigured, recordWebGrant, revokeWebGrantByPayment, verifyRazorpaySignature } from "./billing-razorpay";
 import { deleteUserSyncData, pullChanges, pushChanges, type EncryptedChange } from "./sync";
 import { createHousehold, getHousehold, joinHousehold, removeMember, removeUserFromAllHouseholds, setMemberSpend, type Household } from "./family";
-import { coachConfigured, coachModel, generateCoaching } from "./coach";
+import { cachedCoaching, coachConfigured, coachModel, CoachLimitError, generateCoaching, rememberCoaching, type CoachDiagnostics } from "./coach";
 import { securityEvent } from "./security-events";
 import { registerAuthGuard } from "./auth-guard";
 import { markRequestStart, recordProductEvent, recordRequest, renderMetrics } from "./metrics";
@@ -189,22 +189,31 @@ export const productEventSchema = z.object({
   event: z.string().min(1).max(64),
   label: z.string().min(1).max(64).optional()
 });
+// F247: what the coach may be sent, and nothing else. Every object is strict
+// (an unknown field is a 400, not silently dropped), so a hand-written request
+// cannot smuggle text in under a new name. There is no free-text question: the
+// app never sent one. Category and cycle are the app's own fixed lists, so the
+// only free text left is the person's subscription names (80 characters each)
+// and the app's insight lines. Amounts have ceilings (a billion minor units)
+// so no number can be used to pad the prompt.
+const COACH_CATEGORIES = ["ai_tools", "entertainment", "productivity", "health", "finance", "education", "developer_tools", "family", "other"] as const satisfies readonly SubscriptionCategory[];
+const COACH_CYCLES = ["weekly", "monthly", "quarterly", "annual", "trial", "unknown"] as const satisfies readonly BillingCycle[];
+const coachMinor = z.number().int().min(0).max(1_000_000_000);
 export const coachRequestSchema = z.object({
-  totalMonthlyMinor: z.number().int().min(0),
+  totalMonthlyMinor: coachMinor,
   currency: currencyCodeSchema.optional(),
   subscriptions: z.array(z.object({
     name: z.string().min(1).max(80),
-    category: z.string().min(1).max(40),
-    monthlyMinor: z.number().int().min(0),
-    billingCycle: z.string().min(1).max(20)
-  })).max(200),
+    category: z.enum(COACH_CATEGORIES),
+    monthlyMinor: coachMinor,
+    billingCycle: z.enum(COACH_CYCLES)
+  }).strict()).max(200),
   insights: z.array(z.object({
     title: z.string().min(1).max(200),
     body: z.string().min(1).max(600)
-  })).max(20).optional(),
-  question: z.string().max(500).optional(),
-  budgetCapMinor: z.number().int().min(0).optional()
-});
+  }).strict()).max(20).optional(),
+  budgetCapMinor: coachMinor.optional()
+}).strict();
 // P2.8: only the app user id is read (finding F85: the payload is not trusted).
 // RevenueCat's other fields (type, entitlement_ids, expiration_at_ms, ...) are
 // therefore not validated either: a value we would have rejected made
@@ -703,9 +712,28 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     if (!coachConfigured()) {
       return ok({ source: "unconfigured" as const, model: coachModel() }, request.id);
     }
+    const accountId = request.userId!;
+    // The same request from the same account within a day: the same answer,
+    // free (coach.ts). It counts against no cap.
+    const cached = cachedCoaching(accountId, parsed.data);
+    if (cached) return ok(cached, request.id);
     try {
-      return ok(await generateCoaching(parsed.data), request.id);
+      const diagnostics: CoachDiagnostics = {};
+      const result = await generateCoaching(parsed.data, accountId, diagnostics);
+      // What the guard replaced, and why, is logged (never the text itself).
+      if (diagnostics.verdict && diagnostics.verdict !== "clean") {
+        request.log.warn({ coachGuard: diagnostics.verdict }, "AI coach answer replaced with the redirect");
+      }
+      rememberCoaching(accountId, parsed.data, result);
+      return ok(result, request.id);
     } catch (error) {
+      if (error instanceof CoachLimitError) {
+        // A cap, not a fault: logged at warn, and the app falls back to its
+        // on-device insights on any non-ok answer (apps/mobile/app/coach.tsx).
+        request.log.warn({ coachLimit: error.limit }, "AI coach limit reached");
+        reply.code(429);
+        return fail("RATE_LIMITED", "The AI coach has reached its limit for now. Your on-device insights are still here.", request.id);
+      }
       return upstreamFailure(request, reply, error, "AI coach request failed.");
     }
   });

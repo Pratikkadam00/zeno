@@ -72,8 +72,12 @@ services:
       - key: RESEND_FROM_EMAIL
         sync: false
       # Optional features:
-      - key: ANTHROPIC_API_KEY     # AI coach (Claude — default provider)
+      - key: ANTHROPIC_API_KEY     # AI coach (Claude Sonnet 5.5 — default provider; a key from a Zeno workspace with its own spend limit)
         sync: false
+      # Claude spend caps (docs/AI_COACH.md); unset means the defaults: $90 a month,
+      # $6 a day, $0.50 and 10 fresh answers per account. Set any in the dashboard
+      # to change it: COACH_MONTHLY_BUDGET_USD, COACH_DAILY_BUDGET_USD,
+      # COACH_ACCOUNT_MONTHLY_BUDGET_USD, COACH_ACCOUNT_DAILY_REQUESTS.
       - key: GROQ_API_KEY          # AI coach (free fallback provider)
         sync: false
       - key: PLAID_CLIENT_ID       # bank connect (sandbox)

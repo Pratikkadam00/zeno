@@ -128,7 +128,7 @@ async function signIn(app: App, email: string) {
 const b64 = (v: unknown) => Buffer.from(JSON.stringify(v)).toString("base64url");
 const RAW_NONCE = "n".repeat(32);
 const tokenWithKid = (kid: string) => `${b64({ alg: "RS256", typ: "JWT", kid })}.${b64({ sub: "x" })}.${"s".repeat(16)}`;
-const COACH_BODY = { totalMonthlyMinor: 2500, currency: "CAD", subscriptions: [{ name: "Netflix", category: "entertainment", monthlyMinor: 2500, billingCycle: "monthly" }], question: "What can I cut?" };
+const COACH_BODY = { totalMonthlyMinor: 2500, currency: "CAD", subscriptions: [{ name: "Netflix", category: "entertainment", monthlyMinor: 2500, billingCycle: "monthly" }] };
 
 describe("P2.7 the outbound-call inventory", () => {
   it("every outbound call site in the API is listed (a new one fails here until it is reviewed)", () => {

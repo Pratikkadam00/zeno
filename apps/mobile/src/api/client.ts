@@ -129,7 +129,6 @@ export type CoachRequestInput = {
   currency?: string;
   subscriptions: CoachSubscriptionInput[];
   insights?: CoachInsightInput[];
-  question?: string;
   budgetCapMinor?: number;
 };
 
