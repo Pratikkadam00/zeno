@@ -41,7 +41,7 @@ export default function PrivacyPage() {
     <>
       <p className={styles.eyebrow}>Legal</p>
       <h1 className={styles.title}>Privacy Policy</h1>
-      <p className={styles.updated}>Last updated: October 8, 2026</p>
+      <p className={styles.updated}>Last updated: October 25, 2026</p>
       <hr className={styles.rule} />
 
       <p className={styles.lede}>
@@ -72,7 +72,7 @@ export default function PrivacyPage() {
         <li>Your subscription list, notes, renewal dates and the receipts the app reads stay on your phone, encrypted. Our servers never receive them.</li>
         <li>We never ask for a bank login, and no bank-data aggregator is involved.</li>
         <li>Our servers hold an email address and an account id if you sign in, a display name and a monthly total if you join a household, and the counts of four product events. That is the list.</li>
-        <li>The AI coach is off until you turn it on. When you use it, a summary of your subscriptions goes to the AI provider with your question, and nothing is stored.</li>
+        <li>The AI coach is off until you turn it on. When you use it, a summary of your subscriptions goes to the AI provider. We keep the answer in server memory for a day, never on disk.</li>
         <li>Nothing is sold, rented or used for advertising. The website runs no analytics and sets no cookies.</li>
       </ul>
 
@@ -106,8 +106,8 @@ export default function PrivacyPage() {
           see your card.
         </li>
         <li>
-          <strong>The AI coach:</strong> only after you turn it on, the names, categories and monthly amounts of your subscriptions, the
-          app&rsquo;s insights about them, and your question, passed to the AI provider to generate an answer and not stored by us (section 8).
+          <strong>The AI coach:</strong> only after you turn it on, the names, categories and monthly amounts of your subscriptions and the
+          app&rsquo;s insights about them, passed to the AI provider to generate an answer (section 8).
         </li>
         <li>
           <strong>Four product events:</strong> an import finishing from CSV or email, a share card being made, the free plan&rsquo;s limit being
@@ -143,7 +143,9 @@ export default function PrivacyPage() {
         <li><strong>Account:</strong> until you delete it in the app, or ask us to. Deletion erases the account, its sign-in tokens, its household membership and its purchase link on our side; it takes effect at once and is tested.</li>
         <li><strong>Sign-in tokens:</strong> an access token lasts 15 minutes and a refresh token 30 days of inactivity; sign-in links and codes expire after 10 minutes.</li>
         <li><strong>Household:</strong> your name and total until you leave or the household is deleted; a household is deleted when its last member leaves.</li>
-        <li><strong>AI coach requests:</strong> not stored by us. The provider&rsquo;s own retention is in section 9.</li>
+        <li><strong>AI coach:</strong> the answer is kept in our server&rsquo;s memory for up to 24 hours, never written to disk. How much your
+          coach answers cost and how many you had are kept as numbers, with no content, until the month ends. The provider&rsquo;s own retention
+          is in section 9.</li>
         <li><strong>Product counts:</strong> counts only, with nothing personal in them, kept as long as we need the figures.</li>
         <li><strong>Server logs:</strong> up to 30 days.</li>
         <li><strong>Purchase records:</strong> Apple, Google and RevenueCat keep them under their own policies; we hold only the plan status while your account exists.</li>
@@ -165,9 +167,12 @@ export default function PrivacyPage() {
 
       <h2 id="coach">8. The AI spend coach</h2>
       <p>
-        The coach is off until you turn it on with its consent switch. When you ask it a question, the app sends our server the names,
-        categories and monthly amounts of your subscriptions, the app&rsquo;s own insights, your budget cap if you set one, and your
-        question. The server passes them to the AI provider in section 9 and returns the answer. We do not store the request or the answer.
+        The coach is off until you turn it on with its consent switch. When you open it, the app sends our server the names, categories and
+        monthly amounts of your subscriptions, the app&rsquo;s own insights, and your budget cap if you set one. The server passes them to
+        the AI provider in section 9 and returns the answer. We do not store the request. The answer stays in our server&rsquo;s memory for
+        up to 24 hours, so opening the coach again with nothing changed shows it without another AI request; it is never written to disk.
+        To keep the coach within its limits we count, per account, what its answers cost and how many there were: numbers only, kept
+        until the month ends.
         Nothing discovered from your inbox, and not your name, email or any bank data, is included. Turn the switch off and nothing more is
         sent.
       </p>

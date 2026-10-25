@@ -102,10 +102,22 @@ describe("the privacy policy agrees with the code", () => {
     for (const absent of ["Mixpanel", "Amplitude", "Firebase", "Segment", "Plausible", "Google Analytics", "Stripe"]) expect(privacy).not.toContain(absent);
   });
 
-  it("the coach stores nothing: the API has no persistence in the coach module", () => {
+  it("the coach stores no content: the coach module has no storage, and the ledger persists only numbers (F247)", () => {
     const coach = source("apps/api/src/coach.ts");
-    expect(coach).not.toMatch(/insert|writeFile|saveConversation|persist/i);
-    expect(text["/legal/privacy"]).toContain("We do not store the request or the answer");
+    expect(coach).not.toMatch(/storage\/pg|kvPersist|writeFile|saveConversation/);
+    // The answer cache is a Map in memory with a 24-hour expiry.
+    expect(coach).toContain("const ANSWER_TTL_MS = 24 * 60 * 60 * 1000;");
+    expect(coach).toContain("const answers = new Map<");
+    // The spend ledger writes one thing: an amount.
+    const ledger = source("apps/api/src/coach-budget.ts");
+    expect(ledger.match(/kvPersist\w*\(/g)).toEqual(["kvPersistAwait("]);
+    expect(ledger).toContain("await kvPersistAwait(NAMESPACE, key, { amount: next });");
+    const privacy = text["/legal/privacy"];
+    expect(privacy).toContain("We do not store the request.");
+    expect(privacy).toContain("up to 24 hours");
+    expect(privacy).toContain("never written to disk");
+    expect(privacy).toContain("numbers only, kept until the month ends");
+    expect(privacy).not.toMatch(/your question/);
   });
 
   it("'Export my data' and account deletion exist in the app's settings, as the rights section says", () => {

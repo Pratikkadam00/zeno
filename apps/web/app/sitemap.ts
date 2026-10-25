@@ -35,7 +35,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // D24 (2026-10-11): Pro is also sold here, so the page and the refund policy a buyer reads before paying.
     { url: `${BASE}/pro`, lastModified: new Date("2026-10-11"), changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE}/legal/refunds`, lastModified: new Date("2026-10-11"), changeFrequency: "yearly", priority: 0.3 },
-    { url: `${BASE}/legal/privacy`, lastModified, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${BASE}/legal/privacy`, lastModified: new Date("2026-10-25"), changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/legal/terms`, lastModified, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/legal/cookies`, lastModified, changeFrequency: "yearly", priority: 0.3 },
     // Complaint-language comparison pages (Phase 4.4).

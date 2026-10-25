@@ -390,7 +390,7 @@ export function cachedCoaching(accountId: string, input: CoachRequest, now = Dat
 }
 
 export function rememberCoaching(accountId: string, input: CoachRequest, result: CoachResult, now = Date.now()): void {
-  // Oldest out first (a Map keeps insertion order).
+  // Oldest out first (a Map keeps the order entries were added).
   while (answers.size >= ANSWER_CACHE_MAX) {
     const oldest = answers.keys().next().value as string;
     answers.delete(oldest);
