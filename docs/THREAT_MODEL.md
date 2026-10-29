@@ -112,13 +112,13 @@ service, **E**levation of privilege.
 | E | Deleting one account signs everyone out | Revocation scoped to the account | `apps/api/src/routes/auth-scope.test.ts` (F208) |
 | E | A logged-out access token keeps working | **Open (F77, owner decision)**: up to 15 minutes |  |
 
-### 3.3 The database (Render Postgres)
+### 3.3 The database (Neon Postgres, free; Render until 2026-11-03)
 
 | | Threat | Mitigation | Evidence |
 |---|---|---|---|
 | I | Traffic read in transit | TLS by default (`DATABASE_SSL`, "verify" when unreadable) | `apps/api/src/storage/pg.test.ts` (SSL modes); `apps/api/src/config.test.ts` |
 | T | Code injected through queries | Parameterised queries only | `apps/api/src/storage/real-pg.test.ts` (against real Postgres) |
-| D | Data lost (the free database expires 2026-11-03; no restore drill) | **Open (P8, owner)** |  |
+| D | Data lost | Neon free does not expire; its own restore history is 6 hours, so the dump in `docs/RUNBOOKS.md` §5 is the backup. **Open until the first drill is run** | |
 
 ### 3.4 The website
 

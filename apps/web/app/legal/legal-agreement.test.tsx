@@ -85,6 +85,8 @@ describe("the privacy policy agrees with the code", () => {
     const privacy = text["/legal/privacy"];
     const expected: [string, string, RegExp][] = [
       ["Render", "render.yaml", /services:/],
+      // The database moved to Neon on 2026-10-29: the connection string is a dashboard secret, so the blueprint records the provider.
+      ["Neon", "render.yaml", /Neon free database/],
       // Netlify has no file in the repository (the site is deployed from Netlify's UI); the measured record is the data document.
       ["Netlify", "docs/DATA_AND_LOGGING.md", /Netlify/],
       ["Resend", "apps/api/src/routes/auth.ts", /api\.resend\.com|new Resend/],

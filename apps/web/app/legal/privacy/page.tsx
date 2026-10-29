@@ -41,7 +41,7 @@ export default function PrivacyPage() {
     <>
       <p className={styles.eyebrow}>Legal</p>
       <h1 className={styles.title}>Privacy Policy</h1>
-      <p className={styles.updated}>Last updated: October 25, 2026</p>
+      <p className={styles.updated}>Last updated: October 29, 2026</p>
       <hr className={styles.rule} />
 
       <p className={styles.lede}>
@@ -180,7 +180,8 @@ export default function PrivacyPage() {
       <h2 id="providers">9. Who processes data for us</h2>
       <p>These providers handle data on our instructions, each only for the purpose named, and each is used only when the feature that needs it is in use.</p>
       <ul>
-        <li><strong>Render</strong> (United States): runs our server and its database. Holds the account, household and product-count data in section 4, and the server logs.</li>
+        <li><strong>Render</strong> (United States): runs our server. Holds the server logs.</li>
+        <li><strong>Neon</strong> (United States): our database. Holds the account, household and product-count data in section 4, and the coach&rsquo;s usage numbers.</li>
         <li><strong>Netlify</strong> (United States): serves the website, including the waitlist form.</li>
         <li><strong>Google</strong> (United States): the waitlist spreadsheet (Google Sheets, through Google Apps Script); Google Play for the Android app and its billing; Gmail, if you connect an inbox, under your own Google account.</li>
         <li><strong>Apple</strong> (United States): the App Store for the iOS app and its billing, and Sign in with Apple if you use it.</li>

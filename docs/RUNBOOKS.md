@@ -61,12 +61,14 @@ Held by `apps/api/src/storage/pg.test.ts` and `pg-gcm.test.ts` (rotation, tamper
 
 ## 5. Back up and restore the database (drill)
 
-The free Render database has no backups and is deleted on **2026-11-03**. Before then,
-move `zeno-db` to a paid plan (Render's paid plans include backups; check what the chosen
-plan keeps and for how long), and run this drill once,
-then after every major change to storage:
+Since 2026-10-29 the database is a **Neon free** project in AWS US West (Oregon), next
+to the Render server. Render's free database expired on 2026-11-03. Neon's free plan is
+permanent, but its restore history is **6 hours** (neon.com/pricing, "History window"):
+a mistake noticed the next day cannot be undone there. This dump is therefore the real
+backup. Run it once after the move, then after every major change to storage and before
+any launch step that writes many accounts:
 
-1. Render → `zeno-db` → Info: copy the **external** connection string (you only need it
+1. Neon console → the project → Connect: copy the connection string (you only need it
    for the drill; it is a secret).
 2. On your machine: `pg_dump --format=custom --no-owner "<external url>" > zeno-drill.dump`.
 3. Restore into a throwaway local database:

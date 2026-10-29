@@ -21,7 +21,7 @@ Evidence is cited as `file:line` or a doc; nothing here is from memory.
 | P7 | Sentry project + DSN | ⬜ |
 | P8 | Google client IDs (F11) | ⬜ |
 | P9 | The Pro free trial as a store offer (F134) | ⬜ |
-| P10 | `zeno-db` upgraded before 3 November 2026 | ⬜ |
+| P10 | Database moved to Neon (free) before 3 November 2026 | ⬜ |
 | P11 | Screenshots + feature graphic | ⬜ |
 | P12 | Play "App content": every declaration | ⬜ |
 | P13 | A lawyer's read of the privacy policy and terms | ⬜ |
@@ -215,18 +215,25 @@ who already used one.
 
 ---
 
-## P10 · `zeno-db` — a hard date
+## P10 · the database — a hard date, solved for free (decided 2026-10-29)
 
-**Do:** upgrade `zeno-db` to a paid Render plan **before 3 November 2026**, or accept
-losing its data.
+**Decided:** no paid plan. The database moves to a **Neon free** project, which does not
+expire. `render.yaml` already reads the connection string from the dashboard (not yet
+pushed: see the note at the top of `docs/OWNER_ACTIONS.md`).
 
-**Where:** Render → `zeno-db`.
+**Do, before 3 November 2026** (about ten minutes):
+
+1. neon.com → sign up (no card) → New project: name `zeno`, Postgres version as offered,
+   region **AWS US West (Oregon)**. Copy the connection string.
+2. Render → `zeno-api` → Environment → `DATABASE_URL` → paste it. Save. The API restarts,
+   creates its table, and starts empty: there are no real users, so nothing is copied.
+3. Check `https://zeno-api-5dwv.onrender.com/api/v1/health/ready` says `"postgres":"ok"`.
+4. Render → `zeno-db` → delete it (it is no longer in the blueprint and no longer used).
 
 **Why it blocks:** Render deletes free databases when they expire. Today that costs
-nothing real — there are no live users. After launch it would be every account.
-**24 days from today.**
+nothing real: there are no live users. After launch it would be every account.
 
-**Then I:** re-run the restore drill (`docs/RUNBOOKS.md` §5) against the upgraded instance.
+**Then I:** run the restore drill (`docs/RUNBOOKS.md` §5) against Neon.
 
 ---
 

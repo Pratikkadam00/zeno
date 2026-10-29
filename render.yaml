@@ -6,17 +6,20 @@
 # two workspace packages the API imports (@zeno/shared, @zeno/service-catalog)
 # are built to dist/, then the API starts via tsx.
 #
-# Persistence: the free Postgres below backs the in-memory stores (sync,
-# entitlements, households, auth sessions) so they survive restarts/redeploys.
-# DATABASE_URL is wired automatically from it. Remove the databases block (and
-# the DATABASE_URL env var) to run the API fully in-memory.
-databases:
-  - name: zeno-db
-    plan: free
-    databaseName: zeno
-    # Render free Postgres expires ~90 days after creation; recreate + reconnect
-    # to renew. Data here is non-PII: sync blobs are client-encrypted ciphertext;
-    # raw Plaid bank tokens are intentionally never persisted (see plaid.ts).
+# Persistence: Postgres backs the in-memory stores (sync, entitlements,
+# households, auth sessions, the coach's spend ledger) so they survive restarts
+# and redeploys. Since 2026-10-29 it is a Neon free database, not Render's.
+# Render's free Postgres expires 30 days after creation and is deleted 14 days
+# later ("Free Render Postgres databases expire 30 days after creation",
+# render.com/docs/free); Neon's free plan is "permanent (not a trial)", 1 GB,
+# no card, and pauses after 5 idle minutes instead of expiring (neon.com/pricing).
+# The connection string is a secret set in the dashboard (DATABASE_URL below).
+# Unset it to run the API fully in-memory. Data here is non-PII: sync blobs are
+# client-encrypted ciphertext; raw Plaid bank tokens are never persisted.
+#
+# The old `zeno-db` was defined here. Removing it from this file does not delete
+# it ("Changes to a Blueprint never cause a resource to be deleted"); delete it
+# in the dashboard once the API runs on Neon.
 services:
   - type: web
     name: zeno-api
@@ -52,12 +55,13 @@ services:
       # (Claude when ANTHROPIC_API_KEY is set, else Groq; coach.ts resolveProvider).
       # Forcing "anthropic" turned the coach off when only a Groq key existed.
       # Set COACH_PROVIDER=anthropic|groq in the dashboard only to override.
-      # Postgres connection string, pulled from the managed database above so the
-      # stores persist across restarts (TLS required — handled by default in code):
+      # Postgres connection string: the Neon project's string, pasted in the
+      # dashboard (never committed). Neon presents a publicly trusted certificate,
+      # so the certificate is verified, not merely encrypted (storage/pg.ts).
       - key: DATABASE_URL
-        fromDatabase:
-          name: zeno-db
-          property: connectionString
+        sync: false
+      - key: DATABASE_SSL
+        value: verify
 
       # ── Secrets — set these in the Render dashboard (never committed) ──
       # Recommended so tokens survive restarts (else an ephemeral key is generated
